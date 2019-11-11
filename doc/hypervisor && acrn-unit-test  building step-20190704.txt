@@ -1,0 +1,98 @@
+hypervisor±‡“Î≤Ω÷Ë-20190704
+
+Latest merged hypervisor supports 32 bit uint-test code
+
+Hypervisor£∫
+	 https://github.com/junjiemao1/acrn-hypervisor.git
+	 branch:kbl-nuc-rebased-jun19
+
+unit-test:
+	https://github.com/projectacrn/acrn-unit-test/pull/7 
+	https://github.com/projectacrn/acrn-unit-test.git
+				branch:     master
+	
+
+***‘⁄dockerœ¬±‡“Î***
+sudo ./acrn-ebtool/docker_run.sh clearlinux_acrn:latest
+
+≈‰÷√Acrn-hypervisor £®ÀıΩ¯±Ì æœ¬“ªº∂£©»Áœ¬£∫
+
+	1.0	cd acrn-hypervisor/hypervisor
+	1.1 make clean
+	1.2 make defconfig BOARD=nuc7i7bnh
+	
+	1.3	make menuconfig
+	
+	2. ACRN Scenario (ACRN Unit Test)  --->
+			( ) Software Defined Cockpit
+			( ) Logical Partition VMs
+			(X) ACRN Unit Test
+			
+	3.  set ƒø±Í∞ÂŒ™£®nuc7i7bnh£©£¨
+		(nuc7i7bnh) Target board
+	
+		
+	4.	set 
+		(2) Maximum number of VCPUs per VM 
+		
+	5.	set
+		(4) Maximum number of PCPU
+		
+	6.	set
+		Serial IO type (PCI) --->
+			( ) PCI
+			(X) Legacy
+	
+	7.	set
+		(0x3f8) Base address of the vuart port
+		
+	8.	set
+		(0x4) IRQ of the vuart port
+	
+	9.	set
+		[*] Enable ACPI DMA Remapping tables parsing
+		(0x00000010) Segment, Bus, Device, and function of the GPU (NEW)
+		
+	10.	set
+		[ ] Enable hypervisor relocation
+		
+
+±£¥Ê≈‰÷√≤¢ÕÀ≥ˆ≈‰÷√ΩÁ√Ê£∫
+	1.	Shift + S 
+			/home/mahaixin/jhwork/arcn-hypervisor/acrn-hypervisor/hypervisor/build/.config    ªÿ≥µ
+			
+				œ‘ æ»Áœ¬£∫
+			--------------------------------------------------------------------------------------------------------
+			|                                              Success													|
+			| configuration saved to /home/mahaixin/jhwork/arcn-hypervisor/acrn-hypervisor/hypervisor/build/.config |   ªÿ≥µ
+			---------------------------------------------------------------------------------------------------------
+	2.	
+	
+	
+±‡“Î£∫
+	make BOARD="nuc7i7bnh"
+	
+unit-test ±‡“Î£∫ 32bit
+	1. cd guest
+	2.  ./configure --arch=i386
+	3.	make x86/xxxx.raw
+
+unit-test ±‡“Î£∫ 64bit
+	1. cd guest
+	2.  ./configure --arch=x86_64
+	3.	make x86/xxxx.raw	
+	
+	
+	
+	
+	
+	BTW, you need to append "ACRN_unit_test_image" after the unit test module for the unit-test to boot (due to the requirement of an explicit tag).
+	?
+	E.g. 
+	?
+	menuentry 'ACRN Unit Test' --class ubuntu --class gnu-linux --class gnu --class os $menuentry_id_option 'gnulinux-simple-e23c76ae-b06d-4a6e-ad42-46b8eedfd7d3' {
+	    recordfail
+	?
+	    echo 'Loading hypervisor unit test ...'
+	    multiboot /boot/acrn.32.out
+	    module /boot/acrn-unit-test ACRN_unit_test_image }
