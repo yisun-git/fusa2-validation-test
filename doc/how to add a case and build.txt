@@ -1,0 +1,43 @@
+
+Readme
+
+Teamforge act as a private repo for acrn-unit-test, this repo will satisfy Fusa test requirment, 
+so we need merge the code to ACRN-UNIT-TEST master code in our local machine and then build our obj files.
+
+Teamforge Fusa SRS Test building step
+
+1.setup your local building environment firstly. 
+
+a> setup docker environment,pls refer https://wiki.ith.intel.com/display/OTCCWPQA/BKM%3A+Setup+ACRN+docker+environment
+b> building hypervisor and ACRN-UNIT-TEST 
+pls refer hypervisor && acrn-unit-test  building step-20190704.txt https://tf-amr-1.devtools.intel.com/ctf/code/projects.cwpqa/git/scm.FuSa_SRS_Test_Code/doc/
+
+2.get Teamforge code 
+
+git pull 
+https://tf-amr-1.devtools.intel.com/ctf/code/projects.cwpqa/git/scm.FuSa_SRS_Test_Code/tree
+
+(you need  apply Teamforge access right. how to download code and merge code to Teamfoge,
+pls see:
+https://wiki.ith.intel.com/display/OTCCWPQA/01.+Automation+code+management
+https://wiki.ith.intel.com/display/OTCCWPQA/02.+Automation+code+development+process
+https://wiki.ith.intel.com/display/OTCCWPQA/03.+Automation+code+review+process 
+)
+
+
+3.merge Temaforge code to the ACRN-UNIT-TEST master branch (https//github.com/project/acrnacrn-unit-test)
+
+4.building your case 
+this step is the same as 1.
+
+
+How to add your case to building system
+
+1.if your case run under 32bit mode only, pls add your case obj file  in x86/Makefile.i386(append your case at this line :tests = $(TEST_DIR)/xxxx.flat)
+
+2.if your case run under 64bit mode only, pls add your case obj file in x86/Makefile.x86_64(append your case at this line :tests = $(TEST_DIR)/xxxx.flat)
+
+3.if your case need run both 32bit mode &64bit mode ,pls add your case obj file in x86/Makefile.common (add your case to tests-common variable: tests-commone = $(TEST_DIR)/xxxx.flat
+
+4.if your case has init&statup&unchanged test feature ,pls add make rules in x86/Makefile.init_startup
+	and add obj name to unstitched-test-cases variable (unstitched-test-cases = $(TEST_DIR)/realmode.flat $(TEST_DIR)/xxxx.flat )
