@@ -1,0 +1,48 @@
+stages:
+- build
+- test
+- deploy
+
+
+build_job:
+  stage: build
+  script:
+    - echo "start to build ..."
+    - pwd
+    - mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+    - cp -r ../acrn-unit-test/* acrn-unit-test/
+    - cd acrn-unit-test/guest/
+    - ./configure --arch=x86_64
+    - make x86/xsave.bzimage
+  artifacts:
+    paths:
+      - github/acrn-unit-test/guest/x86/xsave.bzimage
+    expire_in: 3 weeks
+  only:
+    - merge_requests
+    - schedules
+    
+    
+test_lauch_xsave:
+  stage: test
+  script:
+    - echo "start to test lauching xsave ..."
+    - pwd
+    - /opt/srs_ci.sh xsave
+  dependencies:
+    - build_job
+  only:
+    - merge_requests
+    - schedules
+    
+    
+deploy_build_job:
+  stage: deploy
+  script:
+    - echo "start to deploy and run tests ..."
+    - /opt/srs_ci.sh $BUILD_TYPE
+  dependencies:
+    - build_job
+  only:
+    - schedules
+
