@@ -6,6 +6,9 @@
 .globl tss_descr
 .globl gdt64_desc
 .globl cpu_online_count
+.globl sipi_cnt
+/*Adding for GP at X64 environment*/
+.globl gdt64
 
 ipi_vector = 0x20
 
@@ -102,6 +105,8 @@ boot_idt_end:
 mb_boot_info:	.quad 0
 
 pt_root:	.quad ptl4
+
+sipi_cnt:   .byte 0
 
 .section .init
 
@@ -235,7 +240,7 @@ ap_start64:
 	sti
 	nop
 	lock incw cpu_online_count
-
+	lock incb sipi_cnt
 1:	hlt
 	jmp 1b
 

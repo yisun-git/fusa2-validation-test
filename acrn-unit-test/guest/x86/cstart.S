@@ -1,6 +1,8 @@
 #include "apic-defs.h"
 
 .globl boot_idt
+
+.globl sipi_cnt
 .globl cpu_online_count
 
 ipi_vector = 0x20
@@ -76,6 +78,8 @@ idt_descr:
 	.word 16 * 256 - 1
 	.long boot_idt
 
+sipi_cnt:	.byte 0
+
 .section .init
 
 .code32
@@ -142,15 +146,15 @@ ap_start32:
 	lock/xaddl %esp, smp_stacktop
 	setup_percpu_area
 	call prepare_32
-	call load_tss
 	call enable_apic
+	call load_tss
 #ifdef AP_UNCHANGED_CHECK
 	call save_unchanged_reg
 #endif
 	sti
 	nop
 	lock incw cpu_online_count
-
+	lock incb sipi_cnt
 1:	hlt
 	jmp 1b
 
@@ -161,9 +165,9 @@ start32:
 	mov %ax, %fs
 	mov %ax, %gs
 	mov %ax, %ss
+	call enable_apic
 	call load_tss
 	call mask_pic_interrupts
-	call enable_apic
 	call smp_init
 	push $__environ
 	push $__argv
@@ -176,9 +180,10 @@ load_tss:
 	lidt idt_descr
 	mov $16, %eax
 	mov %ax, %ss
-	mov $(APIC_DEFAULT_PHYS_BASE + APIC_ID), %eax
-	mov (%eax), %eax
-	shr $24, %eax
+	movl $APIC_ID, %ecx
+	shrl $4, %ecx
+	addl $APIC_BASE_MSR, %ecx
+	rdmsr
 	mov %eax, %ebx
 	shl $3, %ebx
 	movl $0, tss_descr+8(%ebx)
@@ -198,9 +203,9 @@ load_tss:
 	ret
 smp_init:
 	cld
-	lea sipi_entry, %rsi
-	xor %rdi, %rdi
-	mov $(sipi_end - sipi_entry), %rcx
+	lea sipi_entry, %esi
+	xor %edi, %edi
+	mov $(sipi_end - sipi_entry), %ecx
 	rep/movsb
 
 	movl $APIC_ICR, %ecx
