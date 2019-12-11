@@ -1,15 +1,13 @@
+/*
+segmentation.h
+ */
 #ifndef _SEGMENTATION_H_
 
-/*
- 	segmentation.h
- */
 #define _SEGMENTATION_H_
-
 
 #include "libcflat.h"
 #include "processor.h"
 #include "desc.h"
-
 #include "alloc.h"
 #include "apic-defs.h"
 #include "apic.h"
@@ -21,8 +19,6 @@
 #include "types.h"
 #include "misc.h"
 
-
-
 #define MAX_CPUS        4
 #define APICID_CPU0     0
 #define APICID_CPU1     1
@@ -33,7 +29,6 @@
 #define TICK_VECTOR     0xee
 #define TICK_APINIT     0xF1
 
-
 #define EOK             0
 #define ETIMEDOUT       -1
 #define ERANGE          -2
@@ -41,10 +36,8 @@
 #define EFAULT          -4
 
 /* GDT description info */
-
 #define SEGMENT_LIMIT								0xFFFF
 #define SEGMENT_LIMIT2								0xF
-
 
 #define SEGMENT_PRESENT_SET							0x80
 #define SEGMENT_PRESENT_CLEAR							0x00
@@ -81,9 +74,6 @@
 #define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_INTERGATE			0xE
 #define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TRAPGATE			0xF
 
-
-
-
 #define GRANULARITY_SET							0x80
 #define GRANULARITY_clear						0x00
 #define DEFAULT_OPERATION_SIZE_16BIT_SEGMENT				0x00
@@ -94,9 +84,7 @@
 #define DPLEVEL1							0x20
 #define DPLEVEL2							0x40
 
-
 #define SELECTOR_TI							0x4
-
 
 /* ring1 */
 #define OSSERVISE1_CS32   0x59
@@ -121,15 +109,8 @@
 #define DEFAULT_OPERtion_32_BIT_SEG	1
 #define STACK_CPY_NUMBER		0x0
 
-
-
 #define UNUSED		0
 #define IST_TABLE_INDEX	0
-
-
-
-
-
 
 #define INTER_OFF_HEANDLER
 
@@ -137,13 +118,11 @@
 
 #define TICKS
 
-
 #define asm_trigger_ud(void)    asm volatile("ud2\n");
 
 ulong g_ap_stack[4096] = { 0 };
 
 extern gdt_entry_t boot_ldt[50];
-
 
 atomic64_t g_p1_found;
 unsigned int g_p1_id = 0;
@@ -151,9 +130,7 @@ static volatile unsigned long g_llvt_count = 0;
 static volatile unsigned long g_main_ticks = 0;
 static volatile unsigned long g_test_ticks = 0;
 
-
-
-typedef struct
+typedef struct
 {
     unsigned long rip;
     unsigned long cs;
@@ -161,8 +138,6 @@ typedef struct
 }irq_stack_t,ipi_stack_t;
 
 typedef void cpu_routine_t(void);
-
-
 
 typedef enum _SEGMENT_REGISTER
 {
@@ -181,9 +156,7 @@ typedef enum _SEGMENT_REGISTER_BIT
     BIT_D
 } SEG_REG_BIT;
 
-
 #ifndef __x86_64__
-
 struct gate_descriptor {
 	unsigned gd_looffset:16;	/* gate offset (lsb) */
 	unsigned gd_selector:16;	/* gate segment selector */
@@ -194,9 +167,7 @@ struct gate_descriptor {
 	unsigned gd_p:1;		/* segment descriptor present */
 	unsigned gd_hioffset:16;	/* gate offset (msb) */
 } __attribute__((packed));
-
 #else //__x86_64__
-
 struct gate_descriptor {
 	uint64_t gd_looffset:16;	/* gate offset (lsb) */
 	uint64_t gd_selector:16;	/* gate segment selector */
@@ -208,7 +179,6 @@ struct gate_descriptor {
 	uint64_t gd_hioffset:48;	/* gate offset (msb) */
 	uint64_t sd_xx1:32;
 } __attribute__((packed));
-
 #endif
 
 struct task_gate {
@@ -222,23 +192,19 @@ struct task_gate {
 	u16 resv_2;
 } gate;
 
-
-
 #define VALUE_DEADBEEF              0xdeadbeef
 #define MEMORY_ADDR_ZERO            0x00000000
 #define SELECT_OFFSET_64M           0x400
 
-
 #define CS_SS_GP
-//#define TASK_SEGMENT_SS_CLEAN_P_145140 //这个要单独运行
+//#define TASK_SEGMENT_SS_CLEAN_P_145140 /*This must be run alone*/
 #define SEGMENT_CLEAR_PBIT_DS_145139
-//#define SEGMENT_DSCRIPT_ANY_BIT_ILLAEGAL_145135 // 需求已经删除
+//#define SEGMENT_DSCRIPT_ANY_BIT_ILLAEGAL_145135 /*Requirement has been deleted*/
 #define ACCESSES_NONWRITABLE_DATA_SEGMENT_151141
 #define ANY_SET_VAL_145148
 #define SET_B_L_D_BIT_145168
 //#define SEGMENT_RPL_GREATER_THAN_DPL_145238
-//#define NULL_SEGMENT_SELECTOR_LDT_145968    // 需求已经删除
-
+//#define NULL_SEGMENT_SELECTOR_LDT_145968    /*Requirement has been deleted*/
 
 #define READ_SEGMENT_INIT
 #define READ_SEGMENT_HIDEN_PART
@@ -285,7 +251,5 @@ struct task_gate {
 #define NON_ZERO_UPPER_TYPE_IN_CALL_GATE_DESCRIPTOR_GENERATES_146860
 #define D_AND_L_BITS_IN_SEGMENT_DESCRIPTOR_GENERATE_146849
 #define EXPOSE_FS_GS_MSRS_146120
-
-
 
 #endif

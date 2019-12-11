@@ -54,6 +54,9 @@ COMMON_CFLAGS += -g $(autodepend-flags)
 COMMON_CFLAGS += -Wall -Wwrite-strings -Wclobbered -Wempty-body -Wuninitialized
 COMMON_CFLAGS += -Wignored-qualifiers -Wunused-but-set-parameter
 COMMON_CFLAGS += -Werror
+
+#The hypervisor triple fault when sse is used for 64 bit operations in protected mode,
+#so I removed sse
 COMMON_CFLAGS += -mno-sse
 frame-pointer-flag=-f$(if $(KEEP_FRAME_POINTER),no-,)omit-frame-pointer
 fomit_frame_pointer := $(call cc-option, $(frame-pointer-flag), "")
