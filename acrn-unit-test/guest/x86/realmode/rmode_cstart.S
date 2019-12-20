@@ -140,8 +140,10 @@ start32:
 	out %al, $0x21
 	out %al, $0xa1
 	/*enable apic*/
-	movl $(APIC_DEFAULT_PHYS_BASE + APIC_SPIV), %eax
-	movl $0x1ff, (%eax)
+	mov  $0x1ff,%eax
+	mov  $0x0,%edx
+	mov  $(APIC_BASE_MSR + APIC_SPIV/16),%ecx
+	wrmsr
 	call smp_init
 /*
 *
@@ -161,9 +163,10 @@ load_tss:
 	lidt idt_descr
 	mov $16, %eax
 	mov %ax, %ss
-	mov $(APIC_DEFAULT_PHYS_BASE + APIC_ID), %eax
-	mov (%eax), %eax
-	shr $24, %eax
+	movl $APIC_ID, %ecx
+	shrl $4, %ecx
+	addl $APIC_BASE_MSR, %ecx
+	rdmsr
 	mov %eax, %ebx
 	shl $3, %ebx
 	movl $0, tss_descr+8(%ebx)
@@ -188,10 +191,24 @@ smp_init:
 	xor %edi, %edi
 	mov $(sipi_end - sipi_entry), %ecx
 	rep/movsb
-	mov $APIC_DEFAULT_PHYS_BASE, %eax
-	movl $(APIC_DEST_ALLBUT | APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), APIC_ICR(%eax)
-	movl $(APIC_DEST_ALLBUT | APIC_DEST_PHYSICAL | APIC_DM_INIT), APIC_ICR(%eax)
-	movl $(APIC_DEST_ALLBUT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP), APIC_ICR(%eax)
+	movl $APIC_ICR, %ecx
+	shrl $4, %ecx
+	addl $APIC_BASE_MSR, %ecx
+
+	movl $2, %eax
+	movl %eax, %edx
+	//shll $1, %edx //native need
+	subl $1, %edx
+1:
+	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), %eax
+	wrmsr
+	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT), %eax
+	wrmsr
+	movl $(APIC_DEST_PHYSICAL | APIC_DM_STARTUP), %eax
+	wrmsr
+	subl $1, %edx
+	cmp $0, %edx
+	jnz 1b
 smp_init_done:
 	ret
 

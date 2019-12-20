@@ -5,7 +5,7 @@ ifeq ($(wildcard config.mak),)
 $(error run ./configure first. See ./configure -h)
 endif
 
-export ENTRY_OFFSET = 0x1000000 - 512*4
+export ENTRY_OFFSET = 0x1000800
 export START_A = 0x1000800 + SIZEOF_HEADERS
 
 ifeq ($(VM), safety)

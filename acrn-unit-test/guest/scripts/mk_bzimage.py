@@ -141,7 +141,8 @@ def main(args):
     #
     # ACRN unit test images are statically linked at 4M and prepended by 4
     # sectors (i.e. 2K). Tell a bootloader that the preferred load address is 4M - 2K.
-    pref_addr = 0x1000000
+    entry_offset = int(args.entry_offset, 16)
+    pref_addr = entry_offset - 512 * 4
     for b in [((pref_addr >> i) & 0xff) for i in (0,8,16,24)]:
         data = str(chr(b))
         a = struct.pack('B', b)
@@ -196,6 +197,7 @@ if __name__ == "__main__":
     parser.add_argument("raw_file")
     parser.add_argument("relocator")
     parser.add_argument("out_file")
+    parser.add_argument("entry_offset")
     args = parser.parse_args()
 
     main(args)

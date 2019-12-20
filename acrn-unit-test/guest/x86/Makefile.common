@@ -31,13 +31,15 @@ $(libcflat): CFLAGS += -ffreestanding -I $(SRCDIR)/lib -I lib
 COMMON_CFLAGS += -m$(bits)
 COMMON_CFLAGS += -O1
 
+include $(TEST_DIR)/Makefile.use_ap
+
 # stack.o relies on frame pointers.
 KEEP_FRAME_POINTER := y
 
 libgcc := $(shell $(CC) -m$(bits) --print-libgcc-file-name)
 
 # We want to keep intermediate file: %.elf and %.o
-.PRECIOUS: %.elf %.o $(TEST_DIR)/%_prelink.o $(TEST_DIR)/realmode/%.elf $(TEST_DIR)/realmode/%.o
+.PRECIOUS: %.elf %.raw %.o $(TEST_DIR)/%_prelink.o $(TEST_DIR)/realmode/%.elf $(TEST_DIR)/realmode/%.o
 
 FLATLIBS = lib/libcflat.a $(libgcc)
 modifylds:
@@ -63,7 +65,7 @@ x86/bzimage_stub.raw: x86/bzimage_stub.o
 	@$(OBJCOPY) -O binary $^ $@
 
 %.bzimage: %.raw x86/bzimage_stub.raw
-	@scripts/mk_bzimage.py $+ $@
+	@scripts/mk_bzimage.py $+ $@ $(ENTRY_OFFSET)
 
 tests-common = $(TEST_DIR)/vmexit.flat $(TEST_DIR)/tsc.flat \
                $(TEST_DIR)/smptest.flat  $(TEST_DIR)/port80.flat \
@@ -136,9 +138,10 @@ $(TEST_DIR)/hyperv_connections_prelink.o: $(TEST_DIR)/hyperv.o
 $(TEST_DIR)/vmx_prelink.o: $(TEST_DIR)/vmx_tests.o
 
 $(TEST_DIR)/realmode/%.raw: ENTRY_OFFSET = 0x4000
+$(TEST_DIR)/realmode/%.bzimage: ENTRY_OFFSET = 0x4000
 $(TEST_DIR)/realmode/%.elf: $(TEST_DIR)/realmode/rmode_cstart.o $(TEST_DIR)/realmode/rmode_entry.o $(TEST_DIR)/realmode/%.o \
 	$(TEST_DIR)/realmode/rmode_flat.lds
-	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/rmode_flat.lds \
+	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/realmode/rmode_flat.lds \
 		 $(filter %.o, $^)
 	@chmod a-x $@
 
@@ -150,8 +153,6 @@ arch_clean:
 	$(TEST_DIR)/.*.d lib/x86/.*.d \
 	$(tests-api) api/*.o api/*.a api/.*.d \
 	$(case_table.o:.o=.c) $(TEST_DIR)/*/*.d $(TEST_DIR)/realmode/*.o $(TEST_DIR)/realmode/*.elf
-
-include $(TEST_DIR)/Makefile.use_ap
 
 api/%.o: CXXFLAGS += -m32 -std=gnu++11
 
