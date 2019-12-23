@@ -9,27 +9,27 @@
 #include "alloc.h"
 #include "misc.h"
 
-static u32 get_startup_cr0()
+u32 get_startup_cr0()
 {
 	return *((volatile u32 *)STARTUP_CR0_ADDR);
 }
 
-static u32 get_startup_cr4()
+u32 get_startup_cr4()
 {
 	return *((volatile u32 *)STARTUP_CR4_ADDR);
 }
 
-static u32 get_init_cr0()
+u32 get_init_cr0()
 {
 	return *((volatile u32 *)INIT_CR0_ADDR);
 }
 
-static u32 get_init_cr4()
+u32 get_init_cr4()
 {
 	return *((volatile u32 *)INIT_CR4_ADDR);
 }
 
-static int test_instruction_fetch(void *p)
+int test_instruction_fetch(void *p)
 {
 	asm volatile(ASM_TRY("1f")
 		 "call *%[addr]\n\t"
@@ -39,13 +39,13 @@ static int test_instruction_fetch(void *p)
 	return exception_vector();
 }
 
-static void free_gva(void *gva)
+void free_gva(void *gva)
 {
 	set_page_control_bit(gva, PAGE_PTE, PAGE_P_FLAG, 1, true);
 	free(gva);
 }
 
-static bool check_value_is_exist(u32 reg, u8 value)
+bool check_value_is_exist(u32 reg, u8 value)
 {
 	u32 i;
 
@@ -58,7 +58,7 @@ static bool check_value_is_exist(u32 reg, u8 value)
 	return false;
 }
 
-static int page_test_at_ring3(void (*fn)(void), const char *arg)
+int page_test_at_ring3(void (*fn)(void), const char *arg)
 {
 	static unsigned char user_stack[4096];
 	int ret;
@@ -113,6 +113,7 @@ static int page_test_at_ring3(void (*fn)(void), const char *arg)
 	return ret;
 }
 
+#ifdef __x86_64__
 /**
  * @brief case name:Encoding of CPUID Leaf 2 Descriptors_001
  *
@@ -150,7 +151,7 @@ static void paging_rqmid_23896_check_tlb_info()
  * @brief case name:Hide Processor Context Identifiers_001
  *
  * Summary: When process-context identifiers are hidden, CPUID.01H:ECX.
- *	PCID [bit 17] shall be 0, and changing CR4.PCIDE from 0 to 1,shall generate #GP.
+ *		PCID [bit 17] shall be 0, and changing CR4.PCIDE from 0 to 1,shall generate #GP.
  */
 static void paging_rqmid_23897_hide_processor_context_identifiers()
 {
@@ -170,7 +171,7 @@ static void paging_rqmid_23897_hide_processor_context_identifiers()
  * @brief case name: Global Pages Support_001
  *
  * Summary: Execute CPUID.01H:EDX.PGE [bit 13] shall be 1, set CR4.PGE to enable
- *	global-page feature shall have no exception
+ *		global-page feature shall have no exception
  */
 static void paging_rqmid_23901_global_pages_support()
 {
@@ -192,7 +193,7 @@ static void paging_rqmid_23901_global_pages_support()
  * @brief case name:CPUID.80000008H:EAX[7:0]_001
  *
  * Summary: Execute CPUID.80000008H:EAX[7:0] to get the physical-address width
- *	    supported by the processor, it shall be 39.
+ *		supported by the processor, it shall be 39.
  */
 static void paging_rqmid_23895_check_physical_address_width()
 {
@@ -534,6 +535,7 @@ static void paging_rqmid_32305_cr0_pg_start_up()
 
 	report("%s", ((cr0 & X86_CR0_PG) == 0), __FUNCTION__);
 }
+#endif
 
 #ifdef __x86_64__
 /* test case which should run under 64bit */
@@ -543,11 +545,9 @@ static void paging_rqmid_32305_cr0_pg_start_up()
 #include "32/paging_fn.c"
 #endif
 
-static void test_paging()
+#ifdef __x86_64__
+void test_paging_p2()
 {
-	paging_rqmid_23896_check_tlb_info();
-	paging_rqmid_23897_hide_processor_context_identifiers();
-	paging_rqmid_23895_check_physical_address_width();
 	paging_rqmid_32346_check_linear_address_width();
 
 	/* ----------- init and start-up --------------- */
@@ -578,65 +578,46 @@ static void test_paging()
 	paging_rqmid_32303_cr0_wp_start_up();
 	paging_rqmid_32305_cr0_pg_start_up();
 	/* -----------init and start-up--------------- */
+}
+#endif
 
+static void test_paging()
+{
 #ifdef __x86_64__
+	paging_rqmid_23896_check_tlb_info();
+	paging_rqmid_23897_hide_processor_context_identifiers();
+	paging_rqmid_23895_check_physical_address_width();
+
 	test_paging_64bit_mode();
+
+	paging_rqmid_23901_global_pages_support();
 #elif __i386__
 	test_paging_32bit_mode();
 #endif
-	paging_rqmid_23901_global_pages_support();
 }
 
 static void print_case_list()
 {
 	printf("paging feature case list:\n\r");
+#ifdef __x86_64__
 	printf("\t\t Case ID:%d case name:%s\n\r", 23896u, "Encoding of CPUID Leaf 2 Descriptors_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23897u, "Hide Processor Context Identifiers_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23895u, "CPUID.80000008H:EAX[7:0]_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32346u, "CPUID.80000008H:EAX[15:8]_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23901u, "Global Pages Support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32265u, "IA32 EFER.NXE state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32270u, "EFLAGS.AC state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32272u, "CR4.SMEP state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32274u, "CR4.SMAP state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32276u, "CR4.PSE state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32278u, "CR4.PKE state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32280u, "CR4.PGE state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32297u, "CR4.PAE state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32290u, "CR4.PCIDE state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32304u, "CR0.WP state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32306u, "CR0.PG state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32302u, "CR2 state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32300u, "CR3[bit 63:12] state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32264u, "IA32 EFER.NXE state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32269u, "EFLAGS.AC state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32271u, "CR4.SMAP state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32273u, "CR4.SMEP state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32275u, "CR4.PSE state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32277u, "CR4.PKE state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32279u, "CR4.PGE state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32285u, "CR4.PCIDE state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32295u, "CR4.PAE state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32298u, "CR3[bit 63:12] state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32301u, "CR2 state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32303u, "CR0.WP state following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 32305u, "CR0.PG state following start-up_001");
 
-#ifdef __x86_64__
-	printf("\t\t Case ID:%d case name:%s\n\r", 24522u, "TLB Support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 23918u, "Write Protect Support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23912u, "Hide Invalidate Process-Context Identifier_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 24519u, "Invalidate TLB When \
-		vCPU writes CR3_disable global paging_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 23918u, "Write Protect Support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 24522u, "TLB Support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 24519u,
+		"Invalidate TLB When vCPU writes CR3_disable global paging_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26017u, "Supervisor Mode Execution Prevention Support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 24460u, "Invalidate TLB When vCPU changes CR4.SMAP_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23917u, "Protection Keys Hide_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 26827u, "Invalidate TLB When \
-		vCPU writes CR3_enable global paging_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 24460u, "Invalidate TLB When vCPU changes CR4.SMAP_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 26827u,
+		"Invalidate TLB When vCPU writes CR3_enable global paging_002");
 #elif __i386__
 	printf("\t\t Case ID:%d case name:%s\n\r", 24415u, "32-Bit Paging Support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25249u, "Execute Disable support_001");
-
 #endif
 }
 

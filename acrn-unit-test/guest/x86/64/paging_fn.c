@@ -1162,15 +1162,27 @@ static void paging_rqmid_23912_hide_invalidate_processor_context_identifiers()
 
 void test_paging_64bit_mode()
 {
+	paging_rqmid_23912_hide_invalidate_processor_context_identifiers();
+	paging_rqmid_23918_write_protect_support();
+	paging_rqmid_24522_tlb_support();
+	paging_rqmid_24519_disable_global_paging();
+	paging_rqmid_26017_smep_support();
+	paging_rqmid_23917_protection_keys_hide();
+	paging_rqmid_24460_cr4_smap_invalidate_tlb();
+	paging_rqmid_26827_enable_global_paging();
+}
+
+void test_paging_64bit_mode_p2()
+{
 	u32 case_id = 1;
 	switch (case_id) {
 	case 1:
-		paging_rqmid_23912_hide_invalidate_processor_context_identifiers();
-		paging_rqmid_23918_write_protect_support();
-		paging_rqmid_24522_tlb_support();
-		paging_rqmid_24519_disable_global_paging();
-		paging_rqmid_26017_smep_support();
-		paging_rqmid_23917_protection_keys_hide();
+		//paging_rqmid_23912_hide_invalidate_processor_context_identifiers();
+		//paging_rqmid_23918_write_protect_support();
+		//paging_rqmid_24522_tlb_support();
+		//paging_rqmid_24519_disable_global_paging();
+		//paging_rqmid_26017_smep_support();
+		//paging_rqmid_23917_protection_keys_hide();
 		paging_rqmid_32224_ring3_access_super_address();
 		paging_rqmid_32227_ring3_access_user_address();
 		paging_rqmid_32228_write_protect_support_011();
@@ -1193,7 +1205,7 @@ void test_paging_64bit_mode()
 		paging_rqmid_32406_cr4_pge_tlb();
 		paging_rqmid_32234_cr0_wp_tlb();
 		paging_rqmid_32236_cr0_cd_tlb();
-		paging_rqmid_24460_cr4_smap_invalidate_tlb();
+		//paging_rqmid_24460_cr4_smap_invalidate_tlb();
 
 		paging_rqmid_32266_execute_disable_support_005();
 		paging_rqmid_32407_execute_disable_support_004();
@@ -1207,7 +1219,7 @@ void test_paging_64bit_mode()
 		break;
 	case 2:
 		paging_rqmid_32267_execute_disable_support_003();
-		paging_rqmid_26827_enable_global_paging();
+		//paging_rqmid_26827_enable_global_paging();
 		break;
 	}
 }
