@@ -67,22 +67,22 @@ void save_unchanged_reg(void)
 	asm volatile ("sldt (0x8100)\n\t");
 
 	/*segment base*/
-	/*read	base*/
+	/*Read the magic(0xdeadbeef), in the ds segment and save to memory*/
 	asm volatile ("mov %ds:0x100 ,%eax\n\t"
 		"mov %eax,(0x9100)\n\t");
-	/*read*/
+	/*Read the magic(0xdeadbeef), in the es segment and save to memory*/
 	asm volatile ("mov %es:0x100 ,%eax\n\t"
 		"mov %eax,(0x9100 + 0x4)\n\t");
-	/*read*/
+	/*Read the magic(0xdeadbeef), in the fs segment and save to memory*/
 	asm volatile("mov %fs:0x100 ,%eax\n\t"
 		"mov %eax,(0x9100 + 0x8)\n\t");
-	/*read*/
+	/*Read the magic(0xdeadbeef), in the gs segment and save to memory*/
 	asm volatile("mov %gs:0x100 ,%eax\n\t"
 		"mov %eax,(0x9100 + 0xc)\n\t");
-	/*read*/
+	/*Read the magic(0xdeadbeef), in the ss segment and save to memory*/
 	asm volatile("mov %ss:0x100 ,%eax\n\t"
 		"mov %eax,(0x9100 + 0x10)\n\t");
-
+	/*Read the memory, in the cs segment and save to memory*/
 	asm volatile("mov %cs:0x100 ,%eax\n\t"
 		"mov %eax,(0x9100 + 0x14)\n\t");
 }
