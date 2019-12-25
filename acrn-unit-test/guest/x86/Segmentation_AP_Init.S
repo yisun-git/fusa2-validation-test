@@ -13,78 +13,69 @@ mov %eax, (0x8000 + 0x14)
 
 xor %eax,%eax
 mov %cr4,%eax
-mov %eax,(0x8000 + 0x18)  /*fsgsbase*/
+mov %eax,(0x8000 + 0x18)
 
-sgdt (0x8000 + 0x20) /*gdt*/
+/*save gdt*/
+sgdt (0x8000 + 0x20)
 
-/*fs_base_start_up*/
+/*save MSR_IA32_FS_BASE*/
 xor %ecx,%ecx
 mov $0xC0000100,%ecx
 rdmsr
 mov %edx,(0x8000 + 0x28)
 mov %eax,(0x8000 + 0x30)
 
-/*gs_base_start_up*/
+/*save MSR_IA32_GS_BASE*/
 xor %ecx,%ecx
 mov $0xC0000101,%ecx
 rdmsr
 mov %edx,(0x8000 + 0x34)
 mov %eax,(0x8000 + 0x38)
 
-/*start_i32_kernel_gs_base*/
+/*save IA32_KERNEL_GS_BASE*/
 xor %ecx,%ecx
 mov $0xC0000102,%ecx
 rdmsr
 mov %edx,(0x8000 + 0x3c)
 mov %eax,(0x8000 + 0x40)
 
-/*access rigth*/
-/*write*/
+/*access check
+ *check ds write*/
 mov $0xdeadbeef,%eax
 mov %eax,%ds:0x100
-/*read*/
+/*check ds read*/
 mov %ds:0x100 ,%eax
 mov %eax,(0x9000)
 
-/*write*/
+/*check es write*/
 mov $0xdeadbeef,%eax
 mov %eax,%es:0x100
-/*read*/
+/*check es read*/
 mov %es:0x100 ,%eax
 mov %eax,(0x9000 + 0x4)
-/*write*/
+
+/*check fs write*/
 mov $0xdeadbeef,%eax
 mov %eax,%fs:0x100
-/*read*/
+/*check fs read*/
 mov %fs:0x100 ,%eax
 mov %eax,(0x9000 + 0x8)
 
-/*write*/
+/*check gs write*/
 mov $0xdeadbeef,%eax
 mov %eax,%gs:0x100
-/*read*/
+/*check gs read*/
 mov %gs:0x100 ,%eax
 mov %eax,(0x9000 + 0xc)
 
-/*write*/
+/*check ss write*/
 mov $0xdeadbeef,%eax
 mov %eax,%ss:0x100
-/*read*/
+/*check ss read*/
 mov %ss:0x100 ,%eax
 mov %eax,(0x9000 + 0x10)
 
-/*write*/
-/*mov $0xdeadbeef,%eax
- *mov %eax,%cs:0x100*/
-/*read*/
+/*check cs read*/
 mov %cs:0x100 ,%eax
 mov %eax,(0x9000 + 0x14)
 
-/*limit*/
-/*mov %cs:0x10000,%eax 	//ok
- *mov %ds:0x10000,%eax  //ok
- *mov %es:0x10000,%eax  //ok
- *mov %fs:0x10000,%eax 	//ok
- *mov %gs:0x10000,%eax  //ok
- *mov %ss:0x10000,%eax	// ok
- */
