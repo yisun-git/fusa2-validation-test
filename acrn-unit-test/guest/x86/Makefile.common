@@ -31,6 +31,8 @@ $(libcflat): CFLAGS += -ffreestanding -I $(SRCDIR)/lib -I lib
 COMMON_CFLAGS += -m$(bits)
 COMMON_CFLAGS += -O1
 
+include $(TEST_DIR)/Makefile.use_ap
+
 ENTRY_OFFSET = 0x400000
 # stack.o relies on frame pointers.
 KEEP_FRAME_POINTER := y
@@ -109,6 +111,7 @@ $(TEST_DIR)/%_prelink.o: $(TEST_DIR)/%.o
 	$(LD) -m$(ldarch) -r -o $@ $^
 	@$(OBJCOPY) \
 		--keep-global-symbol=main \
+		--keep-global-symbol=ap_main \
 		--keep-global-symbol=save_unchanged_reg \
 		--add-symbol main_$*=.text:0x`nm $@ | grep "T main" | egrep -o "[0-9a-f]{16}"`,function,global \
 		--weaken-symbol=main \

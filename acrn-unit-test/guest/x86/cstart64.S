@@ -241,6 +241,9 @@ ap_start64:
 	nop
 	lock incw cpu_online_count
 	lock incb sipi_cnt
+#ifdef AP_USE_MAIN
+	call ap_main
+#endif
 1:	hlt
 	jmp 1b
 

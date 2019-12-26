@@ -1,0 +1,8 @@
+$(TEST_DIR)/memory_order.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/memory_order.o: CFLAGS += -DAP_USE_2_MAIN
+$(TEST_DIR)/memory_order.o: $(TEST_DIR)/memory_order.c
+	@rm -rf  $(cstart.o)
+	@rm -rf  fwcfg.o
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o fwcfg.o lib/x86/fwcfg.c
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
