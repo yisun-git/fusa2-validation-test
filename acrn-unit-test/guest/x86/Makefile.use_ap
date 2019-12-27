@@ -6,3 +6,9 @@ $(TEST_DIR)/memory_order.o: $(TEST_DIR)/memory_order.c $(libcflat)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o fwcfg.o lib/x86/fwcfg.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/mp_initialization.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/mp_initialization.o: $(TEST_DIR)/mp_initialization.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
