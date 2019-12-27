@@ -20,20 +20,13 @@ static u16 *creat_non_aligned_add(void)
 	return non_aligned_addr;
 }
 
-static u64 *creat_non_canon_add(void)
+u64 non_canon_addr;
+static u64* creat_non_canon_add(void)
 {
-	//u64 *non_canon_add = (u64 *)0xffbffffffffff010;
-	u64 *non_canon_add = NULL;
-	__attribute__ ((aligned(16))) u64 addr;
-	u64 *normal_addr = &addr;
+	u64 address = (unsigned long)&non_canon_addr;
 
-	if(((u64)normal_addr >> 63) & 1){
-		non_canon_add = (u64 *)((((u64)normal_addr >> 63) & 0) << 63);
-	}else {
-		non_canon_add = (u64 *)((((u64)normal_addr >> 63) | 1) << 63);
-	}
-	printf("The non-canonical address : %#lx \n", *non_canon_add);
-	return non_canon_add;
+	address = (address|(1UL<<63));
+	return (u64 *)address;
 }
 
 /** GDT **/
