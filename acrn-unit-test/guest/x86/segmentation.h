@@ -1,6 +1,4 @@
-/*
-segmentation.h
- */
+/*segmentation.h*/
 
 #ifndef _SEGMENTATION_H_
 
@@ -136,7 +134,7 @@ typedef struct
     unsigned long rip;
     unsigned long cs;
     unsigned long rflags;
-}irq_stack_t,ipi_stack_t;
+} irq_stack_t, ipi_stack_t;
 
 typedef void cpu_routine_t(void);
 

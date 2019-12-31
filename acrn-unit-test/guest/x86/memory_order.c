@@ -28,10 +28,10 @@
 // #undef CFG_TEST_MEMORY_ORDERING_MFENCE
 #define CFG_TEST_MEMORY_ORDERING_CPU_NR 3
 #ifndef nop
-#define nop()		do { asm volatile ("nop\n\t" :::"memory"); } while(0)
+#define nop()		do { asm volatile ("nop\n\t" :::"memory"); } while (0)
 #endif
 //#define test_debug(fmt...) printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
-#define test_debug(fmt, args...) 	printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
+#define test_debug(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 
 void memory_ordering_test1_entry(void);
 void memory_ordering_test2_entry(void);
@@ -82,7 +82,7 @@ void asm_test1(void)
 }
 void memory_ordering_test1_entry(void)
 {
-	while(atomic_read(&memory_ordering_begin_sem1) !=
+	while (atomic_read(&memory_ordering_begin_sem1) !=
 		CFG_TEST_MEMORY_ORDERING_READY)
 		nop();
 	atomic_dec(&memory_ordering_begin_sem1);
@@ -106,7 +106,7 @@ void asm_test2(void)
 
 void memory_ordering_test2_entry(void)
 {
-	while(atomic_read(&memory_ordering_begin_sem2) !=CFG_TEST_MEMORY_ORDERING_READY){
+	while (atomic_read(&memory_ordering_begin_sem2) != CFG_TEST_MEMORY_ORDERING_READY) {
 		nop();
 	}
 	atomic_dec(&memory_ordering_begin_sem2);
@@ -144,7 +144,7 @@ void memory_ordering_rqmid_24597_memory_ordering_instructions_001(void)
 		atomic_inc(&memory_ordering_begin_sem1);
 		atomic_inc(&memory_ordering_begin_sem2);
 
-		while(atomic_read(&memory_ordering_end_sem) != CFG_TEST_MEMORY_ALL_CPU_READY) {
+		while (atomic_read(&memory_ordering_end_sem) != CFG_TEST_MEMORY_ALL_CPU_READY) {
 			nop();
 		}
 
@@ -156,7 +156,7 @@ void memory_ordering_rqmid_24597_memory_ordering_instructions_001(void)
 			break;
 		}
 
-		if((i % CFG_MEMORY_ORDER_DEBUG_TIMES) == 0) {
+		if ((i % CFG_MEMORY_ORDER_DEBUG_TIMES) == 0) {
 			printf("%s: times %lu\n", msg, i);
 		}
 	}
@@ -176,7 +176,7 @@ void ap_main(void)
 		test_debug("<Enter *AP* > processor id %d\n", local_id);
 	}
 
-	while(1) {
+	while (1) {
 		memory_ordering_rqmid_24597_test_entry[local_id]();
 	}
 }

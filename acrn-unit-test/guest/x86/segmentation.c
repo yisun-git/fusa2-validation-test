@@ -117,8 +117,8 @@ static void set_ldt_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran)
 
 static void init_all_ldt_of_null(void)
 {
-	short i ;
-	for(i = 0; i < 50; i++) {
+	short i;
+	for (i = 0; i < 50; i++) {
 		set_ldt_entry(i*8, 0,  0, 0, 0);
 	}
 }
@@ -136,7 +136,7 @@ static void enable_init(void)
  */
 static void Segmentation_rqmid_27186_ap_read_ss_init_value(void)
 {
-	short initial_SS =0 ;
+	short initial_SS = 0;
 
 	asm ("mov (0x8000 + 0x14) ,%%ax\n\t"
 		"mov %%ax,%0\n\t"
@@ -146,15 +146,16 @@ static void Segmentation_rqmid_27186_ap_read_ss_init_value(void)
 }
 
 /**
- * @brief Case name:Segmentation ACRN hypervisor shall set initial guest IA32_KERNEL_GS_BASE to 0H following start-up_001
+ * @brief Case name:Segmentation ACRN hypervisor shall set initial
+ * guest IA32_KERNEL_GS_BASE to 0H following start-up_001
  *
  * Summary: Power on/reset, read IA32_KERNEL_GS_BASE register at start-up
  *
  */
 static void Segmentation_rqmid_27133_bp_startup_read_i32_kernel_gs_base(void)
 {
-	u32 initial_start_i32_kernel_gs_base_h,initial_start_i32_kernel_gs_base_l;
-	u64 kernel_gs_base_h,kernel_gs_base_l,kernel_gs_base;
+	u32 initial_start_i32_kernel_gs_base_h, initial_start_i32_kernel_gs_base_l;
+	u64 kernel_gs_base_h, kernel_gs_base_l, kernel_gs_base;
 
 	asm ("mov (0x6000 + 0x3c) ,%%eax\n\t"
 		"mov %%eax,%0\n\t"
@@ -166,7 +167,7 @@ static void Segmentation_rqmid_27133_bp_startup_read_i32_kernel_gs_base(void)
 
 	kernel_gs_base_h = initial_start_i32_kernel_gs_base_h;
 	kernel_gs_base_l = initial_start_i32_kernel_gs_base_l;
-	kernel_gs_base = kernel_gs_base_h <<32 | kernel_gs_base_l;
+	kernel_gs_base = kernel_gs_base_h << 32 | kernel_gs_base_l;
 
 	report("\t\t Segmentation_rqmid_27133_bp_startup_read_i32_kernel_gs_base", kernel_gs_base == 0x0);
 }
@@ -210,9 +211,9 @@ static void Segmentation_rqmid_28300_chaeck_DPL_is_3_of_stack_segment(void)
 	sgdt(&gdt_descriptor_table);
 
 	/*DPL =3*/
-	set_gdt_entry(index, base, SEGMENT_LIMIT,SEGMENT_PRESENT_SET|DESCRIPTOR_TYPE_CODE_OR_DATA|
+	set_gdt_entry(index, base, SEGMENT_LIMIT, SEGMENT_PRESENT_SET|DESCRIPTOR_TYPE_CODE_OR_DATA|
 		SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED|DESCRIPTOR_PRIVILEGE_LEVEL_3,
-		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT );
+		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 
 	lgdt(&gdt_descriptor_table);
 
@@ -221,7 +222,7 @@ static void Segmentation_rqmid_28300_chaeck_DPL_is_3_of_stack_segment(void)
 
 /**
  * @brief Case name:Segmentation When any vCPU accesses data segment exclusive stack segment and P bit in data segment
- * 	     exclusive stack segment descriptor is clear_001
+ *	     exclusive stack segment descriptor is clear_001
  *
  * Summary: Checking DS load a non-existent data segment description table will generate #NP
  *
@@ -237,9 +238,9 @@ static void Segmentation_rqmid_27165_generate_NP_exclusive_stack(void)
 
 	set_gdt_entry(index, base, SEGMENT_LIMIT, DESCRIPTOR_TYPE_CODE_OR_DATA|
 		SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
-		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT );
+		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 
-	asm volatile( "mov %0, %%ax\n\t" :: "r"(index));
+	asm volatile("mov %0, %%ax\n\t" :: "r"(index));
 	asm volatile(ASM_TRY("1f")
 		"mov %%ax, %%ds\n\t"
 		"1:"
@@ -251,14 +252,14 @@ static void Segmentation_rqmid_27165_generate_NP_exclusive_stack(void)
 }
 
 typedef void (*trigger_func)(void *data);
-void ljmp_p(void * data)
+void ljmp_p(void *data)
 {
 	asm volatile("ljmpl $0xc, $0\n\t"
 		:::);
 }
 
 /**
- * @brief Case name: Segmentation When any vCPU load LDT and base address in the segment descriptor 
+ * @brief Case name: Segmentation When any vCPU load LDT and base address in the segment descriptor
  *        is missing in memory_001
  *
  * Summary: When any vCPU load LDT and base address in the segment descriptor is missing in memory,
@@ -267,9 +268,9 @@ void ljmp_p(void * data)
  */
 static void Segmentation_rqmid_28340_loading_ldt_miss_base_address_generates_pf(void)
 {
-	u32 *base,ldt_linear ;
-	u16 index,led_index;
-	u32 ldt_base ,ret;
+	u32 *base, ldt_linear;
+	u16 index, led_index;
+	u32 ldt_base, ret;
 	struct descriptor_table_ptr old_gdt_desc;
 	unsigned char *linear = malloc(PAGE_SIZE);
 
@@ -293,7 +294,7 @@ static void Segmentation_rqmid_28340_loading_ldt_miss_base_address_generates_pf(
 
 	set_gdt_entry(index, ldt_base, SEGMENT_LIMIT,  SEGMENT_PRESENT_SET|SEGMENT_TYPE_DATE_READ_WRITE,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
-	set_page_control_bit(phys_to_virt((unsigned long )linear), PAGE_PTE, PAGE_P_FLAG, 0,1);
+	set_page_control_bit(phys_to_virt((unsigned long)linear), PAGE_PTE, PAGE_P_FLAG, 0, 1);
 
 	lgdt(&old_gdt_desc);
 	asm volatile("mov $0x50,%ax");
@@ -326,10 +327,10 @@ static void jmp_rpl_than_dlp(const char *msg)
  */
 static void Segmentation_rqmid_28056_call_gate_with_jmp_accesses_nonconforming_codesegment(void)
 {
-	struct gate_descriptor* callgate = NULL;
+	struct gate_descriptor *callgate = NULL;
 	struct descriptor_table_ptr old_gdt_desc;
 
-	u32 index,base,call_base;
+	u32 index, base, call_base;
 	void common_callgate_funct(void);
 
 	call_base = (u32)common_callgate_funct;
@@ -354,7 +355,7 @@ static void Segmentation_rqmid_28056_call_gate_with_jmp_accesses_nonconforming_c
 	/*set the call gate DPL to be 0*/
 	set_gdt_entry(index, base, SEGMENT_LIMIT, SEGMENT_PRESENT_SET|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_RAED,
-		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT ); 
+		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
 
 	/*ring3*/
@@ -388,7 +389,7 @@ static void Segmentation_rqmid_27772_memory_address_accessed_non_canonical(void)
 	struct segment_desc64 *gdt_table;
 	struct segment_desc64 *new_gdt_entry;
 	struct descriptor_table_ptr old_gdt_desc;
-	int target_sel,ret;
+	int target_sel, ret;
 
 	sgdt(&old_gdt_desc);
 
@@ -407,7 +408,7 @@ static void Segmentation_rqmid_27772_memory_address_accessed_non_canonical(void)
 	new_gdt_entry->db	= DEFAULT_OPERtion_32_BIT_SEG;
 	new_gdt_entry->g	= GRANULARITY;
 	new_gdt_entry->base3	= 0x20;
-	new_gdt_entry->base4	=0xFFFF7FF1;
+	new_gdt_entry->base4 = 0xFFFF7FF1;
 
 	lgdt(&old_gdt_desc);
 
@@ -423,20 +424,20 @@ static void Segmentation_rqmid_27772_memory_address_accessed_non_canonical(void)
 }
 
 /**
-*  @brief Case name:Segmentation When any vCPU accesses code segment in IA-32e mode and upper type field of the
-*	    call gate descriptor is greater than zero_001
-*
-* Summary: When any vCPU accesses code segment in IA-32e mode and upper type field of the call gate descriptor
-*          is greater than zero, shall generate #GP(selector)
-*
-*/
+ * @brief Case name:Segmentation When any vCPU accesses code segment in IA-32e
+ * mode and upper type field of the call gate descriptor is greater than zero_001
+ *
+ * Summary: When any vCPU accesses code segment in IA-32e mode and upper type
+ * field of the call gate descriptor is greater than zero, shall generate #GP(selector)
+ *
+ */
 static void Segmentation_rqmid_27794_set_non_zero_upper_type_in_call_gate_descriptor(void)
 {
 	struct descriptor_table_ptr gdt;
 	struct segment_desc64  *callgate_code_segment_entry = NULL;
 	struct segment_desc64  *gdt_table;
-	struct gate_descriptor *call_gate_entry = NULL ;
-	int target_sel,ret;
+	struct gate_descriptor *call_gate_entry = NULL;
+	int target_sel, ret;
 
 	void call_gate_ent(void);
 	uint64_t call_base = (uint64_t)call_gate_ent;
@@ -445,15 +446,15 @@ static void Segmentation_rqmid_27794_set_non_zero_upper_type_in_call_gate_descri
 
 	gdt_table = (struct segment_desc64 *) gdt.base;
 
-	/*call gate
-	 *index = 5x2*/
+	/*call gate*/
+	/*index = 5x2*/
 	call_gate_entry = (struct gate_descriptor *)&gdt_table[5];
 	/* call_entry_base;*/
 	call_gate_entry->gd_looffset = call_base&0xFFFF;
 
-	if (BIT_IS(call_base,48)){
+	if (BIT_IS(call_base, 48)) {
 		call_gate_entry->gd_hioffset = ((call_base >> 16)&0xFFFFFFFF)|(0xFFFF00000000);
-	}else{
+	} else {
 		call_gate_entry->gd_hioffset = ((call_base >> 16)&0xFFFFFFFF)|(0x000000000000);
 	}
 
@@ -466,8 +467,8 @@ static void Segmentation_rqmid_27794_set_non_zero_upper_type_in_call_gate_descri
 	call_gate_entry->gd_p = SEGMENT_PRESENT;
 	/* type = 00010b*/
 	call_gate_entry->sd_xx1 = 0x200;
-	/*code segment
-	 *index=6x2*/
+	/*code segment*/
+	/*index=6x2*/
 	callgate_code_segment_entry = &gdt_table[6];
 	callgate_code_segment_entry->limit1 = SEGMENT_LIMIT;
 	callgate_code_segment_entry->base1 = BASE1;
@@ -481,7 +482,7 @@ static void Segmentation_rqmid_27794_set_non_zero_upper_type_in_call_gate_descri
 	callgate_code_segment_entry->l = BIT64_CODE_SEGMENT;
 	callgate_code_segment_entry->db = DEFAULT_OPERtion_16_BIT_SEG;
 	callgate_code_segment_entry->g = GRANULARITY;
-	callgate_code_segment_entry->base3 = BASE3 ;
+	callgate_code_segment_entry->base3 = BASE3;
 	callgate_code_segment_entry->base4	= BASE4;
 
 	lgdt(&gdt);
@@ -499,8 +500,8 @@ static void Segmentation_rqmid_27794_set_non_zero_upper_type_in_call_gate_descri
 }
 
 /**
- *  @brief Case name:Segmentation When any vCPU accesses segment in IA-32e mode using gate and any of following condition
- *	     is violated_001
+ * @brief Case name:Segmentation When any vCPU accesses segment in IA-32e
+ * mode using gate and any of following condition is violated_001
  *
  * Summary: When any vCPU accesses segment in IA-32e mode using gate  and  L bit of target segment is set,
  *	    shall generate #GP(selector)
@@ -511,9 +512,9 @@ static void Segmentation_rqmid_28134_set_d_and_l_bits_in_segment_descriptor(void
 	struct descriptor_table_ptr gdt;
 	struct segment_desc64  *callgate_code_segment_entry = NULL;
 	struct segment_desc64  *gdt_table;
-	struct gate_descriptor *call_gate_entry = NULL ;
-	u32 index,callgate_selecter;
-	int target_sel,ret;
+	struct gate_descriptor *call_gate_entry = NULL;
+	u32 index, callgate_selecter;
+	int target_sel, ret;
 
 	index = 5;
 	callgate_selecter = 0x60;
@@ -525,15 +526,15 @@ static void Segmentation_rqmid_28134_set_d_and_l_bits_in_segment_descriptor(void
 
 	gdt_table = (struct segment_desc64 *) gdt.base;
 
-	/*call gate
-	 *index = 5x2*/
+	/*call gate*/
+	/*index = 5x2*/
 	call_gate_entry = (struct gate_descriptor *)&gdt_table[index];
 	/*call_entry_base*/
 	call_gate_entry->gd_looffset = call_base&0xFFFF;
 
-	if (BIT_IS(call_base,48)) {
+	if (BIT_IS(call_base, 48)) {
 		call_gate_entry->gd_hioffset = ((call_base >> 16)&0xFFFFFFFF)|(0xFFFF00000000);
-	}else{
+	} else {
 		call_gate_entry->gd_hioffset = ((call_base >> 16)&0xFFFFFFFF)|(0x000000000000);
 	}
 
@@ -542,13 +543,13 @@ static void Segmentation_rqmid_28134_set_d_and_l_bits_in_segment_descriptor(void
 	call_gate_entry->gd_ist		= IST_TABLE_INDEX;
 	call_gate_entry->gd_xx		= UNUSED;
 	call_gate_entry->gd_type	= SEGMENT_TYPE_CODE_EXE_ONLY_CONFORMING;
-	call_gate_entry->gd_dpl 	= DESCRIPTOR_PRIVILEGE_LEVEL_0;
+	call_gate_entry->gd_dpl	= DESCRIPTOR_PRIVILEGE_LEVEL_0;
 	call_gate_entry->gd_p		= SEGMENT_PRESENT;
 	/* type = 00000b*/
 	call_gate_entry->sd_xx1		= 0x0;
 
-	/*code segment
-	 *index=6x2*/
+	/*code segment*/
+	/*index=6x2*/
 	callgate_code_segment_entry		= &gdt_table[6];
 	callgate_code_segment_entry->limit1 = SEGMENT_LIMIT;
 	callgate_code_segment_entry->base1 = BASE1;
@@ -563,8 +564,8 @@ static void Segmentation_rqmid_28134_set_d_and_l_bits_in_segment_descriptor(void
 	callgate_code_segment_entry->l = BIT64_CODE_SEGMENT;
 	callgate_code_segment_entry->db = DEFAULT_OPERtion_32_BIT_SEG;
 	callgate_code_segment_entry->g = GRANULARITY;
-	callgate_code_segment_entry->base3 = BASE3 ;
-	callgate_code_segment_entry->base4 = BASE4 ;
+	callgate_code_segment_entry->base3 = BASE3;
+	callgate_code_segment_entry->base4 = BASE4;
 
 	lgdt(&gdt);
 
@@ -580,15 +581,15 @@ static void Segmentation_rqmid_28134_set_d_and_l_bits_in_segment_descriptor(void
 }
 
 /**
-*  @brief Case name: Segmentation ACRN hypervisor shall expose IA32_FS_BASE_001
-*
-* Summary: Execute WRMSR/RDMSR instruction writeread /IA32_FS_BASE  register shall have no exception
-*
-*/
+ * @brief Case name: Segmentation ACRN hypervisor shall expose IA32_FS_BASE_001
+ *
+ * Summary: Execute WRMSR/RDMSR instruction writeread /IA32_FS_BASE  register shall have no exception
+ *
+ */
 static void Segmentation_rqmid_28327_expose_fs_gs_msrs_ia32_fs_base(void)
 {
 	u32 index;
-	u64 val,r_val;
+	u64 val, r_val;
 
 	index = 0xC0000100;
 	val = 0xdeadbeef;
@@ -605,18 +606,31 @@ static void print_case_list(void)
 	printf("\t\t Segmentation feature case list:\n\r");
 #ifndef __x86_64__	/*386*/
 	printf("\t\t Segmentation 32-Bits Mode:\n\r");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27133u, "Segmentation ACRN hypervisor shall set initial guest IA32_KERNEL_GS_BASE to 0H following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27186u, "Segmentation ACRN hypervisor shall set initial guest SS to Selector_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27165u, "Segmentation When any vCPU accesses data segment exclusive stack segment and P bit in data segment exclusive stack segment descriptor is clear_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28300u, "Segmentation When any vCPU loads SS register and the CPL_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28056u, "Segmentation When any vCPU accesses a nonconforming code segment using a call gatewith JMP instruction and any following conditions is met_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28340u, "Segmentation When any vCPU load LDT and base address in the segment descriptor is missing in memory_001");
-#else  			/*_x86_64__*/
+	printf("\t\t Case ID:%d case name:%s\n\r", 27133u, "Segmentation ACRN hypervisor \
+		shall set initial guest IA32_KERNEL_GS_BASE to 0H following start-up_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27186u, "Segmentation ACRN hypervisor \
+		shall set initial guest SS to Selector_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27165u, "Segmentation When any vCPU \
+		accesses data segment exclusive stack segment and P bit in data segment \
+		exclusive stack segment descriptor is clear_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28300u, "Segmentation When any vCPU \
+		loads SS register and the CPL_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28056u, "Segmentation When any vCPU \
+		accesses a nonconforming code segment using a call gatewith JMP \
+		instruction and any following conditions is met_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28340u, "Segmentation When any vCPU \
+		load LDT and base address in the segment descriptor is missing in memory_001");
+#else			/*_x86_64__*/
 	printf("\t\t Segmentation 64-Bits Mode:\n\r");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27772u, "Segmentation When any vCPU accesses segment in IA-32e mode and memory address accessed bythe selector is non-canonical_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27794u, "Segmentation When any vCPU accesses code segment in IA-32e mode and upper type field of the call gate descriptor is greater than zero_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28134u, "Segmentation When any vCPU accesses segment in IA-32e mode using gate and any of following condition is violated_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28327u, "Segmentation ACRN hypervisor shall expose IA32_FS_BASE_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27772u, "Segmentation When any vCPU \
+		accesses segment in IA-32e mode and memory address accessed bythe selector is non-canonical_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27794u, "Segmentation When any vCPU \
+		accesses code segment in IA-32e mode and upper type field of the call \
+		gate descriptor is greater than zero_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28134u, "Segmentation When any vCPU \
+		accesses segment in IA-32e mode using gate and any of following condition is violated_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28327u, "Segmentation ACRN hypervisor \
+		shall expose IA32_FS_BASE_001");
 	printf("\t\t \n\r \n\r");
 #endif
 }
@@ -631,7 +645,7 @@ static void test_segmentation(void)
 	Segmentation_rqmid_28300_chaeck_DPL_is_3_of_stack_segment();
 	Segmentation_rqmid_28056_call_gate_with_jmp_accesses_nonconforming_codesegment();
 	Segmentation_rqmid_28340_loading_ldt_miss_base_address_generates_pf();
-#else  				/*x86_64__*/
+#else				/*x86_64__*/
 	Segmentation_rqmid_27772_memory_address_accessed_non_canonical();
 	Segmentation_rqmid_27794_set_non_zero_upper_type_in_call_gate_descriptor();
 	Segmentation_rqmid_28134_set_d_and_l_bits_in_segment_descriptor();

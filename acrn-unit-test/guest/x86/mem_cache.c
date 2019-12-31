@@ -23,12 +23,12 @@
 /*#define CACHE_IN_NATIVE*/
 
 /*#define USE_DEBUG*/
-#ifdef  USE_DEBUG
-#define debug_print(fmt, args...) 	printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
+#ifdef USE_DEBUG
+#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 #else
 #define debug_print(fmt, args...)
 #endif
-#define debug_error(fmt, args...) 	printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
+#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 
 #define CR0_BIT_NW					29
 #define CR0_BIT_CD					30
@@ -79,13 +79,13 @@
 #define PT_PAT_MASK					(1ull << (PT_PAT))
 
 /* init pat to 0x0000000001040506*/
-#define PT_MEMORY_TYPE_MASK0		0										/* wb */
-#define PT_MEMORY_TYPE_MASK1		(PT_PWT_MASK)							/* wp */
-#define PT_MEMORY_TYPE_MASK2		(PT_PCD_MASK)							/* wt */
-#define PT_MEMORY_TYPE_MASK3		(PT_PWT_MASK|PT_PCD_MASK)				/* wc */
-#define PT_MEMORY_TYPE_MASK4		(PT_PAT_MASK)							/* uc */
-#define PT_MEMORY_TYPE_MASK5		(PT_PAT_MASK|PT_PWT_MASK)				/* uc */
-#define PT_MEMORY_TYPE_MASK6		(PT_PAT_MASK|PT_PCD_MASK)				/* uc */
+#define PT_MEMORY_TYPE_MASK0		0	/* wb */
+#define PT_MEMORY_TYPE_MASK1		(PT_PWT_MASK)	/* wp */
+#define PT_MEMORY_TYPE_MASK2		(PT_PCD_MASK)	/* wt */
+#define PT_MEMORY_TYPE_MASK3		(PT_PWT_MASK|PT_PCD_MASK)	/* wc */
+#define PT_MEMORY_TYPE_MASK4		(PT_PAT_MASK)		/* uc */
+#define PT_MEMORY_TYPE_MASK5		(PT_PAT_MASK|PT_PWT_MASK)	/* uc */
+#define PT_MEMORY_TYPE_MASK6		(PT_PAT_MASK|PT_PCD_MASK)	/* uc */
 #define PT_MEMORY_TYPE_MASK7		(PT_PAT_MASK|PT_PCD_MASK|PT_PWT_MASK)	/* uc */
 
 #define CACHE_TEST_TIME_MAX			40
@@ -109,7 +109,7 @@ u64 cache_l3_size = 0x80000;		/* 4M/8 */
 u64 cache_over_l3_size = 0x200000;	/* 16M/8 */
 u64 cache_malloc_size = 0x200000;	/* 16M/8 */
 
-u64 * cache_test_array = NULL;
+u64 *cache_test_array = NULL;
 u64 tsc_delay[CACHE_TEST_TIME_MAX] = {0,};
 u64 tsc_delay_before[CACHE_TEST_TIME_MAX] = {0,};
 u64 tsc_delay_after[CACHE_TEST_TIME_MAX] = {0,};
@@ -119,7 +119,7 @@ u64 tsc_delay_delta_stdev = 0;
 
 #define ERROR_RANG		5
 
-enum cache_size_type{
+enum cache_size_type {
 	CACHE_L1_READ_UC = 0,
 	CACHE_L1_READ_WB,
 	CACHE_L1_READ_WT,
@@ -183,7 +183,7 @@ enum cache_size_type{
 	CACHE_SIZE_TYPE_MAX
 };
 
-struct cache_data{
+struct cache_data {
 	u64 ave;
 	u64 std;
 };
@@ -251,7 +251,7 @@ struct cache_data cache_bench[CACHE_SIZE_TYPE_MAX] = {
 #endif
 };
 
-struct case_fun_index{
+struct case_fun_index {
 	int rqmid;
 	void (*func)(void);
 };
@@ -319,17 +319,17 @@ u64 PT_MEMORY_TYPE   = PT_MEMORY_TYPE_MASK0;
 /*Modify the PTE/PCD/PWT bit in paging table entry*/
 void set_memory_type_pt(void *address, u64 type, u64 size)
 {
-	u64 * next_addr;
+	u64 *next_addr;
 	int i;
 	int j = 0;
 
 	PT_MEMORY_TYPE = type;
 
-	for(i=0; i<size; i+=PAGE_SIZE)
+	for (i = 0; i < size; i += PAGE_SIZE)
 	{
 		j++;
 		next_addr = (u64 *)((u8 *)address + i);
-		switch(type)
+		switch (type)
 		{
 			case PT_MEMORY_TYPE_MASK0:
 				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
@@ -388,10 +388,10 @@ void flush_tlb()
 void mem_cache_reflush_cache()
 {
 	u32 cr4;
-	/*write_cr4_bybit(CR4_BIT_PGE, 1);
-	*cr4  = read_cr4();
-	*debug_print("cr4.PGE=%d cr4.PAE=%d\n", cr4&(1<<CR4_BIT_PGE)?1:0, cr4&(1<<CR4_BIT_PAE)?1:0);
-	*/
+	/* write_cr4_bybit(CR4_BIT_PGE, 1);
+	 * cr4  = read_cr4();
+	 * debug_print("cr4.PGE=%d cr4.PAE=%d\n", cr4&(1<<CR4_BIT_PGE)?1:0, cr4&(1<<CR4_BIT_PAE)?1:0);
+	 * /
 
 	/*Disable interrupts;*/
 	irq_disable();
@@ -434,18 +434,18 @@ void set_mem_cache_type(u64 cache_type)
 	u64 ia32_pat_test;
 
 	ia32_pat_test = rdmsr(IA32_PAT_MSR);
-	debug_print("ia32_pat_test 0x%lx \n",ia32_pat_test);
+	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
 
 	//wrmsr(IA32_PAT_MSR,(ia32_pat_test&(~0xFF0000))|(cache_type<<16));
-	wrmsr(IA32_PAT_MSR,cache_type);
+	wrmsr(IA32_PAT_MSR, cache_type);
 
 	ia32_pat_test = rdmsr(IA32_PAT_MSR);
-	debug_print("ia32_pat_test 0x%lx \n",ia32_pat_test);
+	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
 
-	if(ia32_pat_test != cache_type){
+	if (ia32_pat_test != cache_type) {
 		debug_print("set pat type error set=0x%lx, get=0x%lx\n", cache_type, ia32_pat_test);
 	}
-	else{
+	else {
 		debug_print("set pat type sucess type=0x%lx get=0x%lx\n", cache_type, ia32_pat_test);
 	}
 
@@ -466,24 +466,24 @@ void set_mem_cache_type_all(u64 cache_type)
 {
 	u64 ia32_pat_test;
 
-	wrmsr(IA32_PAT_MSR,cache_type);
+	wrmsr(IA32_PAT_MSR, cache_type);
 
 	ia32_pat_test = rdmsr(IA32_PAT_MSR);
 
 #ifdef __x86_64__
-	debug_print("ia32_pat_test 0x%lx \n",ia32_pat_test);
-	if(ia32_pat_test != cache_type){
+	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
+	if (ia32_pat_test != cache_type) {
 		debug_print("set pat type all error set=0x%lx, get=0x%lx\n", cache_type, ia32_pat_test);
 	}
-	else{
+	else {
 		debug_print("set pat type all sucess type=0x%lx\n", cache_type);
 	}
 #elif __i386__
-	debug_print("ia32_pat_test 0x%llx \n",ia32_pat_test);
-	if(ia32_pat_test != cache_type){
+	debug_print("ia32_pat_test 0x%llx \n", ia32_pat_test);
+	if (ia32_pat_test != cache_type) {
 		debug_print("set pat type all error set=0x%llx, get=0x%llx\n", cache_type, ia32_pat_test);
 	}
-	else{
+	else {
 		debug_print("set pat type all sucess type=0x%llx\n", cache_type);
 	}
 #endif
@@ -500,7 +500,7 @@ __attribute__((aligned(16))) u64 read_mem_cache_test(u64 size)
 
 	cli();
 	t[0] = asm_read_tsc();
-	for(index=0; index<size; index++){
+	for (index = 0; index < size; index++) {
 		asm_read_access_memory(&cache_test_array[index]);
 	}
 	t[1] = asm_read_tsc();
@@ -517,7 +517,7 @@ __attribute__((aligned(16))) u64 read_mem_cache_test(u64 size)
 void read_mem_cache_test_time_invd(u64 size, int time)
 {
 	/*debug_print("read cache cache_test_size 0x%lx %ld\n",size, size*8);*/
-	while(time--){
+	while (time--) {
 		read_mem_cache_test(size);
 	}
 
@@ -531,7 +531,7 @@ u64 cache_order_read(enum cache_size_type type, u64 size)
 	tsc_delay_delta_total = 0;
 	/*Remove the first test data*/
 	read_mem_cache_test(size);
-	for(i=0; i<CACHE_TEST_TIME_MAX; i++){
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(size);
 		tsc_delay_delta_total += tsc_delay[i];
 	}
@@ -544,18 +544,18 @@ bool cache_check_memory_type(u64 average, u64 native_aver, u64 native_std, u64 s
 {
 	bool ret = true;
 
-	if((average < (native_aver*(100-ERROR_RANG))/100)
-		||(average > (native_aver*(100+ERROR_RANG))/100)){
+	if ((average < (native_aver*(100-ERROR_RANG))/100)
+ || (average > (native_aver*(100+ERROR_RANG))/100)) {
 		ret = false;
 	}
 
 #ifdef __x86_64__
-	if(ret != true){
+	if (ret != true) {
 		printf("read delta =%ld size=0x%lx [%ld, %ld]\n", tsc_delay_delta_total, size,
 			(native_aver*(100-ERROR_RANG))/100, (native_aver*(100+ERROR_RANG))/100);
 	}
 #elif __i386__
-	if(ret != true){
+	if (ret != true) {
 		printf("read delta =%lld size=0x%llx [%lld, %lld]\n", tsc_delay_delta_total, size,
 			(native_aver*(100-ERROR_RANG))/100, (native_aver*(100+ERROR_RANG))/100);
 	}
@@ -583,12 +583,12 @@ bool cache_order_read_test(enum cache_size_type type, u64 size)
 
 int get_bit_range(u32 r, int start, int end)
 {
-	int mask=0;
+	int mask = 0;
 	int i = end-start+1;
 	r = r>>start;
-	while(i--){
+	while (i--) {
 		mask = mask<<1;
-		mask+=1;
+		mask += 1;
 	}
 	return r&mask;
 }
@@ -603,13 +603,13 @@ void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 	int i;
 
 	debug_print("***************start test case number = %d rqmid=%ld***************\n", size, rqmid);
-	for(i=0; i<size; i++){
-		if(rqmid == case_fun[i].rqmid){
+	for (i = 0; i < size; i++) {
+		if (rqmid == case_fun[i].rqmid) {
 			case_fun[i].func();
 			break;
 		}
 
-		if(rqmid == 0){
+		if (rqmid == 0) {
 			case_fun[i].func();
 		}
 	}
@@ -653,7 +653,7 @@ void cache_rqmid_23239_ia32_pat_init_unchange(void)
 	volatile u64 ia32_pat2;
 	volatile u32 unchanged_ap_pat1 = 0;
 	volatile u32 unchanged_ap_pat2 = 0;
-	volatile u32 * ptr;
+	volatile u32 *ptr;
 
 	/*cp ap register value to tmp before send sipi */
 	ptr = (volatile u32 *)0x7000;
@@ -670,7 +670,7 @@ void cache_rqmid_23239_ia32_pat_init_unchange(void)
 	ia32_pat2 = unchanged_ap_pat1 | ((u64)unchanged_ap_pat2 << 32);
 
 	/*compare init value with unchanged */
-	report("%s", ia32_pat1==ia32_pat2, __FUNCTION__);
+	report("%s", ia32_pat1 == ia32_pat2, __FUNCTION__);
 }
 
 
@@ -682,12 +682,12 @@ void cache_rqmid_23239_ia32_pat_init_unchange(void)
 void cache_rqmid_23241_cr0_cd_init(void)
 {
 	volatile u32 ap_cr0 = 0;
-	volatile u32 * ptr;
+	volatile u32 *ptr;
 
 	ptr = (volatile u32 *)0x8000;
 	ap_cr0 = *ptr;
 
-	report("%s", (ap_cr0 &(1<<30)), __FUNCTION__);
+	report("%s", (ap_cr0 & (1<<30)), __FUNCTION__);
 }
 
 /**
@@ -697,13 +697,13 @@ void cache_rqmid_23241_cr0_cd_init(void)
  */
 void cache_rqmid_23242_cr0_nw_startup(void)
 {
-	volatile u32 * ptr;
+	volatile u32 *ptr;
 	volatile u32 bp_cr0;
 
 	ptr = (volatile u32 *)0x6000;
 	bp_cr0 = *ptr;
 
-	report("%s", (bp_cr0 &(1<<29)), __FUNCTION__);
+	report("%s", (bp_cr0 & (1<<29)), __FUNCTION__);
 }
 
 /* 10 init startup case */
@@ -711,7 +711,7 @@ void cache_test_init_startup(long rqmid)
 {
 	print_case_list_init_startup();
 
-	struct case_fun_index case_fun[] ={
+	struct case_fun_index case_fun[] = {
 		{23239, cache_rqmid_23239_ia32_pat_init_unchange},
 		{23241, cache_rqmid_23241_cr0_cd_init},
 		{23242, cache_rqmid_23242_cr0_nw_startup},
@@ -725,7 +725,7 @@ int main(int ac, char **av)
 {
 	long rqmid = 0;
 
-	if(ac >=2){
+	if (ac >= 2) {
 		rqmid = atol(av[1]);
 	}
 
@@ -736,9 +736,10 @@ int main(int ac, char **av)
 #ifdef __x86_64__
 	setup_idt();
 
-	/*wbinvd invd ring3 need*/
-	/*extern unsigned char kernel_entry;
-	set_idt_entry(0x20, &kernel_entry, 3);*/
+	/* wbinvd invd ring3 need*/
+	/* extern unsigned char kernel_entry;
+	 * set_idt_entry(0x20, &kernel_entry, 3);
+	 * /
 
 	/*default PAT entry value 0007040600070406*/
 	set_mem_cache_type_all(0x0000000001040506);
@@ -749,7 +750,7 @@ int main(int ac, char **av)
 #endif
 
 	cache_test_array = (u64 *)malloc(cache_malloc_size*8);
-	if(cache_test_array==NULL){
+	if (cache_test_array == NULL) {
 		debug_error("malloc error\n");
 		return -1;
 	}

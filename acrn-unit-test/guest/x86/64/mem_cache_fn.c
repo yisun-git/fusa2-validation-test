@@ -12,7 +12,7 @@
  * Set cache_test_array array address bit 63rd to 1
  * Execute CLFLUSH will generate #GP(0).
  */
-void cache_clflush_non_canonical(void* data)
+void cache_clflush_non_canonical(void *data)
 {
 	unsigned long address;
 
@@ -54,7 +54,7 @@ void cache_rqmid_23985_invd(void)
 	bool ret;
 
 	asm_mfence();
-	fun = asm_invd;	
+	fun = asm_invd;
 	//asm_invd();
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
 
@@ -69,7 +69,7 @@ void cache_rqmid_23985_invd(void)
 void cache_rqmid_24189_l1_data_cache_context_mode(void)
 {
 	struct cpuid id;
-	int value=0;
+	int value = 0;
 
 	id = cpuid_indexed(0x01, 0);
 	value = get_bit_range(id.c, 10, 10);
@@ -153,7 +153,7 @@ void cache_test_64(long rqmid)
 {
 	print_case_list_64();
 
-	struct case_fun_index case_fun[] ={
+	struct case_fun_index case_fun[] = {
 		{23875, cache_rqmid_23875_check_l2_ucache_parameters},
 		{23985, cache_rqmid_23985_invd},
 		{24189, cache_rqmid_24189_l1_data_cache_context_mode},
