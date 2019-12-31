@@ -13,12 +13,12 @@ bool g_is_init_ap = false;
 
 void save_unchanged_reg()
 {
-    asm volatile (
-        "mov $0x0000003a, %ecx\n"
-        "rdmsr\n"
-        "mov %eax, (0x7000)\n"
-        "mov %edx, (0x7004)"
-        );
+	asm volatile (
+		"mov $0x0000003a, %ecx\n"
+		"rdmsr\n"
+		"mov %eax, (0x7000)\n"
+		"mov %edx, (0x7004)"
+	);
 }
 
 /**
@@ -389,7 +389,7 @@ static void sgx_rqmid_27403_ia32_feature_control_startup()
  * @brief case name: Guest IA32 FEATURE CONTROL.SGX ENABLE following INIT_001
  *
  * Summary: After AP receives first INIT, set the value of IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18];
- * 	    Dump IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18] value shall get the same value after second INIT.
+ *	    Dump IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18] value shall get the same value after second INIT.
  */
 static void sgx_rqmid_27404_ia32_feature_control_init()
 {
@@ -415,7 +415,8 @@ static void sgx_rqmid_27404_ia32_feature_control_init()
 /**
  * @brief case name: Guest IA32_FEATURE_CONTROL.SGX_lauch Control following start-up_001
  *
- * Summary: Get IA32_FEATURE_CONTROL.SGX_lauch_Control_Enable at BP start-up, the bit shall be 0 and same with SDM definition.
+ * Summary: Get IA32_FEATURE_CONTROL.SGX_lauch_Control_Enable at BP start-up,
+ *	the bit shall be 0 and same with SDM definition.
  */
 static void sgx_rqmid_29563_sgx_lauch_bit_startup()
 {
@@ -430,7 +431,7 @@ static void sgx_rqmid_29563_sgx_lauch_bit_startup()
  * @brief case name: Guest IA32_FEATURE_CONTROL.Launch Control Enable following INIT_001
  *
  * Summary: After AP receives first INIT, set the value of IA32_FEATURE_CONTROL.SGX_LAUCH [bit 17];
- * 	    Dump IA32_FEATURE_CONTROL.SGX_LAUCH [bit 17] value shall get the same value after second INIT.
+ *	    Dump IA32_FEATURE_CONTROL.SGX_LAUCH [bit 17] value shall get the same value after second INIT.
  */
 static void sgx_rqmid_29562_sgx_lauch_bit_init()
 {
@@ -480,10 +481,14 @@ static void print_case_list()
 	printf("\t\t Case ID:%d case name:%s\n\r", 27391u, "Guest IA32 SGX SVN STATUS_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27390u, "Guest IA32 SGX SVN STATUS_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27402u, "Guest CPUID.SGX_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27403u, "Guest IA32 FEATURE CONTROL.SGX ENABLE following start-up_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27404u, "Guest IA32 FEATURE CONTROL.SGX ENABLE following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 29562u, "Guest IA32_FEATURE_CONTROL.Launch Control Enable following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 29563u, "Guest IA32_FEATURE_CONTROL.SGX_lauch Control following start-up_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27403u, "Guest IA32 \
+		FEATURE CONTROL.SGX ENABLE following start-up_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27404u, "Guest IA32 \
+		FEATURE CONTROL.SGX ENABLE following INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 29562u, "Guest \
+		IA32_FEATURE_CONTROL.Launch Control Enable following INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 29563u, "Guest \
+		IA32_FEATURE_CONTROL.SGX_lauch Control following start-up_001");
 }
 
 static void test_sgx()

@@ -1,18 +1,7 @@
 stages:
-- scan
 - build
 - test
 - deploy
-
-
-check_coding_style:
-  stage: scan
-  script:
-    - echo "start to check coding style ..."
-    - cd acrn-unit-test/guest/scripts
-    - ./checkfolder.sh ../../../acrn-unit-test/
-  only:
-    - merge_requests
 
 
 build_job:

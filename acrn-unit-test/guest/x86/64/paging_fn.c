@@ -74,7 +74,7 @@ static bool write_memory_error_code_checking(void *p, u32 bit)
 		     "mov %[value], (%[p])\n\t"
 		     "1:"
 		     : : [value]"r"(value), [p]"r"(p));
-	if ((exception_vector()== PF_VECTOR) && ((exception_error_code() & bit) != 0)) {
+	if ((exception_vector() == PF_VECTOR) && ((exception_error_code() & bit) != 0)) {
 		flag = true;
 	}
 
@@ -588,7 +588,7 @@ static void paging_rqmid_32326_smap_002()
  * @brief case name:Invalidate TLB When vCPU writes CR3_enable global paging_002
  *
  * Summary: Writing CR3 won't invadidate TLB enties related with global page
- * 		  hile disabling process-context identifiers. read global pages shall success.
+ *		  hile disabling process-context identifiers. read global pages shall success.
  *		  If test results are same with expected result, the test case pass, otherwise, the test case fail.
  */
 static void paging_rqmid_26827_enable_global_paging()
@@ -1136,8 +1136,8 @@ struct page_invpcid_desc {
 static int page_invpcid_checking(unsigned long type, void *desc)
 {
     asm volatile (ASM_TRY("1f")
-                  ".byte 0x66,0x0f,0x38,0x82,0x18 \n\t" /* invpcid (%rax), %rbx */
-                  "1:" : : "a" (desc), "b" (type));
+		  ".byte 0x66,0x0f,0x38,0x82,0x18 \n\t" /* invpcid (%rax), %rbx */
+		  "1:" : : "a" (desc), "b" (type));
     return exception_vector();
 }
 

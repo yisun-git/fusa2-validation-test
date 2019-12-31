@@ -7,9 +7,9 @@ asm(".code16gcc");
 extern u16 ap_end_life;
 extern struct excp_record exception_table_start, exception_table_end;
 extern void main();
-static const char* exception_mnemonic(int vector)
+static const char *exception_mnemonic(int vector)
 {
-	switch(vector) {
+	switch (vector) {
 	case 0: return "#DE";
 	case 1: return "#DB";
 	case 2: return "#NMI";
@@ -36,7 +36,7 @@ static int rmode_strlen(const char *str)
 {
 	int n;
 
-	for (n = 0; *str; ++str){
+	for (n = 0; *str; ++str) {
 		++n;
 	}
 	return n;
@@ -94,12 +94,12 @@ void print_serial(const char *buf)
 	unsigned long len = rmode_strlen(buf);
 	unsigned long i;
 	if (!serial_inited) {
-	    serial_init();
-	    serial_inited = 1;
+		serial_init();
+		serial_inited = 1;
 	}
 
 	for (i = 0; i < len; i++) {
-	    serial_outb(buf[i]);
+		serial_outb(buf[i]);
 	}
 }
 
@@ -130,7 +130,7 @@ void report(const char *name, _Bool ok)
 	print_serial(ok ? "PASS: " : "FAIL: ");
 	print_serial(name);
 	print_serial("\n");
-	if (!ok){
+	if (!ok) {
 		failed++;
 	}
 	tests++;
@@ -140,7 +140,7 @@ void report_summary(void)
 	print_serial("SUMMERY: ");
 	print_serial_u32(tests);
 	print_serial("tests");
-	if (failed){
+	if (failed) {
 		print_serial(", ");
 		print_serial_u32(failed);
 		print_serial(" unexpected failures");
@@ -161,10 +161,10 @@ void handle_rmode_excp(struct excp_regs *regs)
 	asm volatile("mov %0, %%gs:6" : : "r"(rflags));
 
 	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
-        if (ex->ip == regs->ip) {
+		if (ex->ip == regs->ip) {
 			regs->ip = ex->handler;
-            return;
-        }
+			return;
+		}
 	}
 
 	print_serial("\n\rUnhandled exception:");

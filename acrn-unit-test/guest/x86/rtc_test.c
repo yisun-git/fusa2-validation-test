@@ -8,18 +8,18 @@
 #define RTC_TARGET_REG		0x71
 #define SECOND_INDEX		0x0
 #define SECOND_ALARM_INDEX	0x1
-#define MINUTE_INDEX       	0x2
-#define MINUTE_ALARM_INDEX 	0x3
-#define HOUR_INDEX         	0x4
-#define HOUR_ALARM_INDEX   	0x5
-#define DAY_OF_WEEK_INDEX  	0x6
-#define DAY_OF_MONTH_INDEX 	0x7
-#define MONTH_INDEX        	0x8
-#define YEAR_INDEX         	0x9
-#define A_INDEX            	0xA
-#define B_INDEX            	0xB
-#define C_INDEX            	0xC
-#define B_DEFAULT_VALUE 	0x6
+#define MINUTE_INDEX	0x2
+#define MINUTE_ALARM_INDEX	0x3
+#define HOUR_INDEX		0x4
+#define HOUR_ALARM_INDEX	0x5
+#define DAY_OF_WEEK_INDEX	0x6
+#define DAY_OF_MONTH_INDEX	0x7
+#define MONTH_INDEX		0x8
+#define YEAR_INDEX		0x9
+#define A_INDEX		0xA
+#define B_INDEX		0xB
+#define C_INDEX		0xC
+#define B_DEFAULT_VALUE	0x6
 
 static uint8_t read_reg_al()
 {
@@ -55,7 +55,7 @@ void rtc_rqmid_24557_write_guest_rtc_target_register(void)
 }
 
 /**
- * @brief Case name: RTC_When a vCPU attempts to read guest RTC target register and the current guest 
+ * @brief Case name: RTC_When a vCPU attempts to read guest RTC target register and the current guest
  * RTC index is greater than BH, ACRN hypervisor shall write 0 to guest AL_001
  *
  * Summary: dump the value of AL after reading from RTC target register
@@ -107,7 +107,7 @@ void rtc_rqmid_24495_reading_rtc_target_register_and_current_guest_rtc_index_is_
 	reg_b_value = read_reg_al();
 
 	report("\t\t rtc_rqmid_24495_reading_rtc_target_register_and_current_guest_rtc_index_is_BH %d",
-		reg_b_value == B_DEFAULT_VALUE,reg_b_value);
+		reg_b_value == B_DEFAULT_VALUE, reg_b_value);
 }
 
 /**
@@ -183,8 +183,8 @@ static void print_case_list(void)
 		"RTC_When a vCPU attempts to read guest RTC target register and the current guest RTC index is BH,"
 		"ACRN hypervisor shall write 6H to guest AL_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 24556u,
-		"When a vCPU attempts to write guest RTC index register, ACRN hypervisor shall keep guest"
-		"AL as the current guest RTC index_001");
+		"When a vCPU attempts to write guest RTC index register, ACRN hypervisor shall keep guest \
+		AL as the current guest RTC index_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 24558u,
 		"When a vCPU attempts to write 2 bytes to guest RTC target register,"
 		"ACRN hypervisor shall ignore the write_001");

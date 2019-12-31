@@ -7,11 +7,11 @@
 extern void send_sipi();
 void save_unchanged_reg()
 {
-    asm volatile (
-        "mov %cr0, %" R "ax\n"
-        "mov %eax, (0x7000)\n"
-        "mov %cs,%eax\n"
-        );
+	asm volatile (
+		"mov %cr0, %" R "ax\n"
+		"mov %eax, (0x7000)\n"
+		"mov %cs,%eax\n"
+	);
 }
 static void print_case_list()
 {
@@ -26,7 +26,7 @@ int main(void)
 	volatile u32 unchanged_ap_cs = 0;
 	volatile u16 ap_cr0 = 0;
 	volatile u32 ap_cs = 0;
-	volatile u32 * ptr;
+	volatile u32 *ptr;
 	volatile u32 bp_cr0;
 	volatile u32 bp_cs;
 
@@ -41,7 +41,7 @@ int main(void)
 	printf("BP:\n\r");
 	printf("bp_greg_cr0:0x%x\n\r", bp_cr0);
 	printf("bp_greg_cs:0x%x\n\r", bp_cs);
-	report("Startup check CS reg:", (bp_cs==0x8));
+	report("Startup check CS reg:", (bp_cs == 0x8));
 
 	printf("------------------------Init check----------------------------------\n\r");
 	ptr = (volatile u32 *)0x7000;
@@ -50,7 +50,7 @@ int main(void)
 	printf("AP:\n\r");
 	printf("ap_greg_cr:0x%x\n\r", ap_cr0);
 	printf("ap_greg_cs:0x%x\n\r", ap_cs);
-	report("Init check CS reg:", (ap_cs==0x8));
+	report("Init check CS reg:", (ap_cs == 0x8));
 
 	printf("------------------------unchanged check------------------------------\n\r");
 	/*cp ap register value to tmp before send sipi */
@@ -68,7 +68,7 @@ int main(void)
 	ap_cr0 = *ptr;
 	ap_cs = *(ptr + 1);
 	/*compare init value with unchanged */
-	report("ap unchanged cr0:", (unchanged_ap_cr0==ap_cr0));
+	report("ap unchanged cr0:", (unchanged_ap_cr0 == ap_cr0));
 
 	return report_summary();
 }

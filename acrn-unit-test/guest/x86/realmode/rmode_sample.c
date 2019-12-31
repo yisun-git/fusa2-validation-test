@@ -5,7 +5,7 @@ void main()
 {
 	u32 tmp = 1234567800u;
 	u32 tmp1;
-	unsigned char size_u32,size_u16;
+	unsigned char size_u32, size_u16;
 	u16 sp;
 	unsigned char vector;
 
@@ -17,8 +17,8 @@ void main()
 	print_serial("rmode_start:\n");
 	asm volatile("mov %%sp, %%ax \n"
 		"mov %%ax, %0 \n"
-		:"=r"(sp)
-		);
+		: "=r"(sp)
+	);
 	print_serial("sp:");
 	print_serial_u32(sp);
 	print_serial("\n\r");

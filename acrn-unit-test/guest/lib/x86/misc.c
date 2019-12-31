@@ -104,8 +104,8 @@ void set_page_control_bit(void *gva,
 int write_cr4_exception_checking(unsigned long val)
 {
 	asm volatile(ASM_TRY("1f")
-			"mov %0,%%cr4\n\t"
-			"1:": : "r" (val));
+		"mov %0,%%cr4\n\t"
+		"1:" : : "r" (val));
 	return exception_vector();
 }
 
@@ -115,9 +115,9 @@ int rdmsr_checking(u32 MSR_ADDR, u64 *result)
 	u32 edx;
 
 	asm volatile(ASM_TRY("1f")
-		     "rdmsr \n\t"
-		     "1:"
-		     : "=a"(eax), "=d"(edx): "c"(MSR_ADDR));
+		"rdmsr \n\t"
+		"1:"
+		: "=a"(eax), "=d"(edx) : "c"(MSR_ADDR));
 	*result = eax + ((u64)edx << 32);
 	return exception_vector();
 }
@@ -133,46 +133,50 @@ int wrmsr_checking(u32 MSR_ADDR, u64 value)
 		     : : "c"(MSR_ADDR), "a"(eax), "d"(edx));
 	return exception_vector();
 }
-/*-----------------------------------------------
-*
-*send init & startup to all APs
-*
-*-----------------------------------------------*/
+/**
+ * -----------------------------------------------
+ *
+ * send init & startup to all APs
+ *
+ * -----------------------------------------------
+ */
 void send_sipi()
 {
-    u8 ap_cpus;
-    u8 dest;
-    u8 cpus_cnt;
+	u8 ap_cpus;
+	u8 dest;
+	u8 cpus_cnt;
 
-    ap_cpus = fwcfg_get_nb_cpus() - 1;
-    cpus_cnt = cpu_online_count;
+	ap_cpus = fwcfg_get_nb_cpus() - 1;
+	cpus_cnt = cpu_online_count;
 
-    dest = ap_cpus;
-    while (dest != 0) {
-        /*issue sipi to awake AP */
-        apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT,dest);
-        apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT , dest);
-        apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP , dest);
-        dest--;
-    }
-    /*waiting all aps initilize completely*/
-    while ((cpus_cnt + ap_cpus) > cpu_online_count) {
-            asm volatile("nop");
-    }
+	dest = ap_cpus;
+	while (dest != 0) {
+		/*issue sipi to awake AP */
+		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, dest);
+		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, dest);
+		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, dest);
+		dest--;
+	}
+	/*waiting all aps initilize completely*/
+	while ((cpus_cnt + ap_cpus) > cpu_online_count) {
+		asm volatile("nop");
+	}
 
-    /* set cpu_online_conunt to actual cpu core numbers*/
-    spin_lock(&lock);
-    cpu_online_count -= ap_cpus;
-    spin_unlock(&lock);
+	/* set cpu_online_conunt to actual cpu core numbers*/
+	spin_lock(&lock);
+	cpu_online_count -= ap_cpus;
+	spin_unlock(&lock);
 }
-/*-------------------------------------------------------
-*
-*get_case_id : get case_id string from acrn-shell
-*case_id: NULL string---->test all cases
-* 		  special string---->test single one
-*
-*-------------------------------------------------------*/
-void get_case_id(int ac, char **av, char * case_id)
+/**
+ * -------------------------------------------------------
+ *
+ * get_case_id : get case_id string from acrn-shell
+ * case_id: NULL string---->test all cases
+ *		  special string---->test single one
+ *
+ * -------------------------------------------------------
+ */
+void get_case_id(int ac, char **av, char *case_id)
 {
 	assert(case_id);
 	assert(av);
@@ -181,7 +185,7 @@ void get_case_id(int ac, char **av, char * case_id)
 	if (ac == 1) {
 		if (strlen(av[0]) > (MAX_CASE_ID_LEN - 1)) {
 			*case_id = '\0';
-			printf("Error:input case-id is too much longer than %d\n\r",MAX_CASE_ID_LEN);
+			printf("Error:input case-id is too much longer than %d\n\r", MAX_CASE_ID_LEN);
 		}
 		strcpy(case_id, av[0]);
 	} else {

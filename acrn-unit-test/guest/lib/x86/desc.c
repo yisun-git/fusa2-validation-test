@@ -38,9 +38,9 @@ struct ex_record {
 
 extern struct ex_record exception_table_start, exception_table_end;
 
-static const char* exception_mnemonic(int vector)
+static const char *exception_mnemonic(int vector)
 {
-	switch(vector) {
+	switch (vector) {
 	case 0: return "#DE";
 	case 1: return "#DB";
 	case 2: return "#NMI";
@@ -95,26 +95,26 @@ void unhandled_exception(struct ex_regs *regs, bool cpu)
 	       , read_cr8()
 #endif
 	);
-	dump_frame_stack((void*) regs->rip, (void*) regs->rbp);
+	dump_frame_stack((void *) regs->rip, (void *) regs->rbp);
 	abort();
 }
 
 static void check_exception_table(struct ex_regs *regs)
 {
-    struct ex_record *ex;
-    unsigned ex_val;
+	struct ex_record *ex;
+	unsigned ex_val;
 
-    ex_val = regs->vector | (regs->error_code << 16) |
+	ex_val = regs->vector | (regs->error_code << 16) |
 		(((regs->rflags >> 16) & 1) << 8);
-    asm("mov %0, %%gs:4" : : "r"(ex_val));
+	asm("mov %0, %%gs:4" : : "r"(ex_val));
 
-    for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
-        if (ex->rip == regs->rip) {
-            regs->rip = ex->handler;
-            return;
-        }
-    }
-    unhandled_exception(regs, false);
+	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
+		if (ex->rip == regs->rip) {
+			regs->rip = ex->handler;
+			return;
+		}
+	}
+	unhandled_exception(regs, false);
 }
 
 static handler exception_handlers[32];
@@ -223,20 +223,20 @@ static void *idt_handlers[32] = {
 
 void setup_idt(void)
 {
-    int i;
-    static bool idt_initialized = false;
+	int i;
+	static bool idt_initialized = false;
 
-    if (idt_initialized) {
-        return;
-    }
-    idt_initialized = true;
-    for (i = 0; i < 32; i++) {
-	if (idt_handlers[i])
-	    set_idt_entry(i, idt_handlers[i], 0);
-    }
-    for (i = 0; i < 21; i++) {
-	handle_exception(i, check_exception_table);
-    }
+	if (idt_initialized) {
+		return;
+	}
+	idt_initialized = true;
+	for (i = 0; i < 32; i++) {
+		if (idt_handlers[i])
+			set_idt_entry(i, idt_handlers[i], 0);
+	}
+	for (i = 0; i < 21; i++) {
+		handle_exception(i, check_exception_table);
+	}
 }
 
 unsigned exception_vector(void)

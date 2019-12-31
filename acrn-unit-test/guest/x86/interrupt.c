@@ -33,7 +33,7 @@
 #undef WEAK
 #endif
 
-#define WEAK 				__attribute__((weak))
+#define WEAK				__attribute__((weak))
 #define USED				__attribute__((used))
 #define SECTION(x)			__attribute__((section(x)))
 
@@ -62,7 +62,7 @@
 #else
 #define DEBUG(fmt, args...)
 #define INFOR(fmt, args...)
-#define ERROR(fmt, args...) 
+#define ERROR(fmt, args...)
 
 #define IRQ_DEBUG(fmt, args...)
 #define IRQ_INFOR(fmt, args...)
@@ -161,7 +161,7 @@
 #define SEG32_T_TRAP32		15		/**< 32-bit Trap Gate */
 
 #define SEG64_T_0		0		/**< Reserved */
-#define SEG64_T_1	  	1		/**< Reserved */
+#define SEG64_T_1		1		/**< Reserved */
 #define SEG64_T_LDT		2		/**< LDT */
 #define SEG64_T_3		3		/**< Reserved */
 #define SEG64_T_4		4		/**< Reserved */
@@ -323,7 +323,7 @@ static inline void gdt_set_limit(gdt_descriptor_t *gdt,
 				 unsigned int limit)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
-	gdt[index] &= (~ MASK_GDT_LIMIT);
+	gdt[index] &= (~MASK_GDT_LIMIT);
 	gdt[index] |= MAKE_GDT_LIMIT(limit);
 }
 
@@ -340,7 +340,7 @@ static inline void gdt_set_dpl(gdt_descriptor_t *gdt,
 			       unsigned int dpl)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
-	gdt[index] &= (~ MASK_GDT_DPL);
+	gdt[index] &= (~MASK_GDT_DPL);
 	gdt[index] |= MAKE_GDT_DPL(dpl);
 }
 
@@ -441,7 +441,7 @@ static void construct_segment_descriptor(unsigned int sel,
 
 	sgdt(&gdtr);
 
-	gdt = (gdt_descriptor_t*)gdtr.base;
+	gdt = (gdt_descriptor_t *)gdtr.base;
 
 	ASSERT(TAKE_SEL_INDEX(sel) < (gdtr.limit + 1) / sizeof(gdt_descriptor_t),
 		"BUG: sel %u out of range %u.\n",
@@ -462,30 +462,30 @@ static void construct_segment_descriptor(unsigned int sel,
 #define PREPARE_NEWGDT(oldgdtr, newgdtr)	prepare_newgdt(oldgdtr, newgdtr)
 #define RECOVERY_OLDGDT(oldgdtr, newgdtr)	recovery_oldgdt(oldgdtr, newgdtr)
 
-static void * prepare_newgdt(struct descriptor_table_ptr *oldgdtr,
+static void *prepare_newgdt(struct descriptor_table_ptr *oldgdtr,
 			     struct descriptor_table_ptr *newgdtr)
 {
-	const size_t new_size = PAGE_SIZE *2;
-	
+	const size_t new_size = PAGE_SIZE * 2;
+
 	sgdt(oldgdtr);
 
 	newgdtr->base = (ulong)malloc(new_size);
 	newgdtr->limit = new_size - 1;
 
-	memset((void*)newgdtr->base, 0, new_size);
-	memcpy((void*)newgdtr->base, (void*)oldgdtr->base, oldgdtr->limit + 1);
-	memcpy((void*)(newgdtr->base + PAGE_SIZE), (void*)oldgdtr->base, oldgdtr->limit + 1);
+	memset((void *)newgdtr->base, 0, new_size);
+	memcpy((void *)newgdtr->base, (void *)oldgdtr->base, oldgdtr->limit + 1);
+	memcpy((void *)(newgdtr->base + PAGE_SIZE), (void *)oldgdtr->base, oldgdtr->limit + 1);
 
 	lgdt(newgdtr);
 
-	return (void*)newgdtr->base;
+	return (void *)newgdtr->base;
 }
 
 static inline void recovery_oldgdt(struct descriptor_table_ptr *oldgdtr,
 				   struct descriptor_table_ptr *newgdtr)
 {
 	lgdt(oldgdtr);
-	free((void*)newgdtr->base);
+	free((void *)newgdtr->base);
 }
 
 /*
@@ -564,7 +564,7 @@ static inline void recovery_oldgdt(struct descriptor_table_ptr *oldgdtr,
 #define IDT_SET_S(i, v, s)	idt_set_bit(i, v, s, SHIFT_IDT_S)
 #define IDT_SET_TYPE(i, v, t)	idt_set_type(i, v, t)
 
-#define IDT_GET_OFFSET(i, v)	((void*)TAKE_IDT_OFFSET(idt[v]))
+#define IDT_GET_OFFSET(i, v)	((void *)TAKE_IDT_OFFSET(idt[v]))
 #define IDT_GET_SEL(i, v)	((uint16_t)TAKE_IDT_SEL(idt[v]))
 #define IDT_GET_P(i, v)		((idt[v] & (1ul << SHIFT_IDT_P)) != 0)
 #define IDT_GET_DPL(i, v)	((unsigned int)TAKE_IDT_DPL(idt[v]))
@@ -576,10 +576,10 @@ static inline void recovery_oldgdt(struct descriptor_table_ptr *oldgdtr,
 		vector,			/* Which entry in idt */				\
 		selector,		/* selector */						\
 		handler,		/* offset */						\
-		p, 			/* P bit */						\
-		dpl, 			/* DPL */						\
-		s, 			/* S bit */						\
-		SEG_T_INT 		/* TYPE */						\
+		p,			/* P bit */						\
+		dpl,			/* DPL */						\
+		s,			/* S bit */						\
+		SEG_T_INT		/* TYPE */						\
 		)
 
 #define PREPARE_TRAP_GATE(vector, selector, handler, p, dpl, s)					\
@@ -587,20 +587,20 @@ static inline void recovery_oldgdt(struct descriptor_table_ptr *oldgdtr,
 		vector,			/* Which entry in idt */				\
 		selector,		/* selector */						\
 		handler,		/* offset */						\
-		p, 			/* P bit */						\
-		dpl, 			/* DPL */						\
-		s, 			/* S bit */						\
-		SEG_T_TRAP 		/* TYPE */						\
+		p,			/* P bit */						\
+		dpl,			/* DPL */						\
+		s,			/* S bit */						\
+		SEG_T_TRAP		/* TYPE */						\
 		)
 #define PREPARE_TASK_GATE(vector, selector, handler, p, dpl, s)					\
 	construct_interrupt_descriptor(								\
 		vector,			/* Which entry in idt */				\
 		selector,		/* selector */						\
 		handler,		/* offset */						\
-		p, 			/* P bit */						\
-		dpl, 			/* DPL */						\
-		s, 			/* S bit */						\
-		SEG32_T_TASK 		/* TYPE */						\
+		p,			/* P bit */						\
+		dpl,			/* DPL */						\
+		s,			/* S bit */						\
+		SEG32_T_TASK		/* TYPE */						\
 		)
 
 #define RECOVERY_INTERRUPT_GATE(vector, selector, handler)					\
@@ -608,10 +608,10 @@ static inline void recovery_oldgdt(struct descriptor_table_ptr *oldgdtr,
 		vector,			/* Which entry in idt */				\
 		selector,		/* selector */						\
 		handler,		/* offset */						\
-		1, 			/* P bit */						\
-		0, 			/* DPL */						\
-		0, 			/* S bit */						\
-		SEG_T_INT 		/* TYPE */						\
+		1,			/* P bit */						\
+		0,			/* DPL */						\
+		0,			/* S bit */						\
+		SEG_T_INT		/* TYPE */						\
 		)
 
 #ifdef __x86_64__
@@ -715,7 +715,7 @@ void construct_interrupt_descriptor(
 	idt_descriptor_t *idtp;
 
 	sidt(&idtr);
-	idtp = (idt_descriptor_t*)idtr.base;
+	idtp = (idt_descriptor_t *)idtr.base;
 	memset(idtp + vec, 0, sizeof(idt_descriptor_t));
 
 	IDT_SET_SEL(idtp, vec, selector);
@@ -756,7 +756,7 @@ struct segment_desc {
 	uint8_t  base3;
 } __attribute__((__packed__));
 
-struct interrupt_desc{
+struct interrupt_desc {
     unsigned short offset0;
     unsigned short selector;
     unsigned short ist : 3;
@@ -770,7 +770,7 @@ struct interrupt_desc{
     unsigned offset2;
     unsigned reserved1;
 #endif
-} ;
+};
 
 static inline void debug_gdt_show_fields(void)
 {
@@ -800,8 +800,8 @@ static inline void debug_gdt_show_entry(unsigned int sel)
 	unsigned int i;
 
 	sgdt(&gdtr);
-	gdt   = (struct segment_desc*)gdtr.base;
-	gdtl  = (gdt_descriptor_t*)gdtr.base;
+	gdt   = (struct segment_desc *)gdtr.base;
+	gdtl  = (gdt_descriptor_t *)gdtr.base;
 	i = (sel >> 3);
 
 	base  = (gdt[i].base1 << 0)
@@ -947,8 +947,8 @@ static USED void debug_tss_show_entry(tss32_t *tss)
  * This array counts all interrupts:
  * Befor every testing, we must be call irqcounter_initialize() to sets all counter
  * to 0 first, then irq counter can be help us to testing.
- * If an interrupt/exception happened, we can call irqcounter_incre(vector) to 
- * incre the counter of this interrupt/exception in the interrupt handler, and 
+ * If an interrupt/exception happened, we can call irqcounter_incre(vector) to
+ * incre the counter of this interrupt/exception in the interrupt handler, and
  * after interrupt handler, we can call irqcounter_query(vector) to get the
  * counter and check it if is success or failure.
  * in the test interrupt handler,
@@ -963,7 +963,7 @@ static volatile unsigned int g_irqcounter[256] = { 0 };
 
 static inline void irqcounter_initialize(void)
 {
-	memset((void*)g_irqcounter, 0, sizeof(g_irqcounter));
+	memset((void *)g_irqcounter, 0, sizeof(g_irqcounter));
 }
 
 static inline void irqcounter_incre(unsigned int vector)
@@ -1005,7 +1005,7 @@ void page_control_set_bit(void *gva, unsigned int level,
 #ifdef __x86_64__
 	u32 pdpte_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_TYPE_RDPTE);
 	u32 pml4_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_TYPE_PML4);
-	u32 pd_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_TYPE_PDE); 
+	u32 pd_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_TYPE_PDE);
 	u32 pt_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_TYPE_PTE);
 	pteval_t *pml4 = (pteval_t *)cr3;
 
@@ -1016,41 +1016,41 @@ void page_control_set_bit(void *gva, unsigned int level,
 	switch (level) {
 	case PAGE_TYPE_PML4:
 		if (value) {
-			pml4[pml4_offset] |= (1 << shift);		
+			pml4[pml4_offset] |= (1 << shift);
 		} else {
-			pml4[pml4_offset] &= ~(1 << shift);					
+			pml4[pml4_offset] &= ~(1 << shift);
 		}
 		break;
 	case PAGE_TYPE_RDPTE:
 		if (value) {
-			pdpte[pdpte_offset] |= (1 << shift);		
+			pdpte[pdpte_offset] |= (1 << shift);
 		} else {
-			pdpte[pdpte_offset] &= ~(1 << shift);					
+			pdpte[pdpte_offset] &= ~(1 << shift);
 		}
 		break;
 	case PAGE_TYPE_PDE:
 		if (value) {
-			pd[pd_offset] |= (1 << shift);		
+			pd[pd_offset] |= (1 << shift);
 		} else {
-			pd[pd_offset] &= ~(1 << shift);					
+			pd[pd_offset] &= ~(1 << shift);
 		}
-		break;	
+		break;
 	case PAGE_TYPE_PTE:
 		if (value) {
-			pt[pt_offset] |= (1 << shift);		
+			pt[pt_offset] |= (1 << shift);
 		} else {
-			pt[pt_offset] &= ~(1 << shift);					
+			pt[pt_offset] &= ~(1 << shift);
 		}
-		break;	
+		break;
 	}
 
 	if (value) {
-		pml4[pml4_offset] |= (1 << shift);		
-		pdpte[pdpte_offset] |= (1 << shift);		
-		pd[pd_offset] |= (1 << shift);		
-		pt[pt_offset] |= (1 << shift);		
+		pml4[pml4_offset] |= (1 << shift);
+		pdpte[pdpte_offset] |= (1 << shift);
+		pd[pd_offset] |= (1 << shift);
+		pt[pt_offset] |= (1 << shift);
 	}
-#else 
+#else
 	u32 pde_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_TYPE_PDE);
 	u32 pte_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_TYPE_PTE);
 	pteval_t *pde = (pgd_t *)cr3;
@@ -1059,20 +1059,20 @@ void page_control_set_bit(void *gva, unsigned int level,
 
 	if (level == PAGE_TYPE_PDE) {
 		if (value) {
-			pde[pde_offset] |= (1 << shift);		
+			pde[pde_offset] |= (1 << shift);
 		} else {
-			pde[pde_offset] &= ~(1 << shift); 				
+			pde[pde_offset] &= ~(1 << shift);
 		}
 	} else {
 		if (value) {
-			pte[pte_offset] |= (1 << shift);		
+			pte[pte_offset] |= (1 << shift);
 		} else {
-			pte[pte_offset] &= ~(1 << shift); 				
+			pte[pte_offset] &= ~(1 << shift);
 		}
 	}
 #endif
 	asm volatile("invlpg %0\n\t"
-			"nop\n\t" : : "m"(*((uintptr_t *)gva)): "memory"); 
+		"nop\n\t" : : "m"(*((uintptr_t *)gva)) : "memory");
 }
 
 /**
@@ -1165,9 +1165,9 @@ typedef struct
 {
 	const ulong	 vector;
 	void		*handler;
-	const char 	*comment;
+	const char	*comment;
 	const char	*name;
-}exception_infor_t;
+} exception_infor_t;
 
 /**
  * IRQ/EXCEPTION Entry function
@@ -1184,8 +1184,8 @@ static void exception_common_handler(exp_regs_t *regs);
 #define DEFAULT(NAME)			NAME##_entry_0
 #define HANDLER(NAME, CASE)		NAME##_entry_##CASE
 #define PREPARE_INTERRUPT_HANDLER_EX(NAME, CASE, VECTOR, INC, FUNC, COMM, CMT)	\
-        extern void NAME##_entry_##CASE(void);					\
-        asm (".pushsection .text \n\t"						\
+	extern void NAME##_entry_##CASE(void);					\
+	asm (".pushsection .text \n\t"						\
 		#NAME"_entry_"#CASE ": \n\t"					\
 		"push %" R "ax \n\t"						\
 		"mov $"#VECTOR", %" R "ax\n\t"					\
@@ -1216,20 +1216,20 @@ static void exception_common_handler(exp_regs_t *regs);
 		"jmp __interrupt_comm_entry \n\t"				\
 		".popsection\n\t");						\
 										\
-		asm(".pushsection .data.ex.comm."#VECTOR"."#CASE"\n");		\
-		static USED const exception_infor_t g_##VECTOR##CASE##_infor = {\
-			VECTOR,							\
-			(void*)NAME##_entry_##CASE,				\
-			CMT,							\
-			#NAME,							\
-		};								\
-		asm(".popsection\n");						\
+	asm(".pushsection .data.ex.comm."#VECTOR"."#CASE"\n");		\
+	static USED const exception_infor_t g_##VECTOR##CASE##_infor = {\
+		VECTOR,							\
+		(void *)NAME##_entry_##CASE,				\
+		CMT,							\
+		#NAME,							\
+	};								\
+	asm(".popsection\n");						\
 										\
-		static USED void NAME##_handler_##CASE(exp_regs_t *regs)	\
-		{								\
-			exception_befor_handler(regs, CASE, INC);		\
-			FUNC(regs);						\
-		}
+	static USED void NAME##_handler_##CASE(exp_regs_t *regs)	\
+	{								\
+		exception_befor_handler(regs, CASE, INC);		\
+		FUNC(regs);						\
+	}
 
 #define INTERRUPT_DEFAULT_HEAD(VECTOR, VAR)					\
 	static const exception_infor_t *VAR = &g_##VECTOR##0_infor
@@ -1237,9 +1237,9 @@ static void exception_common_handler(exp_regs_t *regs);
 	static const exception_infor_t *VAR = &g_##VECTOR##0_infor
 
 #define DEFINE_INTERRUPT_DEFAULT(NAME, VECTOR, COMMENT)				\
-	PREPARE_INTERRUPT_HANDLER_EX(NAME, 0, VECTOR, false, 			\
-				     exception_common_handler,			\
-				     true, COMMENT)
+	PREPARE_INTERRUPT_HANDLER_EX(NAME, 0, VECTOR, false,			\
+		exception_common_handler,			\
+		true, COMMENT)
 
 #define PREPARE_INTERRUPT_HANDLER_NOINCRE(NAME, CASE, VECTOR, FUNC)		\
 	PREPARE_INTERRUPT_HANDLER_EX(NAME, CASE, VECTOR, false, FUNC, false, "")
@@ -1251,8 +1251,8 @@ static void exception_common_handler(exp_regs_t *regs);
 	PREPARE_INTERRUPT_HANDLER(NAME, CASE, VECTOR, exception_common_handler)
 
 #define DEFINE_SPECIAL_HANDLER(NAME, VECTOR, CODE)				\
-        extern void NAME##_entry(void);						\
-        asm (".pushsection .text \n\t"						\
+	extern void NAME##_entry(void);						\
+	asm (".pushsection .text \n\t"						\
 		#NAME"_entry: \n\t"						\
 		"push" W " $0 \n\t"						\
 		"push" W " $"#VECTOR" \n\t"					\
@@ -1271,7 +1271,7 @@ static void exception_common_handler(exp_regs_t *regs);
 asm (".pushsection .text \n\t"
 	"__interrupt_comm_entry: \n"
 #ifdef __x86_64__
- 	"push %r14; push %r13; push %r12 \n\t"
+	"push %r14; push %r13; push %r12 \n\t"
 	"push %r11; push %r10; push %r9; push %r8 \n\t"
 	"push %"R "di; push %"R "si; push %"R "bp; sub $"S", %"R "sp \n\t"
 	"push %"R "bx; push %"R "dx; push %"R "cx; push %"R "ax \n\t"
@@ -1279,7 +1279,7 @@ asm (".pushsection .text \n\t"
 	"push %"R "si; push %"R "bp; sub $"S", %"R "sp \n\t"
 	"push %"R "bx; push %"R "dx; push %"R "cx; push %"R "ax \n\t"
 #endif
-	
+
 #ifdef __x86_64__
 	"mov %"R "sp, %"R "di \n\t"
 	"call" W " *%r15 \n\t"
@@ -1300,27 +1300,27 @@ asm (".pushsection .text \n\t"
 	"iret"W" \n\t"
 );
 
-DEFINE_INTERRUPT_DEFAULT(DE , 0x00, "#DE - Divide Error Exception");
-DEFINE_INTERRUPT_DEFAULT(DB , 0x01, "#DB - Debug Exception");
+DEFINE_INTERRUPT_DEFAULT(DE, 0x00, "#DE - Divide Error Exception");
+DEFINE_INTERRUPT_DEFAULT(DB, 0x01, "#DB - Debug Exception");
 DEFINE_INTERRUPT_DEFAULT(NMI, 0x02, "NMI - NMI Interrupt");
-DEFINE_INTERRUPT_DEFAULT(BP , 0x03, "#BP - Breakpoint Exception");
-DEFINE_INTERRUPT_DEFAULT(OF , 0x04, "#OF - Overflow Exception");
-DEFINE_INTERRUPT_DEFAULT(BR , 0x05, "#BR - BOUND Range Exceeded Exception");
-DEFINE_INTERRUPT_DEFAULT(UD , 0x06, "#UD - Invalid Opcode Exception");
-DEFINE_INTERRUPT_DEFAULT(NM , 0x07, "#NM - Device Not Available Exception");
-DEFINE_INTERRUPT_DEFAULT(DF , 0x08, "#DF - Double Fault Exception");
+DEFINE_INTERRUPT_DEFAULT(BP, 0x03, "#BP - Breakpoint Exception");
+DEFINE_INTERRUPT_DEFAULT(OF, 0x04, "#OF - Overflow Exception");
+DEFINE_INTERRUPT_DEFAULT(BR, 0x05, "#BR - BOUND Range Exceeded Exception");
+DEFINE_INTERRUPT_DEFAULT(UD, 0x06, "#UD - Invalid Opcode Exception");
+DEFINE_INTERRUPT_DEFAULT(NM, 0x07, "#NM - Device Not Available Exception");
+DEFINE_INTERRUPT_DEFAULT(DF, 0x08, "#DF - Double Fault Exception");
 DEFINE_INTERRUPT_DEFAULT(CSO, 0x09, "CSO - Coprocessor Segment Overrun");
-DEFINE_INTERRUPT_DEFAULT(TS , 0x0a, "#TS - Invalid TSS Exception");
-DEFINE_INTERRUPT_DEFAULT(NP , 0x0b, "#NP - Segment Not Present");
-DEFINE_INTERRUPT_DEFAULT(SS , 0x0c, "#SS - Stack Fault Exception");
-DEFINE_INTERRUPT_DEFAULT(GP , 0x0d, "#GP - General Protection Exception");
-DEFINE_INTERRUPT_DEFAULT(PF , 0x0e, "#PF - Page Fault Exception");
+DEFINE_INTERRUPT_DEFAULT(TS, 0x0a, "#TS - Invalid TSS Exception");
+DEFINE_INTERRUPT_DEFAULT(NP, 0x0b, "#NP - Segment Not Present");
+DEFINE_INTERRUPT_DEFAULT(SS, 0x0c, "#SS - Stack Fault Exception");
+DEFINE_INTERRUPT_DEFAULT(GP, 0x0d, "#GP - General Protection Exception");
+DEFINE_INTERRUPT_DEFAULT(PF, 0x0e, "#PF - Page Fault Exception");
 DEFINE_INTERRUPT_DEFAULT(E15, 0x0f, "E15 - Exception 15 reserved");
-DEFINE_INTERRUPT_DEFAULT(MF , 0x10, "#MF - x87 FPU Floating Point Error");
-DEFINE_INTERRUPT_DEFAULT(AC , 0x11, "#AC - Alignment Check Exception");
-DEFINE_INTERRUPT_DEFAULT(MC , 0x12, "#MC - Machine Check Exception");
-DEFINE_INTERRUPT_DEFAULT(XM , 0x13, "#XM - SIMD Floating-Point Exception");
-DEFINE_INTERRUPT_DEFAULT(VE , 0x14, "#VE - Virtualization Exception");
+DEFINE_INTERRUPT_DEFAULT(MF, 0x10, "#MF - x87 FPU Floating Point Error");
+DEFINE_INTERRUPT_DEFAULT(AC, 0x11, "#AC - Alignment Check Exception");
+DEFINE_INTERRUPT_DEFAULT(MC, 0x12, "#MC - Machine Check Exception");
+DEFINE_INTERRUPT_DEFAULT(XM, 0x13, "#XM - SIMD Floating-Point Exception");
+DEFINE_INTERRUPT_DEFAULT(VE, 0x14, "#VE - Virtualization Exception");
 DEFINE_INTERRUPT_DEFAULT(E21, 0x15, "E21 - Exception 21 reserved");
 DEFINE_INTERRUPT_DEFAULT(E22, 0x16, "E22 - Exception 22 reserved");
 DEFINE_INTERRUPT_DEFAULT(E23, 0x17, "E23 - Exception 23 reserved");
@@ -1344,7 +1344,7 @@ static const exception_infor_t *exception_infor(unsigned int vector)
 {
 	const exception_infor_t *infor = g_exception_infor_head;
 
-	for (infor = g_exception_infor_head; 
+	for (infor = g_exception_infor_head;
 	     infor <= g_exception_infor_tail;
 	     infor++) {
 		if (infor->vector == vector) {
@@ -1384,17 +1384,17 @@ static USED void exception_common_handler(exp_regs_t *regs)
 
 static USED void exception_befor_handler(exp_regs_t *regs, int ncase, int incre)
 {
-	if (ncase == 0){
+	if (ncase == 0) {
 		const exception_infor_t *infor = g_exception_infor_head;
 
-		for (infor = g_exception_infor_head; 
+		for (infor = g_exception_infor_head;
 		infor <= g_exception_infor_tail;
 		infor++) {
 			if (infor->vector == regs->vector) {
 				IRQ_ERROR("***CPU %x capture unknow %s.\n", apic_id(), infor->comment);
 				IRQ_ERROR("     rip:  0x%08lx\n", regs->rip);
 				IRQ_ERROR("err code:  0x%08lx\n", regs->error_code);
-				while(true);
+				while (true);
 			}
 		}
 
@@ -1402,9 +1402,9 @@ static USED void exception_befor_handler(exp_regs_t *regs, int ncase, int incre)
 		IRQ_ERROR("     rip:  0x%08lx\n", regs->rip);
 		IRQ_ERROR("err code:  0x%08lx\n", regs->error_code);
 
-		while(true);
+		while (true);
 	}
-	else{
+	else {
 		IRQ_DEBUG("%s - %ld @ CPU %x(case %d).\n",
 			exception_comment(regs->vector), regs->vector, apic_id(), ncase);
 		IRQ_DEBUG("      ss:  0x%08lx\n", (unsigned long)read_ss());
@@ -1423,7 +1423,7 @@ static void exception_initialize(void)
 {
 	const exception_infor_t *infor;
 
-	for (infor = g_exception_infor_head; 
+	for (infor = g_exception_infor_head;
 	     infor <= g_exception_infor_tail;
 	     infor++)
 	{
@@ -1473,7 +1473,7 @@ static inline unsigned long systick_clock(void)
 static inline void systick_delay(unsigned long time)
 {
 	unsigned long oldtime = g_systick;
-	while(g_systick < oldtime + time);
+	while (g_systick < oldtime + time);
 }
 
 /**
@@ -1482,7 +1482,7 @@ static inline void systick_delay(unsigned long time)
 
 /**
  * Case name: Interrupt Exception Source Expose 000
- * Summary  : Register the handler of exception #DE(0x0) then divide zero should be 
+ * Summary: Register the handler of exception #DE(0x0) then divide zero should be
  *            capture #DE exception.
  */
 static void DE_27484_exception_handler(exp_regs_t *regs)
@@ -1491,10 +1491,10 @@ static void DE_27484_exception_handler(exp_regs_t *regs)
 	ASSERT(TAKE_SEL_TI(regs->cs) == 0, "Not support LDT.");
 	sgdt(&memgdtr);
 
-	if (GDT_GET_L((gdt_descriptor_t*)memgdtr.base, regs->cs)) {
+	if (GDT_GET_L((gdt_descriptor_t *)memgdtr.base, regs->cs)) {
 		regs->rip += 3;
 	}
-	else if (GDT_GET_DB((gdt_descriptor_t*)memgdtr.base, regs->cs)) {
+	else if (GDT_GET_DB((gdt_descriptor_t *)memgdtr.base, regs->cs)) {
 		regs->rip += 2;
 	}
 	else {
@@ -1521,7 +1521,7 @@ static int exception_source_expose_000(void)
 	RECOVERY_INTERRUPT_GATE(DE_VECTOR, KERNEL_CS, DEFAULT(DE));
 	irq_enable();
 
-	if (irqcounter_query(DE_VECTOR) == 1){
+	if (irqcounter_query(DE_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1553,7 +1553,7 @@ static int interrupt_and_exception_handling_expose_001(void)
 	RECOVERY_INTERRUPT_GATE(X80_VECTOR, KERNEL_CS, DEFAULT(X80));
 	irq_enable();
 
-	if (irqcounter_query(X80_VECTOR) == 1){
+	if (irqcounter_query(X80_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1562,7 +1562,7 @@ static int interrupt_and_exception_handling_expose_001(void)
 
 /**
  * Case name: Interrupt NMI sources injection exprose 001
- * Summary  : If the processor meeting a NMI interrupt, the RFLAGS.IF(bit 9) 
+ * Summary: If the processor meeting a NMI interrupt, the RFLAGS.IF(bit 9)
  *            will be ignore and the processor should be process NMI interrupt.
  */
 PREPARE_INTERRUPT_HANDLER_COMMON(NMI, 27341, NMI_VECTOR);
@@ -1579,7 +1579,7 @@ static int NMI_sources_injection_exprose_001(void)
 	RECOVERY_INTERRUPT_GATE(NMI_VECTOR, KERNEL_CS, DEFAULT(NMI));
 	irq_enable();
 
-	if (irqcounter_query(NMI_VECTOR) == 1){
+	if (irqcounter_query(NMI_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1589,7 +1589,7 @@ static int NMI_sources_injection_exprose_001(void)
 
 /**
  * Case name: Interrupt External interrupt sources injection exprose 001
- * Summary  : If the processor meeting a NMI interrupt, the RFLAGS.IF(bit 9) 
+ * Summary: If the processor meeting a NMI interrupt, the RFLAGS.IF(bit 9)
  *            will be ignore and the processor should be process NMI interrupt.
  */
 static void X20_27327_timer_handler(irq_regs_t *regs)
@@ -1611,7 +1611,7 @@ static int external_interrupt_sources_injection_exprose_001(void)
 	apic_write(APIC_TMICT, 10000/* 10000000 */);
 	irq_enable();
 
-	while(irqcounter_query(X20_VECTOR) < 1);
+	while (irqcounter_query(X20_VECTOR) < 1);
 
 	irq_disable();
 	RECOVERY_INTERRUPT_GATE(X20_VECTOR, KERNEL_CS, SPECIAL(SYSTICK));
@@ -1620,7 +1620,7 @@ static int external_interrupt_sources_injection_exprose_001(void)
 
 	EXCEPTION_COUNTER_QUERY(X20_VECTOR);
 
-	if (irqcounter_query(X20_VECTOR) == 1){
+	if (irqcounter_query(X20_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1636,7 +1636,7 @@ static void DF_24211_exception_handler(exp_regs_t *regs)
 {
 	struct descriptor_table_ptr newgdtr;
 	sgdt(&newgdtr);
-	page_control_set_bit((void*)(newgdtr.base + PAGE_SIZE),
+	page_control_set_bit((void *)(newgdtr.base + PAGE_SIZE),
 			     PAGE_TYPE_PTE, SHIFT_PAGE_P, 1);
 }
 
@@ -1679,7 +1679,7 @@ static int second_DF_001(void)
 	RECOVERY_OLDGDT(&oldgdtr, &newgdtr);
 	irq_enable();
 
-	if (irqcounter_query(DF_VECTOR) == 1){
+	if (irqcounter_query(DF_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1701,7 +1701,7 @@ static void PF_26813_exception_handler(irq_regs_t *regs)
 {
 	struct descriptor_table_ptr newgdtr;
 	sgdt(&newgdtr);
-	page_control_set_bit((void*)(newgdtr.base + PAGE_SIZE),
+	page_control_set_bit((void *)(newgdtr.base + PAGE_SIZE),
 			     PAGE_TYPE_PTE, SHIFT_PAGE_P, 1);
 }
 
@@ -1709,7 +1709,7 @@ static void GP_26813_exception_handler(irq_regs_t *regs)
 {
 	struct descriptor_table_ptr newgdtr;
 	sgdt(&newgdtr);
-	GDT_SET_S((gdt_descriptor_t*)newgdtr.base, MAKE_SEL(513, 0, 0), 1);
+	GDT_SET_S((gdt_descriptor_t *)newgdtr.base, MAKE_SEL(513, 0, 0), 1);
 	DEBUG_GDT_SHOW_FIELDS();
 	DEBUG_GDT_SHOW_ENTRY(KERNEL_CS);
 	DEBUG_GDT_SHOW_ENTRY(MAKE_SEL(513, 0, 0));
@@ -1720,7 +1720,7 @@ PREPARE_INTERRUPT_HANDLER(PF, 26813, PF_VECTOR, PF_26813_exception_handler);
 PREPARE_INTERRUPT_HANDLER(GP, 26813, GP_VECTOR, GP_26813_exception_handler);
 /**
  * Case name: Interrupt Simultaneous exceptions-2nd including #PF with GDT exception 001
- * Summary  : Construct a code segment descriptor of #UD handler at 513th entry and page out 
+ * Summary: Construct a code segment descriptor of #UD handler at 513th entry and page out
  *            second page of GDT will be triggering a second #PF when processor meet #UD, at
  *            the same time if the processor meeting the S bit of 513th entry is 0, then #PF
  *            #GP and #UD will be simultaneous triggering.
@@ -1758,12 +1758,12 @@ static int simultaneous_exceptions_2nd_including_PF_with_GDT_exception_001(void)
 
 	RECOVERY_OLDGDT(&oldgdtr, &newgdtr);
 
-	if (irqcounter_query(UD_VECTOR) == 1){
+	if (irqcounter_query(UD_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
 	return RESULT_FAULT;
-	
+
 }
 
 /**
@@ -1799,7 +1799,7 @@ static int IDT_expose_002_64bit_interrupt_gate(void)
 	EXCEPTION_COUNTER_QUERY(X80_VECTOR);
 	RECOVERY_INTERRUPT_GATE(X80_VECTOR, KERNEL_CS, DEFAULT(X80));
 
-	if (irqcounter_query(X80_VECTOR) == 1){
+	if (irqcounter_query(X80_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1808,7 +1808,7 @@ static int IDT_expose_002_64bit_interrupt_gate(void)
 
 /**
  * Case name: Interrupt IDT expose 004(64Bit Trap-gate)
- * Summary  : Call Trap-gate should be trigger a trip-interrupt, in trip-interrupt 
+ * Summary: Call Trap-gate should be trigger a trip-interrupt, in trip-interrupt
  *            the processor should not be disable interrupt(RFLAGS.IF equal 1).
  */
 static void X80_28833_trap_gate_handler(irq_regs_t *regs)
@@ -1833,13 +1833,13 @@ static int IDT_expose_004_64bit_trap_gate(void)
 	PREPARE_DEFAULT_SEGMENT(MAKE_SEL(10, 0, 0), SEGCD_T_CR, S1, DPL0, P1, DB1, G1);
 #endif
 	PREPARE_TRAP_GATE(X80_VECTOR, MAKE_SEL(10, 0, 0), HANDLER(X80, 28833), P1, DPL0, S0);
-	
+
 	ASM_TRIGGER_INT0x80();
 
 	EXCEPTION_COUNTER_QUERY(X80_VECTOR);
 	RECOVERY_INTERRUPT_GATE(X80_VECTOR, KERNEL_CS, DEFAULT(X80));
 
-	if (irqcounter_query(X80_VECTOR) == 1){
+	if (irqcounter_query(X80_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1849,7 +1849,7 @@ static int IDT_expose_004_64bit_trap_gate(void)
 #ifdef __x86_64__
 /**
  * Case name: Interrupt IDT expose 004(64Bit Trap-gate)
- * Summary  : Call Trap-gate should be trigger a trip-interrupt, in trip-interrupt 
+ * Summary: Call Trap-gate should be trigger a trip-interrupt, in trip-interrupt
  *            the processor should not be disable interrupt(RFLAGS.IF equal 1).
  */
 
@@ -1858,20 +1858,20 @@ struct descriptor_table_ptr g_newgdtr;
 
 static void X21_26113_trip_fault_trigging_function(void)
 {
-	char *newgdt = (char*)g_newgdtr.base;
+	char *newgdt = (char *)g_newgdtr.base;
 	int i;
 
 	DEBUG("CPU %u, Clock %lu, will be shutdown after 3 ticks.\n", apic_id(), systick_clock());
 	lgdt(&g_newgdtr);
 
-	for(i = 3; i > 0; i--) {
+	for (i = 3; i > 0; i--) {
 		printf("CPU %u, Ready %d...\n", apic_id(), i);
 		systick_delay(1);
 	}
 
 	*(newgdt + PAGE_SIZE) = 0;
 
-	while(true);
+	while (true);
 }
 
 static USED void X21_26113_ipi_interrupt_handler(irq_regs_t *regs)
@@ -1898,7 +1898,7 @@ static int shutdown_mode_001(void)
 	apic_icr_write(APIC_DEST_ALLBUT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | X21_VECTOR, 0);
 	PREPARE_PAGE(newgdt + PAGE_SIZE, SHIFT_PAGE_P, 0);
 
-	while(true) {
+	while (true) {
 		DEBUG("CPU %u, Clock %lu\n", apic_id(), systick_clock());
 		systick_delay(1);
 	}
@@ -1912,7 +1912,7 @@ static int shutdown_mode_001(void)
 	RECOVERY_INTERRUPT_GATE(X21_VECTOR, KERNEL_CS, DEFAULT(X21));
 	RECOVERY_OLDGDT(&g_oldgdtr, &g_newgdtr);
 
-	if (irqcounter_query(DF_VECTOR) == 1){
+	if (irqcounter_query(DF_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1933,15 +1933,15 @@ void X80_28827_task_gate_handler(void)
 	IRQ_DEBUG("      ss:  0x%08lx\n", (unsigned long)read_ss());
 	IRQ_DEBUG("      cs:  0x%08lx\n", (unsigned long)read_cs());
 	irqcounter_incre(X80_VECTOR);
-        asm volatile ("iret");
-        IRQ_DEBUG("IRQ task restarts after iret.\n");
-        goto start;
+	asm volatile ("iret");
+	IRQ_DEBUG("IRQ task restarts after iret.\n");
+	goto start;
 }
 
 static int IDT_expose_001_32bit_task_gate(void)
 {
 	DEBUG("28827.IDT expose 001(32BIT Task-gate) testing...\n");
-	
+
 	PREPARE_INTERRUPT_MONITOR();
 
 	setup_tss32();
@@ -1957,7 +1957,7 @@ static int IDT_expose_001_32bit_task_gate(void)
 	EXCEPTION_COUNTER_QUERY(X80_VECTOR);
 	RECOVERY_INTERRUPT_GATE(X80_VECTOR, KERNEL_CS, DEFAULT(X80));
 
-	if (irqcounter_query(X80_VECTOR) == 1){
+	if (irqcounter_query(X80_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
@@ -1966,7 +1966,7 @@ static int IDT_expose_001_32bit_task_gate(void)
 }
 #endif
 
-#define DS_USER 			MAKE_SEL(11, 0, DPL3)
+#define DS_USER				MAKE_SEL(11, 0, DPL3)
 #define CS_USER				MAKE_SEL(12, 0, DPL3)
 #define SS_USER				MAKE_SEL(11, 0, DPL3)
 #define ENTER_TO_RING3(fn, p)		enter_to_ring3(fn, p)
@@ -2010,9 +2010,9 @@ int enter_to_ring3(ring3_routine_fn_t fn, void *param)
 #ifndef __x86_64__
 	"push %[param]\n\t"
 #else
-        "movq %[param],  %%" R "di\n\r"
+	"movq %[param],  %%" R "di\n\r"
 #endif
-        "call *%[fn]\n\t"
+	"call *%[fn]\n\t"
 #ifndef __x86_64__
 	"pop %%ecx\n\t"
 #endif
@@ -2064,7 +2064,7 @@ int enter_to_ring3(ring3_routine_fn_t fn, void *param)
 
 static int ring3_24209_routine(void *param)
 {
-	unsigned long *qbuffer = (unsigned long*)&g_user_stack[1];
+	unsigned long *qbuffer = (unsigned long *)&g_user_stack[1];
 
 	DEBUG("Starting case #AC USER code, 0x%08lx...\n", (unsigned long) qbuffer);
 
@@ -2083,7 +2083,7 @@ PREPARE_INTERRUPT_HANDLER(AC, 24209, AC_VECTOR, AC_24209_exception_handler);
 static int EFLAGS_AC_expose_001(void)
 {
 	DEBUG("24209.Interrupt EFLAGS.AC Expose 001 testing...\n");
-	
+
 	PREPARE_INTERRUPT_MONITOR();
 	ENABLE_AM_BIT_IN_CR0();
 	ENABLE_AC_BIT_IN_RFLAGS();
@@ -2103,17 +2103,17 @@ static int EFLAGS_AC_expose_001(void)
 	EXCEPTION_COUNTER_QUERY(AC_VECTOR);
 	RECOVERY_INTERRUPT_GATE(AC_VECTOR, KERNEL_CS, DEFAULT(AC));
 
-	if (irqcounter_query(AC_VECTOR) == 1){
+	if (irqcounter_query(AC_VECTOR) == 1) {
 		return RESULT_OK;
 	}
 
 	return RESULT_FAULT;
 }
 
-#define BP_HAVE_INIT		((unsigned int*)0x8000)
-#define AP_CPU_COUNT		((unsigned int*)0x8008)
-#define BP_INIT_RFLAGS		((unsigned int*)0x800c)
-#define AP_STARTUP_RFLAGS	((unsigned int*)0x8010)
+#define BP_HAVE_INIT		((unsigned int *)0x8000)
+#define AP_CPU_COUNT		((unsigned int *)0x8008)
+#define BP_INIT_RFLAGS		((unsigned int *)0x800c)
+#define AP_STARTUP_RFLAGS	((unsigned int *)0x8010)
 
 static int EFLAGS_AC_following_init_001(void)
 {
@@ -2239,5 +2239,5 @@ int main(int argc, char *argv[])
 	result = shutdown_mode_001();
 	report("26113.shutdown mode, result 0x%08x", result == 0, result);
 #endif
-	while(true);
+	while (true);
 }

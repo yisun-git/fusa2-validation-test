@@ -11,8 +11,8 @@ static int getsec_checking()
 	struct emulate_register r;
 	r.a = 1;
 	asm volatile(ASM_TRY("1f")
-			"getsec \n\t"
-			"1:": "=c"(r.c): "a"(r.a));
+		"getsec \n\t"
+		"1:" : "=c"(r.c) : "a"(r.a));
 	return exception_vector();
 }
 
@@ -66,7 +66,7 @@ static void smx_rqmid_28665_write_msr_ia32_feature_control()
  * @brief case name: SMX unavailability_004
  *
  * Summary: execute wirte msr IA32_FEATURE_CONTROL [bit 14:8] from 0 to 1,
- * 	    it shall get #GP exception.
+ *	    it shall get #GP exception.
  */
 static void smx_rqmid_28826_write_msr_ia32_feature_control()
 {
@@ -79,7 +79,7 @@ static void smx_rqmid_28826_write_msr_ia32_feature_control()
  * @brief case name: SMX unavailability_005
  *
  * Summary: execute wirte msr?IA32_FEATURE_CONTROL [bit 15] from 0 to 1,
- *   	    it shall get #GP exception.
+ *	    it shall get #GP exception.
  */
 static void smx_rqmid_28828_write_msr_ia32_feature_control()
 {

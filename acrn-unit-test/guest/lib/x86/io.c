@@ -13,66 +13,66 @@ static int serial_inited = 0;
 
 static void serial_outb(char ch)
 {
-        u8 lsr;
+	u8 lsr;
 
-        do {
-                lsr = inb(serial_iobase + 0x05);
-        } while (!(lsr & 0x20));
+	do {
+		lsr = inb(serial_iobase + 0x05);
+	} while (!(lsr & 0x20));
 
-        outb(ch, serial_iobase + 0x00);
+	outb(ch, serial_iobase + 0x00);
 }
 
 static void serial_put(char ch)
 {
-        /* Force carriage return to be performed on \n */
-        if (ch == '\n')
-                serial_outb('\r');
-        serial_outb(ch);
+	/* Force carriage return to be performed on \n */
+	if (ch == '\n')
+		serial_outb('\r');
+	serial_outb(ch);
 }
 
 static void serial_init(void)
 {
-        u8 lcr;
+	u8 lcr;
 
-        /* set DLAB */
-        lcr = inb(serial_iobase + 0x03);
-        lcr |= 0x80;
-        outb(lcr, serial_iobase + 0x03);
+	/* set DLAB */
+	lcr = inb(serial_iobase + 0x03);
+	lcr |= 0x80;
+	outb(lcr, serial_iobase + 0x03);
 
-        /* set baud rate to 115200 */
-        outb(0x01, serial_iobase + 0x00);
-        outb(0x00, serial_iobase + 0x01);
+	/* set baud rate to 115200 */
+	outb(0x01, serial_iobase + 0x00);
+	outb(0x00, serial_iobase + 0x01);
 
-        /* clear DLAB */
-        lcr = inb(serial_iobase + 0x03);
-        lcr &= ~0x80;
-        outb(lcr, serial_iobase + 0x03);
+	/* clear DLAB */
+	lcr = inb(serial_iobase + 0x03);
+	lcr &= ~0x80;
+	outb(lcr, serial_iobase + 0x03);
 
-        /* IER: disable interrupts */
-        outb(0x00, serial_iobase + 0x01);
-        /* LCR: 8 bits, no parity, one stop bit */
-        outb(0x03, serial_iobase + 0x03);
-        /* FCR: disable FIFO queues */
-        outb(0x00, serial_iobase + 0x02);
-        /* MCR: RTS, DTR on */
-        outb(0x03, serial_iobase + 0x04);
+	/* IER: disable interrupts */
+	outb(0x00, serial_iobase + 0x01);
+	/* LCR: 8 bits, no parity, one stop bit */
+	outb(0x03, serial_iobase + 0x03);
+	/* FCR: disable FIFO queues */
+	outb(0x00, serial_iobase + 0x02);
+	/* MCR: RTS, DTR on */
+	outb(0x03, serial_iobase + 0x04);
 }
 
 static void print_serial(const char *buf)
 {
 	unsigned long len = strlen(buf);
 #ifdef USE_SERIAL
-        unsigned long i;
-        if (!serial_inited) {
-            serial_init();
-            serial_inited = 1;
-        }
+	unsigned long i;
+	if (!serial_inited) {
+		serial_init();
+		serial_inited = 1;
+	}
 
-        for (i = 0; i < len; i++) {
-            serial_put(buf[i]);
-        }
+	for (i = 0; i < len; i++) {
+		serial_put(buf[i]);
+	}
 #else
-        asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xf1));
+	asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xf1));
 #endif
 }
 
@@ -85,22 +85,22 @@ void puts(const char *s)
 
 void exit(int code)
 {
-	while(1);
+	while (1);
 #ifdef USE_SERIAL
-        static const char shutdown_str[8] = "Shutdown";
-        int i;
+	static const char shutdown_str[8] = "Shutdown";
+	int i;
 
-        /* test device exit (with status) */
-        outl(code, 0xf4);
+	/* test device exit (with status) */
+	outl(code, 0xf4);
 
-        /* if that failed, try the Bochs poweroff port */
-        for (i = 0; i < 8; i++) {
-                outb(shutdown_str[i], 0x8900);
-        }
+	/* if that failed, try the Bochs poweroff port */
+	for (i = 0; i < 8; i++) {
+		outb(shutdown_str[i], 0x8900);
+	}
 #else
-        asm volatile("out %0, %1" : : "a"(code), "d"((short)0xf4));
+	asm volatile("out %0, %1" : : "a"(code), "d"((short)0xf4));
 #endif
-        while (1);
+	while (1);
 }
 
 void __iomem *ioremap(phys_addr_t phys_addr, size_t size)

@@ -126,7 +126,7 @@ static int page_test_at_ring3(void (*fn)(void), const char *arg)
  */
 static void paging_rqmid_23896_check_tlb_info()
 {
-	struct cpuid r= cpuid(2);
+	struct cpuid r = cpuid(2);
 	u8 tlb_info[8] = {TYPE_TLB_01, TYPE_TLB_03, TYPE_TLB_63, TYPE_TLB_76,
 				TYPE_TLB_B6, TYPE_STLB_C3,
 				TYPE_PREFECTH_F0, TYPE_GENEAL_FF};
@@ -151,7 +151,7 @@ static void paging_rqmid_23896_check_tlb_info()
  * @brief case name:Hide Processor Context Identifiers_001
  *
  * Summary: When process-context identifiers are hidden, CPUID.01H:ECX.
- * 	    PCID [bit 17] shall be 0, and changing CR4.PCIDE from 0 to 1,shall generate #GP.
+ *	PCID [bit 17] shall be 0, and changing CR4.PCIDE from 0 to 1,shall generate #GP.
  */
 static void paging_rqmid_23897_hide_processor_context_identifiers()
 {
@@ -171,7 +171,7 @@ static void paging_rqmid_23897_hide_processor_context_identifiers()
  * @brief case name: Global Pages Support_001
  *
  * Summary: Execute CPUID.01H:EDX.PGE [bit 13] shall be 1, set CR4.PGE to enable
- * 	    global-page feature shall have no exception
+ *	global-page feature shall have no exception
  */
 static void paging_rqmid_23901_global_pages_support()
 {
@@ -193,7 +193,7 @@ static void paging_rqmid_23901_global_pages_support()
  * @brief case name:CPUID.80000008H:EAX[7:0]_001
  *
  * Summary: Execute CPUID.80000008H:EAX[7:0] to get the physical-address width
- * 	    supported by the processor, it shall be 39.
+ *	    supported by the processor, it shall be 39.
  */
 static void paging_rqmid_23895_check_physical_address_width()
 {
@@ -627,11 +627,13 @@ static void print_case_list()
 	printf("\t\t Case ID:%d case name:%s\n\r", 24522u, "TLB Support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23918u, "Write Protect Support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23912u, "Hide Invalidate Process-Context Identifier_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 24519u, "Invalidate TLB When vCPU writes CR3_disable global paging_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 24519u, "Invalidate TLB When \
+		vCPU writes CR3_disable global paging_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26017u, "Supervisor Mode Execution Prevention Support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 24460u, "Invalidate TLB When vCPU changes CR4.SMAP_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23917u, "Protection Keys Hide_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 26827u, "Invalidate TLB When vCPU writes CR3_enable global paging_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 26827u, "Invalidate TLB When \
+		vCPU writes CR3_enable global paging_002");
 #elif __i386__
 	printf("\t\t Case ID:%d case name:%s\n\r", 24415u, "32-Bit Paging Support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25249u, "Execute Disable support_001");
@@ -639,12 +641,12 @@ static void print_case_list()
 #endif
 }
 
-int main(int ac, char* av[])
+int main(int ac, char *av[])
 {
 	printf("feature: paging\r\n");
-        printf("ac:%d\r\n", ac);
-        for(int i=0; i<ac; i++)
-                printf("av  i:%d value:%s\r\n", i, av[i]);
+	printf("ac:%d\r\n", ac);
+	for (int i = 0; i < ac; i++)
+		printf("av  i:%d value:%s\r\n", i, av[i]);
 	extern unsigned char kernel_entry;
 	setup_idt();
 	setup_vm();

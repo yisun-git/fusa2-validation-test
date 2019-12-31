@@ -37,7 +37,7 @@ static void paging_rqmid_25249_execute_disable_support()
  * @brief case name:32-Bit Paging Support_001
  *
  * Summary: In 32-bit paging mode with 4K page, the mapping between GVA and GPA shall be
- * 	    correct by checking if the value reading directly from GVA and GPA is same.
+ *	    correct by checking if the value reading directly from GVA and GPA is same.
  */
 static void paging_rqmid_24415_32_bit_paging_support()
 {
