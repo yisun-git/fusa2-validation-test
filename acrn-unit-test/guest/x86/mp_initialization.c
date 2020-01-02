@@ -5,48 +5,54 @@
 #include "processor.h"
 #include "misc.h"
 
+#define MP_APIC_ID_BSP	0
+#define MP_APIC_ID_AP	1
+#define USE_DEBUG
+#ifdef  USE_DEBUG
+#define debug_print(fmt, args...) 	printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
+#else
+#define debug_print(fmt, args...)
+#endif
+#define debug_error(fmt, args...) 	printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
+
 #ifdef __x86_64__
 
 u32 bp_bsp_flag = 0,ap_bsp_flag = 0;
 
-void test_delay(void)
+void test_delay(int time)
 {
-    u64 tsc;
-    tsc = rdtsc() + 1000000000;
-    while (rdtsc() < tsc);
-}
+	int count = 0;
+	u64 tsc;
+	tsc = rdtsc() + time*1000000000;
 
-static void send_ipi_test(int to_cpu, int ipi_type)
-{
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | ipi_type, to_cpu);
+	while (rdtsc() < tsc){
+		;
+	}
 }
 
 static volatile int ap_is_running = 0;
 static volatile int bsp_is_running = 0;
 
-void ap_run(void *data)
-{
-	printf("ap: cpu %d begin to run\n", apic_id());
-	ap_is_running = 1;
+static volatile int start_run_id =0;
 
-	/* 146059 - BSP in normal status ignore SIPI */
-	/* send SIPI to BSP */
-	while(bsp_is_running == 0);
-	send_ipi_test(0, APIC_DM_STARTUP);
+static volatile int wait_bp=0;
+static volatile int wait_ap=0;
+void ap_sync()
+{
+	while(wait_bp != 1){
+		debug_print("%d %d\n", wait_ap, wait_bp);
+		test_delay(1);
+	}
+	wait_bp = 0;
 }
 
-static void MP_initialization_rqmid_26995_ap_run(void *data)
+void bp_sync()
 {
-	int count = 15;
-	printf("ap: cpu %d begin to run\n", apic_id());
-	ap_is_running = 1;
-
-	while(0 < count)
-	{
-		printf("ap: cpu %d is running\n", apic_id());
-		test_delay();
-		count--;
+	while(wait_ap != 1){
+		debug_print("%d %d\n", wait_ap, wait_bp);
+		test_delay(1);
 	}
+	wait_ap = 0;
 }
 
 /**
@@ -57,31 +63,16 @@ static void MP_initialization_rqmid_26995_ap_run(void *data)
  */
 static void MP_initialization_rqmid_26995_vCPU_is_AP_in_normal_status_ignore_SIPI(void)
 {
-	int ncpus,count = 15;
-
-    smp_init();
-    ncpus = cpu_count();
-    printf("found %d cpus\n", ncpus);
-
 	ap_is_running = 0;
 
-    /* wakeup AP */
-	set_idt_entry(0x20, MP_initialization_rqmid_26995_ap_run, 0);
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | 0x20, 1); 
+	/* send SIPI to AP*/
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
 
-	while(ap_is_running == 0);
+	/*if ap restart, wait for ap start complete*/
+	test_delay(5);
 
-	/* 26995 - AP in normal status ignore SIPI */
-	/* send SIPI to AP */
-	send_ipi_test(1, APIC_DM_STARTUP);
-
-	while( 0 < count )
-	{
-		test_delay();
-		count--;
-	}
-	report("\t\t MP_initialization_rqmid_26995_vCPU_is_AP_in_normal_status_ignore_SIPI",
-		ap_is_running == 1);
+	/*ap can't restart*/
+	report("\t\t %s", ap_is_running == 0, __FUNCTION__);
 }
 
 /**
@@ -90,44 +81,225 @@ static void MP_initialization_rqmid_26995_vCPU_is_AP_in_normal_status_ignore_SIP
  * Summary: hypervisor expose only one BSP to any VM,only one processor's BSP flag in IA32_APIC_BASE MSR is 1
  *
  */
-void MP_initialization_rqmid_27160_expose_only_one_BSP_to_any_VM_001(void)
+static void MP_initialization_rqmid_27160_expose_only_one_BSP_to_any_VM_001(void)
 {
+	start_run_id = 27160;
 	bp_bsp_flag = (rdmsr(MSR_IA32_APICBASE) & APIC_BSP) >> 8;
-	printf("bsp: bsp flag is %d\n", bp_bsp_flag);
-	report("\t\t MP_initialization_rqmid_27160_expose_only_one_BSP_to_any_VM_001",
-		bp_bsp_flag != ap_bsp_flag);
+
+	/*wait ap get ap_bsp_flag*/
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	bp_sync();
+
+	report("\t\t %s", (ap_bsp_flag==0) && (bp_bsp_flag!=0), __FUNCTION__);
+
+	/*notify ap end*/
+	wait_bp = 1;
 }
 
-void MP_initialization_rqmid_27160_ap(void)
+static void MP_initialization_rqmid_27160_ap(void)
 {
+	start_run_id = 0;
 	ap_bsp_flag = (rdmsr(MSR_IA32_APICBASE) & APIC_BSP) >> 8;
-	printf("ap: bsp flag is %d\n", ap_bsp_flag);
+
+	/*ap exec done*/
+	wait_ap = 1;
+	ap_sync();
+}
+
+/**
+ * @brief Case name:Multiple-Processor Initialization_AP in wait-for-SIPI status ignore INIT_001
+ *
+ * Summary: When the vCPU in wait-for-SIPI status and it is a AP,
+ * if there have multi SIPI the AP will execute code at the vector encoded in the first SIPI
+ *
+ */
+static void MP_initialization_rqmid_28469_ap_wait_for_sipi_ignore_init_001(void)
+{
+	start_run_id = 28469;
+	ap_is_running = 0;
+
+	/* send INIT to AP */
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	/* send INIT to AP again */
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	/* send SIPI to AP */
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+
+	/*wait ap start done*/
+	test_delay(5);
+
+	/*ap only start 1 time*/
+	report("\t\t %s", ap_is_running == 1, __FUNCTION__);
+}
+
+/**
+ * @brief Case name:Multiple-Processor Initialization_vCPU is AP in normal status handle INIT_001
+ *
+ * Summary: When the vCPU in normal status and it is a AP,
+ * if it receives the INIT it will enter a Wait-for-SIPI status.
+ *
+ */
+static void MP_initialization_rqmid_33849_ap_in_normal_handle_INIT_001(void)
+{
+	start_run_id = 33849;
+	ap_is_running = 0;
+
+	/* send INIT to AP */
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	/* send SIPI to AP */
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+
+	/*wait ap start done*/
+	test_delay(5);
+
+	/*ap will restart*/
+	report("\t\t %s", ap_is_running == 1, __FUNCTION__);
+}
+
+static void MP_initialization_rqmid_26996_ap(void)
+{
+	start_run_id = 0;
+	bsp_is_running = 0;
+	debug_print("%d %d\n", wait_ap, wait_bp);
+
+	printf("ap send SIPI to bsp\n");
+	/* send SIPI to BSP */
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP , MP_APIC_ID_BSP);
+	debug_print("%d %d\n", wait_ap, wait_bp);
+
+	test_delay(5);
+	wait_ap = 1;
+	debug_print("%d %d\n", wait_ap, wait_bp);
+}
+
+/**
+ * @brief Case name:Multiple-Processor Initialization_BSP in normal status ignore SIPI_001
+ *
+ * Summary: When the vCPU is BSP and it is in normal status,
+ * if it receives the SIPI it ignores SIPI
+ *
+ */
+static void MP_initialization_rqmid_26996_bsp_in_normal_ignore_SIPI_001(void)
+{
+	start_run_id = 26996;
+	wait_ap = 0;
+
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	/*restart ap*/
+	send_sipi();
+
+	debug_print("%d %d\n", wait_ap, wait_bp);
+
+	/*wait ap send sipi done*/
+	bp_sync();
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	report("\t\t %s", bsp_is_running == 0, __FUNCTION__);
+}
+
+static void MP_initialization_rqmid_33850_ap(void)
+{
+	start_run_id = 0;
+	/*wait for BP to execute to case id 33850*/
+	bsp_is_running = 0;
+
+	printf("ap send INIT to bsp\n");
+	/* send INIT to BSP */
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP);
+	/* send SIPI to BSP */
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
+
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	test_delay(5);
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	wait_ap = 1;
+	debug_print("%d %d\n", wait_ap, wait_bp);
+}
+
+/**
+ * @brief Case name:Multiple-Processor Initialization_vCPU is BSP in normal status ignore INIT_001
+ *
+ * Summary: When the vCPU is BSP and it is in normal status,
+ * if it receives the INIT it will ignore the IPI
+ *
+ */
+static void MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001(void)
+{
+	start_run_id = 33850;
+	wait_ap = 0;
+
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	/*restart ap*/
+	send_sipi();
+
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	/*wait ap send INIT done*/
+	bp_sync();
+
+	debug_print("%d %d\n", wait_ap, wait_bp);
+	report("\t\t %s", bsp_is_running == 0, __FUNCTION__);
 }
 
 static void test_MP_list(void)
 {
-	MP_initialization_rqmid_26995_vCPU_is_AP_in_normal_status_ignore_SIPI();
 	MP_initialization_rqmid_27160_expose_only_one_BSP_to_any_VM_001();
+	MP_initialization_rqmid_26995_vCPU_is_AP_in_normal_status_ignore_SIPI();
+	MP_initialization_rqmid_28469_ap_wait_for_sipi_ignore_init_001();
+	MP_initialization_rqmid_33849_ap_in_normal_handle_INIT_001();
+	MP_initialization_rqmid_26996_bsp_in_normal_ignore_SIPI_001();
+	//test_delay(5);
+	MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001();
 }
 
 static void print_case_list(void)
 {
 	printf("\t\t MP initialization feature case list:\n\r");
 	printf("\t\t MP initialization 64-Bits Mode:\n\r");
-	printf("\t\t Case ID:%d case name:%s\n\r", 26995u,
-		"Multiple-Processor Initialization_AP in normal status ignore SIPI_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27160u,
 		"Multiple-Processor Initialization_ACRN expose only one BSP to any VM_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 26995u,
+		"Multiple-Processor Initialization_AP in normal status ignore SIPI_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28469u,
+		"Multiple-Processor Initialization_AP in wait-for-SIPI status ignore INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 33849u,
+		"Multiple-Processor Initialization_vCPU is AP in normal status handle INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 26996u,
+		"Multiple-Processor Initialization_BSP in normal status ignore SIPI_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 33850u,
+		"Multiple-Processor Initialization_vCPU is BSP in normal status ignore INIT_001");
 }
 
 int ap_main(void)
 {
-	MP_initialization_rqmid_27160_ap();
+	ap_is_running++;
+	printf("ap start run %d\n", ap_is_running);
+	while(start_run_id == 0){
+		test_delay(1);
+	}
+	debug_print("ap start run %d\n", start_run_id);
+	switch(start_run_id)
+	{
+		case 27160:
+			MP_initialization_rqmid_27160_ap();
+			break;
+
+		case 26996:
+			MP_initialization_rqmid_26996_ap();
+			break;
+
+		case 33850:
+			MP_initialization_rqmid_33850_ap();
+			break;
+
+		default:
+			break;
+	}
 	return 0;
 }
 
 int main(void)
 {
+	bsp_is_running++;
 	print_case_list();
     test_MP_list();
     return report_summary();
