@@ -31,8 +31,6 @@ $(libcflat): CFLAGS += -ffreestanding -I $(SRCDIR)/lib -I lib
 COMMON_CFLAGS += -m$(bits)
 COMMON_CFLAGS += -O1
 
-include $(TEST_DIR)/Makefile.use_ap
-
 ENTRY_OFFSET = 0x400000
 # stack.o relies on frame pointers.
 KEEP_FRAME_POINTER := y
@@ -150,6 +148,8 @@ arch_clean:
 	$(TEST_DIR)/.*.d lib/x86/.*.d \
 	$(tests-api) api/*.o api/*.a api/.*.d \
 	$(case_table.o:.o=.c) $(TEST_DIR)/*/*.d $(TEST_DIR)/realmode/*.o $(TEST_DIR)/realmode/*.elf
+
+include $(TEST_DIR)/Makefile.use_ap
 
 api/%.o: CXXFLAGS += -m32 -std=gnu++11
 

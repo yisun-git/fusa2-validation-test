@@ -1,6 +1,6 @@
 $(TEST_DIR)/memory_order.o: CFLAGS += -DAP_USE_MAIN
 $(TEST_DIR)/memory_order.o: CFLAGS += -DAP_USE_2_MAIN
-$(TEST_DIR)/memory_order.o: $(TEST_DIR)/memory_order.c
+$(TEST_DIR)/memory_order.o: $(TEST_DIR)/memory_order.c $(libcflat)
 	@rm -rf  $(cstart.o)
 	@rm -rf  fwcfg.o
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
