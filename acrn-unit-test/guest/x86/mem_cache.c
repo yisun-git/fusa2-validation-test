@@ -388,10 +388,6 @@ void flush_tlb()
 void mem_cache_reflush_cache()
 {
 	u32 cr4;
-	/* write_cr4_bybit(CR4_BIT_PGE, 1);
-	 * cr4  = read_cr4();
-	 * debug_print("cr4.PGE=%d cr4.PAE=%d\n", cr4&(1<<CR4_BIT_PGE)?1:0, cr4&(1<<CR4_BIT_PAE)?1:0);
-	 * /
 
 	/*Disable interrupts;*/
 	irq_disable();
@@ -735,11 +731,6 @@ int main(int ac, char **av)
 
 #ifdef __x86_64__
 	setup_idt();
-
-	/* wbinvd invd ring3 need*/
-	/* extern unsigned char kernel_entry;
-	 * set_idt_entry(0x20, &kernel_entry, 3);
-	 * /
 
 	/*default PAT entry value 0007040600070406*/
 	set_mem_cache_type_all(0x0000000001040506);

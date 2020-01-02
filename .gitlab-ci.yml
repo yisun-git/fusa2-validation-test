@@ -23,7 +23,7 @@ build_job:
     - mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
     - cp -r ../acrn-unit-test/* acrn-unit-test/
     - cd acrn-unit-test/guest/
-    - sh make_all.sh
+    - ./make_all.sh
   artifacts:
     paths:
       - github/acrn-unit-test/guest/x86/*.bzimage
