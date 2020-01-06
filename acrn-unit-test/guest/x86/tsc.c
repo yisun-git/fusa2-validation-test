@@ -75,14 +75,14 @@ u64 msr_cal(u64 eax, u64 edx)
 
 static int enable_tsc_deadline_timer(void)
 {
-    uint32_t lvtt;
+	uint32_t lvtt;
 
-    if (cpuid(1).c & (1 << 24)) {
-        lvtt = APIC_LVT_TIMER_TSCDEADLINE | TSC_DEADLINE_TIMER_VECTOR;
-        apic_write(APIC_LVTT, lvtt);
-        return 1;
-    } else {
-        return 0;
+	if (cpuid(1).c & (1 << 24)) {
+		lvtt = APIC_LVT_TIMER_TSCDEADLINE | TSC_DEADLINE_TIMER_VECTOR;
+		apic_write(APIC_LVTT, lvtt);
+		return 1;
+	} else {
+		return 0;
     }
 }
 
@@ -164,28 +164,32 @@ static int tsc_rqmid_26015_invariant_tsc_suppor(void)
 	u32 result = 0;
 	u32 i = 0;
 
-	if(enable_tsc_deadline_timer()) {
+	if (enable_tsc_deadline_timer()) {
 		//printf("TSC deadline timer enabled\n");
 	} else {
 		//printf("TSC deadline timer not detected, aborting\n");
 		abort();
 	}
 
-	for(i=0; i<10; i++) {
+	for (i = 0; i < 10; i++) {
 		temp_tsc[i] = rdtsc();
 		start_tsc_deadline_timer(TSC_1000MS);
 
-		while(i+1>tdt_count) {
+		while ((i+1) > tdt_count) {
 			asm volatile("nop");
 		};
 		differ[i] = now_tsc - temp_tsc[i] - TSC_1000MS;
-		//printf("now_tsc:%ld - temp_tsc[%d]=%ld   diffe=%ld tdt_count:%d \n",now_tsc,i,temp_tsc[i],differ[i],tdt_count);
-		if((0 < differ[i]) && (differ[i] < TSC_10US)) {
+		/*
+		 * printf("now_tsc:%ld - temp_tsc[%d] = %ld   diffe = %ld tdt_count:%d \n",
+		 *	now_tsc, i, temp_tsc[i], differ[i], tdt_count);
+		 */
+		if ((0 < differ[i]) && (differ[i] < TSC_10US)) {
 			result++;
 		}
 	}
 	//printf("i:%d ,tdt_count:%d result:%d\n",i,tdt_count,result);
-	report("\t\t tsc_rqmid_26015_invariant_tsc_suppor,the TSC frequency always keep same based on the formulation", result == 10u);
+	report("\t\t tsc_rqmid_26015_invariant_tsc_suppor,the TSC frequency always keep same based on the formulation",
+		result == 10u);
 
 	return result;
 }
@@ -212,7 +216,8 @@ static void  tsc_rqmid_25226_init_unchanged_check(void)
 	u64 ap_tsc = 0;
 	u64 result_64 = 0;
 
-	report("\t\t tsc_rqmid_25226_init_unchanged_check,CR4_TSD is initialized to 0x0 following INIT", (ap_cr4_greg_long&CR4_TSD) == 0x0);
+	report("\t\t tsc_rqmid_25226_init_unchanged_check,CR4_TSD is initialized to 0x0 following INIT",
+		(ap_cr4_greg_long&CR4_TSD) == 0x0);
 
 	/* save TSC value to buffer */
 	temp_ap_eax_tscadj_greg_64[0] = ap_eax_tscadj_greg_64;
@@ -247,12 +252,14 @@ static void  tsc_rqmid_25226_init_unchanged_check(void)
 	temp_ap_tsc[1] = msr_cal(temp_ap_eax_tsc_greg_64[1], temp_ap_edx_tsc_greg_64[1]);
 
 	/* compare with first start up */
-	report("\t\t tsc_rqmid_25226_init_unchanged_check,IA32_TSC_ADJUST unchanged following INIT", temp_ap_tscadj[0]==temp_ap_tscadj[1]);
+	report("\t\t tsc_rqmid_25226_init_unchanged_check,IA32_TSC_ADJUST unchanged following INIT",
+		temp_ap_tscadj[0] == temp_ap_tscadj[1]);
 
-	report("\t\t tsc_rqmid_25226_init_unchanged_check,IA32_TSC_AUX unchanged following INIT", temp_ap_tscaux[0]==temp_ap_tscaux[1]);
+	report("\t\t tsc_rqmid_25226_init_unchanged_check,IA32_TSC_AUX unchanged following INIT",
+		temp_ap_tscaux[0] == temp_ap_tscaux[1]);
 
 	report("\t\t tsc_rqmid_25226_init_unchanged_check,IA32_TIME_STAMP_COUNTER unchanged following INIT",
-		(temp_ap_tsc[0]==temp_ap_tsc[1]) && (temp_ap_tsc[0]==0));
+		(temp_ap_tsc[0] == temp_ap_tsc[1]) && (temp_ap_tsc[0] == 0));
 
 	return;
 }
@@ -277,4 +284,4 @@ int main(void)
 	return report_summary();
 }
 
-#endif //__x86_64__
+#endif
