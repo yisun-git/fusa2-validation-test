@@ -8,16 +8,16 @@
 #define MP_APIC_ID_BSP	0
 #define MP_APIC_ID_AP	1
 #define USE_DEBUG
-#ifdef  USE_DEBUG
-#define debug_print(fmt, args...) 	printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
+#ifdef USE_DEBUG
+#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 #else
 #define debug_print(fmt, args...)
 #endif
-#define debug_error(fmt, args...) 	printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
+#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 
 #ifdef __x86_64__
 
-u32 bp_bsp_flag = 0,ap_bsp_flag = 0;
+u32 bp_bsp_flag = 0, ap_bsp_flag = 0;
 
 void test_delay(int time)
 {
@@ -25,7 +25,7 @@ void test_delay(int time)
 	u64 tsc;
 	tsc = rdtsc() + time*1000000000;
 
-	while (rdtsc() < tsc){
+	while (rdtsc() < tsc) {
 		;
 	}
 }
@@ -33,13 +33,13 @@ void test_delay(int time)
 static volatile int ap_is_running = 0;
 static volatile int bsp_is_running = 0;
 
-static volatile int start_run_id =0;
+static volatile int start_run_id = 0;
 
-static volatile int wait_bp=0;
-static volatile int wait_ap=0;
+static volatile int wait_bp = 0;
+static volatile int wait_ap = 0;
 void ap_sync()
 {
-	while(wait_bp != 1){
+	while (wait_bp != 1) {
 		debug_print("%d %d\n", wait_ap, wait_bp);
 		test_delay(1);
 	}
@@ -48,7 +48,7 @@ void ap_sync()
 
 void bp_sync()
 {
-	while(wait_ap != 1){
+	while (wait_ap != 1) {
 		debug_print("%d %d\n", wait_ap, wait_bp);
 		test_delay(1);
 	}
@@ -90,7 +90,7 @@ static void MP_initialization_rqmid_27160_expose_only_one_BSP_to_any_VM_001(void
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	bp_sync();
 
-	report("\t\t %s", (ap_bsp_flag==0) && (bp_bsp_flag!=0), __FUNCTION__);
+	report("\t\t %s", (ap_bsp_flag == 0) && (bp_bsp_flag != 0), __FUNCTION__);
 
 	/*notify ap end*/
 	wait_bp = 1;
@@ -164,7 +164,7 @@ static void MP_initialization_rqmid_26996_ap(void)
 
 	printf("ap send SIPI to bsp\n");
 	/* send SIPI to BSP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP , MP_APIC_ID_BSP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
 	debug_print("%d %d\n", wait_ap, wait_bp);
 
 	test_delay(5);
@@ -273,11 +273,11 @@ int ap_main(void)
 {
 	ap_is_running++;
 	printf("ap start run %d\n", ap_is_running);
-	while(start_run_id == 0){
+	while (start_run_id == 0) {
 		test_delay(1);
 	}
 	debug_print("ap start run %d\n", start_run_id);
-	switch(start_run_id)
+	switch (start_run_id)
 	{
 		case 27160:
 			MP_initialization_rqmid_27160_ap();
