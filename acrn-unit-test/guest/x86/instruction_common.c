@@ -10,15 +10,15 @@
 /* ---------------------- CPUID ---------------------- */
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX: 1
-*@test purpose:
-*      Confirm the processor support AVX feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H,ECX=0):ECX[bit 28]
-*@Expected Result:
-*      CPUID.(EAX=01H,ECX=0):ECX[bit 28] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX: 1
+ *@test purpose:
+ *      Confirm the processor support AVX feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H,ECX=0):ECX[bit 28]
+ *@Expected Result:
+ *      CPUID.(EAX=01H,ECX=0):ECX[bit 28] should be 1
+ */
 bool cpuid_avx_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -38,15 +38,15 @@ bool cpuid_avx_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX: 0
-*@test purpose:
-*      Confirm processor not support AVX Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H,ECX=0):ECX[bit 28]
-*@Expected Result:
-*      CPUID.(EAX=01H,ECX=0):ECX[bit 28] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX: 0
+ *@test purpose:
+ *      Confirm processor not support AVX Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H,ECX=0):ECX[bit 28]
+ *@Expected Result:
+ *      CPUID.(EAX=01H,ECX=0):ECX[bit 28] should be 0
+ */
 bool cpuid_avx_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -67,15 +67,15 @@ bool cpuid_avx_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX2: 1
-*@test purpose:
-*      Confirm processor support AVX2 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 5]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 5] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX2: 1
+ *@test purpose:
+ *      Confirm processor support AVX2 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 5]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 5] should be 1
+ */
 bool cpuid_avx2_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -95,15 +95,15 @@ bool cpuid_avx2_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX2: 0
-*@test purpose:
-*      Confirm processor not support AVX2 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 5]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 5] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX2: 0
+ *@test purpose:
+ *      Confirm processor not support AVX2 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 5]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 5] should be 0
+ */
 bool cpuid_avx2_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -124,15 +124,15 @@ bool cpuid_avx2_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512F: 0
-*@test purpose:
-*      Confirm processor not support AVX512F Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 16]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 16] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512F: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512F Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 16]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 16] should be 0
+ */
 bool cpuid_avx512f_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -153,15 +153,15 @@ bool cpuid_avx512f_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512DQ: 0
-*@test purpose:
-*      Confirm processor not support AVX512DQ Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 17]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 17]  should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512DQ: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512DQ Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 17]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 17]  should be 0
+ */
 bool cpuid_avx512dq_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -181,15 +181,15 @@ bool cpuid_avx512dq_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512VL: 0
-*@test purpose:
-*      Confirm processor not support AVX512VL Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 31]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 31]  should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512VL: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512VL Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 31]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 31]  should be 0
+ */
 bool cpuid_avx512vl_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -210,15 +210,15 @@ bool cpuid_avx512vl_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512BW: 0
-*@test purpose:
-*      Confirm processor not support AVX512BW Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 30] 
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 30]  should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512BW: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512BW Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 30]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 30]  should be 0
+ */
 bool cpuid_avx512bw_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -239,15 +239,15 @@ bool cpuid_avx512bw_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512ER: 0
-*@test purpose:
-*      Confirm processor not support AVX512ER Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 27]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 27]  should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512ER: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512ER Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 27]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 27]  should be 0
+ */
 bool cpuid_avx512er_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -268,15 +268,15 @@ bool cpuid_avx512er_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512PF: 0
-*@test purpose:
-*      Confirm processor not support AVX512PF Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 26]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 26]  should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512PF: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512PF Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 26]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 26]  should be 0
+ */
 bool cpuid_avx512pf_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -297,39 +297,39 @@ bool cpuid_avx512pf_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512_4VNNIW: 0
-*@test purpose:
-*      No step
-*@Design Steps:
-*      No step
-*@Expected Result:
-*      No step
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512_4VNNIW: 0
+ *@test purpose:
+ *      No step
+ *@Design Steps:
+ *      No step
+ *@Expected Result:
+ *      No step
+ */
 bool cpuid_avx512_4vnniw_(void){ return 0; }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512_4FMAPS: 0
-*@test purpose:
-*      No step
-*@Design Steps:
-*      No step
-*@Expected Result:
-*      No step
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512_4FMAPS: 0
+ *@test purpose:
+ *      No step
+ *@Design Steps:
+ *      No step
+ *@Expected Result:
+ *      No step
+ */
 bool cpuid_avx512_4fmaps_(void){ return 0; }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512CD: 0
-*@test purpose:
-*      Confirm processor not support AVX512CD Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 28]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 28] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512CD: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512CD Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 28]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 28] should be 0
+ */
 bool cpuid_avx512cd_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -350,15 +350,15 @@ bool cpuid_avx512cd_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512_VBMI: 0
-*@test purpose:
-*      Confirm processor not support AVX512_VBMI Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):ECX[bit 1]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):ECX[bit 1] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512_VBMI: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512_VBMI Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):ECX[bit 1]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):ECX[bit 1] should be 0
+ */
 bool cpuid_avx512_vbmi_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -378,15 +378,15 @@ bool cpuid_avx512_vbmi_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512_IFMA: 0
-*@test purpose:
-*      Confirm processor not support AVX512_IFMA Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 21]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 21] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512_IFMA: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512_IFMA Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 21]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 21] should be 0
+ */
 bool cpuid_avx512_ifma_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -407,15 +407,15 @@ bool cpuid_avx512_ifma_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512VL & CPUID.AVX512F: 0
-*@test purpose:
-*      Confirm either AVX512VL Feature or AVX512F Feature the processor is NOT supported
-*@Design Steps:
-*      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 16]}
-*@Expected Result:
-*      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 16]} should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512VL & CPUID.AVX512F: 0
+ *@test purpose:
+ *      Confirm either AVX512VL Feature or AVX512F Feature the processor is NOT supported
+ *@Design Steps:
+ *      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 16]}
+ *@Expected Result:
+ *      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 16]} should be 0
+ */
 bool cpuid_avx512vl_avx512f_to_0(void)
 {
 	unsigned long check_bit_vl = 0;
@@ -440,15 +440,15 @@ bool cpuid_avx512vl_avx512f_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512VL & CPUID.AVX512DQ: 0
-*@test purpose:
-*      Confirm either AVX512VL Feature or AVX512DQ Feature the processor is NOT supported
-*@Design Steps:
-*      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 17]}
-*@Expected Result:
-*      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 17]} should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512VL & CPUID.AVX512DQ: 0
+ *@test purpose:
+ *      Confirm either AVX512VL Feature or AVX512DQ Feature the processor is NOT supported
+ *@Design Steps:
+ *      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 17]}
+ *@Expected Result:
+ *      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 17]} should be 0
+ */
 bool cpuid_avx512vl_avx512dq_to_0(void)
 {
 	unsigned long check_bit_vl = 0;
@@ -472,15 +472,15 @@ bool cpuid_avx512vl_avx512dq_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512VL & CPUID.AVX512BW: 0
-*@test purpose:
-*      Confirm either AVX512VL Feature or AVX512BW Feature the processor is NOT supported
-*@Design Steps:
-*      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]}
-*@Expected Result:
-*      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]} should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512VL & CPUID.AVX512BW: 0
+ *@test purpose:
+ *      Confirm either AVX512VL Feature or AVX512BW Feature the processor is NOT supported
+ *@Design Steps:
+ *      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]}
+ *@Expected Result:
+ *      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]} should be 0
+ */
 bool cpuid_avx512vl_avx512bw_to_0(void)
 {
 	unsigned long check_bit_vl = 0;
@@ -505,15 +505,15 @@ bool cpuid_avx512vl_avx512bw_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512B & CPUID.W: 0
-*@test purpose:
-*      Confirm processor not support AVX512BW Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 30]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 30] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512B & CPUID.W: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512BW Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 30]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 30] should be 0
+ */
 bool cpuid_avx512b_w_to_0(void)
 {
 	unsigned long check_bit;
@@ -534,15 +534,15 @@ bool cpuid_avx512b_w_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512VL & CPUID.AVX512CD: 0
-*@test purpose:
-*      Confirm either AVX512VL Feature or AVX512CD Feature the processor is NOT supported
-*@Design Steps:
-*      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 28]}
-*@Expected Result:
-*      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 28]} should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512VL & CPUID.AVX512CD: 0
+ *@test purpose:
+ *      Confirm either AVX512VL Feature or AVX512CD Feature the processor is NOT supported
+ *@Design Steps:
+ *      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 28]}
+ *@Expected Result:
+ *      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 28]} should be 0
+ */
 bool cpuid_avx512vl_avx512cd_to_0(void)
 {
 	unsigned long check_bit_vl = 0;
@@ -566,15 +566,15 @@ bool cpuid_avx512vl_avx512cd_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512VL & CPUID.AVX512_VBMI: 0
-*@test purpose:
-*      Confirm either AVX512VL Feature or AVX512_VBMI Feature the processor is NOT supported
-*@Design Steps:
-*      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):ECX[bit 1]}
-*@Expected Result:
-*      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):ECX[bit 1]} should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512VL & CPUID.AVX512_VBMI: 0
+ *@test purpose:
+ *      Confirm either AVX512VL Feature or AVX512_VBMI Feature the processor is NOT supported
+ *@Design Steps:
+ *      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):ECX[bit 1]}
+ *@Expected Result:
+ *      {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} & {CPUID.(EAX=07H,ECX=0):ECX[bit 1]} should be 0
+ */
 bool cpuid_avx512vl_avx512vbmi_to_0(void)
 {
 	unsigned long check_bit_vl = 0;
@@ -599,15 +599,15 @@ bool cpuid_avx512vl_avx512vbmi_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512_IFMA & CPUID.AVX512VL: 0
-*@test purpose:
-*      Confirm either AVX512_IFMA Feature or AVX512VL Feature the processor is NOT supported
-*@Design Steps:
-*      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 21]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 31]}
-*@Expected Result:
-*      {CPUID.(EAX=07H,ECX=0):EBX[bit 21]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512_IFMA & CPUID.AVX512VL: 0
+ *@test purpose:
+ *      Confirm either AVX512_IFMA Feature or AVX512VL Feature the processor is NOT supported
+ *@Design Steps:
+ *      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 21]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 31]}
+ *@Expected Result:
+ *      {CPUID.(EAX=07H,ECX=0):EBX[bit 21]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 31]} should be 0
+ */
 bool cpuid_avx512ifma_avx512vl_to_0(void)
 {
 	unsigned long check_bit_vl = 0;
@@ -632,15 +632,15 @@ bool cpuid_avx512ifma_avx512vl_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512F & CPUID.AVX512BW: 0
-*@test purpose:
-*      Confirm either AVX512F Feature or AVX512BW Feature the processor is NOT supported
-*@Design Steps:
-*      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 16]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]}
-*@Expected Result:
-*      {CPUID.(EAX=07H,ECX=0):EBX[bit 16]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]} should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512F & CPUID.AVX512BW: 0
+ *@test purpose:
+ *      Confirm either AVX512F Feature or AVX512BW Feature the processor is NOT supported
+ *@Design Steps:
+ *      Check {CPUID.(EAX=07H,ECX=0):EBX[bit 16]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]}
+ *@Expected Result:
+ *      {CPUID.(EAX=07H,ECX=0):EBX[bit 16]} & {CPUID.(EAX=07H,ECX=0):EBX[bit 30]} should be 0
+ */
 bool cpuid_avx512f_avx512bw_to_0(void)
 {
 	unsigned long check_bit_f = 0;
@@ -665,15 +665,15 @@ bool cpuid_avx512f_avx512bw_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.AVX512D & CPUID.Q: 0
-*@test purpose:
-*      Confirm processor not support AVX512DQ Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 17]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 17] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.AVX512D & CPUID.Q: 0
+ *@test purpose:
+ *      Confirm processor not support AVX512DQ Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 17]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 17] should be 0
+ */
 bool cpuid_avx512d_avx512q_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -694,15 +694,15 @@ bool cpuid_avx512d_avx512q_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.W
-*@test purpose:
-*      Confirm processor not support W(Ways of associativity)
-*@Design Steps:
-*      Check CPUID.(EAX=04H):EBX[bit 31:22]
-*@Expected Result:
-*      CPUID.(EAX=04H):EBX[bit 31:22] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.W
+ *@test purpose:
+ *      Confirm processor not support W(Ways of associativity)
+ *@Design Steps:
+ *      Check CPUID.(EAX=04H):EBX[bit 31:22]
+ *@Expected Result:
+ *      CPUID.(EAX=04H):EBX[bit 31:22] should be 0
+ */
 bool cpuid_w_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -722,15 +722,15 @@ bool cpuid_w_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.P
-*@test purpose:
-*      Confirm processor not support P(Physical Line partitions)
-*@Design Steps:
-*      Check CPUID.(EAX=04H):EBX[bit 21:12]
-*@Expected Result:
-*      CPUID.(EAX=04H):EBX[bit 21:12] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.P
+ *@test purpose:
+ *      Confirm processor not support P(Physical Line partitions)
+ *@Design Steps:
+ *      Check CPUID.(EAX=04H):EBX[bit 21:12]
+ *@Expected Result:
+ *      CPUID.(EAX=04H):EBX[bit 21:12] should be 0
+ */
 bool cpuid_p_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -750,15 +750,15 @@ bool cpuid_p_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.L
-*@test purpose:
-*      Confirm processor not support L(System Coherency Line Size)
-*@Design Steps:
-*      Check CPUID.(EAX=04H):EBX[bit 11:0]
-*@Expected Result:
-*      CPUID.(EAX=04H):EBX[bit 11:0] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.L
+ *@test purpose:
+ *      Confirm processor not support L(System Coherency Line Size)
+ *@Design Steps:
+ *      Check CPUID.(EAX=04H):EBX[bit 11:0]
+ *@Expected Result:
+ *      CPUID.(EAX=04H):EBX[bit 11:0] should be 0
+ */
 bool cpuid_l_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -778,15 +778,15 @@ bool cpuid_l_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSSE3: 0
-*@test purpose:
-*      Insure processor not support SSSE3 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 9]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 9] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSSE3: 0
+ *@test purpose:
+ *      Insure processor not support SSSE3 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 9]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 9] should be 0
+ */
 bool cpuid_ssse3_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -807,15 +807,15 @@ bool cpuid_ssse3_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSSE3: 1
-*@test purpose:
-*      Insure processor support SSSE3 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 9]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 9] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSSE3: 1
+ *@test purpose:
+ *      Insure processor support SSSE3 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 9]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 9] should be 1
+ */
 bool cpuid_ssse3_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -836,15 +836,15 @@ bool cpuid_ssse3_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE: 1
-*@test purpose:
-*      Confirm processor support SSE Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):EDX[bit 25]
-*@Expected Result:
-*      CPUID.(EAX=01H):EDX[bit 25] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE: 1
+ *@test purpose:
+ *      Confirm processor support SSE Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):EDX[bit 25]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):EDX[bit 25] should be 1
+ */
 bool cpuid_sse_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -865,15 +865,15 @@ bool cpuid_sse_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE2: 1
-*@test purpose:
-*      Confirm processor support SSE2 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):EDX[bit 26]
-*@Expected Result:
-*      CPUID.(EAX=01H):EDX[bit 26] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE2: 1
+ *@test purpose:
+ *      Confirm processor support SSE2 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):EDX[bit 26]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):EDX[bit 26] should be 1
+ */
 bool cpuid_sse2_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -894,15 +894,15 @@ bool cpuid_sse2_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE3: 1
-*@test purpose:
-*      Confirm processor support SSE3 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 0]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 0] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE3: 1
+ *@test purpose:
+ *      Confirm processor support SSE3 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 0]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 0] should be 1
+ */
 bool cpuid_sse3_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -923,15 +923,15 @@ bool cpuid_sse3_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE4_1: 1
-*@test purpose:
-*      Confirm processor support SSE4.1 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 19]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 19] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE4_1: 1
+ *@test purpose:
+ *      Confirm processor support SSE4.1 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 19]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 19] should be 1
+ */
 bool cpuid_sse4_1_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -952,15 +952,15 @@ bool cpuid_sse4_1_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE4_2: 1
-*@test purpose:
-*      Confirm processor support SSE4.2 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 20]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 20] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE4_2: 1
+ *@test purpose:
+ *      Confirm processor support SSE4.2 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 20]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 20] should be 1
+ */
 bool cpuid_sse4_2_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -981,15 +981,15 @@ bool cpuid_sse4_2_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE: 0
-*@test purpose:
-*      Confirm processor not support SSE Feature
-*@Design Steps:
-*      Check CPUID.(EAX=0DH,ECX=0):EAX[bit 1]
-*@Expected Result:
-*      CPUID.(EAX=0DH,ECX=0):EAX[bit 1] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE: 0
+ *@test purpose:
+ *      Confirm processor not support SSE Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=0DH,ECX=0):EAX[bit 1]
+ *@Expected Result:
+ *      CPUID.(EAX=0DH,ECX=0):EAX[bit 1] should be 0
+ */
 bool cpuid_sse_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1010,15 +1010,15 @@ bool cpuid_sse_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE2: 0
-*@test purpose:
-*      Confirm processor not support SSE2 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):EDX[bit 26]
-*@Expected Result:
-*      CPUID.(EAX=01H):EDX[bit 26] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE2: 0
+ *@test purpose:
+ *      Confirm processor not support SSE2 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):EDX[bit 26]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):EDX[bit 26] should be 0
+ */
 bool cpuid_sse2_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1039,15 +1039,15 @@ bool cpuid_sse2_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE3: 0
-*@test purpose:
-*      Confirm processor not support SSE3 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 0]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 0] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE3: 0
+ *@test purpose:
+ *      Confirm processor not support SSE3 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 0]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 0] should be 0
+ */
 bool cpuid_sse3_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1068,15 +1068,15 @@ bool cpuid_sse3_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE4_1: 0
-*@test purpose:
-*      Confirm processor not support SSE4.1 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 19]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 19] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE4_1: 0
+ *@test purpose:
+ *      Confirm processor not support SSE4.1 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 19]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 19] should be 0
+ */
 bool cpuid_sse4_1_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1097,15 +1097,15 @@ bool cpuid_sse4_1_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SSE4_2: 0
-*@test purpose:
-*      Confirm processor not support SSE4.2 Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 20]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 20] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.SSE4_2: 0
+ *@test purpose:
+ *      Confirm processor not support SSE4.2 Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 20]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 20] should be 0
+ */
 bool cpuid_sse4_2_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1125,15 +1125,15 @@ bool cpuid_sse4_2_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.SMAP: 1
-*@test purpose:
-*      Confirm processor support SMAP Feature
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 20]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 20] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.SMAP: 1
+ *@test purpose:
+ *      Confirm processor support SMAP Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 20]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 20] should be 1
+ */
 bool cpuid_smap_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1154,15 +1154,15 @@ bool cpuid_smap_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.MMX: 1
-*@test purpose:
-*      Confirm processor support MMX Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):EDX[bit 23]
-*@Expected Result:
-*      CPUID.(EAX=01H):EDX[bit 23] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.MMX: 1
+ *@test purpose:
+ *      Confirm processor support MMX Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):EDX[bit 23]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):EDX[bit 23] should be 1
+ */
 bool cpuid_mmx_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1182,15 +1182,15 @@ bool cpuid_mmx_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.MMX: 0
-*@test purpose:
-*      Confirm processor not support MMX Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):EDX[bit 23]
-*@Expected Result:
-*      CPUID.(EAX=01H):EDX[bit 23] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.MMX: 0
+ *@test purpose:
+ *      Confirm processor not support MMX Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):EDX[bit 23]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):EDX[bit 23] should be 0
+ */
 bool cpuid_mmx_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1210,15 +1210,15 @@ bool cpuid_mmx_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.RDTSCP: 0
-*@test purpose:
-*      Confirm processor NOT support RDTSCP
-*@Design Steps:
-*      Check CPUID.(EAX=80000001H):EDX[bit 27]
-*@Expected Result:
-*      CPUID.(EAX=80000001H):EDX[bit 27] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.RDTSCP: 0
+ *@test purpose:
+ *      Confirm processor NOT support RDTSCP
+ *@Design Steps:
+ *      Check CPUID.(EAX=80000001H):EDX[bit 27]
+ *@Expected Result:
+ *      CPUID.(EAX=80000001H):EDX[bit 27] should be 0
+ */
 bool cpuid_rdtscp_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1238,15 +1238,15 @@ bool cpuid_rdtscp_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.RDTSCP: 1
-*@test purpose:
-*      Confirm processor support RDTSCP
-*@Design Steps:
-*      Check CPUID.(EAX=80000001H):EDX[bit 27]
-*@Expected Result:
-*      CPUID.(EAX=80000001H):EDX[bit 27] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.RDTSCP: 1
+ *@test purpose:
+ *      Confirm processor support RDTSCP
+ *@Design Steps:
+ *      Check CPUID.(EAX=80000001H):EDX[bit 27]
+ *@Expected Result:
+ *      CPUID.(EAX=80000001H):EDX[bit 27] should be 1
+ */
 bool cpuid_rdtscp_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1267,15 +1267,15 @@ bool cpuid_rdtscp_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.XSAVEOPT: 1
-*@test purpose:
-*      Confirm processor support XSAVEOPT
-*@Design Steps:
-*      Check CPUID.(EAX=0DH,ECX=1):EAX[bit 0]
-*@Expected Result:
-*      CPUID.(EAX=0DH,ECX=1):EAX[bit 0] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.XSAVEOPT: 1
+ *@test purpose:
+ *      Confirm processor support XSAVEOPT
+ *@Design Steps:
+ *      Check CPUID.(EAX=0DH,ECX=1):EAX[bit 0]
+ *@Expected Result:
+ *      CPUID.(EAX=0DH,ECX=1):EAX[bit 0] should be 1
+ */
 bool cpuid_xsaveopt_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1296,15 +1296,15 @@ bool cpuid_xsaveopt_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.ADX:0
-*@test purpose:
-*      Confirm processor NOT support ADX
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 19]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 19] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.ADX:0
+ *@test purpose:
+ *      Confirm processor NOT support ADX
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 19]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 19] should be 0
+ */
 bool cpuid_adx_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1325,15 +1325,15 @@ bool cpuid_adx_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.ADX:1
-*@test purpose:
-*      Confirm processor support ADX
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 19]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 19] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.ADX:1
+ *@test purpose:
+ *      Confirm processor support ADX
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 19]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 19] should be 1
+ */
 bool cpuid_adx_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1354,15 +1354,15 @@ bool cpuid_adx_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.LAHF-SAHFLOCK:1
-*@test purpose:
-*      Confirm processor support LAHF/SAHF
-*@Design Steps:
-*      Check CPUID.(EAX=80000001H):ECX[bit 0]
-*@Expected Result:
-*      CPUID.(EAX=80000001H):ECX[bit 0] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.LAHF-SAHFLOCK:1
+ *@test purpose:
+ *      Confirm processor support LAHF/SAHF
+ *@Design Steps:
+ *      Check CPUID.(EAX=80000001H):ECX[bit 0]
+ *@Expected Result:
+ *      CPUID.(EAX=80000001H):ECX[bit 0] should be 1
+ */
 bool cpuid_lahf_sahflock_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1383,15 +1383,15 @@ bool cpuid_lahf_sahflock_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.FSGSBASELOCK:1
-*@test purpose:
-*      Confirm processor support FSBASE/GSBASE
-*@Design Steps:
-*      Check CPUID.(EAX=07H,ECX=0):EBX[bit 0]
-*@Expected Result:
-*      CPUID.(EAX=07H,ECX=0):EBX[bit 0] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.FSGSBASELOCK:1
+ *@test purpose:
+ *      Confirm processor support FSBASE/GSBASE
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=0):EBX[bit 0]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=0):EBX[bit 0] should be 1
+ */
 bool cpuid_fsgsbaselock_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1412,15 +1412,15 @@ bool cpuid_fsgsbaselock_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.XSAVE:1
-*@test purpose:
-*      Confirm processor support XSAVE
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 26]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 26] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.XSAVE:1
+ *@test purpose:
+ *      Confirm processor support XSAVE
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 26]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 26] should be 1
+ */
 bool cpuid_xsave_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1441,15 +1441,15 @@ bool cpuid_xsave_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.OSXSAVE:1
-*@test purpose:
-*      Confirm OS has set CR4.OSXSAVE[bit 18] to enable XSETBV/XGETBV instructions to access XCR0
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 27]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 27] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.OSXSAVE:1
+ *@test purpose:
+ *      Confirm OS has set CR4.OSXSAVE[bit 18] to enable XSETBV/XGETBV instructions to access XCR0
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 27]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 27] should be 1
+ */
 bool cpuid_osxsave_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1470,15 +1470,15 @@ bool cpuid_osxsave_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.F16C: 0
-*@test purpose:
-*      Confirm processor not support F16C Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 29]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 29] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.F16C: 0
+ *@test purpose:
+ *      Confirm processor not support F16C Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 29]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 29] should be 0
+ */
 bool cpuid_f16c_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1499,15 +1499,15 @@ bool cpuid_f16c_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.F16C: 1
-*@test purpose:
-*      Confirm processor support F16C Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 29]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 29] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.F16C: 1
+ *@test purpose:
+ *      Confirm processor support F16C Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 29]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 29] should be 1
+ */
 bool cpuid_f16c_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1528,15 +1528,15 @@ bool cpuid_f16c_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.FMA: 0
-*@test purpose:
-*      Confirm processor not support FMA Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 12]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 12] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.FMA: 0
+ *@test purpose:
+ *      Confirm processor not support FMA Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 12]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 12] should be 0
+ */
 bool cpuid_fma_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1557,15 +1557,15 @@ bool cpuid_fma_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.FMA: 1
-*@test purpose:
-*      Confirm processor support FMA Feature
-*@Design Steps:
-*      Check CPUID.(EAX=01H):ECX[bit 12]
-*@Expected Result:
-*      CPUID.(EAX=01H):ECX[bit 12] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.FMA: 1
+ *@test purpose:
+ *      Confirm processor support FMA Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=01H):ECX[bit 12]
+ *@Expected Result:
+ *      CPUID.(EAX=01H):ECX[bit 12] should be 1
+ */
 bool cpuid_fma_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1586,15 +1586,15 @@ bool cpuid_fma_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.CMPXCHG16B: 1
-*@test purpose:
-*      Confirm processor support CMPXCHG16B
-*@Design Steps:
-*      Check CPUID.01H:ECX.CMPXCHG16B[bit 13]
-*@Expected Result:
-*      CPUID.01H:ECX.CMPXCHG16B[bit 13] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.CMPXCHG16B: 1
+ *@test purpose:
+ *      Confirm processor support CMPXCHG16B
+ *@Design Steps:
+ *      Check CPUID.01H:ECX.CMPXCHG16B[bit 13]
+ *@Expected Result:
+ *      CPUID.01H:ECX.CMPXCHG16B[bit 13] should be 1
+ */
 bool cpuid_cmpxchg16b_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1615,15 +1615,15 @@ bool cpuid_cmpxchg16b_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.CMPXCHG16B: 0
-*@test purpose:
-*      Confirm processor NOT support CMPXCHG16B
-*@Design Steps:
-*      Check CPUID.01H:ECX.CMPXCHG16B[bit 13]
-*@Expected Result:
-*      CPUID.01H:ECX.CMPXCHG16B[bit 13] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.CMPXCHG16B: 0
+ *@test purpose:
+ *      Confirm processor NOT support CMPXCHG16B
+ *@Design Steps:
+ *      Check CPUID.01H:ECX.CMPXCHG16B[bit 13]
+ *@Expected Result:
+ *      CPUID.01H:ECX.CMPXCHG16B[bit 13] should be 0
+ */
 bool cpuid_cmpxchg16b_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1644,15 +1644,15 @@ bool cpuid_cmpxchg16b_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.LAHF-SAHF: 1
-*@test purpose:
-*      Confirm processor support LAHF-SAH
-*@Design Steps:
-*      Check CPUID.80000001H:ECX.LAHF-SAHF[bit 0]
-*@Expected Result:
-*      CPUID.80000001H:ECX.LAHF-SAHF[bit 0] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.LAHF-SAHF: 1
+ *@test purpose:
+ *      Confirm processor support LAHF-SAH
+ *@Design Steps:
+ *      Check CPUID.80000001H:ECX.LAHF-SAHF[bit 0]
+ *@Expected Result:
+ *      CPUID.80000001H:ECX.LAHF-SAHF[bit 0] should be 1
+ */
 bool cpuid_lahf_sahf_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1674,15 +1674,15 @@ bool cpuid_lahf_sahf_to_1(void)
 
 
 /**
-*@Sub-Conditions:
-*      CPUID.LAHF-SAHF: 0
-*@test purpose:
-*      Confirm processor NOT support LAHF-SAHF
-*@Design Steps:
-*      Check CPUID.80000001H:ECX.LAHF-SAHF[bit 0]
-*@Expected Result:
-*      CPUID.80000001H:ECX.LAHF-SAHF[bit 0] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.LAHF-SAHF: 0
+ *@test purpose:
+ *      Confirm processor NOT support LAHF-SAHF
+ *@Design Steps:
+ *      Check CPUID.80000001H:ECX.LAHF-SAHF[bit 0]
+ *@Expected Result:
+ *      CPUID.80000001H:ECX.LAHF-SAHF[bit 0] should be 0
+ */
 bool cpuid_lahf_sahf_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1703,15 +1703,15 @@ bool cpuid_lahf_sahf_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.RDSEED: 1
-*@test purpose:
-*      Confirm processor support RDSEED
-*@Design Steps:
-*      Check CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18]
-*@Expected Result:
-*      CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.RDSEED: 1
+ *@test purpose:
+ *      Confirm processor support RDSEED
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18]
+ *@Expected Result:
+ *      CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18] should be 1
+ */
 bool cpuid_rdseed_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1732,15 +1732,15 @@ bool cpuid_rdseed_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.RDSEED: 0
-*@test purpose:
-*      Confirm processor NOT support RDSEED
-*@Design Steps:
-*      Check CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18]
-*@Expected Result:
-*      CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.RDSEED: 0
+ *@test purpose:
+ *      Confirm processor NOT support RDSEED
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18]
+ *@Expected Result:
+ *      CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18] should be 0
+ */
 bool cpuid_rdseed_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1761,15 +1761,15 @@ bool cpuid_rdseed_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.RDRAND: 1
-*@test purpose:
-*      Confirm processor support RDRAND
-*@Design Steps:
-*      Check CPUID.01H:ECX.RDRAND[bit 30]
-*@Expected Result:
-*      CPUID.01H:ECX.RDRAND[bit 30] should be 1
-*/
+ *@Sub-Conditions:
+ *      CPUID.RDRAND: 1
+ *@test purpose:
+ *      Confirm processor support RDRAND
+ *@Design Steps:
+ *      Check CPUID.01H:ECX.RDRAND[bit 30]
+ *@Expected Result:
+ *      CPUID.01H:ECX.RDRAND[bit 30] should be 1
+ */
 bool cpuid_rdrand_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1790,15 +1790,15 @@ bool cpuid_rdrand_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CPUID.RDRAND: 0
-*@test purpose:
-*      Confirm processor NOT support RDRAND
-*@Design Steps:
-*      Check CPUID.01H:ECX.RDRAND[bit 30]
-*@Expected Result:
-*      CPUID.01H:ECX.RDRAND[bit 30] should be 0
-*/
+ *@Sub-Conditions:
+ *      CPUID.RDRAND: 0
+ *@test purpose:
+ *      Confirm processor NOT support RDRAND
+ *@Design Steps:
+ *      Check CPUID.01H:ECX.RDRAND[bit 30]
+ *@Expected Result:
+ *      CPUID.01H:ECX.RDRAND[bit 30] should be 0
+ */
 bool cpuid_rdrand_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1821,15 +1821,15 @@ bool cpuid_rdrand_to_0(void)
 
 /* ---------------------- CR4 ---------------------- */
 /**
-*@Sub-Conditions:
-*      CR4.OSXSAVE: 0
-*@test purpose:
-*      Disable XSAVE feature set
-*@Design Steps:
-*      Clear CR4.OSXSAVE[bit 18] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR4.OSXSAVE: 0
+ *@test purpose:
+ *      Disable XSAVE feature set
+ *@Design Steps:
+ *      Clear CR4.OSXSAVE[bit 18] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr4_osxsave_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1851,15 +1851,15 @@ bool cr4_osxsave_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.OSXSAVE: 1
-*@test purpose:
-*      Enable XSAVE feature set
-*@Design Steps:
-*      Clear CR4.OSXSAVE[bit 18] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR4.OSXSAVE: 1
+ *@test purpose:
+ *      Enable XSAVE feature set
+ *@Design Steps:
+ *      Clear CR4.OSXSAVE[bit 18] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr4_osxsave_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1881,15 +1881,15 @@ bool cr4_osxsave_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.OSFXSR: 0
-*@test purpose:
-*      Disable FXSAVE and FXRSTOR feature set
-*@Design Steps:
-*      Clear CR4.OSXSAVE[bit 19] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR4.OSFXSR: 0
+ *@test purpose:
+ *      Disable FXSAVE and FXRSTOR feature set
+ *@Design Steps:
+ *      Clear CR4.OSXSAVE[bit 19] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr4_osfxsr_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1912,15 +1912,15 @@ bool cr4_osfxsr_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.OSFXSR: 1
-*@test purpose:
-*      Enable FXSAVE and FXRSTOR feature set
-*@Design Steps:
-*      Set CR4.OSXSAVE[bit 19] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR4.OSFXSR: 1
+ *@test purpose:
+ *      Enable FXSAVE and FXRSTOR feature set
+ *@Design Steps:
+ *      Set CR4.OSXSAVE[bit 19] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr4_osfxsr_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -1943,15 +1943,15 @@ bool cr4_osfxsr_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.OSXMMEXCPT: 0
-*@test purpose:
-*      Clear CR4.OSXMMEXCPT[bit 10]
-*@Design Steps:
-*      Clear CR4.OSXMMEXCPT[bit 10] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR4.OSXMMEXCPT: 0
+ *@test purpose:
+ *      Clear CR4.OSXMMEXCPT[bit 10]
+ *@Design Steps:
+ *      Clear CR4.OSXMMEXCPT[bit 10] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr4_osxmmexcpt_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -1974,16 +1974,16 @@ bool cr4_osxmmexcpt_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.OSXMMEXCPT: 1
-*@test purpose:
-*      To use CR4.OSXMMEXCPT[bit 10] to provide additional control
-*      over generation of SIMD floating-point exceptions
-*@Design Steps:
-*      Set CR4.OSXMMEXCPT[bit 10] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR4.OSXMMEXCPT: 1
+ *@test purpose:
+ *      To use CR4.OSXMMEXCPT[bit 10] to provide additional control
+ *      over generation of SIMD floating-point exceptions
+ *@Design Steps:
+ *      Set CR4.OSXMMEXCPT[bit 10] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr4_osxmmexcpt_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2008,16 +2008,16 @@ bool cr4_osxmmexcpt_to_1(void)
 
 /* ---------------------- CR0 ---------------------- */
 /**
-*@Sub-Conditions:
-*      CR0.PE: 0
-*@test purpose:
-*      Clear Page Enable flag, to enables real-address
-*      mode(only enables segment-level protection)
-*@Design Steps:
-*      Clear CR0.PE[bit 0] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.PE: 0
+ *@test purpose:
+ *      Clear Page Enable flag, to enables real-address
+ *      mode(only enables segment-level protection)
+ *@Design Steps:
+ *      Clear CR0.PE[bit 0] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_pe_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2040,16 +2040,16 @@ bool cr0_pe_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.PE: 1
-*@test purpose:
-*      Set Page Enable flag, to enables protected
-*      mode(only enables segment-level protection)
-*@Design Steps:
-*      Set CR0.PE[bit 0] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.PE: 1
+ *@test purpose:
+ *      Set Page Enable flag, to enables protected
+ *      mode(only enables segment-level protection)
+ *@Design Steps:
+ *      Set CR0.PE[bit 0] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_pe_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2072,15 +2072,15 @@ bool cr0_pe_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.MP: 0
-*@test purpose:
-*      Clear Monitor Coprocessor flag
-*@Design Steps:
-*      Clear CR0.MP[bit 1] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.MP: 0
+ *@test purpose:
+ *      Clear Monitor Coprocessor flag
+ *@Design Steps:
+ *      Clear CR0.MP[bit 1] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_mp_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2103,15 +2103,15 @@ bool cr0_mp_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.MP: 1
-*@test purpose:
-*      Set Monitor Coprocessor flag
-*@Design Steps:
-*      Set CR0.MP[bit 1] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.MP: 1
+ *@test purpose:
+ *      Set Monitor Coprocessor flag
+ *@Design Steps:
+ *      Set CR0.MP[bit 1] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_mp_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2134,15 +2134,15 @@ bool cr0_mp_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.EM: 0
-*@test purpose:
-*      Clear Emulation flag
-*@Design Steps:
-*      Clear CR0.EM[bit 2] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.EM: 0
+ *@test purpose:
+ *      Clear Emulation flag
+ *@Design Steps:
+ *      Clear CR0.EM[bit 2] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_em_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2165,15 +2165,15 @@ bool cr0_em_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.EM: 1
-*@test purpose:
-*      Set Emulation flag
-*@Design Steps:
-*      Set CR0.EM[bit 2] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.EM: 1
+ *@test purpose:
+ *      Set Emulation flag
+ *@Design Steps:
+ *      Set CR0.EM[bit 2] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_em_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2196,15 +2196,15 @@ bool cr0_em_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.TS: 0
-*@test purpose:
-*      Clear Task Switched flag
-*@Design Steps:
-*      Clear CR0.TS[bit 3] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.TS: 0
+ *@test purpose:
+ *      Clear Task Switched flag
+ *@Design Steps:
+ *      Clear CR0.TS[bit 3] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_ts_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2227,16 +2227,16 @@ bool cr0_ts_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.TS: 1
-*@test purpose:
-*      Sets Task Switched flag on every task switch and tests it
-*      when executing x87 FPU/MMX/SSE/SSE2/SSE3/SSSE3/SSE4 instructions
-*@Design Steps:
-*      Set CR0.TS[bit 3] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.TS: 1
+ *@test purpose:
+ *      Sets Task Switched flag on every task switch and tests it
+ *      when executing x87 FPU/MMX/SSE/SSE2/SSE3/SSSE3/SSE4 instructions
+ *@Design Steps:
+ *      Set CR0.TS[bit 3] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_ts_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2259,16 +2259,16 @@ bool cr0_ts_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.ET: 1
-*@test purpose:
-*      Extension Type,In the Pentium 4, Intel Xeon,
-*      and P6 family processors, this flag is hardcoded to 1
-*@Design Steps:
-*      Set CR0.ET[bit 4] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.ET: 1
+ *@test purpose:
+ *      Extension Type,In the Pentium 4, Intel Xeon,
+ *      and P6 family processors, this flag is hardcoded to 1
+ *@Design Steps:
+ *      Set CR0.ET[bit 4] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_et_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2291,15 +2291,15 @@ bool cr0_et_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.NE: 0
-*@test purpose:
-*      Clear Numeric Error flag,enables the PC-style x87 FPU error reporting mechanism
-*@Design Steps:
-*      Clear CR0.NE[bit 5] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.NE: 0
+ *@test purpose:
+ *      Clear Numeric Error flag,enables the PC-style x87 FPU error reporting mechanism
+ *@Design Steps:
+ *      Clear CR0.NE[bit 5] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_ne_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2322,15 +2322,15 @@ bool cr0_ne_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.NE: 1
-*@test purpose:
-*      Set Numeric Error flag,enables the native (internal) mechanism for reporting x87 FPU errors
-*@Design Steps:
-*      Set CR0.NE[bit 5] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.NE: 1
+ *@test purpose:
+ *      Set Numeric Error flag,enables the native (internal) mechanism for reporting x87 FPU errors
+ *@Design Steps:
+ *      Set CR0.NE[bit 5] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_ne_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2353,15 +2353,15 @@ bool cr0_ne_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.WP: 0
-*@test purpose:
-*      Clear Write Protect flag to allow supervisor-level procedures to write into read-only pages
-*@Design Steps:
-*      Clear CR0.WP[bit 16] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.WP: 0
+ *@test purpose:
+ *      Clear Write Protect flag to allow supervisor-level procedures to write into read-only pages
+ *@Design Steps:
+ *      Clear CR0.WP[bit 16] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_wp_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2384,15 +2384,15 @@ bool cr0_wp_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.WP: 1
-*@test purpose:
-*      Set Write Protect flag, inhibits supervisor-level procedures from writing into readonly pages
-*@Design Steps:
-*      Set CR0.WP[bit 16] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.WP: 1
+ *@test purpose:
+ *      Set Write Protect flag, inhibits supervisor-level procedures from writing into readonly pages
+ *@Design Steps:
+ *      Set CR0.WP[bit 16] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_wp_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2415,15 +2415,15 @@ bool cr0_wp_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.AM: 0
-*@test purpose:
-*      Disables automatic alignment checking
-*@Design Steps:
-*      Clear CR0.AM[bit 18] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.AM: 0
+ *@test purpose:
+ *      Disables automatic alignment checking
+ *@Design Steps:
+ *      Clear CR0.AM[bit 18] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_am_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2446,15 +2446,15 @@ bool cr0_am_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.AM: 1
-*@test purpose:
-*      Enables automatic alignment checking
-*@Design Steps:
-*      Set CR0.AM[bit 18] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.AM: 1
+ *@test purpose:
+ *      Enables automatic alignment checking
+ *@Design Steps:
+ *      Set CR0.AM[bit 18] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_am_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2477,15 +2477,15 @@ bool cr0_am_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.AC: 0
-*@test purpose:
-*      Disables automatic alignment checking
-*@Design Steps:
-*      Clear CR0.AM[bit 18] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.AC: 0
+ *@test purpose:
+ *      Disables automatic alignment checking
+ *@Design Steps:
+ *      Clear CR0.AM[bit 18] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_ac_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2508,15 +2508,15 @@ bool cr0_ac_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.AC: 1
-*@test purpose:
-*      Enables automatic alignment checking
-*@Design Steps:
-*      Set CR0.AM[bit 18] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.AC: 1
+ *@test purpose:
+ *      Enables automatic alignment checking
+ *@Design Steps:
+ *      Set CR0.AM[bit 18] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_ac_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2539,15 +2539,15 @@ bool cr0_ac_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.NW: 0
-*@test purpose:
-*      Enable write-back/write-throug
-*@Design Steps:
-*      Clear CR0.NW[bit 29] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.NW: 0
+ *@test purpose:
+ *      Enable write-back/write-throug
+ *@Design Steps:
+ *      Clear CR0.NW[bit 29] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_nw_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2570,15 +2570,15 @@ bool cr0_nw_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.NW: 1
-*@test purpose:
-*      Disable write-back/write-through
-*@Design Steps:
-*      Set CR0.NW[bit 29] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.NW: 1
+ *@test purpose:
+ *      Disable write-back/write-through
+ *@Design Steps:
+ *      Set CR0.NW[bit 29] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_nw_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2601,15 +2601,15 @@ bool cr0_nw_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.CD: 0
-*@test purpose:
-*      Enable Cache
-*@Design Steps:
-*      Clear CR0.CD[bit 30] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.CD: 0
+ *@test purpose:
+ *      Enable Cache
+ *@Design Steps:
+ *      Clear CR0.CD[bit 30] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_cd_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2632,15 +2632,15 @@ bool cr0_cd_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.CD: 1
-*@test purpose:
-*      Disable Cache
-*@Design Steps:
-*      Set CR0.CD[bit 30] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.CD: 1
+ *@test purpose:
+ *      Disable Cache
+ *@Design Steps:
+ *      Set CR0.CD[bit 30] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_cd_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2663,15 +2663,15 @@ bool cr0_cd_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.PG: 0
-*@test purpose:
-*      Disables paging, try to clear the bit of CR0.PG
-*@Design Steps:
-*      Clear CR0.PG[bit 31] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.PG: 0
+ *@test purpose:
+ *      Disables paging, try to clear the bit of CR0.PG
+ *@Design Steps:
+ *      Clear CR0.PG[bit 31] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_pg_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2694,17 +2694,17 @@ bool cr0_pg_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR0.PG: 1
-*@test purpose:
-*      Enables paging
-*@Design Steps:
-*      Instruction execute Normally:
-*      after set PE(CR0[bit 0]) to 0, set CR0.PG[bit 31] to 1;
-*      #GP: clear PE(CR0[bit 0]), then set CR0.PG[bit 31] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      CR0.PG: 1
+ *@test purpose:
+ *      Enables paging
+ *@Design Steps:
+ *      Instruction execute Normally:
+ *      after set PE(CR0[bit 0]) to 0, set CR0.PG[bit 31] to 1;
+ *      #GP: clear PE(CR0[bit 0]), then set CR0.PG[bit 31] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool cr0_pg_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2735,13 +2735,13 @@ bool cr0_pg_to_1(void)
 
 /* ---------------------- EFLAGS ---------------------- */
 /**
-*@Sub-Conditions:
-*      EFLAGS.CF: 1
-*@Design Steps:
-*      Set EFLAGS.CF[bit 0] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      EFLAGS.CF: 1
+ *@Design Steps:
+ *      Set EFLAGS.CF[bit 0] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool eflags_cf_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2765,15 +2765,15 @@ bool eflags_cf_to_1(void)
 
 
 /**
-*@Sub-Conditions:
-*      EFLAGS.AC: 1
-*@test purpose:
-*      Enable Alignment check/access control flag, when CR0.AM is set
-*@Design Steps:
-*      Set EFLAGS.AC[bit 18] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      EFLAGS.AC: 1
+ *@test purpose:
+ *      Enable Alignment check/access control flag, when CR0.AM is set
+ *@Design Steps:
+ *      Set EFLAGS.AC[bit 18] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool eflags_ac_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2796,21 +2796,21 @@ bool eflags_ac_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      EFLAGS.AC: 0
-*@test purpose:
-*      Clear Alignment check/access control flag
-*@Design Steps:
-*      Set EFLAGS.AC[bit 18] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      EFLAGS.AC: 0
+ *@test purpose:
+ *      Clear Alignment check/access control flag
+ *@Design Steps:
+ *      Set EFLAGS.AC[bit 18] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool eflags_ac_to_0(void)
 {
 	unsigned long check_bit = 0;
 	bool result = false;
 
-	printf("***** Set EFLAGS.AC[bit 18] to 1 *****\n");
+	printf("***** Set EFLAGS.AC[bit 18] to 0 *****\n");
 
 	check_bit = read_rflags();
 	check_bit &= (~(FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_18)));
@@ -2827,15 +2827,15 @@ bool eflags_ac_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      EFLAGS.NT: 1
-*@test purpose:
-*      Set EFLAGS.NT to 1 in the current task's TSS
-*@Design Steps:
-*      Set current TSS's EFLAGS.NT[bit 14] to 1
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception.
-*/
+ *@Sub-Conditions:
+ *      EFLAGS.NT: 1
+ *@test purpose:
+ *      Set EFLAGS.NT to 1 in the current task's TSS
+ *@Design Steps:
+ *      Set current TSS's EFLAGS.NT[bit 14] to 1
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception.
+ */
 bool eflags_nt_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -2858,15 +2858,15 @@ bool eflags_nt_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      EFLAGS.NT: 0
-*@test purpose:
-*      Set EFLAGS.NT to 0 in the current task's TSS
-*@Design Steps:
-*      Set current TSS's EFLAGS.NT[bit 14] to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      EFLAGS.NT: 0
+ *@test purpose:
+ *      Set EFLAGS.NT to 0 in the current task's TSS
+ *@Design Steps:
+ *      Set current TSS's EFLAGS.NT[bit 14] to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool eflags_nt_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -2889,19 +2889,19 @@ bool eflags_nt_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.R.W: 1
-*@test purpose:
-*      Try to Set the reserved bit combinations in CR4
-*@Design Steps:
-*      Set the reserved bit in CR4, such as CR4[12] or [23:31]
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception
-*/
+ *@Sub-Conditions:
+ *      CR4.R.W: 1
+ *@test purpose:
+ *      Try to Set the reserved bit combinations in CR4
+ *@Design Steps:
+ *      Set the reserved bit in CR4, such as CR4[12] or [23:31]
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception
+ */
 void write_cr4_checking(unsigned long val)
 {
 	asm volatile("mov %0, %%cr4\n\t"
-		: :"r"(val));
+		: : "r"(val));
 }
 void cr4_r_w_to_1(void)
 {
@@ -2909,46 +2909,46 @@ void cr4_r_w_to_1(void)
 	bool ret;
 	unsigned long check_bit = 0;
 
-	switch(get_random_value()%2){
-		case 0:
-			printf("***** Set the reserved bit in CR4, such as CR4[12]*****\n");
-			check_bit |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_12));
+	switch (get_random_value()%2) {
+	case 0:
+		printf("***** Set the reserved bit in CR4, such as CR4[12]*****\n");
+		check_bit |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_12));
 
-			fun = (gp_trigger_func)write_cr4_checking;
-			ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
+		fun = (gp_trigger_func)write_cr4_checking;
+		ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
 
-			/* Expected write #GP exception */
-			report("#GP exception", ret == true);
-			break;
-		case 1:
-			printf("***** Set the reserved bit in CR4, such as CR4[23:31]*****\n");
-			check_bit |= (FEATURE_INFORMATION_BIT_RANGE(CR4_RESEVED_BIT_23, FEATURE_INFORMATION_23));
+		/* Expected write #GP exception */
+		report("#GP exception", ret == true);
+		break;
+	case 1:
+		printf("***** Set the reserved bit in CR4, such as CR4[23:31]*****\n");
+		check_bit |= (FEATURE_INFORMATION_BIT_RANGE(CR4_RESEVED_BIT_23, FEATURE_INFORMATION_23));
 
-			fun = (gp_trigger_func)write_cr4_checking;
-			ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
+		fun = (gp_trigger_func)write_cr4_checking;
+		ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
 
-			/* Expected write #GP exception */
-			report("#GP exception", ret == true);
-			break;
+		/* Expected write #GP exception */
+		report("#GP exception", ret == true);
+		break;
 	}
 }
 
 /**
-*@Sub-Conditions:
-*      CR3.R.W: 1
-*@test purpose:
-*      Try to Set the reserved bit combinations in CR3
-*@Design Steps:
-*      Set the reserved bit in CR3, such as CR3[0:2] or [5:11]
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception
-*/
+ *@Sub-Conditions:
+ *      CR3.R.W: 1
+ *@test purpose:
+ *      Try to Set the reserved bit combinations in CR3
+ *@Design Steps:
+ *      Set the reserved bit in CR3, such as CR3[0:2] or [5:11]
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception
+ */
 void write_cr3_checking(unsigned long val)
 {
 	asm volatile(
 		"mov %0, %%cr3\n\t"
 		"1:"
-		: :"r"(val));
+		: : "r"(val));
 }
 
 void cr3_r_w_to_1(void)
@@ -2958,8 +2958,8 @@ void cr3_r_w_to_1(void)
 
 	unsigned long check_bit = 0;
 
-	switch(get_random_value()%2){
-		case 0:
+	switch (get_random_value()%2) {
+	case 0:
 		printf("***** Set the reserved bit in CR3, such as CR3[0:2]*****\n");
 		check_bit &= (FEATURE_INFORMATION_BIT_RANGE(CR3_RESEVED_BIT_2, FEATURE_INFORMATION_00));
 
@@ -2981,19 +2981,19 @@ void cr3_r_w_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR8.R.W: 1
-*@test purpose:
-*      Try to Set the reserved bit combinations in CR8
-*@Design Steps:
-*      Set the reserved bit in CR8[64:4]
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception
-*/
+ *@Sub-Conditions:
+ *      CR8.R.W: 1
+ *@test purpose:
+ *      Try to Set the reserved bit combinations in CR8
+ *@Design Steps:
+ *      Set the reserved bit in CR8[64:4]
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception
+ */
 void write_cr8_checking(unsigned long val)
 {
 	asm volatile("mov %0, %%cr8\n\t"
-		: :"r"(val));
+		: : "r"(val));
 }
 inline void cr8_r_w_to_1(void)
 {
@@ -3013,15 +3013,15 @@ inline void cr8_r_w_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.PCIDE: 1
-*@test purpose:
-*      Try to Set the bit of Enables process-context identifiers in CR4
-*@Design Steps:
-*      Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 1
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception
-*/
+ *@Sub-Conditions:
+ *      CR4.PCIDE: 1
+ *@test purpose:
+ *      Try to Set the bit of Enables process-context identifiers in CR4
+ *@Design Steps:
+ *      Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 1
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception
+ */
 bool cr4_pcide_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -3044,15 +3044,15 @@ bool cr4_pcide_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.PCIDE: 0
-*@test purpose:
-*      Try to clear the bit of Enables process-context identifiers in CR4
-*@Design Steps:
-*      Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 0
-*@Expected Result:
-*      No exception
-*/
+ *@Sub-Conditions:
+ *      CR4.PCIDE: 0
+ *@test purpose:
+ *      Try to clear the bit of Enables process-context identifiers in CR4
+ *@Design Steps:
+ *      Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 0
+ *@Expected Result:
+ *      No exception
+ */
 bool cr4_pcide_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -3076,26 +3076,26 @@ bool cr4_pcide_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.PCIDE_UP: true
-*@test purpose:
-*      Try to Set the bit of Enables process-context identifiers in CR4 
-*      with CR3[11:0] isn't equal with 000H
-*@Design Steps:
-*      Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 1, 
-*      when CR3[11:0] isn't equal with 000H
-*      (if CR3[11:0] isn't equal 000H, set CR3[11:0] to 000H)
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception
-*/
+ *@Sub-Conditions:
+ *      CR4.PCIDE_UP: true
+ *@test purpose:
+ *      Try to Set the bit of Enables process-context identifiers in CR4
+ *      with CR3[11:0] isn't equal with 000H
+ *@Design Steps:
+ *      Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 1,
+ *      when CR3[11:0] isn't equal with 000H
+ *      (if CR3[11:0] isn't equal 000H, set CR3[11:0] to 000H)
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception
+ */
 bool cr4_pcide_up_to_1(void)
 {
 	unsigned long check_bit = 0;
 	unsigned long cr3_tmp = 0;
 	bool result = false;
 
-	printf("***** Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 1"
-	"when CR3[11:0] isn't equal with 000H *****\n");
+	printf("***** Using MOV instruction to set the PCID-Enable Bit CR4.PCIDE[bit 17] to 1"	\
+		"when CR3[11:0] isn't equal with 000H *****\n");
 
 	check_bit = read_cr3();
 	cr3_tmp = read_cr3();
@@ -3120,15 +3120,15 @@ bool cr4_pcide_up_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.PAE: 0
-*@test purpose:
-*      Try to clear the bit of CR4.PAE[bit5] to leave IA-32e mode
-*@Design Steps:
-*      Using MOV instruction to clear CR4.PAE[bit 5] to 0
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception
-*/
+ *@Sub-Conditions:
+ *      CR4.PAE: 0
+ *@test purpose:
+ *      Try to clear the bit of CR4.PAE[bit5] to leave IA-32e mode
+ *@Design Steps:
+ *      Using MOV instruction to clear CR4.PAE[bit 5] to 0
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception
+ */
 bool cr4_pae_to_0(void)
 {
 	gp_trigger_func fun;
@@ -3148,15 +3148,15 @@ bool cr4_pae_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      CR4.PAE: 1
-*@test purpose:
-*      Try to set the bit of CR4.PAE[bit5] to leave IA-32e mode
-*@Design Steps:
-*      Using MOV instruction to set CR4.PAE[bit 5] to 1
-*@Expected Result:
-*      No exception
-*/
+ *@Sub-Conditions:
+ *      CR4.PAE: 1
+ *@test purpose:
+ *      Try to set the bit of CR4.PAE[bit5] to leave IA-32e mode
+ *@Design Steps:
+ *      Using MOV instruction to set CR4.PAE[bit 5] to 1
+ *@Expected Result:
+ *      No exception
+ */
 bool cr4_pae_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -3182,15 +3182,15 @@ bool cr4_pae_to_1(void)
 /* ---------------------- GP ---------------------- */
 
 /**
-*@Sub-Conditions:
-*      DR7.GD: 0
-*@test purpose:
-*      Clear GD flag in DR7(general detect enable flag)
-*@Design Steps:
-*      Set DR7.GD[bit 13]  to 0
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      DR7.GD: 0
+ *@test purpose:
+ *      Clear GD flag in DR7(general detect enable flag)
+ *@Design Steps:
+ *      Set DR7.GD[bit 13]  to 0
+ *@Expected Result:
+ *      N/A
+ */
 bool dr7_gd_to_0(void)
 {
 	unsigned long check_bit = 0;
@@ -3213,15 +3213,15 @@ bool dr7_gd_to_0(void)
 }
 
 /**
-*@Sub-Conditions:
-*      DR7.GD: 1
-*@test purpose:
-*      Set GD flag in DR7(general detect enable flag)
-*@Design Steps:
-*      Set DR7.GD[bit 13] to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      DR7.GD: 1
+ *@test purpose:
+ *      Set GD flag in DR7(general detect enable flag)
+ *@Design Steps:
+ *      Set DR7.GD[bit 13] to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool dr7_gd_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -3244,20 +3244,20 @@ bool dr7_gd_to_1(void)
 }
 
 /**
-*@Sub-Conditions:
-*      DR6: 1
-*@test purpose:
-*      Using MOV instruction to write a 1 to any of bits 63:32 in DR6
-*@Design Steps:
-*      Using MOV instruction to set DR6[any bit 32:63]to 1
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception in real mode
-*/
+ *@Sub-Conditions:
+ *      DR6: 1
+ *@test purpose:
+ *      Using MOV instruction to write a 1 to any of bits 63:32 in DR6
+ *@Design Steps:
+ *      Using MOV instruction to set DR6[any bit 32:63]to 1
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception in real mode
+ */
 void write_dr6_checking(unsigned long val)
 {
 	asm volatile("mov %0, %%dr6\n\t"
-		: :"r"(val)
-		:"memory");
+		: : "r"(val)
+		: "memory");
 }
 
 #ifdef __x86_64__
@@ -3281,20 +3281,20 @@ void dr6_to_1(void)
 #endif
 
 /**
-*@Sub-Conditions:
-*      DR7: 1
-*@test purpose:
-*      Using MOV instruction to write a 1 to any of bits 63:32 in DR7
-*@Design Steps:
-*      Using MOV instruction to set DR7[any bit 32:63] to 1
-*@Expected Result:
-*      When executing the instruction in next step will generate #GP exception in real mode
-*/
+ *@Sub-Conditions:
+ *      DR7: 1
+ *@test purpose:
+ *      Using MOV instruction to write a 1 to any of bits 63:32 in DR7
+ *@Design Steps:
+ *      Using MOV instruction to set DR7[any bit 32:63] to 1
+ *@Expected Result:
+ *      When executing the instruction in next step will generate #GP exception in real mode
+ */
 void write_dr7_checking(unsigned long val)
 {
 	asm volatile("mov %0, %%dr7\n\t"
-		: :"r"(val)
-		:"memory");
+		: : "r"(val)
+		: "memory");
 }
 #ifdef __x86_64__
 void dr7_to_1(void)
@@ -3316,15 +3316,15 @@ void dr7_to_1(void)
 #endif
 
 /**
-*@Sub-Conditions:
-*      OF_Flag: 1
-*@test purpose:
-*      Set OF flag to 1
-*@Design Steps:
-*      Set EFLAGE.OF to 1
-*@Expected Result:
-*      N/A
-*/
+ *@Sub-Conditions:
+ *      OF_Flag: 1
+ *@test purpose:
+ *      Set OF flag to 1
+ *@Design Steps:
+ *      Set EFLAGE.OF to 1
+ *@Expected Result:
+ *      N/A
+ */
 bool of_flag_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -3458,19 +3458,19 @@ int do_at_ring2(void (*fn)(void), const char *arg)
 	return ret;
 }
 
-__unused void config_gdt_description(u32 index,u8 dpl,u8 is_code)
+__unused void config_gdt_description(u32 index, u8 dpl, u8 is_code)
 {
 	__unused u32 base;
-	__unused u8 access,gran;
+	__unused u8 access, gran;
 	__unused short selector;
 	__unused u32 functtion;
 	u8 flag = 0;
 
-	gdt_entry_t   *oldpgdt,*pnewgdt;
+	gdt_entry_t   *oldpgdt, *pnewgdt;
 
 	struct descriptor_table_ptr gdt_descriptor_table;
 
-	if(index == 0 || index >=15)
+	if (index == 0 || index >= 15)
 		return;
 
 	sgdt(&gdt_descriptor_table);
@@ -3481,17 +3481,17 @@ __unused void config_gdt_description(u32 index,u8 dpl,u8 is_code)
 	pnewgdt->limit_low = SEGMENT_LIMIT;
 	pnewgdt->base_low = 0x0000;
 
-	if(is_code)
+	if (is_code)
 		flag = SEGMENT_TYPE_CODE_EXE_RAED_ACCESSED;
 	else
 		flag = SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED;
 	pnewgdt->access =  SEGMENT_PRESENT_SET|(dpl&0x60)|DESCRIPTOR_TYPE_CODE_OR_DATA|(flag&0xF);
-	pnewgdt->base_high= 0x00;
-	pnewgdt->base_middle= 0x00;
-	if(is_code){
+	pnewgdt->base_high = 0x00;
+	pnewgdt->base_middle = 0x00;
+	if (is_code) {
 		pnewgdt->granularity = GRANULARITY_SET|L_64_BIT_CODE_SEGMENT|0xF;
 	}
-	else{
+	else {
 		pnewgdt->granularity = GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT|0xF;
 	}
 	//printf("*******index=%d, table=%lx\n", index, *(u64 *)pnewgdt);
@@ -3505,19 +3505,19 @@ __unused void init_gdt_description(void)
 
 	index = 11; // 32-bit code segment [OS services] ,
 	dpl = DPLEVEL1;
-	config_gdt_description(index,dpl,1);
+	config_gdt_description(index, dpl, 1);
 
 	index = 12; // 32-bit data segment [OS services] ,
 	dpl = DPLEVEL1;
-	config_gdt_description(index,dpl,0);
+	config_gdt_description(index, dpl, 0);
 
 	index = 13; // 32-bit code segment [OS services] ,
 	dpl = DPLEVEL2;
-	config_gdt_description(index,dpl,1);
+	config_gdt_description(index, dpl, 1);
 
 	index = 14; // 32-bit data segment [OS services] ,
 	dpl = DPLEVEL2;
-	config_gdt_description(index,dpl,0);
+	config_gdt_description(index, dpl, 0);
 }
 
 int do_at_ring3(void (*fn)(void), const char *arg)
@@ -3600,9 +3600,9 @@ void set_cr0_AM(int am)
 
 	cr0 &= ~CR0_AM_MASK;
 	if (am)
-	cr0 |= CR0_AM_MASK;
+		cr0 |= CR0_AM_MASK;
 	if (old_cr0 != cr0)
-	write_cr0(cr0);
+		write_cr0(cr0);
 }
 
 void set_eflag_ac(int ac)
@@ -3623,7 +3623,7 @@ uint64_t get_random_value(void)
 		"mov %%rax, %0\n"
 		: "=r"(random)
 		:
-		:"%rax");
+		: "%rax");
 	return random;
 }
 #else
@@ -3636,7 +3636,7 @@ uint64_t get_random_value(void)
 		"mov %%eax, %0\n"
 		: "=r"(random)
 		:
-		:"%eax");
+		: "%eax");
 	return random;
 }
 #endif

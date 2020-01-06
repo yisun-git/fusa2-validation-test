@@ -1,7 +1,7 @@
 #ifndef __INSTRUCTION_COMMON_H
 #define __INSTRUCTION_COMMON_H
 
-struct gp_fun_index{
+struct gp_fun_index {
 	int rqmid;
 	void (*func)(void);
 };
@@ -129,10 +129,10 @@ typedef void (*gp_trigger_func)(void *data);
 #endif
 
 #define CPUID_1_ECX_FMA				(1 << 12)
-#define CPUID_1_ECX_XSAVE	    		(1 << 26)
-#define CPUID_1_ECX_OSXSAVE	    		(1 << 27)
-#define CPUID_1_ECX_AVX	                	(1 << 28)
-#define CPUID_1_ECX_F16C	                (1 << 29)
+#define CPUID_1_ECX_XSAVE			(1 << 26)
+#define CPUID_1_ECX_OSXSAVE			(1 << 27)
+#define CPUID_1_ECX_AVX				(1 << 28)
+#define CPUID_1_ECX_F16C			(1 << 29)
 
 #define X86_CR0_EM				(1 << 2)
 
@@ -154,9 +154,9 @@ typedef void (*gp_trigger_func)(void *data);
 #define CPUID_ECX_DEFUL			0x0
 
 /*
-* CPUID.(DH:0):EAX
-* Processor Extended State Enumeration Main Leaf (EAX = 0DH, ECX = 0)
-*/
+ * CPUID.(DH:0):EAX
+ * Processor Extended State Enumeration Main Leaf (EAX = 0DH, ECX = 0)
+ */
 #define STATE_X87_BIT			0
 #define STATE_SSE_BIT			1
 #define STATE_AVX_BIT			2
@@ -167,22 +167,22 @@ typedef void (*gp_trigger_func)(void *data);
 #define STATE_PT_BIT			8
 #define STATE_PKRU_BIT			9
 #define STATE_HDC_BIT			13
-#define STATE_X87		    (1 << STATE_X87_BIT)
-#define STATE_SSE		    (1 << STATE_SSE_BIT)
-#define STATE_AVX		    (1 << STATE_AVX_BIT)
-#define STATE_MPX_BNDREGS	    (1 << STATE_MPX_BNDREGS_BIT)
-#define STATE_MPX_BNDCSR	    (1 << STATE_MPX_BNDCSR_BIT)
-#define STATE_AVX_512		    (0b111 << STATE_AVX_512_OPMASK)
-#define STATE_PT		    (1 << STATE_PT_BIT)
-#define STATE_PKRU		    (1 << STATE_PKRU_BIT)
-#define STATE_HDC		    (1 << STATE_HDC_BIT)
+#define STATE_X87			(1 << STATE_X87_BIT)
+#define STATE_SSE			(1 << STATE_SSE_BIT)
+#define STATE_AVX			(1 << STATE_AVX_BIT)
+#define STATE_MPX_BNDREGS		(1 << STATE_MPX_BNDREGS_BIT)
+#define STATE_MPX_BNDCSR		(1 << STATE_MPX_BNDCSR_BIT)
+#define STATE_AVX_512			(7 << STATE_AVX_512_OPMASK)
+#define STATE_P				(1 << STATE_PT_BIT)
+#define STATE_PKRU			(1 << STATE_PKRU_BIT)
+#define STATE_HDC			(1 << STATE_HDC_BIT)
 #define KBL_NUC_SUPPORTED_XCR0		0x1F
 #define XCR0_BIT10_BIT63		0xFFFFFFFFFFFFFC00
 
 /*
-* CPUID.(DH:1):EAX
-* Processor Extended State Enumeration Sub-leaf (EAX = 0DH, ECX = 1)
-*/
+ * CPUID.(DH:1):EAX
+ * Processor Extended State Enumeration Sub-leaf (EAX = 0DH, ECX = 1)
+ */
 #define SUPPORT_XSAVEOPT_BIT		0
 #define SUPPORT_XSAVEC_BIT		1
 #define SUPPORT_XGETBV_BIT		2
@@ -195,16 +195,16 @@ typedef void (*gp_trigger_func)(void *data);
 #define SUPPORT_XCR0			0x7
 
 /*
-* CPUID.(1:0):ECX
-* Basic CPUID Information.
-*/
+ * CPUID.(1:0):ECX
+ * Basic CPUID Information.
+ */
 #define SUPPORT_OSXSAVE_BIT		27
 #define SUPPORT_OSXSAVE			(1 << SUPPORT_OSXSAVE_BIT)
 
 /*
-* CPUID.(7:0):EBX
-* Structured Extended Feature Flags Enumeration Leaf (Output depends on ECX input value).
-*/
+ * CPUID.(7:0):EBX
+ * Structured Extended Feature Flags Enumeration Leaf (Output depends on ECX input value).
+ */
 #define SUPPORT_AVX2_BIT		5
 #define SUPPORT_AVX512F_BIT		16
 #define SUPPORT_AVX512ER_BIT		27
@@ -234,9 +234,9 @@ typedef void (*gp_trigger_func)(void *data);
 
 #define ALIGNED(x) __attribute__((aligned(x)))
 
-struct xsave_st{
+struct xsave_st {
 	u64 num_xsave __attribute__((aligned(8)));
-}xsave_st;
+} xsave_st;
 
 typedef unsigned __attribute__((vector_size(16))) sse128;
 typedef unsigned __attribute__((vector_size(32))) avx256;
@@ -253,17 +253,17 @@ typedef union {
 } avx_union;
 
 /*
-*****************************************************
+ *****************************************************
  *XSAVE structure in below:
- *fpu_sse_struct: 	416 bytes;
- *xsave_header_struct: 	64 bytes;
- *xsave_avx_struct : 	256 bytes;
- *xsave_bndreg_struct: 	64 bytes;
+ *fpu_sse_struct:	416 bytes;
+ *xsave_header_struct:	64 bytes;
+ *xsave_avx_struct:	256 bytes;
+ *xsave_bndreg_struct:	64 bytes;
  *xsave_bndcsr_struct:	16 bytes;
 
  *Total: Only support: X87/SSE/AVX/MPX;
- *xsave_area_struct: 	1040 bytes;
-***/
+ *xsave_area_struct:	1040 bytes;
+ ***/
 typedef unsigned __attribute__((vector_size(16))) fpu_st;
 typedef unsigned __attribute__((vector_size(16))) sse_xmm;
 typedef unsigned __attribute__((vector_size(16))) avx_ymm;
@@ -289,7 +289,7 @@ typedef struct xsave_header_struct {
     u64 xstate_bv;
     u64 xcomp_bv;
     u64 reserved[6];
-}xsave_header_t;
+} xsave_header_t;
 
 /* Ext. save area 2: AVX State 256bytes*/
 typedef struct xsave_avx_struct {
@@ -308,8 +308,8 @@ typedef struct xsave_bndcsr_struct {
 } xsave_bndcsr_t;
 
 /* we only support x87&sse&avx&mpx for XSAVE feature set now!!
-   1040 bytes totally
-*/
+ *  1040 bytes totally
+ */
 typedef struct xsave_area_struct {
     u8 fpu_sse[512];
     struct xsave_header_struct xsave_hdr;//64
@@ -321,16 +321,16 @@ typedef struct xsave_area_struct {
 } __attribute__((packed)) xsave_area_t;
 
 /* xsave_dump_struct:752 bytes totally*/
-typedef struct xsave_dump_struct{
+typedef struct xsave_dump_struct {
     struct fpu_sse_struct fpu_sse;// 416 bytes
     struct xsave_avx_struct ymm;// 256 bytes
     struct xsave_bndreg_struct bndregs;//64 bytes
     struct xsave_bndcsr_struct bndcsr;//16 bytes
-}xsave_dump_t;//
+} xsave_dump_t;
 /***
  *XSAVE structure end!
-******************************************************
-*/
+ ******************************************************
+ */
 /*----------------------------- avx_steven.h end----------------------*/
 
 /*----------------------------- gp_steven.h ----------------------*/
@@ -338,8 +338,8 @@ typedef struct xsave_dump_struct{
 #define NULL_SEL	0x0000
 
 struct descriptor_table {
-        u16 limit;
-        uint64_t base;
+	u16 limit;
+	uint64_t base;
 } __packed;
 
 struct lseg_st
@@ -418,12 +418,12 @@ static volatile bool xm_ocurred = false;
 /*----------------------------- gp_steven.c end----------------------*/
 
 /* --------------------------common instruction(cpuid, cr*)--------------------------------------*/
-#define CHECK_INSTRUCTION_INFO(str, func)do { 			\
-         bool result = func();							\
-         if (result != true) {							\
-				 return;								\
-         }												\
-}while(0)
+#define CHECK_INSTRUCTION_INFO(str, func)do {		\
+	bool result = func();				\
+	if (result != true) {				\
+		return;					\
+	}						\
+} while (0)
 
 /* ---------------------- CPUID ---------------------- */
 /**
@@ -1203,7 +1203,7 @@ bool cr4_osxsave_to_1(void);
 
 /**
  *@Sub-Conditions:
- *      CR4.OSFXSR: 0 
+ *      CR4.OSFXSR: 0
  *@test purpose:
  *      Disable FXSAVE and FXRSTOR feature set
  *@Design Steps:
@@ -1215,7 +1215,7 @@ bool cr4_osfxsr_to_0(void);
 
 /**
  *@Sub-Conditions:
- *      CR4.OSFXSR: 1 
+ *      CR4.OSFXSR: 1
  *@test purpose:
  *      Enable FXSAVE and FXRSTOR feature set
  *@Design Steps:
@@ -1804,7 +1804,7 @@ int do_at_ring1(void (*fn)(void), const char *arg);
 
 int do_at_ring2(void (*fn)(void), const char *arg);
 
-void config_gdt_description(u32 index,u8 dpl,u8 code_data_segmnet);
+void config_gdt_description(u32 index, u8 dpl, u8 code_data_segmnet);
 
 void init_gdt_description(void);
 

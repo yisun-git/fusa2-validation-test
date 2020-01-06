@@ -20,12 +20,16 @@ static u16 *creat_non_aligned_add(void)
 	return non_aligned_addr;
 }
 
-u64 non_canon_addr;
-static u64* creat_non_canon_add(void)
+u64 non_canon_addr = 0;
+static u64 *creat_non_canon_add(void)
 {
 	u64 address = (unsigned long)&non_canon_addr;
 
-	address = (address|(1UL<<63));
+	if ((address >> 63) & 1) {
+		address = (address & (~(1ull << 63)));
+	} else {
+		address = (address|(1UL<<63));
+	}
 	return (u64 *)address;
 }
 
@@ -84,12 +88,12 @@ void load_gdt_and_set_segment_rigster(void)
 /*--------------------------------Test case------------------------------------*/
 #ifdef __x86_64__
 /*
-* @brief case name: 31315: Data transfer instructions Support_64 bit Mode_MOV_#GP_007.
-*
-* Summary:  Under 64 bit Mode and CPL0,
-*  If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31315: Data transfer instructions Support_64 bit Mode_MOV_#GP_007.
+ *
+ * Summary:  Under 64 bit Mode and CPL0,
+ *  If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
+ *  executing MOV shall generate #GP.
+ */
 static void mov_gp_007(void)
 {
 	u64 r_a;
@@ -111,12 +115,12 @@ static void  gp_rqmid_31315_data_transfer_mov_gp_007(void)
 }
 
 /*
-* @brief case name: 31318: Data transfer instructions Support_64 bit Mode_MOV_#GP_008.
-*
-* Summary:  Under 64 bit Mode and CPL1,
-* If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
-* executing MOV shall generate #GP.
-*/
+ * @brief case name: 31318: Data transfer instructions Support_64 bit Mode_MOV_#GP_008.
+ *
+ * Summary:  Under 64 bit Mode and CPL1,
+ * If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
+ * executing MOV shall generate #GP.
+ */
 static void mov_gp_008(void)
 {
 	u64 r_a = 1;
@@ -138,12 +142,12 @@ static void gp_rqmid_31318_data_transfer_mov_gp_008(void)
 }
 
 /*
-* @brief case name: 31321: Data transfer instructions Support_64 bit Mode_MOV_#GP_009.
-*
-* Summary:  Under 64 bit Mode and CPL2,
-* If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
-* executing MOV shall generate #GP.
-*/
+ * @brief case name: 31321: Data transfer instructions Support_64 bit Mode_MOV_#GP_009.
+ *
+ * Summary:  Under 64 bit Mode and CPL2,
+ * If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
+ * executing MOV shall generate #GP.
+ */
 static void mov_gp_009(void)
 {
 	u32 r_a = 1;
@@ -165,15 +169,17 @@ static void  gp_rqmid_31321_data_transfer_mov_gp_009(void)
 }
 
 /*
-* @brief case name: 31324: Data transfer instructions Support_64 bit Mode_MOV_#GP_010.
-*
-* Summary:  Under 64 bit Mode and CPL3,
-* If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack), 
-* executing MOV shall generate #GP.
-*/
+ * @brief case name: 31324: Data transfer instructions Support_64 bit Mode_MOV_#GP_010.
+ *
+ * Summary:  Under 64 bit Mode and CPL3,
+ * If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
+ * executing MOV shall generate #GP.
+ */
 static void mov_gp_010(void)
 {
 	u16 r_a = 1;
+
+	eflags_ac_to_0();
 	asm volatile("mov %1, %0 \n"
 	: "=r"(r_a)
 	: "m"(*(creat_non_canon_add())));
@@ -192,12 +198,12 @@ static void  gp_rqmid_31324_data_transfer_mov_gp_010(void)
 }
 
 /*
-* @brief case name: 31327: Data transfer instructions Support_64 bit Mode_MOV_#GP_011.
-*
-* Summary: Under 64 bit Mode and CPL3,
-*  If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31327: Data transfer instructions Support_64 bit Mode_MOV_#GP_011.
+ *
+ * Summary: Under 64 bit Mode and CPL3,
+ *  If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
+ *  executing MOV shall generate #GP.
+ */
 static void mov_gp_011(void)
 {
 	u32 r_a = 1;
@@ -225,12 +231,12 @@ static void  gp_rqmid_31327_data_transfer_mov_gp_011(void)
 }
 
 /*
-* @brief case name: 31330: Data transfer instructions Support_64 bit Mode_MOV_#GP_012.
-*
-* Summary: Under 64 bit Mode and CPL3,
-*  If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack), 
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31330: Data transfer instructions Support_64 bit Mode_MOV_#GP_012.
+ *
+ * Summary: Under 64 bit Mode and CPL3,
+ *  If the memory access to the descriptor table is non-canonical(Ad. Cann.: non stack),
+ *  executing MOV shall generate #GP.
+ */
 static void mov_gp_012(void)
 {
 	u32 r_a = 1;
@@ -260,17 +266,17 @@ static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
 }
 
 /*
-* @brief case name: 31333: Data transfer instructions Support_64 bit Mode_MOV_#UD_001.
-*
-* Summary: Under 64 bit Mode and CPL0,
-*  If attempt is made to load the CS register(CSLoad: true),
-*  executing MOV shall generate #UD.
-*/
+ * @brief case name: 31333: Data transfer instructions Support_64 bit Mode_MOV_#UD_001.
+ *
+ * Summary: Under 64 bit Mode and CPL0,
+ *  If attempt is made to load the CS register(CSLoad: true),
+ *  executing MOV shall generate #UD.
+ */
 static void mov_ud_001(void)
 {
 	u32 r_a = 10;
 	asm volatile("mov %0, %%cs \n"
-		: :"r"(r_a) :);
+		: : "r"(r_a) : );
 }
 
 static void  gp_rqmid_31333_data_transfer_mov_ud_001(void)
@@ -286,12 +292,12 @@ static void  gp_rqmid_31333_data_transfer_mov_ud_001(void)
 }
 
 /*
-* @brief case name: 31336: Data transfer instructions Support_64 bit Mode_MOV_#UD_002.
-*
-* Summary: Under 64 bit Mode and CPL1,
-*  If attempt is made to load the CS register(CSLoad: true),
-*  executing MOV shall generate #UD.
-*/
+ * @brief case name: 31336: Data transfer instructions Support_64 bit Mode_MOV_#UD_002.
+ *
+ * Summary: Under 64 bit Mode and CPL1,
+ *  If attempt is made to load the CS register(CSLoad: true),
+ *  executing MOV shall generate #UD.
+ */
 static void  gp_rqmid_31336_data_transfer_mov_ud_002(void)
 {
 	gp_trigger_func fun;
@@ -305,12 +311,12 @@ static void  gp_rqmid_31336_data_transfer_mov_ud_002(void)
 }
 
 /*
-* @brief case name: 31339: Data transfer instructions Support_64 bit Mode_MOV_#UD_003.
-*
-* Summary: Under 64 bit Mode and CPL2,
-*  If attempt is made to load the CS register(CSLoad: true),
-*  executing MOV shall generate #UD.
-*/
+ * @brief case name: 31339: Data transfer instructions Support_64 bit Mode_MOV_#UD_003.
+ *
+ * Summary: Under 64 bit Mode and CPL2,
+ *  If attempt is made to load the CS register(CSLoad: true),
+ *  executing MOV shall generate #UD.
+ */
 static void  gp_rqmid_31339_data_transfer_mov_ud_003(void)
 {
 	gp_trigger_func fun;
@@ -324,12 +330,12 @@ static void  gp_rqmid_31339_data_transfer_mov_ud_003(void)
 }
 
 /*
-* @brief case name: 31342: Data transfer instructions Support_64 bit Mode_MOV_#UD_004.
-*
-* Summary: Under 64 bit Mode and CPL3,
-*  If attempt is made to load the CS register(CSLoad: true),
-*  executing MOV shall generate #UD.
-*/
+ * @brief case name: 31342: Data transfer instructions Support_64 bit Mode_MOV_#UD_004.
+ *
+ * Summary: Under 64 bit Mode and CPL3,
+ *  If attempt is made to load the CS register(CSLoad: true),
+ *  executing MOV shall generate #UD.
+ */
 static void  gp_rqmid_31342_data_transfer_mov_ud_004(void)
 {
 	gp_trigger_func fun;
@@ -343,12 +349,12 @@ static void  gp_rqmid_31342_data_transfer_mov_ud_004(void)
 }
 
 /*
-* @brief case name: 31370: Data transfer instructions Support_64 bit Mode_MOV_#GP_013.
-*
-* Summary: Under 64 bit Mode,
-*  If an attempt is made to clear CR0PG[bit 31](CR0.PG: 0),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31370: Data transfer instructions Support_64 bit Mode_MOV_#GP_013.
+ *
+ * Summary: Under 64 bit Mode,
+ *  If an attempt is made to clear CR0PG[bit 31](CR0.PG: 0),
+ *  executing MOV shall generate #GP.
+ */
 static void mov_gp_013(void)
 {
 	u64 check_bit = 0;
@@ -356,7 +362,7 @@ static void mov_gp_013(void)
 	check_bit &= (~(FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_31)));
 	asm volatile(
 		"mov %0, %%cr0 \n"
-		: :"r"(check_bit): "memory");
+		: : "r"(check_bit) : "memory");
 }
 
 static void  gp_rqmid_31370_data_transfer_mov_gp_013(void)
@@ -372,12 +378,12 @@ static void  gp_rqmid_31370_data_transfer_mov_gp_013(void)
 }
 
 /*
-* @brief case name: 31378: Data transfer instructions Support_64 bit Mode_MOV_#GP_015.
-*
-* Summary: Under 64 bit Mode,
-*  If an attempt is made to write a 1 to any reserved bit in CR4(CR4.R.W: 1),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31378: Data transfer instructions Support_64 bit Mode_MOV_#GP_015.
+ *
+ * Summary: Under 64 bit Mode,
+ *  If an attempt is made to write a 1 to any reserved bit in CR4(CR4.R.W: 1),
+ *  executing MOV shall generate #GP.
+ */
 static void  gp_rqmid_31378_data_transfer_mov_gp_015(void)
 {
 	gp_trigger_func fun;
@@ -393,48 +399,48 @@ static void  gp_rqmid_31378_data_transfer_mov_gp_015(void)
 }
 
 /*
-* @brief case name: 31385: Data transfer instructions Support_64 bit Mode_MOV_#GP_017.
-*
-* Summary: Under 64 bit Mode,
-*  If an attempt is made to write a 1 to any reserved bit in CR8(CR8.R.W: 1),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31385: Data transfer instructions Support_64 bit Mode_MOV_#GP_017.
+ *
+ * Summary: Under 64 bit Mode,
+ *  If an attempt is made to write a 1 to any reserved bit in CR8(CR8.R.W: 1),
+ *  executing MOV shall generate #GP.
+ */
 static void  gp_rqmid_31385_data_transfer_mov_gp_017(void)
 {
 	cr8_r_w_to_1();
 }
 
 /*
-* @brief case name: 31398: Data transfer instructions Support_64 bit Mode_MOV_#GP_019.
-*
-* Summary: Under 64 bit Mode,
-*   If an attempt is made to write a 1 to any reserved bit in CR3(CR3.R.W: 1),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31398: Data transfer instructions Support_64 bit Mode_MOV_#GP_019.
+ *
+ * Summary: Under 64 bit Mode,
+ *   If an attempt is made to write a 1 to any reserved bit in CR3(CR3.R.W: 1),
+ *  executing MOV shall generate #GP.
+ */
 static void  gp_rqmid_31398_data_transfer_mov_gp_019(void)
 {
 	cr3_r_w_to_1();
 }
 
 /*
-* @brief case name: 32284: Data transfer instructions Support_64 bit Mode_MOV_#GP_021.
-*
-* Summary: Under 64 bit Mode,
-*   If an attempt is made to leave IA-32e mode by clearing CR4PAE[bit 5](CR4.PAE: 0),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 32284: Data transfer instructions Support_64 bit Mode_MOV_#GP_021.
+ *
+ * Summary: Under 64 bit Mode,
+ *   If an attempt is made to leave IA-32e mode by clearing CR4PAE[bit 5](CR4.PAE: 0),
+ *  executing MOV shall generate #GP.
+ */
 static void  gp_rqmid_32284_data_transfer_mov_gp_021(void)
 {
 	report("%s #GP exception", cr4_pae_to_0() == true, __FUNCTION__);
 }
 
 /*
-* @brief case name: 31609: Data transfer instructions Support_64 bit Mode_MOV_#DB_001.
-*
-* Summary: Under 64 bit Mode,
-*  If any debug register is accessed while the DR7GD[bit 13] = 1(DeAc: true, DR7.GD: 1),
-*  executing MOV shall generate #DB.
-*/
+ * @brief case name: 31609: Data transfer instructions Support_64 bit Mode_MOV_#DB_001.
+ *
+ * Summary: Under 64 bit Mode,
+ *  If any debug register is accessed while the DR7GD[bit 13] = 1(DeAc: true, DR7.GD: 1),
+ *  executing MOV shall generate #DB.
+ */
 static void mov_write_dr7(ulong val)
 {
 	asm volatile ("mov %0, %%dr7 \n"
@@ -462,12 +468,12 @@ static void  gp_rqmid_31609_data_transfer_mov_db_001(void)
 }
 
 /*
-* @brief case name: 31614: Data transfer instructions Support_64 bit Mode_MOV_#GP_035.
-*
-* Summary: Under 64 bit Mode and CPL1,
-*  If the current privilege level is not 0(CS.CPL: 1),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 31614: Data transfer instructions Support_64 bit Mode_MOV_#GP_035.
+ *
+ * Summary: Under 64 bit Mode and CPL1,
+ *  If the current privilege level is not 0(CS.CPL: 1),
+ *  executing MOV shall generate #GP.
+ */
 ulong dr7_check_bit;
 static void  ring1_mov_gp_035(void)
 {
@@ -497,12 +503,12 @@ static void  gp_rqmid_31614_data_transfer_mov_gp_035(void)
 }
 
 /*
-* @brief case name: 31271: Data transfer instructions Support_64 bit Mode_CMPXCHG16B_#GP_060.
-*
-* Summary: Under 64 bit Mode,
-*   If memory operand for CMPXCHG16B is not aligned on a 16-byte boundary(CMPXCHG16B_Aligned: false),
-*  executing CMPXCHG16B shall generate #GP.
-*/
+ * @brief case name: 31271: Data transfer instructions Support_64 bit Mode_CMPXCHG16B_#GP_060.
+ *
+ * Summary: Under 64 bit Mode,
+ *   If memory operand for CMPXCHG16B is not aligned on a 16-byte boundary(CMPXCHG16B_Aligned: false),
+ *  executing CMPXCHG16B shall generate #GP.
+ */
 __unused static void cmpxchg16b_gp_060(void)
 {
 	asm volatile ("cmpxchg16b %[add] \n"
@@ -518,19 +524,19 @@ static void  gp_rqmid_31271_data_transfer_cmpxchg16b_gp_060(void)
 
 #if 0
 	CHECK_INSTRUCTION_INFO(__FUNCTION__, cpuid_cmpxchg16b_to_1);
-	asm volatile ("CMPXCHG16B %[add] \n": [add]"=m"(*(creat_non_aligned_add())) : : "memory");
+	asm volatile ("CMPXCHG16B %[add] \n" : [add]"=m"(*(creat_non_aligned_add())) : : "memory");
 #endif
 	/* Need modify unit-test framework, CMPXCHG16B can't use exception handler. */
 	report("%s",  ret == true, __FUNCTION__);
 }
 
 /*
-* @brief case name: 31323: Data transfer instructions Support_64 bit Mode_PUSH_#UD_017.
-*
-* Summary: Under 64 bit Mode and CPL0,
-*  If the PUSH is of CS, SS, DS, or ES(Push Seg: hold),
-*  executing PUSH shall generate #UD.
-*/
+ * @brief case name: 31323: Data transfer instructions Support_64 bit Mode_PUSH_#UD_017.
+ *
+ * Summary: Under 64 bit Mode and CPL0,
+ *  If the PUSH is of CS, SS, DS, or ES(Push Seg: hold),
+ *  executing PUSH shall generate #UD.
+ */
 __unused static void push_ud_017(void)
 {
 	asm volatile (".byte 0x0e \n");	  /* "push %cs \n" */
@@ -549,13 +555,12 @@ static void  gp_rqmid_31323_data_transfer_push_ud_017(void)
 }
 
 /*
-* @brief case name: 32288: Data transfer instructions Support_64 bit Mode_POP_#GP_066.
-*
-* Summary: Under 64 bit Mode and CPL0,
-*  If the descriptor is outside the descriptor table limit(Descriptor limit: outside),
-*  executing POP shall generate #GP.
-
-*/
+ * @brief case name: 32288: Data transfer instructions Support_64 bit Mode_POP_#GP_066.
+ *
+ * Summary: Under 64 bit Mode and CPL0,
+ *  If the descriptor is outside the descriptor table limit(Descriptor limit: outside),
+ *  executing POP shall generate #GP.
+ */
 __unused static void pop_gp_066(void)
 {
 	asm volatile ("pop %fs \n");
@@ -577,20 +582,20 @@ static void  gp_rqmid_32288_data_transfer_pop_ud_066(void)
 }
 
 /*
-* @brief case name: 31495: Binary arithmetic instructions Support_64 bit Mode_IDIV_#DE_007.
-*
-* Summary:Under 64 bit Mode and CPL0,
-* If the quotient is too large for the designated register(Quot large: true),
-* executing IDIV shall generate #DE.
-*/
+ * @brief case name: 31495: Binary arithmetic instructions Support_64 bit Mode_IDIV_#DE_007.
+ *
+ * Summary:Under 64 bit Mode and CPL0,
+ * If the quotient is too large for the designated register(Quot large: true),
+ * executing IDIV shall generate #DE.
+ */
 __unused static void idiv_de_007(void)
 {
 	long int a = -4294967296;
 	long int b = -1;
-	asm volatile (  "mov %[dividend], %%eax \n"
+	asm volatile ("mov %[dividend], %%eax \n"
 		"cdq  \n"
 		"idiv %[divisor] \n"
-		: :[dividend]"r"((int)a), [divisor]"r"((int)b): );
+		: : [dividend]"r"((int)a), [divisor]"r"((int)b) : );
 }
 
 static void  gp_rqmid_31495_binary_arithmetic_idiv_de_007(void)
@@ -605,12 +610,12 @@ static void  gp_rqmid_31495_binary_arithmetic_idiv_de_007(void)
 }
 
 /*
-* @brief case name: 31522: Binary arithmetic instructions Support_64 bit Mode_DIV_normal_execution_059.
-*
-* Summary:Under 64 bit Mode and CPL0,
-* If the quotient is too large for the designated register(Quot large: true),
-* executing IDIV shall generate #DE.
-*/
+ * @brief case name: 31522: Binary arithmetic instructions Support_64 bit Mode_DIV_normal_execution_059.
+ *
+ * Summary:Under 64 bit Mode and CPL0,
+ * If the quotient is too large for the designated register(Quot large: true),
+ * executing IDIV shall generate #DE.
+ */
 __unused static void div_execute(void)
 {
 	int a = 100;
@@ -619,7 +624,7 @@ __unused static void div_execute(void)
 	asm volatile ("mov %[dividend], %%eax \n"
 		"div %[divisor] \n"
 		"1:"
-		: :[dividend]"r"(a), [divisor]"r"(b): );
+		: : [dividend]"r"(a), [divisor]"r"(b) : );
 }
 
 static void  gp_rqmid_31522_binary_arithmetic_div_normal_059(void)
@@ -634,12 +639,12 @@ static void  gp_rqmid_31522_binary_arithmetic_div_normal_059(void)
 }
 
 /*
-* @brief case name: 31655: Control transfer instructions Support_64 bit Mode_JMP_#UD_030.
-*
-* Summary: Under 64 bit Mode and CPL0 ,(64-bit mode only),
-*  If a far jump is direct to an absolute address in memory(JMP Abs address: true),
-*  executing JMP shall generate #UD.
-*/
+ * @brief case name: 31655: Control transfer instructions Support_64 bit Mode_JMP_#UD_030.
+ *
+ * Summary: Under 64 bit Mode and CPL0 ,(64-bit mode only),
+ *  If a far jump is direct to an absolute address in memory(JMP Abs address: true),
+ *  executing JMP shall generate #UD.
+ */
 __unused static void jmp_ud_030(void)
 {
 	asm volatile(".byte 0xea, 0x20, 0xe5, 0x48, 0xe8, 0x9d, 0xfe");
@@ -658,12 +663,12 @@ static void  gp_rqmid_31655_control_transfer_jmp_ud_030(void)
 }
 
 /*
-* @brief case name: 31286: Control transfer instructions Support_64 bit Mode_CALL_#UD_042.
-*
-* Summary: Under 64 bit Mode and CPL0 ,(64-bit mode only),
-*  If a far call is direct to an absolute address in memory(CALL Abs address: true),
-*  executing CALL shall generate #UD.
-*/
+ * @brief case name: 31286: Control transfer instructions Support_64 bit Mode_CALL_#UD_042.
+ *
+ * Summary: Under 64 bit Mode and CPL0 ,(64-bit mode only),
+ *  If a far call is direct to an absolute address in memory(CALL Abs address: true),
+ *  executing CALL shall generate #UD.
+ */
 __unused static void call_ud_042(void)
 {
 	/* "call (absolute address in memory) \n" */
@@ -684,11 +689,11 @@ static void  gp_rqmid_31286_control_transfer_call_ud_042(void)
 }
 
 /*
-* @brief case name: 31379: Control transfer instructions Support_64 bit Mode_IRET_#GP_097.
-*
-* Summary: Under 64 bit Mode and CPL0,
-*  If EFLAGSNT[bit 14] = 1(EFLAGS.NT: 1),  executing IRET shall generate #GP.
-*/
+ * @brief case name: 31379: Control transfer instructions Support_64 bit Mode_IRET_#GP_097.
+ *
+ * Summary: Under 64 bit Mode and CPL0,
+ *  If EFLAGSNT[bit 14] = 1(EFLAGS.NT: 1),  executing IRET shall generate #GP.
+ */
 __unused static void iret_gp_097(void)
 {
 	/* "call (absolute address in memory) \n" */
@@ -710,12 +715,12 @@ static void  gp_rqmid_31379_control_transfer_iret_gp_097(void)
 }
 
 /*
-* @brief case name: 31652: Control transfer instructions Support_64 bit Mode_INT1_#GP_115.
-*
-* Summary: Under 64 bit Mode and CPL0,
-*  If the vector selects a descriptor outside the IDT limits(DesOutIDT: true),
-*  executing INT1 shall generate #GP.
-*/
+ * @brief case name: 31652: Control transfer instructions Support_64 bit Mode_INT1_#GP_115.
+ *
+ * Summary: Under 64 bit Mode and CPL0,
+ *  If the vector selects a descriptor outside the IDT limits(DesOutIDT: true),
+ *  executing INT1 shall generate #GP.
+ */
 __unused static void int_gp_115(void)
 {
 	asm volatile(".byte 0xcd, 0xff\n");
@@ -746,12 +751,12 @@ static void  gp_rqmid_31652_control_transfer_int_gp_115(void)
 }
 
 /*
-* @brief case name: 31901: Segment Register instructions Support_64 bit Mode_LFS_#GP_125.
-*
-* Summary: Under 64 bit Mode and CPL0,
-*   If the memory address is in a non-canonical form(CS.CPL: 0, RPL?CPL: true, S. segfault: occur),
-*   executing LFS shall generate #GP.
-*/
+ * @brief case name: 31901: Segment Register instructions Support_64 bit Mode_LFS_#GP_125.
+ *
+ * Summary: Under 64 bit Mode and CPL0,
+ *   If the memory address is in a non-canonical form(CS.CPL: 0, RPL?CPL: true, S. segfault: occur),
+ *   executing LFS shall generate #GP.
+ */
 static void lfs_gp_125(void)
 {
 	struct lseg_st lfss;
@@ -780,12 +785,12 @@ static void  gp_rqmid_31901_segment_instruction_lfs_gp_125(void)
 }
 
 /*
-* @brief case name: 31751: Segment Register instructions Support_64 bit Mode_LSS_#GP_132.
-*
-* Summary: Under 64 bit Mode and CPL3,
-*  If the memory address is in a non-canonical form(Ad. Cann.: non mem),
-*  executing LSS shall generate #GP.
-*/
+ * @brief case name: 31751: Segment Register instructions Support_64 bit Mode_LSS_#GP_132.
+ *
+ * Summary: Under 64 bit Mode and CPL3,
+ *  If the memory address is in a non-canonical form(Ad. Cann.: non mem),
+ *  executing LSS shall generate #GP.
+ */
 __unused static void lss_gp_132(void)
 {
 	asm volatile("lss (%0), %%eax  \n"
@@ -812,12 +817,12 @@ static void  gp_rqmid_31751_segment_instruction_lss_gp_132(void)
 }
 
 /*
-* @brief case name: 31937: MSR access instructions_64 Bit Mode_RDMSR_#GP_004.
-*
-* Summary: Under Protected/64 Bit Mode and CPL0,
-*  If the value in ECX specifies a reserved  MSR address(ECX_MSR_Reserved: true),
-*  executing RDMSR shall generate #GP.
-*/
+ * @brief case name: 31937: MSR access instructions_64 Bit Mode_RDMSR_#GP_004.
+ *
+ * Summary: Under Protected/64 Bit Mode and CPL0,
+ *  If the value in ECX specifies a reserved  MSR address(ECX_MSR_Reserved: true),
+ *  executing RDMSR shall generate #GP.
+ */
 static void  gp_rqmid_31937_msr_access_rdsmr_gp_004(void)
 {
 	__attribute__ ((aligned(16))) u64 addr = 0;
@@ -828,46 +833,48 @@ static void  gp_rqmid_31937_msr_access_rdsmr_gp_004(void)
 }
 
 /*
-* @brief case name: 31939: MSR access instructions_64 Bit Mode_RDMSR_#GP_005.
-*
-* Summary: Under Protected/64 Bit Mode and CPL0,
-*  If the value in ECX specifies a unimplemented MSR address(ECX_MSR_Reserved: true),
-*  executing RDMSR shall generate #GP.
-*/
+ * @brief case name: 31939: MSR access instructions_64 Bit Mode_RDMSR_#GP_005.
+ *
+ * Summary: Under Protected/64 Bit Mode and CPL0,
+ *  If the value in ECX specifies a unimplemented MSR address(ECX_MSR_Reserved: true),
+ *  executing RDMSR shall generate #GP.
+ */
 static void  gp_rqmid_31939_msr_access_rdsmr_gp_005(void)
 {
 	__attribute__ ((aligned(16))) u64 addr = 0;
 	u64 *aligned_addr = &addr;
 	/*4000_0000H-4000_00FFH:
-	All existing and future processors will not implement MSRs in this range.*/
+	 *All existing and future processors will not implement MSRs in this range.
+	 */
 	report("%s Execute Instruction: unimplement",
 		rdmsr_checking(0x40000000, aligned_addr) == GP_VECTOR, __FUNCTION__);
 }
 
 /*
-* @brief case name: 31949: MSR access instructions_64 Bit Mode_WRMSR_#GP_009.
-*
-* Summary: Under Protected/64 Bit Mode and CPL0,
-*  If the value in ECX specifies a unimplemented MSR address(ECX_MSR_Reserved: true),
-*  executing wrmsr shall generate #GP.
-*/
+ * @brief case name: 31949: MSR access instructions_64 Bit Mode_WRMSR_#GP_009.
+ *
+ * Summary: Under Protected/64 Bit Mode and CPL0,
+ *  If the value in ECX specifies a unimplemented MSR address(ECX_MSR_Reserved: true),
+ *  executing wrmsr shall generate #GP.
+ */
 static void  gp_rqmid_31949_msr_access_wrmsr_gp_009(void)
 {
 	__attribute__ ((aligned(16))) u64 addr = 0;
 	u64 *aligned_addr = &addr;
 	/*4000_0000H-4000_00FFH:
-	All existing and future processors will not implement MSRs in this range.*/
+	 *All existing and future processors will not implement MSRs in this range.
+	 */
 	report("%s Execute Instruction: unimplement",
 		wrmsr_checking(0x40000000, *aligned_addr) == GP_VECTOR, __FUNCTION__);
 }
 
 /*
-* @brief case name: 31953: MSR access instructions_64 Bit Mode_WRMSR_#GP_011.
-*
-* Summary: Under Protected/64 Bit Mode and CPL0,
-*  If the value in ECX specifies a reserved MSR address(ECX_MSR_Reserved: true),
-*  executing wrmsr shall generate #GP.
-*/
+ * @brief case name: 31953: MSR access instructions_64 Bit Mode_WRMSR_#GP_011.
+ *
+ * Summary: Under Protected/64 Bit Mode and CPL0,
+ *  If the value in ECX specifies a reserved MSR address(ECX_MSR_Reserved: true),
+ *  executing wrmsr shall generate #GP.
+ */
 static void  gp_rqmid_31953_msr_access_wrmsr_gp_011(void)
 {
 	__attribute__ ((aligned(16))) u64 addr = 0;
@@ -878,12 +885,12 @@ static void  gp_rqmid_31953_msr_access_wrmsr_gp_011(void)
 }
 
 /*
-* @brief case name: 32163: Random number generator instructions Support_64 Bit Mode_RDRAND_#UD_006.
-*
-* Summary: Under 64 Bit Mode,
-*  If the F2H or F3H prefix is used(F2HorF3H: hold),
-*  executing RDRAND shall generate #UD.
-*/
+ * @brief case name: 32163: Random number generator instructions Support_64 Bit Mode_RDRAND_#UD_006.
+ *
+ * Summary: Under 64 Bit Mode,
+ *  If the F2H or F3H prefix is used(F2HorF3H: hold),
+ *  executing RDRAND shall generate #UD.
+ */
 __unused static void rdrand_ud_006(void)
 {
 	asm volatile(".byte 0xf3, 0x0f, 0xc7, 0xf0 \n");
@@ -902,12 +909,12 @@ static void  gp_rqmid_32163_random_number_rdrand_ud_006(void)
 }
 
 /*
-* @brief case name: 32191: Undefined instruction Support_64 Bit Mode_UD1_#UD_010.
-*
-* Summary: Under Protected/Real Address/64 Bit Mode,
-*  Raises an invalid opcode exception in all operating modes(OpcodeExcp: true),
-*  executing UD1 shall generate #UD.
-*/
+ * @brief case name: 32191: Undefined instruction Support_64 Bit Mode_UD1_#UD_010.
+ *
+ * Summary: Under Protected/Real Address/64 Bit Mode,
+ *  Raises an invalid opcode exception in all operating modes(OpcodeExcp: true),
+ *  executing UD1 shall generate #UD.
+ */
 static void ud1_ud_010(void)
 {
 	asm volatile(
@@ -929,12 +936,12 @@ static void  gp_rqmid_32191_ud_instruction_ud1_ud_010(void)
 
 #else  /* #ifndef __x86_64__*/
 /*
-* @brief case name: 32003: Data transfer instructions Support_Protected Mode_MOV_#GP_001.
-*
-* Summary: Under Protected Mode,
-* If an attempt is made to write a 1 to any reserved bit in CR4(CR4.R.W: 1),
-* executing MOV shall generate #GP.
-*/
+ * @brief case name: 32003: Data transfer instructions Support_Protected Mode_MOV_#GP_001.
+ *
+ * Summary: Under Protected Mode,
+ * If an attempt is made to write a 1 to any reserved bit in CR4(CR4.R.W: 1),
+ * executing MOV shall generate #GP.
+ */
 static void  gp_rqmid_32003_data_transfer_mov_gp_001(void)
 {
 	gp_trigger_func fun;
@@ -951,12 +958,12 @@ static void  gp_rqmid_32003_data_transfer_mov_gp_001(void)
 }
 
 /*
-* @brief case name: 32005: Data transfer instructions Support_Protected Mode_MOV_#GP_002.
-*
-* Summary: Under 64 bit Mode,
-*   If an attempt is made to leave IA-32e mode by clearing CR4PAE[bit 5](CR4.PAE: 0),
-*  executing MOV shall generate #GP.
-*/
+ * @brief case name: 32005: Data transfer instructions Support_Protected Mode_MOV_#GP_002.
+ *
+ * Summary: Under 64 bit Mode,
+ *   If an attempt is made to leave IA-32e mode by clearing CR4PAE[bit 5](CR4.PAE: 0),
+ *  executing MOV shall generate #GP.
+ */
 static void  gp_rqmid_32005_data_transfer_mov_gp_002(void)
 {
 	gp_trigger_func fun;
@@ -974,19 +981,19 @@ static void  gp_rqmid_32005_data_transfer_mov_gp_002(void)
 }
 
 /*
-* @brief case name: 31737: Binary arithmetic instructions Support_Protected Mode_IDIV_#DE_001.
-*
-* Summary: Under Protected Mode and CPL0,
-*   If the source operand (divisor) is 0(Divisor = 0: true),
-*   executing IDIV shall generate #DE.
-*/
+ * @brief case name: 31737: Binary arithmetic instructions Support_Protected Mode_IDIV_#DE_001.
+ *
+ * Summary: Under Protected Mode and CPL0,
+ *   If the source operand (divisor) is 0(Divisor = 0: true),
+ *   executing IDIV shall generate #DE.
+ */
 __unused static void idiv_de_32bit_001(void)
 {
 	int a = 1;
 	int b = 0;
 	asm volatile ("mov %[dividend], %%eax \n"
 		"idiv %[divisor] \n"
-		: :[dividend]"r"(a), [divisor]"r"(b): );
+		: : [dividend]"r"(a), [divisor]"r"(b) : );
 }
 
 static void  gp_rqmid_31737_binary_arithmetic_idiv_de_32bit_001(void)
@@ -1001,12 +1008,12 @@ static void  gp_rqmid_31737_binary_arithmetic_idiv_de_32bit_001(void)
 }
 
 /*
-* @brief case name: 31956: Control transfer instructions Support_Protected Mode_BOUND_#BR_001.
-*
-* Summary:Under Protected Mode and CPL0,
-*  If the bounds test fails with BOUND range exceeded(Bound test: fail),
-*  executing BOUND shall generate #BR.
-*/
+ * @brief case name: 31956: Control transfer instructions Support_Protected Mode_BOUND_#BR_001.
+ *
+ * Summary:Under Protected Mode and CPL0,
+ *  If the bounds test fails with BOUND range exceeded(Bound test: fail),
+ *  executing BOUND shall generate #BR.
+ */
 static void bound_32bit_br_001(void)
 {
 	int t[2] = {0, 10};
@@ -1029,12 +1036,12 @@ static void  gp_rqmid_31956_data_transfer_bound_32bit_br_001(void)
 }
 
 /*
-* @brief case name: 32179: Decimal arithmetic instructions Support_Protected Mode_AAM_#DE_001.
-*
-* Summary: Under Protected/Real Address Mode ,
-*  If an immediate value of 0 is used(imm8 = 0: hold),
-*  executing AAM shall generate #DE.
-*/
+ * @brief case name: 32179: Decimal arithmetic instructions Support_Protected Mode_AAM_#DE_001.
+ *
+ * Summary: Under Protected/Real Address Mode ,
+ *  If an immediate value of 0 is used(imm8 = 0: hold),
+ *  executing AAM shall generate #DE.
+ */
 static void aam_32bit_de_001(void)
 {
 	asm volatile("aam $0\n"
@@ -1076,6 +1083,8 @@ void error_case()
 /*------------------------------Test case End!---------------------------------*/
 int main(void)
 {
+	printf("----------eflag = %lx\n", read_rflags());
+
 	extern unsigned char kernel_entry;
 	set_idt_entry(0x20, &kernel_entry, 3);
 	extern unsigned char kernel_entry1;
