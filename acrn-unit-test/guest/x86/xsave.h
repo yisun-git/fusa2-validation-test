@@ -5,9 +5,9 @@
 #endif
 
 #define CPUID_1_ECX_FMA				(1 << 12)
-#define CPUID_1_ECX_XSAVE	    		(1 << 26)
-#define CPUID_1_ECX_OSXSAVE	    		(1 << 27)
-#define CPUID_1_ECX_AVX	                	(1 << 28)
+#define CPUID_1_ECX_XSAVE			(1 << 26)
+#define CPUID_1_ECX_OSXSAVE			(1 << 27)
+#define CPUID_1_ECX_AVX				(1 << 28)
 
 #define X86_CR0_EM				(1 << 2)
 //#define X86_CR0_TS				(1 << 3)
@@ -37,7 +37,7 @@
 #define STATE_AVX		    (1 << STATE_AVX_BIT)
 #define STATE_MPX_BNDREGS	    (1 << STATE_MPX_BNDREGS_BIT)
 #define STATE_MPX_BNDCSR	    (1 << STATE_MPX_BNDCSR_BIT)
-#define STATE_AVX_512		    (0b111 << STATE_AVX_512_OPMASK)
+#define STATE_AVX_512		    (0x7 << STATE_AVX_512_OPMASK)
 #define STATE_PT		    (1 << STATE_PT_BIT)
 #define STATE_PKRU		    (1 << STATE_PKRU_BIT)
 #define STATE_HDC		    (1 << STATE_HDC_BIT)
@@ -80,9 +80,9 @@
 
 #define ALIGNED(x) __attribute__((aligned(x)))
 
-struct xsave_st{
+struct xsave_st {
 	u64 num_xsave __attribute__((aligned(8)));
-}xsave_st;
+} xsave_st;
 
 
 typedef unsigned __attribute__((vector_size(16))) sse128;
@@ -102,17 +102,15 @@ typedef union {
 
 
 /*
-*****************************************************
- *XSAVE structure in below: 
- *fpu_sse_struct: 	416 bytes;
- *xsave_header_struct: 	64 bytes;
- *xsave_avx_struct : 	256 bytes;
- *xsave_bndreg_struct: 	64 bytes;
+ *XSAVE structure in below:
+ *fpu_sse_struct:	416 bytes;
+ *xsave_header_struct:	64 bytes;
+ *xsave_avx_struct :	256 bytes;
+ *xsave_bndreg_struct:	64 bytes;
  *xsave_bndcsr_struct:	16 bytes;
-
  *Total: Only support: X87/SSE/AVX/MPX;
- *xsave_area_struct: 	1040 bytes;
-***/
+ *xsave_area_struct:	1040 bytes;
+ */
 typedef unsigned __attribute__((vector_size(16))) fpu_st;
 typedef unsigned __attribute__((vector_size(16))) sse_xmm;
 typedef unsigned __attribute__((vector_size(16))) avx_ymm;
@@ -138,7 +136,7 @@ typedef struct xsave_header_struct {
     u64 xstate_bv;
     u64 xcomp_bv;
     u64 reserved[6];
-}xsave_header_t;
+} xsave_header_t;
 
 /* Ext. save area 2: AVX State 256bytes*/
 typedef struct xsave_avx_struct {
@@ -158,8 +156,8 @@ typedef struct xsave_bndcsr_struct {
 
 
 /* we only support x87&sse&avx&mpx for XSAVE feature set now!!
-   1040 bytes totally
-*/
+ *  1040 bytes totally
+ */
 typedef struct xsave_area_struct {
     u8 fpu_sse[512];
     struct xsave_header_struct xsave_hdr;//64
@@ -171,16 +169,15 @@ typedef struct xsave_area_struct {
 } __attribute__((packed)) xsave_area_t;
 
 /* xsave_dump_struct:752 bytes totally*/
-typedef struct xsave_dump_struct{
+typedef struct xsave_dump_struct {
     struct fpu_sse_struct fpu_sse;// 416 bytes
     struct xsave_avx_struct ymm;// 256 bytes
     struct xsave_bndreg_struct bndregs;//64 bytes
     struct xsave_bndcsr_struct bndcsr;//16 bytes
-}xsave_dump_t;//
+} xsave_dump_t;//
 /***
  *XSAVE structure end!
-******************************************************
-*/
+ */
 
 
 
