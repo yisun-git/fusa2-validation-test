@@ -120,6 +120,7 @@ void read_bp_startup(void)
 			 : "=q"(bp_cr4_greg_long));
 }
 
+extern void send_sipi();
 void save_unchanged_reg(void)
 {
 	asm ("mov (0x8008) ,%%eax\n\t"
@@ -213,8 +214,8 @@ static void  tsc_rqmid_25226_init_unchanged_check(void)
 	u64 temp_ap_tscaux[2] = {0};
 	u64 temp_ap_tsc[2] = {0};
 
-	u64 ap_tsc = 0;
-	u64 result_64 = 0;
+	//u64 ap_tsc = 0;
+	//u64 result_64 = 0;
 
 	report("\t\t tsc_rqmid_25226_init_unchanged_check,CR4_TSD is initialized to 0x0 following INIT",
 		(ap_cr4_greg_long&CR4_TSD) == 0x0);

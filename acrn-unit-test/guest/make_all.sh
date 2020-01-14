@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc_test mem_cache segmentation"
+BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboot memory_order tsc"
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="segmentation"
 BUILD_REAL_MODE_FEATURE=""
