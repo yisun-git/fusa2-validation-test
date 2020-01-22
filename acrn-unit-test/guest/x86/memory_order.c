@@ -164,6 +164,13 @@ void memory_ordering_rqmid_24597_memory_ordering_instructions_001(void)
 	report("%s", detected == 0, msg);
 }
 
+static void print_case_list()
+{
+	printf("Memory ordering feature case list:\n\r");
+	printf("\t\t Case ID:%d case name:%s\n\r", 24597u, "Memory ordering and \
+		serialization_ACRN hypervisor shall expose memory ordering instructions to any VM_001");
+}
+
 void ap_main(void)
 {
 	int local_id = logical_processor_arbitration();
@@ -183,6 +190,7 @@ void ap_main(void)
 
 int main(int ac, char **av)
 {
+	print_case_list();
 	test_debug("\n");
 
 	setup_idt();
