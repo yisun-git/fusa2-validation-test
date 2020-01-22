@@ -167,8 +167,8 @@ void memory_ordering_rqmid_24597_memory_ordering_instructions_001(void)
 static void print_case_list()
 {
 	printf("Memory ordering feature case list:\n\r");
-	printf("\t\t Case ID:%d case name:%s\n\r", 24597u, "Memory ordering and \
-		serialization_ACRN hypervisor shall expose memory ordering instructions to any VM_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 24597u, "Memory ordering and "
+		"serialization_ACRN hypervisor shall expose memory ordering instructions to any VM_001");
 }
 
 void ap_main(void)
