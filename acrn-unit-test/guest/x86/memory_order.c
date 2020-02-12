@@ -31,7 +31,11 @@
 #define nop()		do { asm volatile ("nop\n\t" :::"memory"); } while (0)
 #endif
 //#define test_debug(fmt...) printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
-#define test_debug(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#ifdef USE_DEBUG
+ #define test_debug(fmt, args...)       printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#else
+ #define test_debug(fmt, args...)
+#endif
 
 void memory_ordering_test1_entry(void);
 void memory_ordering_test2_entry(void);
@@ -157,7 +161,7 @@ void memory_ordering_rqmid_24597_memory_ordering_instructions_001(void)
 		}
 
 		if ((i % CFG_MEMORY_ORDER_DEBUG_TIMES) == 0) {
-			printf("%s: times %lu\n", msg, i);
+			//printf("%s: times %lu\n", msg, i);
 		}
 	}
 
