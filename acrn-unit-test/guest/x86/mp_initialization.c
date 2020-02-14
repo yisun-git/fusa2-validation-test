@@ -21,7 +21,7 @@ u32 bp_bsp_flag = 0, ap_bsp_flag = 0;
 
 void test_delay(int time)
 {
-	int count = 0;
+	__unused int count = 0;
 	u64 tsc;
 	tsc = rdtsc() + time*1000000000;
 
@@ -30,9 +30,16 @@ void test_delay(int time)
 	}
 }
 
+/*
+ * ap_is_running and bsp_is_running are using for sync the status between BSP and AP.
+ * Considering several round of AP reset in one case, during the period the BSP continutes
+ * its process, so there needs a way to let BSP know which test case are running in AP
+ * for result check needed.
+ */
 static volatile int ap_is_running = 0;
 static volatile int bsp_is_running = 0;
 
+/* start_run_id is used to identify which test case is running. */
 static volatile int start_run_id = 0;
 
 static volatile int wait_bp = 0;
