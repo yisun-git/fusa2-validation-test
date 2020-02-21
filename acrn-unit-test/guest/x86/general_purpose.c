@@ -525,11 +525,11 @@ static void  gp_rqmid_31271_data_transfer_cmpxchg16b_gp_060(void)
 	bool ret;
 
 	is_support = ((cpuid(0x1).c)>>13)&1;
-	if(is_support){
+	if (is_support) {
 		fun = (gp_trigger_func)cmpxchg16b_gp_060;
 		ret = test_for_exception(GP_VECTOR, fun, NULL);
 	}
-	else{
+	else {
 		ret = false;
 	}
 
@@ -917,11 +917,11 @@ static void  gp_rqmid_32163_random_number_rdrand_ud_006(void)
 
 	is_support = ((cpuid(0x1).c)>>30)&1;
 
-	if(is_support){
+	if (is_support) {
 		fun = (gp_trigger_func)rdrand_ud_006;
 		ret = test_for_exception(UD_VECTOR, fun, NULL);
 	}
-	else{
+	else {
 		ret = false;
 	}
 
