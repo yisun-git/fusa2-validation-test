@@ -2909,6 +2909,8 @@ void cr4_r_w_to_1(void)
 	bool ret;
 	unsigned long check_bit = 0;
 
+	check_bit = read_cr4();
+
 	switch (get_random_value()%2) {
 	case 0:
 		printf("***** Set the reserved bit in CR4, such as CR4[12]*****\n");
@@ -2955,8 +2957,9 @@ void cr3_r_w_to_1(void)
 {
 	gp_trigger_func fun;
 	bool ret;
-
 	unsigned long check_bit = 0;
+
+	check_bit = read_cr3();
 
 	switch (get_random_value()%2) {
 	case 0:
@@ -3003,6 +3006,7 @@ inline void cr8_r_w_to_1(void)
 
 	printf("***** Set the reserved bit in CR8[64:4] *****\n");
 
+	check_bit = read_cr4();
 	check_bit &= (FEATURE_INFORMATION_BIT_RANGE(CR4_RESEVED_BIT_23, FEATURE_INFORMATION_04));
 
 	fun = (gp_trigger_func)write_cr8_checking;

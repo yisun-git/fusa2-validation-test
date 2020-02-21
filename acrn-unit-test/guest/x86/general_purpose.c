@@ -361,7 +361,7 @@ static void mov_gp_013(void)
 	check_bit = read_cr0();
 	check_bit &= (~(FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_31)));
 	asm volatile(
-		"mov %0, %%cr0 \n"
+		"mov %%cr0, %0 \n"
 		: : "r"(check_bit) : "memory");
 }
 
@@ -390,6 +390,7 @@ static void  gp_rqmid_31378_data_transfer_mov_gp_015(void)
 	bool ret;
 	unsigned long check_bit = 0;
 
+	check_bit = read_cr4();
 	check_bit |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_12));
 
 	fun = (gp_trigger_func)write_cr4_checking;
@@ -478,13 +479,16 @@ ulong dr7_check_bit;
 static void  ring1_mov_gp_035(void)
 {
 	gp_trigger_func fun;
+	int level;
 	bool ret;
+
+	level = read_cs() & 0x3;
 
 	fun = (gp_trigger_func)mov_write_dr7;
 	ret = test_for_exception(GP_VECTOR, fun, (void *)dr7_check_bit);
 
 	report("gp_rqmid_31614_data_transfer_mov_gp_035 Execute Instruction"
-		": MOV, to generate #GP", ret == true);
+		": MOV, to generate #GP", (ret == true) && (level == 1));
 }
 
 static void  gp_rqmid_31614_data_transfer_mov_gp_035(void)
@@ -516,11 +520,18 @@ __unused static void cmpxchg16b_gp_060(void)
 }
 static void  gp_rqmid_31271_data_transfer_cmpxchg16b_gp_060(void)
 {
+	int is_support;
 	gp_trigger_func fun;
 	bool ret;
 
-	fun = (gp_trigger_func)cmpxchg16b_gp_060;
-	ret = test_for_exception(GP_VECTOR, fun, NULL);
+	is_support = ((cpuid(0x1).c)>>13)&1;
+	if(is_support){
+		fun = (gp_trigger_func)cmpxchg16b_gp_060;
+		ret = test_for_exception(GP_VECTOR, fun, NULL);
+	}
+	else{
+		ret = false;
+	}
 
 #if 0
 	CHECK_INSTRUCTION_INFO(__FUNCTION__, cpuid_cmpxchg16b_to_1);
@@ -672,8 +683,11 @@ static void  gp_rqmid_31655_control_transfer_jmp_ud_030(void)
 __unused static void call_ud_042(void)
 {
 	/* "call (absolute address in memory) \n" */
-	/* u64 *data_add = (u64 *)0x000000000048e520; */
-	asm volatile(".byte 0x9a, 0x20, 0xe5, 0x48, 0xe8, 0x9d, 0xfe");
+	u64 *data_add = (u64 *)0x000000000048e520;
+	/*asm volatile(".byte 0x9a, 0x20, 0xe5, 0x48, 0xe8, 0x9d, 0xfe");*/
+	asm volatile("call %[addr]\n\t"
+		: : [addr]"m"(data_add)
+		: "memory");
 }
 
 static void  gp_rqmid_31286_control_transfer_call_ud_042(void)
@@ -723,7 +737,8 @@ static void  gp_rqmid_31379_control_transfer_iret_gp_097(void)
  */
 __unused static void int_gp_115(void)
 {
-	asm volatile(".byte 0xcd, 0xff\n");
+	asm volatile(".byte 0xf1");
+	//asm volatile("INT1");
 }
 
 static void  gp_rqmid_31652_control_transfer_int_gp_115(void)
@@ -740,9 +755,6 @@ static void  gp_rqmid_31652_control_transfer_int_gp_115(void)
 
 	set_idt(idtb1);
 	printf("modify idt limit to: %#x \n", stor_idt().limit);
-
-	//asm volatile("INT $255\n");
-	//asm volatile(".byte 0xcd, 0xff\n");
 
 	fun = (gp_trigger_func)int_gp_115;
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
@@ -793,6 +805,7 @@ static void  gp_rqmid_31901_segment_instruction_lfs_gp_125(void)
  */
 __unused static void lss_gp_132(void)
 {
+	eflags_ac_to_1();
 	asm volatile("lss (%0), %%eax  \n"
 		: : "r"(creat_non_canon_add()));
 }
@@ -900,9 +913,17 @@ static void  gp_rqmid_32163_random_number_rdrand_ud_006(void)
 {
 	gp_trigger_func fun;
 	bool ret;
+	int is_support;
 
-	fun = (gp_trigger_func)rdrand_ud_006;
-	ret = test_for_exception(UD_VECTOR, fun, NULL);
+	is_support = ((cpuid(0x1).c)>>30)&1;
+
+	if(is_support){
+		fun = (gp_trigger_func)rdrand_ud_006;
+		ret = test_for_exception(UD_VECTOR, fun, NULL);
+	}
+	else{
+		ret = false;
+	}
 
 	/* Need modify unit-test framework, can't handle eception. */
 	report("%s Execute Instruction: rdrand", ret == true, __FUNCTION__);
@@ -949,6 +970,8 @@ static void  gp_rqmid_32003_data_transfer_mov_gp_001(void)
 
 	//printf("***** Set the reserved bit in CR4, such as CR4[12] *****\n");
 	unsigned long check_bit = 0;
+
+	check_bit = read_cr4();
 	check_bit |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_12));
 
 	fun = (gp_trigger_func)write_cr4_checking;
@@ -1076,8 +1099,8 @@ void error_case()
 	do_at_ring3(gp_rqmid_31751_segment_instruction_lss_gp_132, "");//not handler
 	gp_rqmid_31937_msr_access_rdsmr_gp_004();					//rdmsr_vmexit_handler
 	gp_rqmid_31939_msr_access_rdsmr_gp_005();					//rdmsr_vmexit_handler
-	gp_rqmid_31949_msr_access_wrmsr_gp_009();					//rdmsr_vmexit_handler
-	gp_rqmid_31953_msr_access_wrmsr_gp_011();					//rdmsr_vmexit_handler
+	gp_rqmid_31949_msr_access_wrmsr_gp_009();					//wrmsr_vmexit_handler
+	gp_rqmid_31953_msr_access_wrmsr_gp_011();					//wrmsr_vmexit_handler
 }
 #endif
 /*------------------------------Test case End!---------------------------------*/
