@@ -1013,9 +1013,11 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 		return;
 	}
 
-	printf("******Step2: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n");
+	printf("******Step2 :Execute XGETBV with ECX = 0.******\n");
 	uint64_t xcr0;
 	xgetbv_checking(XCR0_MASK, &xcr0);
+
+	printf("******Step3 :Compare EDX:EAX with 0x01.******\n");
 	if (xcr0 == STATE_X87) {
 		printf("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87.\n", xcr0);
 	} else {
@@ -1023,11 +1025,11 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 			xcr0);
 	}
 
-	printf("******Step3: Set CR4.osxsave[bit18] to 1.******\n");
+	printf("******Step4: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step4: To XSETBV with ECX = 0 and EDX:EAX = 0x7.******\n");
+	printf("******Step5: To XSETBV with ECX = 0 and EDX:EAX = 0x7.******\n");
 	xsetbv_checking(0, STATE_X87 | STATE_SSE | STATE_AVX);
 	i++;
 
@@ -1036,21 +1038,22 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 		printf("Set xcr0 (STATE_X87 | STATE_SSE | STATE_AVX) Failed. xcr0=0x%lx failed.\n ", xcr0);
 	}
 
-	printf("******Step5: Execute XRSTOR64 instruciton.******\n");
+	printf("******Step6 : Malloc memory area to XSAVE Area and set it to 0x0.******\n");
 	u32 r_eax = STATE_X87 | STATE_SSE | STATE_AVX;
 	u32 r_edx = 0;
 	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
+
+	printf("******Step7 : Execute  XRSTOR64 mem.******\n");
 	asm volatile("XRSTOR64 %[addr]\n\t"
 		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 		: "memory");
 	i++;
 
-	printf("******Step6: Check the value of xstate_bv[2:0].******\n ");
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
 	printf("The value of xstate_bv = %#lx.\n", state_bv);
 
-	printf("******Step7: Execute SSE instruciton, e.g. MOVD.******\n");
+	printf("******Step8: Execute SSE instruciton, e.g. PAVGB.******\n");
 	write_cr0(read_cr0() & ~(X86_CR0_EM | X86_CR0_TS));
 	write_cr4(read_cr4() | X86_CR4_OSFXSR | X86_CR4_OSXMMEXCPT);
 	//__attribute__((target("sse"))) sse_union add1;
@@ -1059,12 +1062,10 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 	sse_union add2;
 	asm volatile("PAVGB %[add1], %%xmm1" : "=r"(add2.sse) : [add1]"m"(add1) : );
 	i++;
-
-	printf("******Step8: Check the value of xstate_bv[2:0] after Execute SSE instruction.******\n ");
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
 	printf("The value of xstate_bv = %#lx.\n", state_bv);
 
-	printf("******Step9: Set xcomp_bv[2:0] to 000b.******\n ");
+	printf("******Step9: Set xstate_bv[2:0] to 000b.******\n ");
 	state_bv &= 0xfffffffffffffff8;
 	printf("The value of xstate_bv = %#lx.\n", state_bv);
 
@@ -1210,7 +1211,7 @@ static __unused void xsave_rqmid_22826_check_reserved_bit()
 	if ((eax & ~(0xf)) == 0) {
 		i++;
 	}
-	report("paging_rqmid_22826_check_reserved_bit", (i == 2));
+	report("xsave_rqmid_22826_check_reserved_bit", (i == 2));
 }
 
 
@@ -1412,7 +1413,7 @@ static __unused void exec_x87_fpu(void)
 	add_fpu(&f, &f1);
 }
 /*
- * @brief case name: XSAVE general support_020
+ * @brief case name: XSAVE general support_008
  *
  * Summary: Enable SSE,X87 state,check CPUID(EAX=0xd, ECX=0).EBX, get the xsave area size,
  *          this is the sum of legacy region area size and head area size.
@@ -1626,6 +1627,10 @@ static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_IN
 	u64 xinuse1 = 0;
 	xinuse = get_init_xinuse(0x7004, 0x8004);
 	//printf("\n --->bp: after exec xmm, XINUSE=%lx \n", xinuse);
+
+	/*send sipi to ap*/
+	send_sipi();
+
 	xinuse1 = get_init_xinuse(0x7000, 0x8000);
 	//printf("\n --->ap: after send sipi, XINUSE=%lx \n", xinuse1);
 	/*Step5:Confirm the value of XINUSE is unchanged:XINUSE & XCR0 equals with 0x02.*/
