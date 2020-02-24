@@ -33,6 +33,18 @@ static u64 *creat_non_canon_add(void)
 	return (u64 *)address;
 }
 
+static u64 *non_canon_add(u64 addr)
+{
+	u64 address = addr;
+
+	if ((address >> 63) & 1) {
+		address = (address & (~(1ull << 63)));
+	} else {
+		address = (address|(1UL<<63));
+	}
+	return (u64 *)address;
+}
+
 /** GDT **/
 extern gdt_entry_t gdt64[];
 void set_gdt64_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran)
@@ -683,11 +695,12 @@ static void  gp_rqmid_31655_control_transfer_jmp_ud_030(void)
 __unused static void call_ud_042(void)
 {
 	/* "call (absolute address in memory) \n" */
-	u64 *data_add = (u64 *)0x000000000048e520;
-	/*asm volatile(".byte 0x9a, 0x20, 0xe5, 0x48, 0xe8, 0x9d, 0xfe");*/
-	asm volatile("call %[addr]\n\t"
+	//u64 *data_add = (u64 *)0x000000000048e520;
+	asm volatile(".byte 0x9a, 0x20, 0xe5, 0x48, 0xe8, 0x9d, 0xfe");
+	/*asm volatile("call %[addr]\n\t"
 		: : [addr]"m"(data_add)
 		: "memory");
+	*/
 }
 
 static void  gp_rqmid_31286_control_transfer_call_ud_042(void)
@@ -771,12 +784,15 @@ static void  gp_rqmid_31652_control_transfer_int_gp_115(void)
  */
 static void lfs_gp_125(void)
 {
+	u64 *address;
 	struct lseg_st lfss;
 	lfss.a = 0xffffffff;
-	lfss.b = 0x08;
+	lfss.b = 0x280;
 
-	asm volatile("lfs %0, %%eax  \n"
-		: : "m"(lfss));
+	address = non_canon_add((u64)&lfss);
+	asm volatile("REX\n\t"
+		"lfs %0, %%rax\n\t"
+		: : "m"(address));
 }
 
 static void  gp_rqmid_31901_segment_instruction_lfs_gp_125(void)
@@ -785,10 +801,10 @@ static void  gp_rqmid_31901_segment_instruction_lfs_gp_125(void)
 	bool ret;
 
 	//printf(" Set gdt64 segment not present\n ");
-	set_gdt64_entry(NULL_SEL, 0, 0xc000f, 0x93, 0);
+	set_gdt64_entry(0x50, 0, 0xc000f, 0x93, 0);
 
 	//printf(" Load gdt to lgdtr\n ");
-	load_gdt_and_set_segment_rigster();
+	asm volatile("lgdt gdt64_desc\n");
 
 	fun = (gp_trigger_func)lfs_gp_125;
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
@@ -1095,7 +1111,7 @@ void error_case()
 	gp_rqmid_31398_data_transfer_mov_gp_019();					//hlt
 	gp_rqmid_31609_data_transfer_mov_db_001();					//fail
 	gp_rqmid_31652_control_transfer_int_gp_115();				//error
-	gp_rqmid_31901_segment_instruction_lfs_gp_125();			//fail
+	//gp_rqmid_31901_segment_instruction_lfs_gp_125();			//fail
 	do_at_ring3(gp_rqmid_31751_segment_instruction_lss_gp_132, "");//not handler
 	gp_rqmid_31937_msr_access_rdsmr_gp_004();					//rdmsr_vmexit_handler
 	gp_rqmid_31939_msr_access_rdsmr_gp_005();					//rdmsr_vmexit_handler
@@ -1159,6 +1175,7 @@ int main(void)
 	gp_rqmid_31379_control_transfer_iret_gp_097();
 	gp_rqmid_32163_random_number_rdrand_ud_006();
 	gp_rqmid_32191_ud_instruction_ud1_ud_010();
+	gp_rqmid_31901_segment_instruction_lfs_gp_125();
 	/*---64 bit end----*/
 
 #else /* #ifndef __x86_64__ */

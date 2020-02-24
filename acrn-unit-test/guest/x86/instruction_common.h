@@ -60,6 +60,7 @@ typedef void (*gp_trigger_func)(void *data);
 #define CR4_RESEVED_BIT_23                              0x1ff
 #define CR3_RESEVED_BIT_2                               0x3
 #define CR3_RESEVED_BIT_5                               0x7f
+#define CR8_RESEVED_BIT_4								0xfffffff
 
 #define FEATURE_INFORMATION_BIT(SAL)                    ({ (0x1ul << SAL); })
 #define FEATURE_INFORMATION_BIT_RANGE(VAL, SAL)         ({ (((unsigned long)VAL) << SAL); })
