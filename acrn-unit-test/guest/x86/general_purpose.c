@@ -697,10 +697,11 @@ __unused static void call_ud_042(void)
 	/* "call (absolute address in memory) \n" */
 	//u64 *data_add = (u64 *)0x000000000048e520;
 	asm volatile(".byte 0x9a, 0x20, 0xe5, 0x48, 0xe8, 0x9d, 0xfe");
-	/*asm volatile("call %[addr]\n\t"
-		: : [addr]"m"(data_add)
-		: "memory");
-	*/
+	/*
+	 *asm volatile("call %[addr]\n\t"
+	 *	: : [addr]"m"(data_add)
+	 *	: "memory");
+	 */
 }
 
 static void  gp_rqmid_31286_control_transfer_call_ud_042(void)
