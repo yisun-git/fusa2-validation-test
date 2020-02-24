@@ -8,17 +8,19 @@
 #include "misc.h"
 #include "delay.h"
 
-
-#define USE_DEBUG
-
-
+//#define USE_DEBUG
+#ifdef USE_DEBUG
+#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#else
+#define debug_print(fmt, args...)
+#endif
 
 /**CPUID Function:**/
 static __unused uint64_t get_supported_xcr0(void)
 {
 	struct cpuid r;
 	r = cpuid_indexed(0xd, 0);
-	printf("eax 0x%x, ebx 0x%x, ecx 0x%x, edx 0x%x\n",
+	debug_print("eax 0x%x, ebx 0x%x, ecx 0x%x, edx 0x%x\n",
 		r.a, r.b, r.c, r.d);
 	return r.a + ((u64)r.d << 32);
 }
@@ -178,7 +180,40 @@ static __unused int xgetbv_checking(u32 index, u64 *result)
     return exception_vector();
 }
 
+int ap_start_count = 0;
+void save_unchanged_reg(void)
+{
+	/* enable cr4.OSFXSR[9] for SSE. */
+	write_cr4_osxsave(1);
 
+	if (ap_start_count == 0) {
+		/* exec SSE instrction. */
+		asm volatile("movapd %xmm1, %xmm2");
+
+		/* xsetbv XCR0 to X87|SSE|AVX. */
+		asm volatile(
+			"mov $0, %ecx\n\t"
+			"mov $0, %edx\n\t"
+			"mov $7, %eax\n\t"
+			"xsetbv\n\t"
+		);
+
+		ap_start_count++;
+	}
+
+	/* xgetbv XCR0 & XINUSE. */
+	asm volatile(
+		"mov $0, %eax\n\t"
+		"mov $0, %edx\n\t"
+		"mov $1, %ecx\n\t"
+		"xgetbv\n\t"
+	);
+
+	/*store XCR0 & XINUSE to memory.*/
+	asm volatile (
+		"mov %eax, (0x7000)\r\n"
+		"mov %edx, (0x7004)\r\n");
+}
 
 /*
  * Case name: 23631:XSAVE hide PKRU support_001.
@@ -190,24 +225,24 @@ static __unused int xgetbv_checking(u32 index, u64 *result)
 static __unused void xsave_rqmid_23631_hide_pkru_support_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID that is the processor defult-support.******\n");
+	debug_print("******Step1: Get CPUID that is the processor defult-support.******\n");
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
 	#ifdef USE_DEBUG
-	printf("The supported CPUID = %#lx\n", supported_xcr0);
+	debug_print("The supported CPUID = %#lx\n", supported_xcr0);
 	#endif
-	printf("******Step2: Get EAX[9], and compare with 0b.******\n");
+	debug_print("******Step2: Get EAX[9], and compare with 0b.******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_PKRU_BIT);
 	r_eax = 0x0001 & r_eax;
 	if (r_eax == 0) {
 		i++;
-		printf("The value of EAX[9] = %#x \n", r_eax);
-		printf("******23631:XSAVE_hide_PKRU_support_001, test case Passed.******\n");
+		debug_print("The value of EAX[9] = %#x \n", r_eax);
+		debug_print("******23631:XSAVE_hide_PKRU_support_001, test case Passed.******\n");
 	} else {
-		printf("The value of EAX[9] = %#x \n", r_eax);
-		printf("******23631:XSAVE_hide_PKRU_support_001, test case Failed.******\n");
+		debug_print("The value of EAX[9] = %#x \n", r_eax);
+		debug_print("******23631:XSAVE_hide_PKRU_support_001, test case Failed.******\n");
 	}
 	report("23631:XSAVE_hide_PKRU_support_001", (i == 2));
 }
@@ -223,24 +258,24 @@ static __unused void xsave_rqmid_23631_hide_pkru_support_001(void)
 static __unused void xsave_rqmid_23632_hide_mpx_support_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID that is the processor defult-support******\n");
+	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
 	#ifdef USE_DEBUG
-	printf("The supported CPUID = %#lx\n", supported_xcr0);
+	debug_print("The supported CPUID = %#lx\n", supported_xcr0);
 	#endif
-	printf("******Step2: Get EAX[4:3], and compare with 00b.******\n");
+	debug_print("******Step2: Get EAX[4:3], and compare with 00b.******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_MPX_BNDREGS_BIT);
 	r_eax = 0x0003 & r_eax;
 	if (r_eax == 0) {
 		i++;
-		printf("The value of EAX[4:3] = %#x\n", r_eax);
-		printf("******23632:XSAVE_hide_MPX_support_001, test case Passed.******\n");
+		debug_print("The value of EAX[4:3] = %#x\n", r_eax);
+		debug_print("******23632:XSAVE_hide_MPX_support_001, test case Passed.******\n");
 	} else {
-		printf("The value of EAX[4:3] = %#x\n", r_eax);
-		printf("******23632:XSAVE_hide_MPX_support_001, test case Failed.******\n");
+		debug_print("The value of EAX[4:3] = %#x\n", r_eax);
+		debug_print("******23632:XSAVE_hide_MPX_support_001, test case Failed.******\n");
 	}
 	report("23632:XSAVE_hide_MPX_support_001", (i == 2));
 }
@@ -256,24 +291,24 @@ static __unused void xsave_rqmid_23632_hide_mpx_support_001(void)
 static __unused void xsave_rqmid_23633_hide_avx_512_support_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID that is the processor defult-support******\n");
+	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
 	#ifdef USE_DEBUG
-	printf("The supported CPUID = %lu\nThe supported CPUID = %#lx\n", supported_xcr0, supported_xcr0);
+	debug_print("The supported CPUID = %lu\nThe supported CPUID = %#lx\n", supported_xcr0, supported_xcr0);
 	#endif
-	printf("******Step2: Get EAX[7:5], and compare with 000b.******\n");
+	debug_print("******Step2: Get EAX[7:5], and compare with 000b.******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_AVX_512_OPMASK);
 	r_eax = 0x0007 & r_eax;
 	if (r_eax == 0) {
 		i++;
-		printf("The value of EAX[7:5] = %#x \n", r_eax);
-		printf("******23633:XSAVE_hide_AVX_512_support_001, test case Passed.******\n");
+		debug_print("The value of EAX[7:5] = %#x \n", r_eax);
+		debug_print("******23633:XSAVE_hide_AVX_512_support_001, test case Passed.******\n");
 	} else {
-		printf("The value of EAX[7:5] = %#x \n", r_eax);
-		printf("******23633:XSAVE_hide_AVX_512_support_001, test case Failed.******\n");
+		debug_print("The value of EAX[7:5] = %#x \n", r_eax);
+		debug_print("******23633:XSAVE_hide_AVX_512_support_001, test case Failed.******\n");
 	}
 	report("23633:XSAVE_hide_AVX_512_support_001", (i == 2));
 }
@@ -288,24 +323,24 @@ static __unused void xsave_rqmid_23633_hide_avx_512_support_001(void)
 static __unused void xsave_rqmid_28385_physical_x87_support_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID that is the processor defult-support******\n");
+	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
 	#ifdef USE_DEBUG
-	printf("The supported CPUID = 0x%lx\n", supported_xcr0);
+	debug_print("The supported CPUID = 0x%lx\n", supported_xcr0);
 	#endif
-	printf("******Step2: Get EAX[0], and compare with 0b******\n");
+	debug_print("******Step2: Get EAX[0], and compare with 0b******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_X87_BIT);
 	r_eax = 0x0001 & r_eax;
 	if (r_eax == 1) {
 		i++;
-		printf("The value of EAX[0] = %#x \n", r_eax);
-		printf("******28385:XSAVE_physical_x87_support_001, test case Passed******\n");
+		debug_print("The value of EAX[0] = %#x \n", r_eax);
+		debug_print("******28385:XSAVE_physical_x87_support_001, test case Passed******\n");
 	} else {
-		printf("The value of EAX[0] = %#x \n", r_eax);
-		printf("******28385:XSAVE_physical_x87_support_001, test case Failed******\n");
+		debug_print("The value of EAX[0] = %#x \n", r_eax);
+		debug_print("******28385:XSAVE_physical_x87_support_001, test case Failed******\n");
 	}
 	report("28385:XSAVE_physical_x87_support_001", (i == 2));
 }
@@ -320,17 +355,17 @@ static __unused void xsave_rqmid_28385_physical_x87_support_001(void)
 static __unused void xsave_rqmid_28386_physical_general_support_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
 	int r_ecx;
 	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
 	i++;
 	if (r_ecx == 1) {
 		i++;
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x \n", r_ecx);
-		printf("******28386:XSAVE_physical_general_support_001, test case Passed******\n");
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x \n", r_ecx);
+		debug_print("******28386:XSAVE_physical_general_support_001, test case Passed******\n");
 	} else {
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x \n", r_ecx);
-		printf("******28386:XSAVE_physical_general_support_001, test case Failed******\n");
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x \n", r_ecx);
+		debug_print("******28386:XSAVE_physical_general_support_001, test case Failed******\n");
 	}
 	report("28386:XSAVE_physical_general_support_001", (i == 2));
 }
@@ -345,23 +380,23 @@ static __unused void xsave_rqmid_28386_physical_general_support_001(void)
 static __unused void xsave_rqmid_28388_physical_sse_support_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.0DH:EAX.SSE[bit 1], and compare with 1b******\n");
+	debug_print("******Step1: Get CPUID.0DH:EAX.SSE[bit 1], and compare with 1b******\n");
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
 	#ifdef USE_DEBUG
-	printf("The supported CPUID = %lu\nThe supported CPUID = %#lx\n", supported_xcr0, supported_xcr0);
+	debug_print("The supported CPUID = %lu\nThe supported CPUID = %#lx\n", supported_xcr0, supported_xcr0);
 	#endif
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_SSE_BIT);
 	r_eax = 0x0001 & r_eax;
 	if (r_eax == 1) {
 		i++;
-		printf("The value of CPUID.0DH:EAX.SSE[bit 1] = %#x \n", r_eax);
-		printf("******28388:XSAVE_physical_SSE_support_001, test case Passed******\n");
+		debug_print("The value of CPUID.0DH:EAX.SSE[bit 1] = %#x \n", r_eax);
+		debug_print("******28388:XSAVE_physical_SSE_support_001, test case Passed******\n");
 	} else {
-		printf("The value of CPUID.0DH:EAX.SSE[bit 1] = %#x \n", r_eax);
-		printf("******28388:XSAVE_physical_SSE_support_001, test case Failed******\n");
+		debug_print("The value of CPUID.0DH:EAX.SSE[bit 1] = %#x \n", r_eax);
+		debug_print("******28388:XSAVE_physical_SSE_support_001, test case Failed******\n");
 	}
 	report("28388:XSAVE_physical_SSE_support_001", (i == 2));
 }
@@ -376,23 +411,23 @@ static __unused void xsave_rqmid_28388_physical_sse_support_001(void)
 static __unused void xsave_rqmid_28390_physical_avx_support_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.0DH:EAX.AVX[bit 2], and compare with 1b******\n");
+	debug_print("******Step1: Get CPUID.0DH:EAX.AVX[bit 2], and compare with 1b******\n");
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
 	#ifdef USE_DEBUG
-	printf("The supported CPUID = %lu\nThe supported CPUID = 0x%lx\n", supported_xcr0, supported_xcr0);
+	debug_print("The supported CPUID = %lu\nThe supported CPUID = 0x%lx\n", supported_xcr0, supported_xcr0);
 	#endif
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_AVX_BIT);
 	r_eax = 0x0001 & r_eax;
 	if (r_eax == 1) {
 		i++;
-		printf("The value of CPUID.0DH:EAX.AVX[bit 2] = %#x \n", r_eax);
-		printf("******28390:XSAVE_physical_AVX_support_001, test case Passed******\n");
+		debug_print("The value of CPUID.0DH:EAX.AVX[bit 2] = %#x \n", r_eax);
+		debug_print("******28390:XSAVE_physical_AVX_support_001, test case Passed******\n");
 	} else {
-		printf("The value of CPUID.0DH:EAX.AVX[bit 2] = %#x \n", r_eax);
-		printf("******28390:XSAVE_physical_AVX_support_001, test case Failed******\n");
+		debug_print("The value of CPUID.0DH:EAX.AVX[bit 2] = %#x \n", r_eax);
+		debug_print("******28390:XSAVE_physical_AVX_support_001, test case Failed******\n");
 	}
 	report("28390:XSAVE_physical_AVX_support_001", (i == 2));
 }
@@ -407,17 +442,17 @@ static __unused void xsave_rqmid_28390_physical_avx_support_001(void)
 static __unused void xsave_rqmid_28468_physical_compaction_extensions_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.(EAX=0DH,ECX=1H):EAX[bit1], and compare with 1b******\n");
+	debug_print("******Step1: Get CPUID.(EAX=0DH,ECX=1H):EAX[bit1], and compare with 1b******\n");
 	int bit_support_compaction;
 	bit_support_compaction = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
 	bit_support_compaction = 0x0001 & bit_support_compaction;
 	if (bit_support_compaction == 1) {
 		i++;
-		printf("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit1] = %#x \n", bit_support_compaction);
-		printf("******28468:XSAVE_physical_compaction_extensions_001, test case Passed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit1] = %#x \n", bit_support_compaction);
+		debug_print("******28468:XSAVE_physical_compaction_extensions_001, test case Passed******\n");
 	} else {
-		printf("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit1] = %#x \n", bit_support_compaction);
-		printf("******28468:XSAVE_physical_compaction_extensions_001, test case Failed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit1] = %#x \n", bit_support_compaction);
+		debug_print("******28468:XSAVE_physical_compaction_extensions_001, test case Failed******\n");
 	}
 	report("28468:XSAVE_physical_compaction_extensions_001", (i == 1));
 }
@@ -432,17 +467,17 @@ static __unused void xsave_rqmid_28468_physical_compaction_extensions_001(void)
 static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_001(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID that is the processor defult-support******\n");
+	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
 	int bit_support_compaction;
 	bit_support_compaction = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
 	bit_support_compaction = 0x0011 & bit_support_compaction;
 	if (bit_support_compaction == 0x7) {
 		i++;
-		printf("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
-		printf("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Passed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
+		debug_print("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Passed******\n");
 	} else {
-		printf("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
-		printf("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Failed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
+		debug_print("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Failed******\n");
 	}
 	report("28392:XSAVE_physical_init_and_modified_optimizations_001", (i == 1));
 }
@@ -458,50 +493,50 @@ static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_
 static __unused void xsave_rqmid_28393_general_support_009(void)
 {
 	u32 i = 0;
-	printf("******Step1: Set CR4.osxsave[bit18] to 1.******\n");
+	debug_print("******Step1: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step2: Creat non-aligned address.******\n");
+	debug_print("******Step2: Creat non-aligned address.******\n");
 	__attribute__((aligned(64))) u64 addr;
 	u64 *aligned_addr = &addr;
 	u64 *non_aligned_addr = (u64 *)((u8 *)aligned_addr + 1);
 	i++;
-	printf("aligned_addr = %#lx\n", *aligned_addr);
-	printf("non_aligned_addr = %#lx\n", *non_aligned_addr);
+	debug_print("aligned_addr = %#lx\n", *aligned_addr);
+	debug_print("non_aligned_addr = %#lx\n", *non_aligned_addr);
 
-	printf("Step3: Rand to execute XSAVE/XSAVEC/XSAVOPT/XRSTOR instruciton with the non-aligned address.\n");
-	printf("Excepted Result: Generate #GP exception, error_code=0000.\n");
+	debug_print("Step3: Rand to execute XSAVE/XSAVEC/XSAVOPT/XRSTOR instruciton with the non-aligned address.\n");
+	debug_print("Excepted Result: Generate #GP exception, error_code=0000.\n");
 
 	u32 r_eax = 0;
 	u32 r_edx = 0;
 	switch (get_random_value()%4) {
 	case 0:
-		printf("******Step4: Execute XSAVE instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVE instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
 		asm volatile("xsave %[addr]\n\t"
 			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 1:
-		printf("******Step4: Execute XSAVEC instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVEC instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
 		i++;
 		asm volatile("xsavec %[addr]\n\t"
 			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 2:
-		printf("******Step4: Execute XSAVEOPT instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVEOPT instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
 		i++;
 		asm volatile("xsaveopt %[addr]\n\t"
 			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 3:
-		printf("******Step4: Execute XRSTOR instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XRSTOR instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
 		i++;
 		asm volatile("xrstor %[addr]\n\t"
 			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
@@ -526,29 +561,29 @@ static __unused void xsave_rqmid_28395_general_support_012_subfun(void)
 	u32 r_edx = 0;
 	switch (get_random_value()%4) {
 	case 0:
-		printf("******Step4: Execute XSAVE instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVE instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
 		asm volatile("xsave %[addr]\n\t"
 			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		break;
 	case 1:
-		printf("******Step4: Execute XSAVEC instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVEC instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
 		asm volatile("xsavec %[addr]\n\t"
 			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		break;
 	case 2:
-		printf("******Step4: Execute XSAVEOPT instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVEOPT instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
 		asm volatile("xsaveopt %[addr]\n\t"
 			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		break;
 	case 3:
-		printf("******Step4: Execute XRSTOR instruciton with the non-aligned address.******\n");
-		printf("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XRSTOR instruciton with the non-aligned address.******\n");
+		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
 		asm volatile("xrstor %[addr]\n\t"
 			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
 			: "memory");
@@ -559,16 +594,16 @@ static __unused void xsave_rqmid_28395_general_support_012_subfun(void)
 static __unused void xsave_rqmid_28395_general_support_012(void)
 {
 	u32 i = 0;
-	printf("******Step1: Set CR4.osxsave[bit18] to 1.******\n");
+	debug_print("******Step1: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
-	printf("******Step2: Set CR0.AM[bit18] and EFLAG.AC[bit18] to 1.******\n");
+	debug_print("******Step2: Set CR0.AM[bit18] and EFLAG.AC[bit18] to 1.******\n");
 	set_cr0_AM(1);
 	set_eflag_ac(1);
 	i++;
 
-	printf("Step3: Rand to execute XSAVE/XSAVEC/XSAVOPT/XRSTOR instruciton with the non-aligned address.\n");
-	printf("Excepted Result: Generate #AC exception, error_code=0000.\n");
+	debug_print("Step3: Rand to execute XSAVE/XSAVEC/XSAVOPT/XRSTOR instruciton with the non-aligned address.\n");
+	debug_print("Excepted Result: Generate #AC exception, error_code=0000.\n");
 	do_at_ring3(xsave_rqmid_28395_general_support_012_subfun, "");
 	i++;
 	report("28395:XSAVE_general_support_012", (i == 2));
@@ -584,34 +619,35 @@ static __unused void xsave_rqmid_28395_general_support_012(void)
 static __unused void xsave_rqmid_28397_general_support_027(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
 	int r_ecx;
 	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
 	if (r_ecx == 1) {
 		i++;
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature.\n", r_ecx);
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature.\n", r_ecx);
 	} else {
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, XSAVE feature not support or disable.\n", r_ecx);
-		printf("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n");
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
+			"XSAVE feature not support or disable.\n", r_ecx);
+		debug_print("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n");
 		return;
 	}
 
-	printf("******Step2: Set CR4.osxsave[bit18] to 1.******\n");
+	debug_print("******Step2: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step3: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n");
+	debug_print("******Step3: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n");
 	uint64_t xcr0;
 	uint64_t test_bits;
 	test_bits = STATE_X87 | STATE_SSE | STATE_AVX | STATE_MPX_BNDREGS | STATE_MPX_BNDCSR;
 	xgetbv_checking(XCR0_MASK, &xcr0);
 	if (xcr0 == test_bits) {
-		printf("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87/SSE/AVX/MPX STATE.\n", xcr0);
+		debug_print("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87/SSE/AVX/MPX STATE.\n", xcr0);
 	} else {
-		printf("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.\n", xcr0);
+		debug_print("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.\n", xcr0);
 	}
 
-	printf("******Step4: Execute XSAVE instruciton with [xsave_area_struct].******\n");
+	debug_print("******Step4: Execute XSAVE instruciton with [xsave_area_struct].******\n");
 	u32 r_eax = 0;
 	u32 r_edx = 0;
 	__attribute__((aligned(64)))xsave_area_t xsave_area_created;
@@ -619,12 +655,12 @@ static __unused void xsave_rqmid_28397_general_support_027(void)
 		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 		: "memory");
 	i++;
-	printf("******Step5: Set xcomp_bv[bit13] to 1.******\n ");
+	debug_print("******Step5: Set xcomp_bv[bit13] to 1.******\n ");
 	xsave_area_created.xsave_hdr.xcomp_bv  |= STATE_HDC;
 	i++;
 
-	printf("******Step6: Execute XRSTOR instruciton with [xsave_area_struct].******\n");
-	printf("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
+	debug_print("******Step6: Execute XRSTOR instruciton with [xsave_area_struct].******\n");
+	debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
 	asm volatile("xrstor %[addr]\n\t"
 		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 		: "memory");
@@ -643,50 +679,53 @@ static __unused void xsave_rqmid_28397_general_support_027(void)
 static __unused void xsave_rqmid_24444_general_support_021(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b.******\n ");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b.******\n ");
 	int r_ecx;
 	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
 	if (r_ecx == 1) {
 		i++;
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature.\n", r_ecx);
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature.\n", r_ecx);
 	} else {
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, XSAVE feature not support or disable.\n", r_ecx);
-		printf("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n ");
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
+			"XSAVE feature not support or disable.\n", r_ecx);
+		debug_print("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n ");
 		return;
 	}
 
-	printf("******Step2: Set CR4.osxsave[bit18] to 1.******\n ");
+	debug_print("******Step2: Set CR4.osxsave[bit18] to 1.******\n ");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step3: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n ");
+	debug_print("******Step3: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n ");
 	uint64_t xcr0;
 	uint64_t test_bits;
 	test_bits = STATE_X87 | STATE_SSE | STATE_AVX | STATE_MPX_BNDREGS | STATE_MPX_BNDCSR;
 	if (xgetbv_checking(XCR0_MASK, &xcr0) == test_bits) {
-		printf("The value of xcr0 = %#lx, XSAVE feature ONLY can manage X87/SSE/AVX/MPX STATE\n", xcr0);
+		debug_print("The value of xcr0 = %#lx, XSAVE feature ONLY can manage X87/SSE/AVX/MPX STATE\n", xcr0);
 	} else {
-		printf("The value of xcr0 = %#lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.\n", xcr0);
+		debug_print("The value of xcr0 = %#lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.\n", xcr0);
 	}
 
-	printf("******Step4: Execute XSETBV with EDX:EAX=0x3/ECX=0.******\n");
+	debug_print("******Step4: Execute XSETBV with EDX:EAX=0x3/ECX=0.******\n");
 	test_bits = STATE_X87 | STATE_SSE;
 	xsetbv_checking(XCR0_MASK, test_bits);
 	i++;
 
-	printf("******Step5: Check XGETBV to make sure XSAVE feature can be used to manage X87&SSE state.******\n");
+	debug_print("******Step5: Check XGETBV to make sure XSAVE feature "
+		"can be used to manage X87&SSE state.******\n");
 	test_bits = STATE_X87 | STATE_SSE;
-	printf("******TEST_BITS is %#lx.******\n", test_bits);
+	debug_print("******TEST_BITS is %#lx.******\n", test_bits);
 	xcr0 = 0;
 	xgetbv_checking(XCR0_MASK, &xcr0);
 	if (xcr0 == test_bits) {
 		i++;
-		printf("******The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87&SSE STATE.******\n", xcr0);
-		printf("******24444:XSAVE_general_support_021, test case Passed.******\n");
+		debug_print("******The value of xcr0 = 0x%lx, XSAVE feature "
+			"ONLY can manage X87&SSE STATE.******\n", xcr0);
+		debug_print("******24444:XSAVE_general_support_021, test case Passed.******\n");
 	} else {
-		printf("******The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.******\n",
+		debug_print("******The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.******\n",
 			xcr0);
-		printf("******24444:XSAVE_general_support_021, test case Failed.******\n");
+		debug_print("******24444:XSAVE_general_support_021, test case Failed.******\n");
 	}
 	report("24444:XSAVE_general_support_021", (i == 4));
 }
@@ -704,23 +743,24 @@ static __unused void xsave_rqmid_24444_general_support_021(void)
 static __unused void xsave_rqmid_24418_general_support_022(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
 	int r_ecx;
 	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
 	if (r_ecx == 1) {
 		i++;
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature SUPPORT.\n", r_ecx);
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature SUPPORT.\n", r_ecx);
 	} else {
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, XSAVE feature not support or disable.\n", r_ecx);
-		printf("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n");
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
+			"XSAVE feature not support or disable.\n", r_ecx);
+		debug_print("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n");
 		return;
 	}
 
-	printf("******Step2: Clean CR4.osxsave[bit18] to 0.******\n");
+	debug_print("******Step2: Clean CR4.osxsave[bit18] to 0.******\n");
 	write_cr4_osxsave(0);
 	i++;
 
-	printf("******Step3:Rand to execute /XGETBV/XSAVE/XSAVEC/XSAVES/XSAVOPT/XRSTOR instruciton.******\n");
+	debug_print("******Step3:Rand to execute /XGETBV/XSAVE/XSAVEC/XSAVES/XSAVOPT/XRSTOR instruciton.******\n");
 	int r_eax = 0;
 	int r_edx = 0;
 	uint64_t xcr0;
@@ -729,43 +769,43 @@ static __unused void xsave_rqmid_24418_general_support_022(void)
 	case 0:
 		xgetbv_checking(XCR0_MASK, &xcr0);
 	case 1:
-		printf("******Step4: Execute XSAVE instruciton with CR4.osxsave[bit18]=0.******\n");
-		printf("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVE instruciton with CR4.osxsave[bit18]=0.******\n");
+		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
 		asm volatile("xsave %[addr]\n\t"
 			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 2:
-		printf("******Step4: Execute XRSTOR instruciton with CR4.osxsave[bit18]=0.******\n");
-		printf("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XRSTOR instruciton with CR4.osxsave[bit18]=0.******\n");
+		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
 		asm volatile("xrstor %[addr]\n\t"
 			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 3:
-		printf("******Step4: Execute XSAVEC instruciton with CR4.osxsave[bit18]=0.******\n");
-		printf("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVEC instruciton with CR4.osxsave[bit18]=0.******\n");
+		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
 		asm volatile("xsavec %[addr]\n\t"
 			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 4:
-		printf("******Step4: Execute XSAVES instruciton with CR4.osxsave[bit18]=0.******\n");
-		printf("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XSAVES instruciton with CR4.osxsave[bit18]=0.******\n");
+		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
 		asm volatile("xsaves %[addr]\n\t"
 			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 5:
-		printf("******Step4: Execute XRSTORS instruciton with CR4.osxsave[bit18]=0.******\n");
-		printf("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
+		debug_print("******Step4: Execute XRSTORS instruciton with CR4.osxsave[bit18]=0.******\n");
+		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
 		asm volatile("xrstors %[addr]\n\t"
 			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 			: "memory");
 		i++;
 	case 6:
-		printf("******Step4: Execute XSAVEOPT instruciton with CR4.osxsave[bit18]=0.******\n");
-		printf("******Excepted Result: Generate #UD exception, error_code=0000.******\n ");
+		debug_print("******Step4: Execute XSAVEOPT instruciton with CR4.osxsave[bit18]=0.******\n");
+		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n ");
 		asm volatile("xsaveopt %[addr]\n\t"
 			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 			: "memory");
@@ -785,24 +825,26 @@ static __unused void xsave_rqmid_24418_general_support_022(void)
 static __unused void xsave_rqmid_23638_init_and_modified_optimizations_002(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
 	int r_ecx;
 	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
 	if (r_ecx == 1) {
 		i++;
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature SUPPORT.\n", r_ecx);
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature SUPPORT.\n", r_ecx);
 	} else {
-		printf("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, XSAVE feature not support or disable.\n", r_ecx);
-		printf("******23638:XSAVE_rqmid_23638_init_and_modified_optimizations_002, test case Failed******\n");
+		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
+			"XSAVE feature not support or disable.\n", r_ecx);
+		debug_print("******23638:XSAVE_rqmid_23638_init_and_modified_optimizations_002, "
+			"test case Failed******\n");
 		return;
 	}
 
-	printf("******Step2: Clean CR4.osxsave[bit18] to 0.******\n");
+	debug_print("******Step2: Clean CR4.osxsave[bit18] to 0.******\n");
 	write_cr4_osxsave(0);
 	i++;
 
-	printf("******Step4: Execute XSAVEOPT64 instruciton with CR4.osxsave[bit18]=0.******\n");
-	printf("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
+	debug_print("******Step4: Execute XSAVEOPT64 instruciton with CR4.osxsave[bit18]=0.******\n");
+	debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
 	int r_eax = 0;
 	int r_edx = 0;
 	__attribute__((aligned(64)))xsave_area_t xsave_area_created;
@@ -824,25 +866,26 @@ static __unused void xsave_rqmid_23638_init_and_modified_optimizations_002(void)
 static __unused void xsave_rqmid_23639_init_and_modified_optimizations_003(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
 	int bit_support;
 	bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
 	bit_support &= SUPPORT_XSAVEOPT;
 	if (bit_support == SUPPORT_XSAVEOPT) {
 		i++;
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
 	} else {
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, XSAVEOPT not support or disable.",
-			bit_support);
-		printf("******23639:XSAVE_rqmid_23639_init_and_modified_optimizations_003, test case Failed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, "
+			"XSAVEOPT not support or disable.", bit_support);
+		debug_print("******23639:XSAVE_rqmid_23639_init_and_modified_optimizations_003, "
+			"test case Failed******\n");
 		return;
 	}
 
-	printf("******Step2: Set CR4.osxsave[bit18] to 1.******\n");
+	debug_print("******Step2: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step3: Execute XSAVEOPT64 instruciton.******\n");
+	debug_print("******Step3: Execute XSAVEOPT64 instruciton.******\n");
 	int r_eax = 0, r_edx = 0;
 	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
 	asm volatile("XSAVEOPT64 %[addr]\n\t"
@@ -850,17 +893,17 @@ static __unused void xsave_rqmid_23639_init_and_modified_optimizations_003(void)
 		: "memory");
 	i++;
 
-	printf("******Step4: Check the value of xstate_bv[4:0].******\n ");
+	debug_print("******Step4: Check the value of xstate_bv[4:0].******\n ");
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX | STATE_MPX_BNDREGS | STATE_MPX_BNDCSR);
 	if (state_bv == 0)
 	{
 		i++;
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23639:XSAVE init and modified optimizations_003, test case Passed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23639:XSAVE init and modified optimizations_003, test case Passed.******\n");
 	} else {
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23639:XSAVE init and modified optimizations_003, test case Failed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23639:XSAVE init and modified optimizations_003, test case Failed.******\n");
 	}
 	report("23639:XSAVE init and modified optimizations_003", (i == 4));
 }
@@ -876,29 +919,30 @@ static __unused void xsave_rqmid_23639_init_and_modified_optimizations_003(void)
 static __unused void xsave_rqmid_23640_init_and_modified_optimizations_004(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVEOPT, and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVEOPT, and compare with 0b******\n");
 	int bit_support;
 	bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
 	bit_support &= SUPPORT_XSAVEOPT;
 	if (bit_support == SUPPORT_XSAVEOPT) {
 		i++;
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
 	} else {
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, XSAVEOPT not support or disable.",
-			bit_support);
-		printf("******23640:XSAVE_rqmid_23640_init_and_modified_optimizations_004, test case Failed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, "
+			"XSAVEOPT not support or disable.", bit_support);
+		debug_print("******23640:XSAVE_rqmid_23640_init_and_modified_optimizations_004, "
+			"test case Failed******\n");
 		return;
 	}
 
-	printf("******Step2: To XSETBV with ECX = 0 and EDX:EAX = 0x0.******\n");
+	debug_print("******Step2: To XSETBV with ECX = 0 and EDX:EAX = 0x0.******\n");
 	xsetbv_checking(0, STATE_X87);
 	i++;
 
-	printf("******Step3: Set CR4.osxsave[bit18] to 1.******\n");
+	debug_print("******Step3: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step4: Execute XSAVEOPT64 instruciton.******\n");
+	debug_print("******Step4: Execute XSAVEOPT64 instruciton.******\n");
 	int r_eax = STATE_X87 | STATE_SSE | STATE_AVX;
 	int r_edx = 0;
 	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
@@ -907,17 +951,17 @@ static __unused void xsave_rqmid_23640_init_and_modified_optimizations_004(void)
 		: "memory");
 	i++;
 
-	printf("******Step5: Check the value of xstate_bv[2:0].******\n ");
+	debug_print("******Step5: Check the value of xstate_bv[2:0].******\n ");
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
 	if (state_bv == STATE_X87)
 	{
 		i++;
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23640:XSAVE init and modified optimizations_004, test case Passed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23640:XSAVE init and modified optimizations_004, test case Passed.******\n");
 	} else {
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23640:XSAVE init and modified optimizations_004, test case Failed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23640:XSAVE init and modified optimizations_004, test case Failed.******\n");
 	}
 	report("23640:XSAVE init and modified optimizations_004", (i == 5));
 }
@@ -933,39 +977,40 @@ static __unused void xsave_rqmid_23640_init_and_modified_optimizations_004(void)
 static __unused void xsave_rqmid_23641_init_and_modified_optimizations_005(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
 	int bit_support;
 	bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
 	bit_support &= SUPPORT_XSAVEOPT;
 	if (bit_support == SUPPORT_XSAVEOPT) {
 		i++;
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
 	} else {
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, XSAVEOPT not support or disable.",
-			bit_support);
-		printf("******23641:XSAVE_rqmid_23641_init_and_modified_optimizations_005, test case Failed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, "
+			"XSAVEOPT not support or disable.", bit_support);
+		debug_print("******23641:XSAVE_rqmid_23641_init_and_modified_optimizations_005, "
+			"test case Failed******\n");
 		return;
 	}
 
-	printf("******Step2: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n");
+	debug_print("******Step2: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n");
 	uint64_t xcr0;
 	xgetbv_checking(XCR0_MASK, &xcr0);
 	if (xcr0 == STATE_X87) {
-		printf("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87.\n", xcr0);
+		debug_print("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87.\n", xcr0);
 	} else {
-		printf("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature can manage more state component.\n",
+		debug_print("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature can manage more state component.\n",
 			xcr0);
 	}
 
-	printf("******Step3: Set CR4.osxsave[bit18] to 1.******\n");
+	debug_print("******Step3: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step4: To XSETBV with ECX = 0 and EDX:EAX = 0x3.******\n");
+	debug_print("******Step4: To XSETBV with ECX = 0 and EDX:EAX = 0x3.******\n");
 	xsetbv_checking(0, STATE_X87);
 	i++;
 
-	printf("******Step5: Execute XSAVEOPT64 instruciton.******\n");
+	debug_print("******Step5: Execute XSAVEOPT64 instruciton.******\n");
 	int r_eax = STATE_X87 | STATE_SSE;
 	int r_edx = 0;
 	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
@@ -974,17 +1019,17 @@ static __unused void xsave_rqmid_23641_init_and_modified_optimizations_005(void)
 		: "memory");
 	i++;
 
-	printf("******Step6: Check the value of xstate_bv[2:0].******\n ");
+	debug_print("******Step6: Check the value of xstate_bv[2:0].******\n ");
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
 	if (state_bv == STATE_X87)
 	{
 		i++;
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23641:XSAVE init and modified optimizations_005, test case Passed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23641:XSAVE init and modified optimizations_005, test case Passed.******\n");
 	} else {
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23641:XSAVE init and modified optimizations_005, test case Failed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23641:XSAVE init and modified optimizations_005, test case Failed.******\n");
 	}
 	report("23641:XSAVE init and modified optimizations_005", (i == 5));
 }
@@ -999,51 +1044,52 @@ static __unused void xsave_rqmid_23641_init_and_modified_optimizations_005(void)
 static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 {
 	u32 i = 0;
-	printf("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
+	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
 	int bit_support;
 	bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
 	bit_support &= SUPPORT_XSAVEOPT;
 	if (bit_support == SUPPORT_XSAVEOPT) {
 		i++;
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
 	} else {
-		printf("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, XSAVEOPT not support or disable.",
-			bit_support);
-		printf("******23642:XSAVE_rqmid_23641_init_and_modified_optimizations_006, test case Failed******\n");
+		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, "
+			"XSAVEOPT not support or disable.", bit_support);
+		debug_print("******23642:XSAVE_rqmid_23641_init_and_modified_optimizations_006, "
+			"test case Failed******\n");
 		return;
 	}
 
-	printf("******Step2 :Execute XGETBV with ECX = 0.******\n");
+	debug_print("******Step2 :Execute XGETBV with ECX = 0.******\n");
 	uint64_t xcr0;
 	xgetbv_checking(XCR0_MASK, &xcr0);
 
-	printf("******Step3 :Compare EDX:EAX with 0x01.******\n");
+	debug_print("******Step3 :Compare EDX:EAX with 0x01.******\n");
 	if (xcr0 == STATE_X87) {
-		printf("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87.\n", xcr0);
+		debug_print("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87.\n", xcr0);
 	} else {
-		printf("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature can manage more state component.\n",
+		debug_print("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature can manage more state component.\n",
 			xcr0);
 	}
 
-	printf("******Step4: Set CR4.osxsave[bit18] to 1.******\n");
+	debug_print("******Step4: Set CR4.osxsave[bit18] to 1.******\n");
 	write_cr4_osxsave(1);
 	i++;
 
-	printf("******Step5: To XSETBV with ECX = 0 and EDX:EAX = 0x7.******\n");
+	debug_print("******Step5: To XSETBV with ECX = 0 and EDX:EAX = 0x7.******\n");
 	xsetbv_checking(0, STATE_X87 | STATE_SSE | STATE_AVX);
 	i++;
 
 	xgetbv_checking(XCR0_MASK, &xcr0);
 	if (xcr0 != (STATE_X87 | STATE_SSE | STATE_AVX)) {
-		printf("Set xcr0 (STATE_X87 | STATE_SSE | STATE_AVX) Failed. xcr0=0x%lx failed.\n ", xcr0);
+		debug_print("Set xcr0 (STATE_X87 | STATE_SSE | STATE_AVX) Failed. xcr0=0x%lx failed.\n ", xcr0);
 	}
 
-	printf("******Step6 : Malloc memory area to XSAVE Area and set it to 0x0.******\n");
+	debug_print("******Step6 : Malloc memory area to XSAVE Area and set it to 0x0.******\n");
 	u32 r_eax = STATE_X87 | STATE_SSE | STATE_AVX;
 	u32 r_edx = 0;
 	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
 
-	printf("******Step7 : Execute  XRSTOR64 mem.******\n");
+	debug_print("******Step7 : Execute  XRSTOR64 mem.******\n");
 	asm volatile("XRSTOR64 %[addr]\n\t"
 		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 		: "memory");
@@ -1051,9 +1097,9 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
-	printf("The value of xstate_bv = %#lx.\n", state_bv);
+	debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 
-	printf("******Step8: Execute SSE instruciton, e.g. PAVGB.******\n");
+	debug_print("******Step8: Execute SSE instruciton, e.g. PAVGB.******\n");
 	write_cr0(read_cr0() & ~(X86_CR0_EM | X86_CR0_TS));
 	write_cr4(read_cr4() | X86_CR4_OSFXSR | X86_CR4_OSXMMEXCPT);
 	//__attribute__((target("sse"))) sse_union add1;
@@ -1063,13 +1109,13 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 	asm volatile("PAVGB %[add1], %%xmm1" : "=r"(add2.sse) : [add1]"m"(add1) : );
 	i++;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
-	printf("The value of xstate_bv = %#lx.\n", state_bv);
+	debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 
-	printf("******Step9: Set xstate_bv[2:0] to 000b.******\n ");
+	debug_print("******Step9: Set xstate_bv[2:0] to 000b.******\n ");
 	state_bv &= 0xfffffffffffffff8;
-	printf("The value of xstate_bv = %#lx.\n", state_bv);
+	debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 
-	printf("******Step10: Execute XSAVEOPT64 instruciton.******\n");
+	debug_print("******Step10: Execute XSAVEOPT64 instruciton.******\n");
 	r_eax = STATE_X87 | STATE_SSE | STATE_AVX;
 	r_edx = 0;
 	asm volatile("XSAVEOPT64 %[addr]\n\t"
@@ -1077,16 +1123,16 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 		: "memory");
 	i++;
 
-	printf("******Step11: Compare xstate_bv[2:0] with ox2H.******\n");
+	debug_print("******Step11: Compare xstate_bv[2:0] with ox2H.******\n");
 	state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	if (state_bv == STATE_SSE)
 	{
 		i++;
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23642:XSAVE init and modified optimizations_006, test case Passed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23642:XSAVE init and modified optimizations_006, test case Passed.******\n");
 	} else {
-		printf("The value of xstate_bv = %#lx.\n", state_bv);
-		printf("******23642:XSAVE init and modified optimizations_006, test case Failed.******\n");
+		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
+		debug_print("******23642:XSAVE init and modified optimizations_006, test case Failed.******\n");
 	}
 	report("23642:XSAVE init and modified optimizations_006", (i == 7));
 }
@@ -1432,18 +1478,18 @@ static __unused void xsave_rqmid_22911_check_xsave_head_size()
 	write_cr4_osxsave(1);
 
 	if (check_cpuid_1_ecx(CPUID_1_ECX_XSAVE) == 0) {
-		printf("CPUID_1_ECX_XSAVE failed. \n");
+		debug_print("CPUID_1_ECX_XSAVE failed. \n");
 	}
 
 	if (check_cpuid_1_ecx(CPUID_1_ECX_OSXSAVE) == 0) {
-		printf("CPUID_1_ECX_OSXSAVE failed. \n");
+		debug_print("CPUID_1_ECX_OSXSAVE failed. \n");
 	}
 
 	ret = get_supported_xcr0();
 	if (ret == SUPPORT_XCR0) {
 		i++;
 	} else {
-		printf("Step1: SUPPORT_XCR0 != get_supported_xcr0()=0x%lx failed. \n", ret);
+		debug_print("Step1: SUPPORT_XCR0 != get_supported_xcr0()=0x%lx failed. \n", ret);
 	}
 
 	test_bits = STATE_X87 | STATE_SSE;
@@ -1451,14 +1497,14 @@ static __unused void xsave_rqmid_22911_check_xsave_head_size()
 	if (ret == 0) {
 		i++;
 	} else {
-		printf("Step2: xsetbv_checking failed, ret=0x%lx\n", ret);
+		debug_print("Step2: xsetbv_checking failed, ret=0x%lx\n", ret);
 	}
 
 	total_size = cpuid_indexed(CPUID_XSAVE_FUC, 0).b;
 	if (total_size == 576) {
 		i++;
 	} else {
-		printf("Step3: total_size failed, total_size=0x%x\n", total_size);
+		debug_print("Step3: total_size failed, total_size=0x%x\n", total_size);
 	}
 
 	exec_x87_fpu();
@@ -1469,18 +1515,18 @@ static __unused void xsave_rqmid_22911_check_xsave_head_size()
 	if (ret1 == 0) {
 		i++;
 	} else {
-		printf("xsave_checking STATE_X87 | STATE_SSE failed.ret1=0x%x \n", ret1);
+		debug_print("xsave_checking STATE_X87 | STATE_SSE failed.ret1=0x%x \n", ret1);
 	}
 
 	ret = get_supported_xcr0();
-	printf("after test_bits, xcr0=0x%lx RFBM =0x%lx \n", ret, (ret & (STATE_X87 | STATE_SSE)));
+	debug_print("after test_bits, xcr0=0x%lx RFBM =0x%lx \n", ret, (ret & (STATE_X87 | STATE_SSE)));
 
 	if (st_xsave_area.xsave_hdr.xstate_bv == 0x3) {
 		i++;
 	} else {
-		printf("st_xsave_area.xsave_hdr.xstate_bv=0x%lx failed. \n", st_xsave_area.xsave_hdr.xstate_bv);
+		debug_print("st_xsave_area.xsave_hdr.xstate_bv=0x%lx failed. \n", st_xsave_area.xsave_hdr.xstate_bv);
 	}
-	printf("i=%d, total_size=%d,  sizeof(st_xsave_area.fpu_sse)=%ld, head_size=%d \n",
+	debug_print("i=%d, total_size=%d,  sizeof(st_xsave_area.fpu_sse)=%ld, head_size=%d \n",
 		i, total_size, sizeof(st_xsave_area.fpu_sse), head_size);
 	report("xsave_rqmid_22911_check_xsave_head_size",
 		((i == 5) && head_size == total_size - sizeof(st_xsave_area.fpu_sse)));
@@ -1548,56 +1594,73 @@ static __unused void xsave_rqmid_22830_check_xsave_area_offset()
  */
 static __unused void xsave_rqmid_22825_supervisor_state_components_001(void)
 {
+	u64 val = 0x100;
+	u32 index = 0xDA0;
+    u32 a = val, d = val >> 32;
 	int i = 0;
 	int ret1 = 0;
+
 	/*Step1: enable xsave feature set.*/
 	write_cr4_osxsave(1);
 	i++;
+
 	/*Step2:Check CPU supported for XSAVES, XRSTORS instructions.*/
 	u32 bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
 	if ((bit_support & SUPPORT_XSAVES_XRTORS) == 0) {
-		printf("Step2: SUPPORT_XSAVES_XRTORS ok.\n");
+		debug_print("Step2: SUPPORT_XSAVES_XRTORS ok.\n");
 		i++;
 	} else {
-		//bug: EAX[3] should be 0.
-		printf("Step2: SUPPORT_XSAVES_XRTORS failed.\n");
+		debug_print("Step2: SUPPORT_XSAVES_XRTORS failed.\n");
 	}
+
 	/*Step3:Confirm hide enable supervisor state component, write MSR register IA32_XSS*/
-	wrmsr(0xDA0, 0x100);
+	val = 0x100;
+	index = 0xDA0;
+    a = val;
+	d = val >> 32;
+	asm volatile(ASM_TRY("1f")
+		"wrmsr\n\t"
+		"1:"
+		: : "a"(a), "d"(d), "c"(index) : "memory");
 	ret1 = exception_vector();
 	if (ret1 == 13) {
 		i++;
-		printf("\n Step3: wrmsr(0xDA0, 0x100) ok. exception_vector()=%d \n", ret1);
+		debug_print("\n Step3: wrmsr(0xDA0, 0x100) ok. exception_vector()=%d \n", ret1);
 	} else {
-		printf("\n Step3: wrmsr(0xDA0, 0x100) fail. exception_vector()=%d \n", ret1);
+		debug_print("\n Step3: wrmsr(0xDA0, 0x100) fail. exception_vector()=%d \n", ret1);
 	}
+
 	/*Step4:Comfirm processor unsupported read MSR register IA32_XSS*/
-	u64 v = rdmsr(0xDA0);
+	index = 0xDA0;
+	asm volatile(ASM_TRY("1f")
+		"rdmsr\n\t"
+		"1:"
+		: "=a"(a), "=d"(d) : "c"(index) : "memory");
 	ret1 = exception_vector();
 	if (ret1 == 13) {
 		i++;
-		printf("\n Step3: rdmsr(0xDA0) ok. exception_vector()=%d \n", ret1);
+		debug_print("\n Step4: rdmsr(0xDA0) ok. exception_vector()=%d \n", ret1);
 	} else {
-		printf("\n Step3: rdmsr(0xDA0) fail. exception_vector()=%d v=%lx\n", ret1, v);
+		debug_print("\n Step4: rdmsr(0xDA0) fail. exception_vector()=%d\n", ret1);
 	}
 
 	/*Step5:Check processor unsupported for XSAVES*/
 	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
 	ret1 = xsaves_checking(&st_xsave_area, (STATE_X87 | STATE_SSE));
-	if (ret1 == 6) {
+	if (ret1 == UD_VECTOR) {
 		i++;
-		printf("Step5:xsaves_checking STATE_X87 | STATE_SSE ok.exception_vector()=0x%x \n", ret1);
+		debug_print("Step5:xsaves_checking STATE_X87 | STATE_SSE ok.exception_vector()=0x%x \n", ret1);
 	} else {
-		printf("Step5:xsaves_checking STATE_X87 | STATE_SSE failed.exception_vector()=0x%x \n", ret1);
+		debug_print("Step5:xsaves_checking STATE_X87 | STATE_SSE failed.exception_vector()=0x%x \n", ret1);
 	}
 
 	/*Step6:Check processor unsupported for XRESTORS*/
 	ret1 = xrstors_checking(&st_xsave_area, (STATE_X87 | STATE_SSE));
-	if (ret1 == 6) {
+	if (ret1 == UD_VECTOR) {
 		i++;
-		printf("Step6:xrstors_checking STATE_X87 | STATE_SSE ok.exception_vector()=0x%x \n", ret1);
+		debug_print("Step6:xrstors_checking STATE_X87 | STATE_SSE ok.exception_vector()=0x%x \n", ret1);
 	} else {
-		printf("Step6:xrstors_checking STATE_X87 | STATE_SSE failed.exception_vector()=0x%x \n", ret1);
+		debug_print("Step6:xrstors_checking STATE_X87 | STATE_SSE failed.exception_vector()=0x%x \n", ret1);
 	}
 	report("xsave_rqmid_22825_supervisor_state_components_001", (i == 6));
 }
@@ -1625,21 +1688,16 @@ static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_IN
 {
 	u64 xinuse = 0;
 	u64 xinuse1 = 0;
-	xinuse = get_init_xinuse(0x7004, 0x8004);
-	//printf("\n --->bp: after exec xmm, XINUSE=%lx \n", xinuse);
+	xinuse = get_init_xinuse(0x7000, 0x7004);
+	debug_print("\n --->bp: before send sipi, XINUSE=%lx %d\n", xinuse, ap_start_count);
 
 	/*send sipi to ap*/
 	send_sipi();
 
-	xinuse1 = get_init_xinuse(0x7000, 0x8000);
-	//printf("\n --->ap: after send sipi, XINUSE=%lx \n", xinuse1);
-	/*Step5:Confirm the value of XINUSE is unchanged:XINUSE & XCR0 equals with 0x02.*/
+	xinuse1 = get_init_xinuse(0x7000, 0x7004);
+	debug_print("\n --->ap: after send sipi, XINUSE=%lx %d\n", xinuse1, ap_start_count);
 	report("xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT",\
 	(xinuse == (STATE_SSE)) && (xinuse == xinuse1));
-}
-
-void save_unchanged_reg(void)
-{
 }
 
 static void print_case_list(void)
