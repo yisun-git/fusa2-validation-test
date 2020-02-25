@@ -43,7 +43,6 @@ static void free_gva(void *gva)
 {
 	set_page_control_bit(gva, PAGE_PTE, PAGE_P_FLAG, 1, true);
 	free(gva);
-	gva = NULL;
 }
 
 static bool check_value_is_exist(u32 reg, u8 value)
@@ -645,8 +644,9 @@ int main(int ac, char *av[])
 {
 	printf("feature: paging\r\n");
 	printf("ac:%d\r\n", ac);
-	for (int i = 0; i < ac; i++)
+	for (int i = 0; i < ac; i++) {
 		printf("av  i:%d value:%s\r\n", i, av[i]);
+	}
 	extern unsigned char kernel_entry;
 	setup_idt();
 	setup_vm();

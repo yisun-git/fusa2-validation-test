@@ -512,8 +512,9 @@ __attribute__((aligned(16))) u64 read_mem_cache_test(u64 size)
 
 void read_mem_cache_test_time_invd(u64 size, int time)
 {
+	int t_time = time;
 	/*debug_print("read cache cache_test_size 0x%lx %ld\n",size, size*8);*/
-	while (time--) {
+	while (t_time--) {
 		read_mem_cache_test(size);
 	}
 
@@ -540,8 +541,8 @@ bool cache_check_memory_type(u64 average, u64 native_aver, u64 native_std, u64 s
 {
 	bool ret = true;
 
-	if ((average < (native_aver*(100-ERROR_RANG))/100)
- || (average > (native_aver*(100+ERROR_RANG))/100)) {
+	if ((average < ((native_aver*(100-ERROR_RANG))/100))
+ || (average > ((native_aver*(100+ERROR_RANG))/100))) {
 		ret = false;
 	}
 
@@ -581,12 +582,12 @@ int get_bit_range(u32 r, int start, int end)
 {
 	int mask = 0;
 	int i = end-start+1;
-	r = r>>start;
+	u32 t_r = r>>start;
 	while (i--) {
 		mask = mask<<1;
 		mask += 1;
 	}
-	return r&mask;
+	return t_r&mask;
 }
 
 void asm_clflush(long unsigned int addr)

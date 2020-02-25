@@ -25,8 +25,9 @@ static void serial_outb(char ch)
 static void serial_put(char ch)
 {
 	/* Force carriage return to be performed on \n */
-	if (ch == '\n')
+	if (ch == '\n') {
 		serial_outb('\r');
+	}
 	serial_outb(ch);
 }
 

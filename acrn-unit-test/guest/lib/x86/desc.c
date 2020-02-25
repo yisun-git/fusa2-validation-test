@@ -68,8 +68,9 @@ void unhandled_exception(struct ex_regs *regs, bool cpu)
 	printf("Unhandled %sexception %ld %s at ip %016lx\n",
 	       cpu ? "cpu " : "", regs->vector,
 	       exception_mnemonic(regs->vector), regs->rip);
-	if (regs->vector == 14)
+	if (regs->vector == 14) {
 		printf("PF at %#lx addr %#lx\n", regs->rip, read_cr2());
+	}
 
 	printf("error_code=%04lx      rflags=%08lx      cs=%08lx\n"
 	       "rax=%016lx rcx=%016lx rdx=%016lx rbx=%016lx\n"
@@ -124,8 +125,9 @@ handler handle_exception(u8 v, handler fn)
 	handler old;
 
 	old = exception_handlers[v];
-	if (v < 32)
+	if (v < 32) {
 		exception_handlers[v] = fn;
+	}
 	return old;
 }
 
@@ -134,7 +136,7 @@ __attribute__((regparm(1)))
 #endif
 void do_handle_exception(struct ex_regs *regs)
 {
-	if (regs->vector < 32 && exception_handlers[regs->vector]) {
+	if ((regs->vector < 32) && (exception_handlers[regs->vector])) {
 		exception_handlers[regs->vector](regs);
 		return;
 	}
@@ -231,8 +233,9 @@ void setup_idt(void)
 	}
 	idt_initialized = true;
 	for (i = 0; i < 32; i++) {
-		if (idt_handlers[i])
+		if (idt_handlers[i]) {
 			set_idt_entry(i, idt_handlers[i], 0);
+		}
 	}
 	for (i = 0; i < 21; i++) {
 		handle_exception(i, check_exception_table);
@@ -388,8 +391,9 @@ bool test_for_exception(unsigned int ex, void (*trigger_func)(void *data),
 
 	old = handle_exception(ex, exception_handler);
 	ret = set_exception_jmpbuf(jmpbuf);
-	if (ret == 0)
+	if (ret == 0) {
 		trigger_func(data);
+	}
 	handle_exception(ex, old);
 	return ret;
 }

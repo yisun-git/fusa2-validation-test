@@ -87,8 +87,9 @@ void asm_test1(void)
 void memory_ordering_test1_entry(void)
 {
 	while (atomic_read(&memory_ordering_begin_sem1) !=
-		CFG_TEST_MEMORY_ORDERING_READY)
+		CFG_TEST_MEMORY_ORDERING_READY) {
 		nop();
+	}
 	atomic_dec(&memory_ordering_begin_sem1);
 	asm_test1();
 	atomic_inc(&memory_ordering_end_sem);
@@ -154,7 +155,7 @@ void memory_ordering_rqmid_24597_memory_ordering_instructions_001(void)
 
 		atomic_set(&memory_ordering_end_sem, CFG_TEST_MEMORY_ORDERING_CPU_START);
 
-		if (r1 == 0 && r2 == 0) {
+		if ((r1 == 0) && (r2 == 0)) {
 			detected++;
 			test_debug("%d reorders detected after %ld iterations\n", detected, i);
 			break;

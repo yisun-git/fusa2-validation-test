@@ -80,8 +80,8 @@ static void sgx_rqmid_27401_check_sgx_support()
 static void sgx_rqmid_27400_guest_cpuid_leaf_12h()
 {
 	bool flag = false;
-	if (cpuid(SGX_CPUID_ID).a == 0 && cpuid(SGX_CPUID_ID).b == 0
-		&& cpuid(SGX_CPUID_ID).c == 0 && cpuid(SGX_CPUID_ID).d == 0) {
+	if ((cpuid(SGX_CPUID_ID).a == 0) && (cpuid(SGX_CPUID_ID).b == 0)
+		&& (cpuid(SGX_CPUID_ID).c == 0) && (cpuid(SGX_CPUID_ID).d == 0)) {
 		flag = true;
 	}
 	report("\t\t sgx_rqmid_27400_guest_cpuid_leaf_12h", flag);

@@ -443,7 +443,7 @@ static void construct_segment_descriptor(unsigned int sel,
 
 	gdt = (gdt_descriptor_t *)gdtr.base;
 
-	ASSERT(TAKE_SEL_INDEX(sel) < (gdtr.limit + 1) / sizeof(gdt_descriptor_t),
+	ASSERT(TAKE_SEL_INDEX(sel) < ((gdtr.limit + 1) / sizeof(gdt_descriptor_t)),
 		"BUG: sel %u out of range %u.\n",
 		sel, (unsigned int)((gdtr.limit + 1) / sizeof(gdt_descriptor_t)));
 
@@ -1473,7 +1473,7 @@ static inline unsigned long systick_clock(void)
 static inline void systick_delay(unsigned long time)
 {
 	unsigned long oldtime = g_systick;
-	while (g_systick < oldtime + time);
+	while (g_systick < (oldtime + time));
 }
 
 /**

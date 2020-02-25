@@ -34,9 +34,10 @@ static const char *exception_mnemonic(int vector)
 
 static int rmode_strlen(const char *str)
 {
+	const char *t_str = str;
 	int n;
 
-	for (n = 0; *str; ++str) {
+	for (n = 0; *t_str; ++t_str) {
 		++n;
 	}
 	return n;
@@ -105,13 +106,14 @@ void print_serial(const char *buf)
 
 void print_serial_u32(u32 value)
 {
+	u32 t_value = value;
 	char n[12], *p;
 	p = &n[11];
 	*p = 0;
 	do {
-		*--p = '0' + (value % 10);
-		value /= 10;
-	} while (value > 0);
+		*--p = '0' + (t_value % 10);
+		t_value /= 10;
+	} while (t_value > 0);
 	print_serial(p);
 }
 

@@ -33,13 +33,13 @@ void cache_rqmid_23875_check_l2_ucache_parameters(void)
 
 	id = cpuid_indexed(0x04, 2);
 
-	report("%s\n", get_bit_range(id.a, 0, 4) == 0x3 &&
-			get_bit_range(id.a, 5, 7) == 0x2 &&	get_bit_range(id.a, 8, 8) == 0x1 &&
-			get_bit_range(id.a, 9, 9) == 0x0 &&	get_bit_range(id.a, 14, 25) == 0x1 &&
-			get_bit_range(id.a, 26, 31) == 0x7 && get_bit_range(id.b, 0, 11) == 0x3F &&
-			get_bit_range(id.b, 12, 21) == 0x0 && get_bit_range(id.b, 22, 31) == 0x3 &&
-			id.c == 0x3FF && get_bit_range(id.d, 0, 0) == 0x0 &&
-			get_bit_range(id.d, 1, 1) == 0x0 &&	get_bit_range(id.d, 2, 2) == 0x0, __FUNCTION__);
+	report("%s\n", (get_bit_range(id.a, 0, 4) == 0x3) &&
+			(get_bit_range(id.a, 5, 7) == 0x2) &&	(get_bit_range(id.a, 8, 8) == 0x1) &&
+			(get_bit_range(id.a, 9, 9) == 0x0) &&	(get_bit_range(id.a, 14, 25) == 0x1) &&
+			(get_bit_range(id.a, 26, 31) == 0x7) && (get_bit_range(id.b, 0, 11) == 0x3F) &&
+			(get_bit_range(id.b, 12, 21) == 0x0) && (get_bit_range(id.b, 22, 31) == 0x3) &&
+			(id.c == 0x3FF) && (get_bit_range(id.d, 0, 0) == 0x0) &&
+			(get_bit_range(id.d, 1, 1) == 0x0) &&	(get_bit_range(id.d, 2, 2) == 0x0), __FUNCTION__);
 }
 
 /**
@@ -74,7 +74,7 @@ void cache_rqmid_24189_l1_data_cache_context_mode(void)
 	id = cpuid_indexed(0x01, 0);
 	value = get_bit_range(id.c, 10, 10);
 
-	report("%s l1 data cache context mode %s\n", value == 0x0, __FUNCTION__, value == 0x1 ? "present" : "absent");
+	report("%s l1 data cache context mode %s\n", value == 0x0, __FUNCTION__, (value == 0x1) ? "present" : "absent");
 }
 
 /**

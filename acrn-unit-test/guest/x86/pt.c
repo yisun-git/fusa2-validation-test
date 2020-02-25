@@ -132,8 +132,8 @@ static void pt_rqmid_27268_check_pt_supported()
 static void pt_rqmid_27267_guest_cpuid_leaf_14h()
 {
 	bool flag = false;
-	if (cpuid(CPUID_14H_PT).a == 0 && cpuid(CPUID_14H_PT).b == 0
-		&& cpuid(CPUID_14H_PT).c == 0 && cpuid(CPUID_14H_PT).d == 0) {
+	if ((cpuid(CPUID_14H_PT).a == 0) && (cpuid(CPUID_14H_PT).b == 0)
+		&& (cpuid(CPUID_14H_PT).c == 0) && (cpuid(CPUID_14H_PT).d == 0)) {
 		flag = true;
 	}
 	report("\t\t %s", flag, __FUNCTION__);

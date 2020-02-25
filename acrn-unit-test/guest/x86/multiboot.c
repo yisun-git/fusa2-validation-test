@@ -176,7 +176,7 @@ int zero_field_zero_page(unsigned char *point)
 	printf("\n");
 
 	for (i = 0x268; i < 0x2CF; i++) {
-		if ((i - 0x268) % 16 == 0) {
+		if (((i - 0x268) % 16) == 0) {
 			printf("\n 0x%x:", i);
 		}
 		printf("%x ", point[i]);
@@ -229,7 +229,7 @@ int read_write_exec_test(unsigned long start, unsigned long end, int is_exec)
 	for (i = 0; i < len; i += 4096) {
 		/*test read*/
 		value = point[i];
-		if (point[i] != 0xFF && value != point[i]) {
+		if ((point[i] != 0xFF) && (value != point[i])) {
 			printf("read error\n");
 			return -1;
 		}
@@ -245,7 +245,7 @@ int read_write_exec_test(unsigned long start, unsigned long end, int is_exec)
 			memcpy(&point[i], fun_p, 9);
 			fun_p = (test_fun_p)&point[i];
 			ret = fun_p(i);
-			if (ret != i+1) {
+			if (ret != (i+1)) {
 				debug_print("exec error ret=%d, i=%d\n", ret, i);
 				return -3;
 			}
@@ -313,7 +313,7 @@ int read_test_value(unsigned long start, unsigned long end, u64 value, int size)
 		}
 	}
 	printf("start:0x%lx, end:0x%lx, len:0x%lx test %s\n",
-		start, end, len, ret == 0 ? "ok":"error");
+		start, end, len, (ret == 0) ? "ok":"error");
 	return 0;
 }
 
@@ -341,7 +341,7 @@ void delay(u64 count)
 	t[0] = asm_read_tsc();
 	while (1) {
 		t[1] = asm_read_tsc();
-		if (t[1] - t[0] > tsc_delay) {
+		if ((t[1] - t[0]) > tsc_delay) {
 			break;
 		}
 	}
@@ -354,8 +354,8 @@ static void multiboot_rqmid_27210_guest_esi_of_non_safety_001(void)
 
 	ptr = (unsigned char *)get_zero_page(0);
 	if (ptr != NULL) {
-		if (ptr[0x1FE] == 0x55 && ptr[0x1FF] == 0xAA && ptr[0x202] == 'H'
-			&& ptr[0x203] == 'd' && ptr[0x204] == 'r' && ptr[0x205] == 'S') {
+		if ((ptr[0x1FE] == 0x55) && (ptr[0x1FF] == 0xAA) && (ptr[0x202] == 'H')
+			&& (ptr[0x203] == 'd') && (ptr[0x204] == 'r') && (ptr[0x205] == 'S')) {
 			ret = true;
 		}
 	}
@@ -376,7 +376,7 @@ static void multiboot_rqmid_27236_non_safety_vm_command_line_001(void)
 	if ((u64)&(zeropage->hdr.bootargs_addr) == (u64)&(ptr[0x228])) {
 		ptr = (unsigned char *)(u64)(zeropage->hdr.bootargs_addr);
 		len = strlen((char *)ptr);
-		if (len > 0 && len < MULTIBOOT_COMMAND_MAX) {
+		if ((len > 0) && (len < MULTIBOOT_COMMAND_MAX)) {
 			ret = true;
 		}
 	}
@@ -450,8 +450,8 @@ static void multiboot_rqmid_34130_base_address_of_zero_page_001()
 
 	ptr = (unsigned char *)get_zero_page(ZERO_PAGE_BASE_ADDRESS);
 	if (ptr != NULL) {
-		if (ptr[0x1FE] == 0x55 && ptr[0x1FF] == 0xAA && ptr[0x202] == 'H'
-			&& ptr[0x203] == 'd' && ptr[0x204] == 'r' && ptr[0x205] == 'S') {
+		if ((ptr[0x1FE] == 0x55) && (ptr[0x1FF] == 0xAA) && (ptr[0x202] == 'H')
+			&& (ptr[0x203] == 'd') && (ptr[0x204] == 'r') && (ptr[0x205] == 'S')) {
 			ret = true;
 		}
 	}
