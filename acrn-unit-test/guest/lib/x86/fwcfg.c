@@ -41,10 +41,9 @@ uint64_t fwcfg_get_u64(unsigned index)
 
 unsigned fwcfg_get_nb_cpus(void)
 {
-/*Some case needs to run 2 APs, so I start 3 CPUs.*/
-#ifdef AP_USE_2_MAIN
-    return 3;
+#ifdef IN_SAFETY_VM
+    return 1;
 #else
-    return 2;
+    return 3;
 #endif
 }

@@ -27,5 +27,6 @@ extern int write_cr4_exception_checking(unsigned long val);
 extern int wrmsr_checking(u32 MSR_ADDR, u64 value);
 extern int rdmsr_checking(u32 MSR_ADDR, u64 *result);
 extern void send_sipi();
+extern uint32_t get_lapic_id(void);
 #endif
 

@@ -31,7 +31,6 @@ $(libcflat): CFLAGS += -ffreestanding -I $(SRCDIR)/lib -I lib
 COMMON_CFLAGS += -m$(bits)
 COMMON_CFLAGS += -O1
 
-ENTRY_OFFSET = 0x400000
 # stack.o relies on frame pointers.
 KEEP_FRAME_POINTER := y
 
@@ -41,7 +40,10 @@ libgcc := $(shell $(CC) -m$(bits) --print-libgcc-file-name)
 .PRECIOUS: %.elf %.o $(TEST_DIR)/%_prelink.o $(TEST_DIR)/realmode/%.elf $(TEST_DIR)/realmode/%.o
 
 FLATLIBS = lib/libcflat.a $(libgcc)
-%.elf: %_prelink.o $(FLATLIBS) $(SRCDIR)/x86/flat.lds $(cstart.o)
+modifylds:
+	$(SRCDIR)/scripts/modify_lds.sh $(START_A)
+
+%.elf: modifylds %_prelink.o $(FLATLIBS) $(SRCDIR)/x86/flat.lds $(cstart.o)
 	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/flat.lds \
 		$(filter %.o, $^) $(FLATLIBS)
 	@chmod a-x $@
@@ -98,7 +100,7 @@ stitched.o = $(TEST_DIR)/stitched.o
 $(case_table.o:.o=.c):
 	scripts/mkcasetable.sh $@ $(patsubst $(TEST_DIR)/%.flat,%,$(stitched-test-cases))
 
-$(TEST_DIR)/stitched.elf: $(stitched-test-cases:.flat=_prelink.o) $(FLATLIBS) $(SRCDIR)/x86/flat.lds $(cstart.o) $(case_table.o) $(stitched.o)
+$(TEST_DIR)/stitched.elf: modifylds $(stitched-test-cases:.flat=_prelink.o) $(FLATLIBS) $(SRCDIR)/x86/flat.lds $(cstart.o) $(case_table.o) $(stitched.o)
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/flat.lds \

@@ -141,7 +141,7 @@ def main(args):
     #
     # ACRN unit test images are statically linked at 4M and prepended by 4
     # sectors (i.e. 2K). Tell a bootloader that the preferred load address is 4M - 2K.
-    pref_addr = 0x400000 - 512 * 4
+    pref_addr = 0x1000000
     for b in [((pref_addr >> i) & 0xff) for i in (0,8,16,24)]:
         data = str(chr(b))
         a = struct.pack('B', b)

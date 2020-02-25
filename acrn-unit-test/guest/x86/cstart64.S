@@ -115,8 +115,10 @@ sipi_cnt:   .byte 0
 mb_magic = 0x1BADB002
 mb_flags = 0x2
 
+#ifdef IN_NON_SAFETY_VM
 	# multiboot header
 	.long mb_magic, mb_flags, 0 - (mb_magic + mb_flags)
+#endif
 mb_cmdline = 16
 
 MSR_GS_BASE = 0xc0000101
@@ -322,8 +324,12 @@ smp_init:
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
 
+#ifdef IN_NON_SAFETY_VM
 	call fwcfg_get_nb_cpus
 	movl %eax, %edx
+#ifdef IN_NATIVE
+	shll $1, %edx
+#endif
 	subl $1, %edx
 1:
 	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), %eax
@@ -339,6 +345,7 @@ smp_init:
 1:	pause
 	cmpw %ax, cpu_online_count
 	jne 1b
+#endif
 smp_init_done:
 	ret
 

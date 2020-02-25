@@ -5,6 +5,14 @@ ifeq ($(wildcard config.mak),)
 $(error run ./configure first. See ./configure -h)
 endif
 
+export ENTRY_OFFSET = 0x1000000 - 512*4
+export START_A = 0x1000800 + SIZEOF_HEADERS
+
+ifeq ($(VM), safety)
+    export ENTRY_OFFSET = 0x100000
+    export START_A = 1M
+endif
+
 include config.mak
 
 # Set search path for all sources
@@ -20,6 +28,16 @@ DESTDIR := $(PREFIX)/share/kvm-unit-tests/
 
 #make sure env CFLAGS variable is not used
 CFLAGS =
+
+ifeq ($(VM), safety)
+    CFLAGS += -DIN_SAFETY_VM
+else
+    CFLAGS += -DIN_NON_SAFETY_VM
+endif
+
+ifeq ($(NATIVE), yes)
+   CFLAGS += -DIN_NATIVE
+endif
 
 libgcc := $(shell $(CC) --print-libgcc-file-name)
 

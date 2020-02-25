@@ -193,3 +193,13 @@ void get_case_id(int ac, char **av, char *case_id)
 	}
 }
 
+/*get cpu id*/
+uint32_t get_lapic_id(void)
+{
+	uint32_t ebx;
+	asm volatile("cpuid" : "=b"(ebx)
+			: "a" (1)
+			: "memory");
+	return (ebx >> 24);
+}
+
