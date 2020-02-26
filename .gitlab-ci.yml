@@ -15,6 +15,19 @@ check_coding_style:
     - merge_requests
 
 
+acrn_clang_tidy_job:
+  stage: scan
+  script:
+    - echo "start to check coding guideline violations ..."
+    - pwd
+    - mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+    - cp -r ../acrn-unit-test/* acrn-unit-test/
+    - cd acrn-unit-test/guest/
+    - make codescan
+  only: 
+    - merge_requests
+
+
 build_job:
   stage: build
   script:
@@ -24,6 +37,8 @@ build_job:
     - cp -r ../acrn-unit-test/* acrn-unit-test/
     - cd acrn-unit-test/guest/
     - ./make_all.sh
+  dependencies: 
+    - acrn_clang_tidy_job
   artifacts:
     paths:
       - github/acrn-unit-test/guest/x86/*.bzimage
