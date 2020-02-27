@@ -38,10 +38,12 @@ static __unused void set_cr0_AM(int am)
 	unsigned long old_cr0 = cr0;
 
 	cr0 &= ~CR0_AM_MASK;
-	if (am)
+	if (am) {
 		cr0 |= CR0_AM_MASK;
-	if (old_cr0 != cr0)
+	}
+	if (old_cr0 != cr0) {
 		write_cr0(cr0);
+	}
 }
 
 __unused static void set_eflag_ac(int ac)
@@ -1449,7 +1451,7 @@ static __unused bool fpu_probe_without_cpuid(void)
 	cr0 &= ~(X86_CR0_TS | X86_CR0_EM);
 	write_cr0(cr0);
 	asm volatile("fninit; fnstsw %0;fnstcw %1":"+m"(fsw), "+m"(fcw));
-	return fsw == 0 && (fcw & 0x103f) == 0x003f;
+	return ((fsw == 0) && ((fcw & 0x103f) == 0x003f));
 }
 
 static __unused void exec_x87_fpu(void)
@@ -1529,7 +1531,7 @@ static __unused void xsave_rqmid_22911_check_xsave_head_size()
 	debug_print("i=%d, total_size=%d,  sizeof(st_xsave_area.fpu_sse)=%ld, head_size=%d \n",
 		i, total_size, sizeof(st_xsave_area.fpu_sse), head_size);
 	report("xsave_rqmid_22911_check_xsave_head_size",
-		((i == 5) && head_size == total_size - sizeof(st_xsave_area.fpu_sse)));
+		((i == 5) && (head_size == (total_size - sizeof(st_xsave_area.fpu_sse)))));
 }
 
 /*
@@ -1574,14 +1576,14 @@ static __unused void xsave_rqmid_22830_check_xsave_area_offset()
 
 	total_size = cpuid_indexed(CPUID_XSAVE_FUC, 0).b;
 	avx_area_size = cpuid_indexed(CPUID_XSAVE_FUC, 2).a;
-	if (total_size == 0x340 && avx_area_size == 0x100) {
+	if ((total_size == 0x340) && (avx_area_size == 0x100)) {
 		i++;
 	}
 
 	u32 avx_area_offset = cpuid_indexed(CPUID_XSAVE_FUC, 2).b;
 
-	report("xsave_rqmid_22830_check_xsave_area_offset",
-		((i == 3) && avx_area_offset == total_size - avx_area_size));
+	report("xsave_rqmid_22830_check_xsave_area_offset",	\
+		((i == 3) && (avx_area_offset == total_size - avx_area_size)));
 }
 
 
