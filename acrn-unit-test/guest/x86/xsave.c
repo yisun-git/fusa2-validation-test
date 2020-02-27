@@ -1583,7 +1583,7 @@ static __unused void xsave_rqmid_22830_check_xsave_area_offset()
 	u32 avx_area_offset = cpuid_indexed(CPUID_XSAVE_FUC, 2).b;
 
 	report("xsave_rqmid_22830_check_xsave_area_offset",	\
-		((i == 3) && (avx_area_offset == total_size - avx_area_size)));
+		((i == 3) && (avx_area_offset == (total_size - avx_area_size))));
 }
 
 
