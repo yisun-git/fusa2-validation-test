@@ -1,3 +1,5 @@
+CFLAGS += -I $(TEST_DIR)/ASM
+
 $(TEST_DIR)/init_startup_sample.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_sample_init.S\"
 $(TEST_DIR)/init_startup_sample.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_sample_startup.S\"
 $(TEST_DIR)/init_startup_sample.o: CFLAGS += -DAP_UNCHANGED_CHECK
