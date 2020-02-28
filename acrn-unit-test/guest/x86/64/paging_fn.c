@@ -33,6 +33,7 @@ static void resume_environment()
 	}
 }
 
+/*P must be a non-null pointer */
 static int read_memory_checking(void *p)
 {
 	u64 value = 1;
@@ -89,7 +90,7 @@ static bool write_memory_error_code_checking(void *p, u32 bit)
  */
 static void paging_rqmid_23918_write_protect_support()
 {
-	u8 *p = malloc(1);
+	u8 *p = malloc(sizeof(u8));
 	if (p == NULL) {
 		printf("malloc error!\n");
 		return;
@@ -113,7 +114,7 @@ static void paging_rqmid_23918_write_protect_support()
  */
 static void paging_rqmid_24522_tlb_support()
 {
-	u8 *p = malloc(1);
+	u8 *p = malloc(sizeof(u8));
 	if (p == NULL) {
 		printf("malloc error!\n");
 		return;
@@ -138,7 +139,7 @@ static void paging_rqmid_26017_smep_support()
 {
 	u64 ia32_efer = rdmsr(X86_IA32_EFER);
 	const char *temp = "\xC3";
-	void *p = malloc(4);
+	void *p = malloc(sizeof(u32));
 	if (p == NULL) {
 		printf("malloc error!\n");
 		return;
@@ -198,10 +199,16 @@ static void paging_rqmid_24519_disable_global_paging()
 	if (*gva == 0x12) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	write_cr3(read_cr3());
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("paging_rqmid_24519_disable_global_paging", (result == 2));
@@ -517,12 +524,15 @@ static void paging_rqmid_32311_smep_test_002()
 {
 	u64 ia32_efer = rdmsr(PAGING_IA32_EFER);
 	const char *temp = "\xC3";
-	void *gva = malloc(4);
+	void *gva = malloc(sizeof(u32));
 	assert(gva != NULL);
 
 	write_cr4(read_cr4() & ~X86_CR4_SMEP);
 
 	wrmsr(PAGING_IA32_EFER, ia32_efer | X86_IA32_EFER_NXE);
+
+	/* clear XD flag */
+	set_page_control_bit(gva, PAGE_PTE, PAGE_XD_FLAG, 0, true);
 
 	memcpy(gva, temp, strlen(temp));
 
@@ -609,16 +619,25 @@ static void paging_rqmid_26827_enable_global_paging()
 		write_cr4(cr4 | X86_CR4_PGE);
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_PTE_GLOBAL_PAGE_FLAG, 1, true);
 	if (*gva == 0x12) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	write_cr3(read_cr3());
 	if (*gva == 0x12) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("paging_rqmid_26827_write_cr3_global_paging", (result == 3));
@@ -652,10 +671,16 @@ static void paging_rqmid_24460_cr4_smap_invalidate_tlb()
 	if (*gva == 0x12) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	write_cr4(cr4 | X86_CR4_SMAP);
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("%s", (result == 2), __FUNCTION__);
@@ -686,6 +711,9 @@ static void paging_rqmid_32328_ia32_efer_nxe_tlb()
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	/* change ia32_efer.nxe value */
 	if (ia32_efer & X86_IA32_EFER_NXE) {
@@ -696,6 +724,9 @@ static void paging_rqmid_32328_ia32_efer_nxe_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("%s", (result == 2), __FUNCTION__);
@@ -726,6 +757,9 @@ static void paging_rqmid_32329_cr4_smep_tlb()
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	/* for set CR4.SMEP, set first 16M to supervisor-mode pages */
 	map_first_16m_supervisor_pages();
@@ -733,6 +767,9 @@ static void paging_rqmid_32329_cr4_smep_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("%s", (result == 2), __FUNCTION__);
@@ -763,11 +800,17 @@ static void paging_rqmid_32344_cr4_pse_tlb()
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	write_cr4(cr4 & ~X86_CR4_PSE);
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("%s", (result == 2), __FUNCTION__);
@@ -798,11 +841,17 @@ static void paging_rqmid_32406_cr4_pge_tlb()
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	write_cr4(cr4 | X86_CR4_PGE);
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("%s", (result == 2), __FUNCTION__);
@@ -833,11 +882,17 @@ static void paging_rqmid_32234_cr0_wp_tlb()
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	write_cr0(cr0 & ~X86_CR0_WP);
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("%s", (result == 2), __FUNCTION__);
@@ -868,11 +923,17 @@ static void paging_rqmid_32236_cr0_cd_tlb()
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
 	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
+	}
 
 	write_cr0(cr0 | X86_CR0_CD);
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
+	}
+	else {
+		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	report("%s", (result == 2), __FUNCTION__);
@@ -885,7 +946,7 @@ static void paging_rqmid_32236_cr0_cd_tlb()
 static void test_instruction_fetch_at_ring3()
 {
 	const char *temp = "\xC3";
-	void *gva = malloc(4);
+	void *gva = malloc(sizeof(u32));
 	assert(gva != NULL);
 
 	memcpy(gva, temp, strlen(temp));
@@ -911,6 +972,8 @@ static void paging_rqmid_32266_execute_disable_support_005()
 	u64 ia32_efer = rdmsr(PAGING_IA32_EFER);
 
 	wrmsr(PAGING_IA32_EFER, ia32_efer | X86_IA32_EFER_NXE);
+
+	/* All default paging structure entry have cleared the XD flag */
 
 	page_test_at_ring3(test_instruction_fetch_at_ring3, "test instruction fetch");
 
@@ -950,7 +1013,7 @@ static void paging_rqmid_32267_execute_disable_support_003()
 {
 	u64 ia32_efer = rdmsr(PAGING_IA32_EFER);
 	const char *temp = "\xC3";
-	void *gva = malloc(4);
+	void *gva = malloc(sizeof(u32));
 	assert(gva != NULL);
 
 	wrmsr(PAGING_IA32_EFER, ia32_efer | X86_IA32_EFER_NXE);
@@ -978,7 +1041,7 @@ static void paging_rqmid_32268_execute_disable_support_002()
 {
 	u64 ia32_efer = rdmsr(PAGING_IA32_EFER);
 	const char *temp = "\xC3";
-	void *gva = malloc(4);
+	void *gva = malloc(sizeof(u32));
 	assert(gva != NULL);
 
 	wrmsr(PAGING_IA32_EFER, ia32_efer & ~X86_IA32_EFER_NXE);
@@ -1007,7 +1070,7 @@ static void paging_rqmid_32268_execute_disable_support_002()
  */
 static void paging_rqmid_32350_check_error_code_rsvd_bit()
 {
-	u8 *gva = (u8 *)malloc(1);
+	u8 *gva = (u8 *)malloc(sizeof(u8));
 	assert(gva != NULL);
 
 	/* set reserved bit to 1 in PTE table */
@@ -1029,7 +1092,7 @@ static void paging_rqmid_32350_check_error_code_rsvd_bit()
  */
 static void paging_rqmid_32351_check_error_code_wr_bit()
 {
-	u8 *gva = (u8 *)malloc(1);
+	u8 *gva = (u8 *)malloc(sizeof(u8));
 	assert(gva != NULL);
 
 	/* set only read pages */
@@ -1051,7 +1114,7 @@ static void paging_rqmid_32351_check_error_code_wr_bit()
  */
 static void paging_rqmid_32352_check_error_code_p_bit()
 {
-	u8 *gva = (u8 *)malloc(1);
+	u8 *gva = (u8 *)malloc(sizeof(u8));
 	assert(gva != NULL);
 
 	/* set only read pages */
@@ -1160,6 +1223,7 @@ static void paging_rqmid_23912_hide_invalidate_processor_context_identifiers()
 	report("paging_rqmid_23912_hide_invalidate_processor_context_identifiers", is_pass);
 }
 
+/*64bit mode sample case code*/
 void test_paging_64bit_mode()
 {
 	paging_rqmid_23912_hide_invalidate_processor_context_identifiers();
@@ -1172,10 +1236,16 @@ void test_paging_64bit_mode()
 	paging_rqmid_26827_enable_global_paging();
 }
 
+/*non-sample case code*/
 void test_paging_64bit_mode_p2()
 {
-	u32 case_id = 1;
-	switch (case_id) {
+	/*
+	 * The case of test_id1 and the test_id2 cannot run at the same time,
+	 * so need to be separated
+	 */
+
+	u32 test_id = 1;
+	switch (test_id) {
 	case 1:
 		//paging_rqmid_23912_hide_invalidate_processor_context_identifiers();
 		//paging_rqmid_23918_write_protect_support();
