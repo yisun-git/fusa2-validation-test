@@ -5,7 +5,8 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 BUILD_32BIT_FEATURE="segmentation"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
-BUILD_NATIVE_FEATURE=""
+BUILD_NATIVE_64_FEATURE=""
+BUILD_NATIVE_32_FEATURE=""
 
 RESULT=0
 
@@ -46,15 +47,27 @@ done
 #        ./make32_and_real_mode.sh $i;
 #done
 
-for i in $BUILD_NATIVE_FEATURE;
+for i in $BUILD_NATIVE_64_FEATURE;
 do
-        echo "start build $i native mode file"
-        ./make_native.sh $i native;
+        echo "start build $i native 64bit mode file"
+        ./make64_native.sh $i 64;
         make_result=$?
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
         fi
+done
+
+for i in $BUILD_NATIVE_32_FEATURE;
+do
+	echo "start build $i native 32bit mode file"
+	./make32_native.sh $i 32;
+        make_result=$?
+        if [ $make_result -ne 0 ]; then
+            RESULT=$make_result
+            echo "FAILED TO MAKE $i"
+        fi
+
 done
 
 for i in $BUILD_64BIT_FEATURE;  
