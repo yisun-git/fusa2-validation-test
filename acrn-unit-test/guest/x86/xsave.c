@@ -246,7 +246,7 @@ static __unused void xsave_rqmid_23631_hide_pkru_support_001(void)
 		debug_print("The value of EAX[9] = %#x \n", r_eax);
 		debug_print("******23631:XSAVE_hide_PKRU_support_001, test case Failed.******\n");
 	}
-	report("23631:XSAVE_hide_PKRU_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -279,7 +279,7 @@ static __unused void xsave_rqmid_23632_hide_mpx_support_001(void)
 		debug_print("The value of EAX[4:3] = %#x\n", r_eax);
 		debug_print("******23632:XSAVE_hide_MPX_support_001, test case Failed.******\n");
 	}
-	report("23632:XSAVE_hide_MPX_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -312,7 +312,7 @@ static __unused void xsave_rqmid_23633_hide_avx_512_support_001(void)
 		debug_print("The value of EAX[7:5] = %#x \n", r_eax);
 		debug_print("******23633:XSAVE_hide_AVX_512_support_001, test case Failed.******\n");
 	}
-	report("23633:XSAVE_hide_AVX_512_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -344,7 +344,7 @@ static __unused void xsave_rqmid_28385_physical_x87_support_001(void)
 		debug_print("The value of EAX[0] = %#x \n", r_eax);
 		debug_print("******28385:XSAVE_physical_x87_support_001, test case Failed******\n");
 	}
-	report("28385:XSAVE_physical_x87_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -369,7 +369,7 @@ static __unused void xsave_rqmid_28386_physical_general_support_001(void)
 		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x \n", r_ecx);
 		debug_print("******28386:XSAVE_physical_general_support_001, test case Failed******\n");
 	}
-	report("28386:XSAVE_physical_general_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -400,7 +400,7 @@ static __unused void xsave_rqmid_28388_physical_sse_support_001(void)
 		debug_print("The value of CPUID.0DH:EAX.SSE[bit 1] = %#x \n", r_eax);
 		debug_print("******28388:XSAVE_physical_SSE_support_001, test case Failed******\n");
 	}
-	report("28388:XSAVE_physical_SSE_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -431,7 +431,7 @@ static __unused void xsave_rqmid_28390_physical_avx_support_001(void)
 		debug_print("The value of CPUID.0DH:EAX.AVX[bit 2] = %#x \n", r_eax);
 		debug_print("******28390:XSAVE_physical_AVX_support_001, test case Failed******\n");
 	}
-	report("28390:XSAVE_physical_AVX_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -456,7 +456,7 @@ static __unused void xsave_rqmid_28468_physical_compaction_extensions_001(void)
 		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit1] = %#x \n", bit_support_compaction);
 		debug_print("******28468:XSAVE_physical_compaction_extensions_001, test case Failed******\n");
 	}
-	report("28468:XSAVE_physical_compaction_extensions_001", (i == 1));
+	report("%s", (i == 1), __FUNCTION__);
 }
 
 
@@ -481,7 +481,7 @@ static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_
 		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
 		debug_print("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Failed******\n");
 	}
-	report("28392:XSAVE_physical_init_and_modified_optimizations_001", (i == 1));
+	report("%s", (i == 1), __FUNCTION__);
 }
 
 
@@ -545,7 +545,7 @@ static __unused void xsave_rqmid_28393_general_support_009(void)
 			: "memory");
 		i++;
 	}
-	report("28393:XSAVE_general_support_009", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -608,7 +608,7 @@ static __unused void xsave_rqmid_28395_general_support_012(void)
 	debug_print("Excepted Result: Generate #AC exception, error_code=0000.\n");
 	do_at_ring3(xsave_rqmid_28395_general_support_012_subfun, "");
 	i++;
-	report("28395:XSAVE_general_support_012", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -667,7 +667,7 @@ static __unused void xsave_rqmid_28397_general_support_027(void)
 		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 		: "memory");
 	i++;
-	report("28387:XSAVE_physical_x87_support_001", (i == 4));
+	report("%s", (i == 4), __FUNCTION__);
 }
 
 
@@ -729,7 +729,7 @@ static __unused void xsave_rqmid_24444_general_support_021(void)
 			xcr0);
 		debug_print("******24444:XSAVE_general_support_021, test case Failed.******\n");
 	}
-	report("24444:XSAVE_general_support_021", (i == 4));
+	report("%s", (i == 4), __FUNCTION__);
 }
 
 
@@ -813,7 +813,7 @@ static __unused void xsave_rqmid_24418_general_support_022(void)
 			: "memory");
 		i++;
 	}
-	report("24418:XSAVE_general_support_022", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -854,7 +854,7 @@ static __unused void xsave_rqmid_23638_init_and_modified_optimizations_002(void)
 		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
 		: "memory");
 	i++;
-	report("23638:XSAVE init and modified optimizations_002", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -907,7 +907,7 @@ static __unused void xsave_rqmid_23639_init_and_modified_optimizations_003(void)
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23639:XSAVE init and modified optimizations_003, test case Failed.******\n");
 	}
-	report("23639:XSAVE init and modified optimizations_003", (i == 4));
+	report("%s", (i == 4), __FUNCTION__);
 }
 
 
@@ -965,7 +965,7 @@ static __unused void xsave_rqmid_23640_init_and_modified_optimizations_004(void)
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23640:XSAVE init and modified optimizations_004, test case Failed.******\n");
 	}
-	report("23640:XSAVE init and modified optimizations_004", (i == 5));
+	report("%s", (i == 5), __FUNCTION__);
 }
 
 
@@ -1033,7 +1033,7 @@ static __unused void xsave_rqmid_23641_init_and_modified_optimizations_005(void)
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23641:XSAVE init and modified optimizations_005, test case Failed.******\n");
 	}
-	report("23641:XSAVE init and modified optimizations_005", (i == 5));
+	report("%s", (i == 5), __FUNCTION__);
 }
 
 /*
@@ -1136,7 +1136,7 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23642:XSAVE init and modified optimizations_006, test case Failed.******\n");
 	}
-	report("23642:XSAVE init and modified optimizations_006", (i == 7));
+	report("%s", (i == 7), __FUNCTION__);
 }
 
 
@@ -1259,7 +1259,7 @@ static __unused void xsave_rqmid_22826_check_reserved_bit()
 	if ((eax & ~(0xf)) == 0) {
 		i++;
 	}
-	report("xsave_rqmid_22826_check_reserved_bit", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
@@ -1326,7 +1326,7 @@ static __unused void xsave_rqmid_22867_expose_avx_support()
 		}
 	}
 
-	report("xsave_rqmid_22867_expose_avx_support", (i == 8));
+	report("%s", (i == 8), __FUNCTION__);
 }
 
 
@@ -1366,7 +1366,7 @@ static __unused void xsave_rqmid_22844_xsetbv_at_ring3()
 	if (i == 2) {
 		do_at_ring3(test_xsetbv_at_ring3, "UMIP=0, CPL=3\n");
 	} else {
-		report("xsave_rqmid_22844_xsetbv_at_ring3", false);
+		report("%s", false, __FUNCTION__);
 	}
 }
 
@@ -1429,7 +1429,7 @@ static __unused void xsave_rqmid_22866_expose_sse_support()
 		}
 	}
 
-	report("xsave_rqmid_22867_expose_avx_support", (i == 6));
+	report("%s", (i == 6), __FUNCTION__);
 }
 
 static __unused void add_fpu(double *p, double *q)
@@ -1530,8 +1530,8 @@ static __unused void xsave_rqmid_22911_check_xsave_head_size()
 	}
 	debug_print("i=%d, total_size=%d,  sizeof(st_xsave_area.fpu_sse)=%ld, head_size=%d \n",
 		i, total_size, sizeof(st_xsave_area.fpu_sse), head_size);
-	report("xsave_rqmid_22911_check_xsave_head_size",
-		((i == 5) && (head_size == (total_size - sizeof(st_xsave_area.fpu_sse)))));
+	report("%s",
+		((i == 5) && (head_size == (total_size - sizeof(st_xsave_area.fpu_sse)))), __FUNCTION__);
 }
 
 /*
@@ -1544,8 +1544,8 @@ static __unused void xsave_rqmid_22846_x87_support()
 {
 	u64 xcr0 = get_supported_xcr0();
 
-	report("xsave_rqmid_22846_x87_support",
-		(xcr0 & (STATE_X87 | STATE_SSE)) == (STATE_X87 | STATE_SSE));
+	report("%s",
+		(xcr0 & (STATE_X87 | STATE_SSE)) == (STATE_X87 | STATE_SSE), __FUNCTION__);
 }
 
 /*
@@ -1582,8 +1582,8 @@ static __unused void xsave_rqmid_22830_check_xsave_area_offset()
 
 	u32 avx_area_offset = cpuid_indexed(CPUID_XSAVE_FUC, 2).b;
 
-	report("xsave_rqmid_22830_check_xsave_area_offset",	\
-		((i == 3) && (avx_area_offset == (total_size - avx_area_size))));
+	report("%s",	\
+		((i == 3) && (avx_area_offset == (total_size - avx_area_size))), __FUNCTION__);
 }
 
 
@@ -1664,7 +1664,7 @@ static __unused void xsave_rqmid_22825_supervisor_state_components_001(void)
 	} else {
 		debug_print("Step6:xrstors_checking STATE_X87 | STATE_SSE failed.exception_vector()=0x%x \n", ret1);
 	}
-	report("xsave_rqmid_22825_supervisor_state_components_001", (i == 6));
+	report("%s", (i == 6), __FUNCTION__);
 }
 
 
@@ -1698,8 +1698,8 @@ static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_IN
 
 	xinuse1 = get_init_xinuse(0x7000, 0x7004);
 	debug_print("\n --->ap: after send sipi, XINUSE=%lx %d\n", xinuse1, ap_start_count);
-	report("xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT",\
-	(xinuse == (STATE_SSE)) && (xinuse == xinuse1));
+	report("%s",\
+	(xinuse == (STATE_SSE)) && (xinuse == xinuse1), __FUNCTION__);
 }
 
 static void print_case_list(void)
