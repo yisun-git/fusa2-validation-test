@@ -1,4 +1,4 @@
-#include "paging.h"
+#include "../paging.h"
 mov %cr0, %eax
 mov %eax, STARTUP_CR0_ADDR
 mov %cr2, %eax
