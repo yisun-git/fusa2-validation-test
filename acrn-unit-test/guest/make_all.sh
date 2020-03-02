@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboot \
-	memory_order tsc mp_initialization xsave local_apic"
+	memory_order tsc mp_initialization xsave local_apic paging"
 #BUILD_64BIT_FEATURE="mem_cache"
-BUILD_32BIT_FEATURE="segmentation"
+BUILD_32BIT_FEATURE="segmentation paging"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
 BUILD_NATIVE_64_FEATURE=""
