@@ -317,12 +317,12 @@ static __unused void xsave_rqmid_23633_hide_avx_512_support_001(void)
 
 
 /*
- * Case name: 28385:XSAVE_physical_x87_support_001.
+ * Case name: 28385:XSAVE_physical_x87_support_AC_001.
  *
  * Summary: DNG_ 129931: XSAVE physical x87 support
  *	    XSAVE-managed x87 states shall be available on the physical platform.
  */
-static __unused void xsave_rqmid_28385_physical_x87_support_001(void)
+static __unused void xsave_rqmid_28385_physical_x87_support_AC_001(void)
 {
 	u32 i = 0;
 	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
@@ -344,17 +344,17 @@ static __unused void xsave_rqmid_28385_physical_x87_support_001(void)
 		debug_print("The value of EAX[0] = %#x \n", r_eax);
 		debug_print("******28385:XSAVE_physical_x87_support_001, test case Failed******\n");
 	}
-	report("28385:XSAVE_physical_x87_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
 /*
- * Case name: 28386:XSAVE_physical_general_support_001.
+ * Case name: 28386:XSAVE_physical_general_support_AC_001.
  *
  * Summary: DNG_ 132053: XSAVE physical general support.
  *	    XSAVE general support shall be available on the physical platform.
  */
-static __unused void xsave_rqmid_28386_physical_general_support_001(void)
+static __unused void xsave_rqmid_28386_physical_general_support_AC_001(void)
 {
 	u32 i = 0;
 	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
@@ -369,17 +369,17 @@ static __unused void xsave_rqmid_28386_physical_general_support_001(void)
 		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x \n", r_ecx);
 		debug_print("******28386:XSAVE_physical_general_support_001, test case Failed******\n");
 	}
-	report("28386:XSAVE_physical_general_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
 /*
- * Case name: 28388:XSAVE_physical_SSE_support_001.
+ * Case name: 28388:XSAVE_physical_SSE_support_AC_001.
  *
  * Summary: DNG_132150: XSAVE physical SSE support.
  *	    XSAVE-managed SSE states shall be available on the physical platform.
  */
-static __unused void xsave_rqmid_28388_physical_sse_support_001(void)
+static __unused void xsave_rqmid_28388_physical_sse_support_AC_001(void)
 {
 	u32 i = 0;
 	debug_print("******Step1: Get CPUID.0DH:EAX.SSE[bit 1], and compare with 1b******\n");
@@ -400,17 +400,17 @@ static __unused void xsave_rqmid_28388_physical_sse_support_001(void)
 		debug_print("The value of CPUID.0DH:EAX.SSE[bit 1] = %#x \n", r_eax);
 		debug_print("******28388:XSAVE_physical_SSE_support_001, test case Failed******\n");
 	}
-	report("28388:XSAVE_physical_SSE_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
 /*
- * Case name: 28390:XSAVE_physical_AVX_support_001.
+ * Case name: 28390:XSAVE_physical_AVX_support_AC_001.
  *
  * Summary: DNG_132151: XSAVE physical AVX support.
  *	    XSAVE-managed AVX states shall be available on the physical platform.
  */
-static __unused void xsave_rqmid_28390_physical_avx_support_001(void)
+static __unused void xsave_rqmid_28390_physical_avx_support_AC_001(void)
 {
 	u32 i = 0;
 	debug_print("******Step1: Get CPUID.0DH:EAX.AVX[bit 2], and compare with 1b******\n");
@@ -431,24 +431,24 @@ static __unused void xsave_rqmid_28390_physical_avx_support_001(void)
 		debug_print("The value of CPUID.0DH:EAX.AVX[bit 2] = %#x \n", r_eax);
 		debug_print("******28390:XSAVE_physical_AVX_support_001, test case Failed******\n");
 	}
-	report("28390:XSAVE_physical_AVX_support_001", (i == 2));
+	report("%s", (i == 2), __FUNCTION__);
 }
 
 
 /*
- * Case name: 28468:XSAVE_physical_compaction_extensions_001.
+ * Case name: 28468:XSAVE_physical_compaction_extensions_AC_001.
  *
  * Summary: DNG_132152: XSAVE physical compaction extensions.
  *	    XSAVE compaction extensions shall be available on the physical platform.
  */
-static __unused void xsave_rqmid_28468_physical_compaction_extensions_001(void)
+static __unused void xsave_rqmid_28468_physical_compaction_extensions_AC_001(void)
 {
 	u32 i = 0;
 	debug_print("******Step1: Get CPUID.(EAX=0DH,ECX=1H):EAX[bit1], and compare with 1b******\n");
 	int bit_support_compaction;
 	bit_support_compaction = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
-	bit_support_compaction = 0x0001 & bit_support_compaction;
-	if (bit_support_compaction == 1) {
+	bit_support_compaction = 0x0002 & bit_support_compaction;
+	if (bit_support_compaction != 0) {
 		i++;
 		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit1] = %#x \n", bit_support_compaction);
 		debug_print("******28468:XSAVE_physical_compaction_extensions_001, test case Passed******\n");
@@ -456,23 +456,23 @@ static __unused void xsave_rqmid_28468_physical_compaction_extensions_001(void)
 		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit1] = %#x \n", bit_support_compaction);
 		debug_print("******28468:XSAVE_physical_compaction_extensions_001, test case Failed******\n");
 	}
-	report("28468:XSAVE_physical_compaction_extensions_001", (i == 1));
+	report("%s", (i == 1), __FUNCTION__);
 }
 
 
 /*
- * Case name: 28392:XSAVE_physical_init_and_modified_optimizations_001.
+ * Case name: 28392:XSAVE_physical_init_and_modified_optimizations_AC_001.
  *
  * Summary: DNG_132153: XSAVE physical init and modified optimizations.
  *	    XSAVE init and modified optimizations shall be available on the physical platform.
  */
-static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_001(void)
+static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_AC_001(void)
 {
 	u32 i = 0;
 	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
 	int bit_support_compaction;
 	bit_support_compaction = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
-	bit_support_compaction = 0x0011 & bit_support_compaction;
+	bit_support_compaction = 0x007 & bit_support_compaction;
 	if (bit_support_compaction == 0x7) {
 		i++;
 		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
@@ -481,7 +481,7 @@ static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_
 		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
 		debug_print("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Failed******\n");
 	}
-	report("28392:XSAVE_physical_init_and_modified_optimizations_001", (i == 1));
+	report("%s", (i == 1), __FUNCTION__);
 }
 
 
@@ -1706,6 +1706,14 @@ static void print_case_list(void)
 {
 	/*_x86_64__*/
 	printf("\t\t XSAVE feature case list:\n\r");
+#ifdef IN_NATIVE
+	printf("\t\t Case ID:%d case name:%s\n\r", 28468u, "XSAVE physical compaction extensions_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28386u, "XSAVE physical general support_001 ");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28385u, "XSAVE physical x87 support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28388u, "XSAVE physical SSE support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28390u, "XSAVE physical AVX support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28392u, "XSAVE physical init and modified optimizations_001");
+#else
 	printf("\t\t Case ID:%d case name:%s\n\r", 23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23633u, "XSAVE hide AVX-512 support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23642u, "XSAVE init and modified optimizations_006");
@@ -1717,6 +1725,7 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 22846u, "XSAVE expose x87 support_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 22830u, "XSAVE general support_014");
 	printf("\t\t Case ID:%d case name:%s\n\r", 22825u, "XSAVE supervisor state components_001");
+#endif
 	printf("\t\t \n\r \n\r");
 }
 
@@ -1729,6 +1738,14 @@ int main(void)
 
 	print_case_list();
 
+#ifdef IN_NATIVE
+	xsave_rqmid_28468_physical_compaction_extensions_AC_001();
+	xsave_rqmid_28386_physical_general_support_AC_001();
+	xsave_rqmid_28385_physical_x87_support_AC_001();
+	xsave_rqmid_28388_physical_sse_support_AC_001();
+	xsave_rqmid_28390_physical_avx_support_AC_001();
+	xsave_rqmid_28392_physical_init_and_modified_optimizations_AC_001();
+#else
 	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT();
 	xsave_rqmid_23633_hide_avx_512_support_001();
 	xsave_rqmid_23642_init_and_modified_optimizations_006();
@@ -1740,8 +1757,7 @@ int main(void)
 	xsave_rqmid_22846_x87_support();
 	xsave_rqmid_22830_check_xsave_area_offset();
 	xsave_rqmid_22825_supervisor_state_components_001();
+#endif
 
 	return report_summary();
 }
-
-
