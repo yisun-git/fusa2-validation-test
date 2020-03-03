@@ -3474,8 +3474,9 @@ __unused void config_gdt_description(u32 index, u8 dpl, u8 is_code)
 
 	struct descriptor_table_ptr gdt_descriptor_table;
 
-	if (index == 0 || index >= 15)
+	if ((index == 0) || (index >= 15)) {
 		return;
+	}
 
 	sgdt(&gdt_descriptor_table);
 
@@ -3485,10 +3486,12 @@ __unused void config_gdt_description(u32 index, u8 dpl, u8 is_code)
 	pnewgdt->limit_low = SEGMENT_LIMIT;
 	pnewgdt->base_low = 0x0000;
 
-	if (is_code)
+	if (is_code) {
 		flag = SEGMENT_TYPE_CODE_EXE_RAED_ACCESSED;
-	else
+	}
+	else {
 		flag = SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED;
+	}
 	pnewgdt->access =  SEGMENT_PRESENT_SET|(dpl&0x60)|DESCRIPTOR_TYPE_CODE_OR_DATA|(flag&0xF);
 	pnewgdt->base_high = 0x00;
 	pnewgdt->base_middle = 0x00;
@@ -3603,10 +3606,12 @@ void set_cr0_AM(int am)
 	unsigned long old_cr0 = cr0;
 
 	cr0 &= ~CR0_AM_MASK;
-	if (am)
+	if (am) {
 		cr0 |= CR0_AM_MASK;
-	if (old_cr0 != cr0)
+	}
+	if (old_cr0 != cr0) {
 		write_cr0(cr0);
+	}
 }
 
 void set_eflag_ac(int ac)
