@@ -11,6 +11,9 @@ BUILD_NATIVE_32_FEATURE=""
 
 RESULT=0
 
+	find . -name *.raw |xargs rm -rf
+	find . -name *.elf |xargs rm -rf
+	find . -name *.bzimage |xargs rm -rf
 	rm -rf x86/obj
 	mkdir x86/obj
 for i in $BUILD_32BIT_FEATURE;
@@ -21,6 +24,7 @@ do
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
+	    exit $RESULT
         fi
 
 	./make32_safety.sh $i 32;
@@ -28,6 +32,7 @@ do
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
+	    exit $RESULT
         fi
 done
 
@@ -39,6 +44,7 @@ do
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
+	    exit $RESULT
         fi
 done
 
@@ -56,6 +62,7 @@ do
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
+	    exit $RESULT
         fi
 done
 
@@ -67,6 +74,7 @@ do
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
+	    exit $RESULT
         fi
 
 done
@@ -79,6 +87,7 @@ do
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
+	    exit $RESULT
         fi
 
 	./make64_safety.sh $i 64;
@@ -86,6 +95,7 @@ do
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
             echo "FAILED TO MAKE $i"
+	    exit $RESULT
         fi
 done
 
