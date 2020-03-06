@@ -757,35 +757,35 @@ struct segment_desc {
 } __attribute__((__packed__));
 
 struct interrupt_desc {
-    unsigned short offset0;
-    unsigned short selector;
-    unsigned short ist : 3;
-    unsigned short reserved0: 5;
-    unsigned short type : 4;
-    unsigned short s: 1;
-    unsigned short dpl : 2;
-    unsigned short p : 1;
-    unsigned short offset1;
+	unsigned short offset0;
+	unsigned short selector;
+	unsigned short ist : 3;
+	unsigned short reserved0: 5;
+	unsigned short type : 4;
+	unsigned short s: 1;
+	unsigned short dpl : 2;
+	unsigned short p : 1;
+	unsigned short offset1;
 #ifdef __x86_64__
-    unsigned offset2;
-    unsigned reserved1;
+	unsigned offset2;
+	unsigned reserved1;
 #endif
 };
 
 static inline void debug_gdt_show_fields(void)
 {
 #ifdef __TESTCASE_DEBUG__
-    DEBUG("  %s ", "id");
-    DEBUG("%7s%s%7s", " ", "base", " ");
-    DEBUG("%2s%s%2s", " ", "limit", " ");
-    DEBUG("%s", "type");
-    DEBUG("  %s ", "s");
-    DEBUG("%s", "dpl");
-    DEBUG(" %s ", "p");
-    DEBUG("%s", "avl");
-    DEBUG(" %s ", "l");
-    DEBUG("%s ", "db");
-    DEBUG(" %s \n", "g");
+	DEBUG("  %s ", "id");
+	DEBUG("%7s%s%7s", " ", "base", " ");
+	DEBUG("%2s%s%2s", " ", "limit", " ");
+	DEBUG("%s", "type");
+	DEBUG("  %s ", "s");
+	DEBUG("%s", "dpl");
+	DEBUG(" %s ", "p");
+	DEBUG("%s", "avl");
+	DEBUG(" %s ", "l");
+	DEBUG("%s ", "db");
+	DEBUG(" %s \n", "g");
 #endif
 }
 
@@ -1990,7 +1990,7 @@ int enter_to_ring3(ring3_routine_fn_t fn, void *param)
 	"push %"R "bx; push %"R "dx; push %"R "cx;\n\t"
 	);
 
-    asm volatile (
+	asm volatile (
 	"mov %%" R "sp, %%" R "cx\n\t"		// kernel stack top >> rcx
 	"mov %[user_ds], %%dx\n\t"
 	"mov %%dx, %%es\n\t"

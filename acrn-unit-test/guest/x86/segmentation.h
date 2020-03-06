@@ -131,28 +131,28 @@ static volatile unsigned long g_test_ticks = 0;
 
 typedef struct
 {
-    unsigned long rip;
-    unsigned long cs;
-    unsigned long rflags;
+	unsigned long rip;
+	unsigned long cs;
+	unsigned long rflags;
 } irq_stack_t, ipi_stack_t;
 
 typedef void cpu_routine_t(void);
 
 typedef enum _SEGMENT_REGISTER
 {
-    REG_CS = 0,
-    REG_DS,
-    REG_ES,
-    REG_FS,
-    REG_GS,
-    REG_SS
+	REG_CS = 0,
+	REG_DS,
+	REG_ES,
+	REG_FS,
+	REG_GS,
+	REG_SS
 } SEG_REG;
 
 typedef enum _SEGMENT_REGISTER_BIT
 {
-    BIT_L = 0,
-    BIT_B,
-    BIT_D
+	BIT_L = 0,
+	BIT_B,
+	BIT_D
 } SEG_REG_BIT;
 
 #ifndef __x86_64__
@@ -185,9 +185,9 @@ struct task_gate {
 	u16 selector;
 	u8 resv_1 :8;
 	u8 type :4;
-    u8 system :1;
-    u8 dpl :2;
-    u8 p :1;
+	u8 system :1;
+	u8 dpl :2;
+	u8 p :1;
 	u16 resv_2;
 } gate;
 

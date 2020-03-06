@@ -7,17 +7,17 @@ void setup_idt(void);
 void setup_alt_stack(void);
 
 struct ex_regs {
-    unsigned long rax, rcx, rdx, rbx;
-    unsigned long dummy, rbp, rsi, rdi;
+	unsigned long rax, rcx, rdx, rbx;
+	unsigned long dummy, rbp, rsi, rdi;
 #ifdef __x86_64__
-    unsigned long r8, r9, r10, r11;
-    unsigned long r12, r13, r14, r15;
+	unsigned long r8, r9, r10, r11;
+	unsigned long r12, r13, r14, r15;
 #endif
-    unsigned long vector;
-    unsigned long error_code;
-    unsigned long rip;
-    unsigned long cs;
-    unsigned long rflags;
+	unsigned long vector;
+	unsigned long error_code;
+	unsigned long rip;
+	unsigned long cs;
+	unsigned long rflags;
 };
 
 typedef void (*handler)(struct ex_regs *regs);
@@ -77,18 +77,18 @@ typedef struct  __attribute__((packed)) {
 
 #ifdef __x86_64__
 #define ASM_TRY(catch)                                  \
-    "movl $0, %%gs:4 \n\t"                              \
-    ".pushsection .data.ex \n\t"                        \
-    ".quad 1111f, " catch "\n\t"                        \
-    ".popsection \n\t"                                  \
-    "1111:"
+	"movl $0, %%gs:4 \n\t"                              \
+	".pushsection .data.ex \n\t"                        \
+	".quad 1111f, " catch "\n\t"                        \
+	".popsection \n\t"                                  \
+	"1111:"
 #else
 #define ASM_TRY(catch)                                  \
-    "movl $0, %%gs:4 \n\t"                              \
-    ".pushsection .data.ex \n\t"                        \
-    ".long 1111f, " catch "\n\t"                        \
-    ".popsection \n\t"                                  \
-    "1111:"
+	"movl $0, %%gs:4 \n\t"                              \
+	".pushsection .data.ex \n\t"                        \
+	".long 1111f, " catch "\n\t"                        \
+	".popsection \n\t"                                  \
+	"1111:"
 #endif
 
 #define DB_VECTOR   1
@@ -152,18 +152,18 @@ typedef struct  __attribute__((packed)) {
 #define TSS_MAIN 0x80
 
 typedef struct {
-    unsigned short offset0;
-    unsigned short selector;
-    unsigned short ist : 3;
-    unsigned short : 5;
-    unsigned short type : 4;
-    unsigned short : 1;
-    unsigned short dpl : 2;
-    unsigned short p : 1;
-    unsigned short offset1;
+	unsigned short offset0;
+	unsigned short selector;
+	unsigned short ist : 3;
+	unsigned short : 5;
+	unsigned short type : 4;
+	unsigned short : 1;
+	unsigned short dpl : 2;
+	unsigned short p : 1;
+	unsigned short offset1;
 #ifdef __x86_64__
-    unsigned offset2;
-    unsigned reserved;
+	unsigned offset2;
+	unsigned reserved;
 #endif
 } idt_entry_t;
 

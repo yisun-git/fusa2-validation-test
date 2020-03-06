@@ -5,35 +5,35 @@
 
 void set_idt_entry(int vec, void *addr, int dpl)
 {
-    idt_entry_t *e = &boot_idt[vec];
-    memset(e, 0, sizeof *e);
-    e->offset0 = (unsigned long)addr;
-    e->selector = read_cs();
-    e->ist = 0;
-    e->type = 14;
-    e->dpl = dpl;
-    e->p = 1;
-    e->offset1 = (unsigned long)addr >> 16;
+	idt_entry_t *e = &boot_idt[vec];
+	memset(e, 0, sizeof *e);
+	e->offset0 = (unsigned long)addr;
+	e->selector = read_cs();
+	e->ist = 0;
+	e->type = 14;
+	e->dpl = dpl;
+	e->p = 1;
+	e->offset1 = (unsigned long)addr >> 16;
 #ifdef __x86_64__
-    e->offset2 = (unsigned long)addr >> 32;
+	e->offset2 = (unsigned long)addr >> 32;
 #endif
 }
 
 void set_idt_dpl(int vec, u16 dpl)
 {
-    idt_entry_t *e = &boot_idt[vec];
-    e->dpl = dpl;
+	idt_entry_t *e = &boot_idt[vec];
+	e->dpl = dpl;
 }
 
 void set_idt_sel(int vec, u16 sel)
 {
-    idt_entry_t *e = &boot_idt[vec];
-    e->selector = sel;
+	idt_entry_t *e = &boot_idt[vec];
+	e->selector = sel;
 }
 
 struct ex_record {
-    unsigned long rip;
-    unsigned long handler;
+	unsigned long rip;
+	unsigned long handler;
 };
 
 extern struct ex_record exception_table_start, exception_table_end;
@@ -178,29 +178,29 @@ EX(mc, 18);
 EX(xm, 19);
 
 asm (".pushsection .text \n\t"
-     "__handle_exception: \n\t"
+	 "__handle_exception: \n\t"
 #ifdef __x86_64__
-     "push %r15; push %r14; push %r13; push %r12 \n\t"
-     "push %r11; push %r10; push %r9; push %r8 \n\t"
+	 "push %r15; push %r14; push %r13; push %r12 \n\t"
+	 "push %r11; push %r10; push %r9; push %r8 \n\t"
 #endif
-     "push %"R "di; push %"R "si; push %"R "bp; sub $"S", %"R "sp \n\t"
-     "push %"R "bx; push %"R "dx; push %"R "cx; push %"R "ax \n\t"
+	 "push %"R "di; push %"R "si; push %"R "bp; sub $"S", %"R "sp \n\t"
+	 "push %"R "bx; push %"R "dx; push %"R "cx; push %"R "ax \n\t"
 #ifdef __x86_64__
-     "mov %"R "sp, %"R "di \n\t"
+	 "mov %"R "sp, %"R "di \n\t"
 #else
-     "mov %"R "sp, %"R "ax \n\t"
+	 "mov %"R "sp, %"R "ax \n\t"
 #endif
-     "call do_handle_exception \n\t"
-     "pop %"R "ax; pop %"R "cx; pop %"R "dx; pop %"R "bx \n\t"
-     "add $"S", %"R "sp; pop %"R "bp; pop %"R "si; pop %"R "di \n\t"
+	 "call do_handle_exception \n\t"
+	 "pop %"R "ax; pop %"R "cx; pop %"R "dx; pop %"R "bx \n\t"
+	 "add $"S", %"R "sp; pop %"R "bp; pop %"R "si; pop %"R "di \n\t"
 #ifdef __x86_64__
-     "pop %r8; pop %r9; pop %r10; pop %r11 \n\t"
-     "pop %r12; pop %r13; pop %r14; pop %r15 \n\t"
+	 "pop %r8; pop %r9; pop %r10; pop %r11 \n\t"
+	 "pop %r12; pop %r13; pop %r14; pop %r15 \n\t"
 #endif
-     "add $"S", %"R "sp \n\t"
-     "add $"S", %"R "sp \n\t"
-     "iret"W" \n\t"
-     ".popsection");
+	 "add $"S", %"R "sp \n\t"
+	 "add $"S", %"R "sp \n\t"
+	 "iret"W" \n\t"
+	 ".popsection");
 
 static void *idt_handlers[32] = {
 	[0] = &de_fault,
@@ -244,26 +244,26 @@ void setup_idt(void)
 
 unsigned exception_vector(void)
 {
-    unsigned char vector;
+	unsigned char vector;
 
-    asm("movb %%gs:4, %0" : "=q"(vector));
-    return vector;
+	asm("movb %%gs:4, %0" : "=q"(vector));
+	return vector;
 }
 
 unsigned exception_error_code(void)
 {
-    unsigned short error_code;
+	unsigned short error_code;
 
-    asm("mov %%gs:6, %0" : "=rm"(error_code));
-    return error_code;
+	asm("mov %%gs:6, %0" : "=rm"(error_code));
+	return error_code;
 }
 
 bool exception_rflags_rf(void)
 {
-    unsigned char rf_flag;
+	unsigned char rf_flag;
 
-    asm("movb %%gs:5, %b0" : "=q"(rf_flag));
-    return rf_flag & 1;
+	asm("movb %%gs:5, %b0" : "=q"(rf_flag));
+	return rf_flag & 1;
 }
 
 static char intr_alt_stack[4096];
@@ -289,20 +289,20 @@ void set_gdt_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran)
 
 void set_gdt_task_gate(u16 sel, u16 tss_sel)
 {
-    set_gdt_entry(sel, tss_sel, 0, 0x85, 0); // task, present
+	set_gdt_entry(sel, tss_sel, 0, 0x85, 0); // task, present
 }
 
 void set_idt_task_gate(int vec, u16 sel)
 {
-    idt_entry_t *e = &boot_idt[vec];
+	idt_entry_t *e = &boot_idt[vec];
 
-    memset(e, 0, sizeof *e);
+	memset(e, 0, sizeof *e);
 
-    e->selector = sel;
-    e->ist = 0;
-    e->type = 5;
-    e->dpl = 0;
-    e->p = 1;
+	e->selector = sel;
+	e->ist = 0;
+	e->type = 5;
+	e->dpl = 0;
+	e->p = 1;
 }
 
 /*

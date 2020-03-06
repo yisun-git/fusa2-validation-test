@@ -171,15 +171,15 @@ static __unused int xsetbv_checking(u32 index, u64 value)
 
 static __unused int xgetbv_checking(u32 index, u64 *result)
 {
-    u32 eax, edx;
+	u32 eax, edx;
 
-    asm volatile(ASM_TRY("1f")
+	asm volatile(ASM_TRY("1f")
 	    ".byte 0x0f,0x01,0xd0\n\t" /* xgetbv */
 	    "1:"
 	    : "=a" (eax), "=d" (edx)
 	    : "c" (index));
-    *result = eax + ((u64)edx << 32);
-    return exception_vector();
+	*result = eax + ((u64)edx << 32);
+	return exception_vector();
 }
 
 int ap_start_count = 0;
@@ -1434,7 +1434,7 @@ static __unused void xsave_rqmid_22866_expose_sse_support()
 
 static __unused void add_fpu(double *p, double *q)
 {
-    asm volatile("fld (%%rdi)\n\t"	// use double extended float
+	asm volatile("fld (%%rdi)\n\t"	// use double extended float
 	"fld (%%rsi)\n\t"		// use double extended float
 	"fadd %%st(0), %%st(1)\n\t"	// add st(0) and st(1)
 	// automatically truncate to single-float, write to the first arg and pop the value
@@ -1598,7 +1598,7 @@ static __unused void xsave_rqmid_22825_supervisor_state_components_001(void)
 {
 	u64 val = 0x100;
 	u32 index = 0xDA0;
-    u32 a = val, d = val >> 32;
+	u32 a = val, d = val >> 32;
 	int i = 0;
 	int ret1 = 0;
 
@@ -1618,7 +1618,7 @@ static __unused void xsave_rqmid_22825_supervisor_state_components_001(void)
 	/*Step3:Confirm hide enable supervisor state component, write MSR register IA32_XSS*/
 	val = 0x100;
 	index = 0xDA0;
-    a = val;
+	a = val;
 	d = val >> 32;
 	asm volatile(ASM_TRY("1f")
 		"wrmsr\n\t"

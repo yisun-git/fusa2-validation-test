@@ -313,7 +313,7 @@ int main(void)
 {
 	bsp_is_running++;
 	print_case_list();
-    test_MP_list();
-    return report_summary();
+	test_MP_list();
+	return report_summary();
 }
 #endif /* endif __x86_64__ */

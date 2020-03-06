@@ -51,20 +51,20 @@ u64 now_tsc = 0;
 #ifdef __x86_64__
 static void tsc_deadline_timer_isr(isr_regs_t *regs)
 {
-    now_tsc = rdtsc();
-    ++tdt_count;
+	now_tsc = rdtsc();
+	++tdt_count;
 
-    apic_write(APIC_EOI, 0);
-    return;
+	apic_write(APIC_EOI, 0);
+	return;
 }
 
 static void start_tsc_deadline_timer(u64 delta)
 {
-    handle_irq(TSC_DEADLINE_TIMER_VECTOR, tsc_deadline_timer_isr);
-    irq_enable();
+	handle_irq(TSC_DEADLINE_TIMER_VECTOR, tsc_deadline_timer_isr);
+	irq_enable();
 
-    wrmsr(MSR_IA32_TSCDEADLINE, rdtsc()+delta);
-    asm volatile ("nop");
+	wrmsr(MSR_IA32_TSCDEADLINE, rdtsc()+delta);
+	asm volatile ("nop");
 }
 
 /* calculate msr value by register eax and edx */
@@ -83,7 +83,7 @@ static int enable_tsc_deadline_timer(void)
 		return 1;
 	} else {
 		return 0;
-    }
+	}
 }
 
 void read_bp_startup(void)

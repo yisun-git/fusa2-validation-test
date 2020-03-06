@@ -1191,17 +1191,17 @@ static void paging_rqmid_32558_check_error_code_us_bit()
 }
 
 struct page_invpcid_desc {
-    unsigned long pcid : 12;
-    unsigned long rsv  : 52;
-    unsigned long addr : 64;
+	unsigned long pcid : 12;
+	unsigned long rsv  : 52;
+	unsigned long addr : 64;
 };
 
 static int page_invpcid_checking(unsigned long type, void *desc)
 {
-    asm volatile (ASM_TRY("1f")
+	asm volatile (ASM_TRY("1f")
 		  ".byte 0x66,0x0f,0x38,0x82,0x18 \n\t" /* invpcid (%rax), %rbx */
 		  "1:" : : "a" (desc), "b" (type));
-    return exception_vector();
+	return exception_vector();
 }
 
 /**
