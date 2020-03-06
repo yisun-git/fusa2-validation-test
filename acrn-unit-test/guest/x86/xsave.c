@@ -85,7 +85,7 @@ static __unused uint64_t get_random_value(void)
 			"mov %%rax, %0\n"
 			: "=r"(random)
 			:
- : "%rax");
+			: "%rax");
 	return random;
 }
 

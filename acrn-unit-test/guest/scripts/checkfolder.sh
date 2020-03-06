@@ -32,15 +32,18 @@ return_message(){
 }
 
 main(){
+log=`mktemp /tmp/checkpatch.XXXXX`
 if [[ $path == "" ]] || [[ $path == null ]];then
     echo "which file or dir  need check , please write it as parameter" && exit 1
 elif [[ $path =~ ".c" ]] || [[ $path =~ ".h" ]];then
     echo "will check $path"
-    check $path
+    check $path &>$log
 else
     echo "will check all file(.c and .h) in $path "
-    read_dir $path
+    read_dir $path &>$log
 fi
+sed -e '/^NOTE: /d' -e '/^No typos will be found - /d' -e '/^No structs that should be const will be found - /d' $log
+rm -f $log
 return_message
 }
 

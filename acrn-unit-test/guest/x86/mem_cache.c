@@ -281,7 +281,7 @@ void asm_mfence()
 static inline void asm_read_access_memory(u64 *p)
 {
 #ifdef __x86_64__
-  asm volatile("movq (%0), %%rax\n" : : "c"(p) : "rax");
+	asm volatile("movq (%0), %%rax\n" : : "c"(p) : "rax");
 #elif __i386__
 	asm volatile("mov (%0), %%eax\n" : : "c"(p) : "eax");
 #endif
@@ -541,8 +541,8 @@ bool cache_check_memory_type(u64 average, u64 native_aver, u64 native_std, u64 s
 {
 	bool ret = true;
 
-	if ((average < ((native_aver*(100-ERROR_RANG))/100))
- || (average > ((native_aver*(100+ERROR_RANG))/100))) {
+	if ((average < ((native_aver*(100-ERROR_RANG))/100)) \
+			|| (average > ((native_aver*(100+ERROR_RANG))/100))) {
 		ret = false;
 	}
 

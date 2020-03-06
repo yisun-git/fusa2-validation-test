@@ -83,7 +83,7 @@ static void guest_ptwrite()
  *
  * Summary: Under ring3 environment, execute PTWRITE instruction shall generate #UD
  */
- static void pt_rqmid_27270_check_ptwrite_support()
+static void pt_rqmid_27270_check_ptwrite_support()
 {
 	test_at_ring3(guest_ptwrite, "test ring3");
 }
