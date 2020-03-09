@@ -185,6 +185,10 @@ static __unused int xgetbv_checking(u32 index, u64 *result)
 int ap_start_count = 0;
 void save_unchanged_reg(void)
 {
+	if (get_lapic_id() != 1) {
+		return;
+	}
+
 	/* enable cr4.OSFXSR[9] for SSE. */
 	write_cr4_osxsave(1);
 
