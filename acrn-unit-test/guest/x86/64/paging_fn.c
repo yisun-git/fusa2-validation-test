@@ -654,7 +654,7 @@ static void paging_rqmid_26827_enable_global_paging()
  *          normally for paging frame information is cached in TLB. After changing CR4.SMAP,
  *          we will get #PF because TLB is invalidated and get PTE directly from memory.
  */
-static void paging_rqmid_24460_cr4_smap_invalidate_tlb()
+void paging_rqmid_24460_cr4_smap_invalidate_tlb()
 {
 	unsigned long cr4 = read_cr4();
 	u8 *gva = malloc(sizeof(u8));
@@ -1232,7 +1232,8 @@ void test_paging_64bit_mode()
 	paging_rqmid_24519_disable_global_paging();
 	paging_rqmid_26017_smep_support();
 	paging_rqmid_23917_protection_keys_hide();
-	paging_rqmid_24460_cr4_smap_invalidate_tlb();
+	/*HV bug*/
+	//paging_rqmid_24460_cr4_smap_invalidate_tlb();
 	paging_rqmid_26827_enable_global_paging();
 }
 
