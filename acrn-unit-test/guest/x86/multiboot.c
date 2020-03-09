@@ -347,7 +347,7 @@ void delay(u64 count)
 	}
 }
 
-static void multiboot_rqmid_27210_guest_esi_of_non_safety_001(void)
+void multiboot_rqmid_27210_guest_esi_of_non_safety_001(void)
 {
 	bool ret = false;
 	unsigned char *ptr = NULL;
@@ -363,7 +363,7 @@ static void multiboot_rqmid_27210_guest_esi_of_non_safety_001(void)
 	report("%s", ret == true, __FUNCTION__);
 }
 
-static void multiboot_rqmid_27236_non_safety_vm_command_line_001(void)
+void multiboot_rqmid_27236_non_safety_vm_command_line_001(void)
 {
 	bool ret = false;
 	unsigned char *ptr;
@@ -443,7 +443,7 @@ static void multiboot_rqmid_34118_low_memory_region_rights_001()
 	report("%s", ret == 0, __FUNCTION__);
 }
 
-static void multiboot_rqmid_34130_base_address_of_zero_page_001()
+void multiboot_rqmid_34130_base_address_of_zero_page_001()
 {
 	bool ret = false;
 	unsigned char *ptr = NULL;
@@ -464,20 +464,24 @@ static void print_case_list(void)
 {
 	printf("\t\t multiboot feature case list:\n\r");
 	printf("\t\t multiboot 64-Bits Mode:\n\r");
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27210u, "multiboot_rqmid_27210_guest_esi_of_non_safety_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27236u, "multiboot_rqmid_27236_non_safety_vm_command_line_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 34091u, "multiboot_rqmid_34091_expose_rsdp");
-	printf("\t\t Case ID:%d case name:%s\n\r", 34118u, "multiboot_rqmid_low_memory_region_rights_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 34130u, "multiboot_rqmid_34130_base_address_of_zero_page_001");
+#endif
+	printf("\t\t Case ID:%d case name:%s\n\r", 34118u, "multiboot_rqmid_low_memory_region_rights_001");
 }
 
 static void test_multiboot_list(void)
 {
+#ifdef IN_NON_SAFETY_VM
 	multiboot_rqmid_27210_guest_esi_of_non_safety_001();
 	multiboot_rqmid_27236_non_safety_vm_command_line_001();
 	multiboot_rqmid_34091_expose_rsdp();
-	multiboot_rqmid_34118_low_memory_region_rights_001();
 	multiboot_rqmid_34130_base_address_of_zero_page_001();
+#endif
+	multiboot_rqmid_34118_low_memory_region_rights_001();
 }
 
 int main(int ac, char **av)
