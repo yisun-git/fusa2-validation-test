@@ -52,3 +52,10 @@ $(TEST_DIR)/branch_profile.o: $(TEST_DIR)/branch_profile.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/device_passthrough.o: CFLAGS += -DAP_INIT_CHECK=\"device_passthrough_init.S\"
+$(TEST_DIR)/device_passthrough.o: CFLAGS += -DBP_STARTUP_CHECK=\"device_passthrough_startup.S\"
+$(TEST_DIR)/device_passthrough.o: $(TEST_DIR)/device_passthrough.c $(TEST_DIR)/device_passthrough.h 
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

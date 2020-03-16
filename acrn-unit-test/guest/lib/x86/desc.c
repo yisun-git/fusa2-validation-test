@@ -254,10 +254,8 @@ void setup_idt(void)
 	for (i = 0; i < 32; i++) {
 		if (idt_handlers[i]) {
 			set_idt_entry(i, idt_handlers[i], 0);
+			handle_exception(i, check_exception_table);
 		}
-	}
-	for (i = 0; i < 21; i++) {
-		handle_exception(i, check_exception_table);
 	}
 }
 

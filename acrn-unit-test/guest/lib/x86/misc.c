@@ -23,8 +23,7 @@ static struct spinlock lock;
  *
  */
 
-void set_page_control_bit(void *gva,
-	page_level level, page_control_bit bit, u32 value, bool is_invalidate)
+void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32 value, bool is_invalidate)
 {
 	if (gva == NULL) {
 		printf("this address is NULL!\n");
@@ -104,8 +103,8 @@ void set_page_control_bit(void *gva,
 int write_cr4_exception_checking(unsigned long val)
 {
 	asm volatile(ASM_TRY("1f")
-		"mov %0,%%cr4\n\t"
-		"1:" : : "r" (val));
+			"mov %0,%%cr4\n\t"
+			"1:" : : "r" (val));
 	return exception_vector();
 }
 
@@ -115,9 +114,9 @@ int rdmsr_checking(u32 MSR_ADDR, u64 *result)
 	u32 edx;
 
 	asm volatile(ASM_TRY("1f")
-		"rdmsr \n\t"
-		"1:"
-		: "=a"(eax), "=d"(edx) : "c"(MSR_ADDR));
+			"rdmsr \n\t"
+			"1:"
+			: "=a"(eax), "=d"(edx) : "c"(MSR_ADDR));
 	*result = eax + ((u64)edx << 32);
 	return exception_vector();
 }
@@ -134,11 +133,11 @@ int wrmsr_checking(u32 MSR_ADDR, u64 value)
 	return exception_vector();
 }
 /**
- * -----------------------------------------------
+ * ------------------------------------------------------------
  *
- * send init & startup to all APs
- *
- * -----------------------------------------------
+ * send init & startup to reset one ap which apic id is the biggest
+ * ple ensure here are more than one cpu in system
+ * -----------------------------------------------------------
  */
 void send_sipi()
 {
@@ -150,21 +149,17 @@ void send_sipi()
 	cpus_cnt = cpu_online_count;
 
 	dest = ap_cpus;
-	while (dest != 0) {
-		/*issue sipi to awake AP */
-		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, dest);
-		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, dest);
-		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, dest);
-		dest--;
-	}
-	/*waiting all aps initilize completely*/
-	while ((cpus_cnt + ap_cpus) > cpu_online_count) {
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, dest);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, dest);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, dest);
+	/*waiting ap initilize completely*/
+	while ((cpus_cnt + 1) > cpu_online_count) {
 		asm volatile("nop");
 	}
 
 	/* set cpu_online_conunt to actual cpu core numbers*/
 	spin_lock(&lock);
-	cpu_online_count -= ap_cpus;
+	cpu_online_count -= 1;
 	spin_unlock(&lock);
 }
 /**
