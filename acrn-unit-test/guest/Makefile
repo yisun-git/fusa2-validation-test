@@ -31,11 +31,9 @@ CFLAGS =
 
 ifeq ($(VM), safety)
     CFLAGS += -DIN_SAFETY_VM
-else
+else ifeq ($(VM), non-safety)
     CFLAGS += -DIN_NON_SAFETY_VM
-endif
-
-ifeq ($(NATIVE), yes)
+else ifeq ($(NATIVE), yes)
    CFLAGS += -DIN_NATIVE
 endif
 

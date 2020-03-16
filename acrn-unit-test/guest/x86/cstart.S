@@ -217,7 +217,7 @@ smp_init:
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
 
-#ifdef IN_NON_SAFETY_VM
+#if (defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE))
 	call fwcfg_get_nb_cpus
 	movl %eax, %edx
 #ifdef IN_NATIVE
