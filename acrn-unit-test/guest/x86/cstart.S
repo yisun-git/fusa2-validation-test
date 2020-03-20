@@ -87,7 +87,7 @@ sipi_cnt:	.byte 0
 mb_magic = 0x1BADB002
 mb_flags = 0x2
 
-#ifdef IN_NON_SAFETY_VM
+#if (defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE))
 	# multiboot header
 	.long mb_magic, mb_flags, 0 - (mb_magic + mb_flags)
 #endif
