@@ -85,7 +85,7 @@ static void smx_rqmid_28828_write_msr_ia32_feature_control()
 {
 	report("\t\t %s",
 		wrmsr_checking(IA32_FEATURE_CONTROL,
-		SMX_SENTER_GLOBAL_ENABLE) == GP_VECTOR, __FUNCTION__);
+			SMX_SENTER_GLOBAL_ENABLE) == GP_VECTOR, __FUNCTION__);
 }
 
 static void test_smx()

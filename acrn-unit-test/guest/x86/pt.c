@@ -12,52 +12,52 @@ static int test_at_ring3(void (*fn)(void), const char *arg)
 	int ret;
 
 	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-		  "mov %%dx, %%ds\n\t"
-		  "mov %%dx, %%es\n\t"
-		  "mov %%dx, %%fs\n\t"
-		  "mov %%dx, %%gs\n\t"
-		  "mov %%" R "sp, %%" R "cx\n\t"
-		  "push" W " %%" R "dx \n\t"
-		  "lea %[user_stack_top], %%" R "dx \n\t"
-		  "push" W " %%" R "dx \n\t"
-		  "pushf" W "\n\t"
-		  "push" W " %[user_cs] \n\t"
-		  "push" W " $1f \n\t"
-		  "iret" W "\n"
-		  "1: \n\t"
-		  "push %%" R "cx\n\t"   /* save kernel SP */
+		"mov %%dx, %%ds\n\t"
+		"mov %%dx, %%es\n\t"
+		"mov %%dx, %%fs\n\t"
+		"mov %%dx, %%gs\n\t"
+		"mov %%" R "sp, %%" R "cx\n\t"
+		"push" W " %%" R "dx \n\t"
+		"lea %[user_stack_top], %%" R "dx \n\t"
+		"push" W " %%" R "dx \n\t"
+		"pushf" W "\n\t"
+		"push" W " %[user_cs] \n\t"
+		"push" W " $1f \n\t"
+		"iret" W "\n"
+		"1: \n\t"
+		"push %%" R "cx\n\t"   /* save kernel SP */
 
 #ifndef __x86_64__
-		  "push %[arg]\n\t"
+		"push %[arg]\n\t"
 #endif
-		  "call *%[fn]\n\t"
+		"call *%[fn]\n\t"
 #ifndef __x86_64__
-		  "pop %%ecx\n\t"
+		"pop %%ecx\n\t"
 #endif
 
-		  "pop %%" R "cx\n\t"
-		  "mov $1f, %%" R "dx\n\t"
-		  "int %[kernel_entry_vector]\n\t"
-		  ".section .text.entry \n\t"
-		  "kernel_entry: \n\t"
-		  "mov %%" R "cx, %%" R "sp \n\t"
-		  "mov %[kernel_ds], %%cx\n\t"
-		  "mov %%cx, %%ds\n\t"
-		  "mov %%cx, %%es\n\t"
-		  "mov %%cx, %%fs\n\t"
-		  "mov %%cx, %%gs\n\t"
-		  "jmp *%%" R "dx \n\t"
-		  ".section .text\n\t"
-		  "1:\n\t"
-		  : [ret] "=&a" (ret)
-		  : [user_ds] "i" (USER_DS),
-		    [user_cs] "i" (USER_CS),
-		    [user_stack_top]"m"(user_stack[sizeof user_stack]),
-		    [fn]"r"(fn),
-		    [arg]"D"(arg),
-		    [kernel_ds]"i"(KERNEL_DS),
-		    [kernel_entry_vector]"i"(0x20)
-		  : "rcx", "rdx");
+		"pop %%" R "cx\n\t"
+		"mov $1f, %%" R "dx\n\t"
+		"int %[kernel_entry_vector]\n\t"
+		".section .text.entry \n\t"
+		"kernel_entry: \n\t"
+		"mov %%" R "cx, %%" R "sp \n\t"
+		"mov %[kernel_ds], %%cx\n\t"
+		"mov %%cx, %%ds\n\t"
+		"mov %%cx, %%es\n\t"
+		"mov %%cx, %%fs\n\t"
+		"mov %%cx, %%gs\n\t"
+		"jmp *%%" R "dx \n\t"
+		".section .text\n\t"
+		"1:\n\t"
+		: [ret] "=&a" (ret)
+		: [user_ds] "i" (USER_DS),
+		[user_cs] "i" (USER_CS),
+		[user_stack_top]"m"(user_stack[sizeof user_stack]),
+		[fn]"r"(fn),
+		[arg]"D"(arg),
+		[kernel_ds]"i"(KERNEL_DS),
+		[kernel_entry_vector]"i"(0x20)
+		: "rcx", "rdx");
 	return ret;
 }
 
@@ -67,9 +67,9 @@ static int ptwrite_checking()
 	u64 ptw_packet = 0x123;
 
 	asm volatile(ASM_TRY("1f")
-		     "ptwrite  %0\n\t"
-		     "1:"
-		     : : "m"(ptw_packet));
+		"ptwrite  %0\n\t"
+		"1:"
+		: : "m"(ptw_packet));
 	return exception_vector();
 }
 
@@ -149,7 +149,7 @@ static void pt_rqmid_27264_write_msr_ia32_rtit_output_mask_ptrs()
 	u64 ia32_rtit_output_mask_ptrs = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_OUTPUT_MASK_PTRS,
-		ia32_rtit_output_mask_ptrs) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_output_mask_ptrs) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -162,7 +162,7 @@ static void pt_rqmid_27250_read_msr_ia32_rtit_output_mask_ptrs()
 	u64 ia32_rtit_output_mask_ptrs;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_OUTPUT_MASK_PTRS,
-		&ia32_rtit_output_mask_ptrs) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_output_mask_ptrs) == GP_VECTOR, __FUNCTION__);
 }
 
 
@@ -176,7 +176,7 @@ static void pt_rqmid_27263_write_msr_ia32_rtit_output_base()
 	u64 ia32_rtit_output_base = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_OUTPUT_BASE,
-		ia32_rtit_output_base) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_output_base) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -189,7 +189,7 @@ static void pt_rqmid_27248_read_msr_ia32_rtit_output_base()
 	u64 ia32_rtit_output_base;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_OUTPUT_BASE,
-		&ia32_rtit_output_base) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_output_base) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -202,7 +202,7 @@ static void pt_rqmid_27262_write_msr_ia32_rtit_ctl()
 	u64 ia32_rtit_ctl = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_CTL,
-		ia32_rtit_ctl) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_ctl) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -215,7 +215,7 @@ static void pt_rqmid_27247_read_msr_ia32_rtit_ctl()
 	u64 ia32_rtit_ctl;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_CTL,
-		&ia32_rtit_ctl) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_ctl) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -228,7 +228,7 @@ static void pt_rqmid_27259_write_msr_ia32_rtit_cr3_match()
 	u64 ia32_rtit_cr3_match = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_CR3_MATCH,
-		ia32_rtit_cr3_match) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_cr3_match) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -241,7 +241,7 @@ static void pt_rqmid_27245_read_msr_ia32_rtit_cr3_match()
 	u64 ia32_rtit_cr3_match;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_CR3_MATCH,
-		&ia32_rtit_cr3_match) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_cr3_match) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -254,7 +254,7 @@ static void pt_rqmid_27251_write_msr_ia32_rtit_addr3_b()
 	u64 ia32_rtit_addr3_b = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR3_B,
-		ia32_rtit_addr3_b) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr3_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -267,7 +267,7 @@ static void pt_rqmid_27233_read_msr_ia32_rtit_addr3_b()
 	u64 ia32_rtit_addr3_b;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR3_B,
-		&ia32_rtit_addr3_b) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr3_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -280,7 +280,7 @@ static void pt_rqmid_27253_write_msr_ia32_rtit_addr2_b()
 	u64 ia32_rtit_addr2_b = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR2_B,
-		ia32_rtit_addr2_b) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr2_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -293,7 +293,7 @@ static void pt_rqmid_27239_read_msr_ia32_rtit_addr2_b()
 	u64 ia32_rtit_addr2_b;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR2_B,
-		&ia32_rtit_addr2_b) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr2_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -306,7 +306,7 @@ static void pt_rqmid_27255_write_msr_ia32_rtit_addr1_b()
 	u64 ia32_rtit_addr1_b = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR1_B,
-		ia32_rtit_addr1_b) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr1_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -319,7 +319,7 @@ static void pt_rqmid_27240_read_msr_ia32_rtit_addr1_b()
 	u64 ia32_rtit_addr1_b;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR1_B,
-		&ia32_rtit_addr1_b) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr1_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -332,7 +332,7 @@ static void pt_rqmid_27257_write_msr_ia32_rtit_addr0_b()
 	u64 ia32_rtit_addr0_b = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR0_B,
-		ia32_rtit_addr0_b) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr0_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -345,7 +345,7 @@ static void pt_rqmid_27243_read_msr_ia32_rtit_addr0_b()
 	u64 ia32_rtit_addr0_b;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR0_B,
-		&ia32_rtit_addr0_b) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr0_b) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -358,7 +358,7 @@ static void pt_rqmid_27252_write_msr_ia32_rtit_addr3_a()
 	u64 ia32_rtit_addr3_a = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR3_A,
-		ia32_rtit_addr3_a) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr3_a) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -371,7 +371,7 @@ static void pt_rqmid_27237_read_msr_ia32_rtit_addr3_a()
 	u64 ia32_rtit_addr3_a;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR3_A,
-		&ia32_rtit_addr3_a) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr3_a) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -384,7 +384,7 @@ static void pt_rqmid_27254_write_msr_ia32_rtit_addr2_a()
 	u64 ia32_rtit_addr2_a = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR2_A,
-		ia32_rtit_addr2_a) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr2_a) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -397,7 +397,7 @@ static void pt_rqmid_27235_read_msr_ia32_rtit_addr2_a()
 	u64 ia32_rtit_addr2_a;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR2_A,
-		&ia32_rtit_addr2_a) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr2_a) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -410,7 +410,7 @@ static void pt_rqmid_27256_write_msr_ia32_rtit_addr1_a()
 	u64 ia32_rtit_addr1_a = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR1_A,
-		ia32_rtit_addr1_a) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr1_a) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -423,7 +423,7 @@ static void pt_rqmid_27242_read_msr_ia32_rtit_addr1_a()
 	u64 ia32_rtit_addr1_a;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR1_A,
-		&ia32_rtit_addr1_a) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr1_a) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -436,7 +436,7 @@ static void pt_rqmid_27258_write_msr_ia32_rtit_addr0_a()
 	u64 ia32_rtit_addr0_a = MSR_VALUE;
 	report("\t\t %s",
 		wrmsr_checking(IA32_RTIT_ADDR0_A,
-		ia32_rtit_addr0_a) == GP_VECTOR, __FUNCTION__);
+			ia32_rtit_addr0_a) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -449,7 +449,7 @@ static void pt_rqmid_27244_read_msr_ia32_rtit_addr0_a()
 	u64 ia32_rtit_addr0_a;
 	report("\t\t %s",
 		rdmsr_checking(IA32_RTIT_ADDR0_A,
-		&ia32_rtit_addr0_a) == GP_VECTOR, __FUNCTION__);
+			&ia32_rtit_addr0_a) == GP_VECTOR, __FUNCTION__);
 }
 
 static void print_case_list()

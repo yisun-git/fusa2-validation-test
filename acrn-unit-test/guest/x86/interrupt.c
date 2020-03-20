@@ -263,31 +263,30 @@ typedef unsigned long vir_addr_t;
 typedef u64 gdt_descriptor_t;
 
 static inline unsigned int gdt_get_bit(gdt_descriptor_t *gdt,
-				       unsigned int sel,
-				       unsigned int shift)
+	unsigned int sel,
+	unsigned int shift)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	return ((gdt[index] >> shift) & 1);
 }
 
 static inline void gdt_set_bit(gdt_descriptor_t *gdt,
-				  unsigned int sel,
-				  bool value,
-				  unsigned int shift)
+	unsigned int sel,
+	bool value,
+	unsigned int shift)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 
 	if (value) {
 		gdt[index] |= (1ull<<shift);
-	}
-	else {
+	} else {
 		gdt[index] &= (~(1ull<<shift));
 	}
 }
 
 static inline void gdt_set_base(gdt_descriptor_t *gdt,
-				unsigned int sel,
-				uint32_t base)
+	unsigned int sel,
+	uint32_t base)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 
@@ -296,15 +295,15 @@ static inline void gdt_set_base(gdt_descriptor_t *gdt,
 }
 
 static inline uint32_t gdt_get_base(gdt_descriptor_t *gdt,
-				    unsigned int sel)
+	unsigned int sel)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	return (uint32_t)TAKE_GDT_BASE(gdt[index]);
 }
 
 static inline void gdt_set_type(gdt_descriptor_t *gdt,
-				unsigned int sel,
-				unsigned int type)
+	unsigned int sel,
+	unsigned int type)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	gdt[index] &= (~MASK_GDT_TYPE);
@@ -312,15 +311,15 @@ static inline void gdt_set_type(gdt_descriptor_t *gdt,
 }
 
 static inline uint32_t gdt_get_type(gdt_descriptor_t *gdt,
-				    unsigned int sel)
+	unsigned int sel)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	return TAKE_GDT_TYPE(gdt[index]);
 }
 
 static inline void gdt_set_limit(gdt_descriptor_t *gdt,
-				 unsigned int sel,
-				 unsigned int limit)
+	unsigned int sel,
+	unsigned int limit)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	gdt[index] &= (~MASK_GDT_LIMIT);
@@ -328,16 +327,16 @@ static inline void gdt_set_limit(gdt_descriptor_t *gdt,
 }
 
 static inline uint32_t gdt_get_limit(gdt_descriptor_t *gdt,
-					 unsigned int sel,
-					 unsigned int limit)
+	unsigned int sel,
+	unsigned int limit)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	return TAKE_GDT_LIMIT(gdt[index]);
 }
 
 static inline void gdt_set_dpl(gdt_descriptor_t *gdt,
-			       unsigned int sel,
-			       unsigned int dpl)
+	unsigned int sel,
+	unsigned int dpl)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	gdt[index] &= (~MASK_GDT_DPL);
@@ -345,7 +344,7 @@ static inline void gdt_set_dpl(gdt_descriptor_t *gdt,
 }
 
 static inline uint32_t gdt_get_dpl(gdt_descriptor_t *gdt,
-				   unsigned int sel)
+	unsigned int sel)
 {
 	unsigned int index = TAKE_SEL_INDEX(sel);
 	return TAKE_GDT_DPL(gdt[index]);
@@ -432,9 +431,9 @@ static inline uint32_t gdt_get_dpl(gdt_descriptor_t *gdt,
 #endif
 
 static void construct_segment_descriptor(unsigned int sel,
-					 uint32_t base, uint32_t limit, uint16_t type,
-					 bool s, uint16_t dpl, bool p,
-					 bool avl, bool l, bool db, bool g)
+	uint32_t base, uint32_t limit, uint16_t type,
+	bool s, uint16_t dpl, bool p,
+	bool avl, bool l, bool db, bool g)
 {
 	struct descriptor_table_ptr gdtr;
 	gdt_descriptor_t *gdt;
@@ -463,7 +462,7 @@ static void construct_segment_descriptor(unsigned int sel,
 #define RECOVERY_OLDGDT(oldgdtr, newgdtr)	recovery_oldgdt(oldgdtr, newgdtr)
 
 static void *prepare_newgdt(struct descriptor_table_ptr *oldgdtr,
-			     struct descriptor_table_ptr *newgdtr)
+	struct descriptor_table_ptr *newgdtr)
 {
 	const size_t new_size = PAGE_SIZE * 2;
 
@@ -482,7 +481,7 @@ static void *prepare_newgdt(struct descriptor_table_ptr *oldgdtr,
 }
 
 static inline void recovery_oldgdt(struct descriptor_table_ptr *oldgdtr,
-				   struct descriptor_table_ptr *newgdtr)
+	struct descriptor_table_ptr *newgdtr)
 {
 	lgdt(oldgdtr);
 	free((void *)newgdtr->base);
@@ -624,29 +623,29 @@ typedef struct ex_regs irq_regs_t;
 #define exp_regs_t irq_regs_t
 
 #ifdef __cplusplus
-	extern "c" {
+extern "c" {
 #endif
-void idt_set_offset(idt_descriptor_t *idt,
-		    unsigned int vector,
-		    void *offset);
-void idt_set_selector(idt_descriptor_t *idt,
-		      unsigned int vector,
-		      unsigned int selector);
-void idt_set_bit(idt_descriptor_t *idt,
-		 unsigned int vector,
-		 bool value,
-		 unsigned int shift);
-void idt_set_dpl(idt_descriptor_t *idt,
-		 unsigned int vector,
-		 unsigned int dpl);
-void idt_set_type(idt_descriptor_t *idt,
-		  unsigned int vector,
-		  unsigned int type);
-void construct_interrupt_descriptor(
-	int vec, unsigned int selector, void *offset,
-	bool p, int dpl, bool s, unsigned int type);
+	void idt_set_offset(idt_descriptor_t *idt,
+		unsigned int vector,
+		void *offset);
+	void idt_set_selector(idt_descriptor_t *idt,
+		unsigned int vector,
+		unsigned int selector);
+	void idt_set_bit(idt_descriptor_t *idt,
+		unsigned int vector,
+		bool value,
+		unsigned int shift);
+	void idt_set_dpl(idt_descriptor_t *idt,
+		unsigned int vector,
+		unsigned int dpl);
+	void idt_set_type(idt_descriptor_t *idt,
+		unsigned int vector,
+		unsigned int type);
+	void construct_interrupt_descriptor(
+		int vec, unsigned int selector, void *offset,
+		bool p, int dpl, bool s, unsigned int type);
 #ifdef __cplusplus
-	}
+}
 #endif
 
 #endif /* __INTERRUPT_LIB_IDT_H__ */
@@ -662,16 +661,16 @@ void construct_interrupt_descriptor(
  */
 
 void idt_set_offset(idt_descriptor_t *idt,
-		    unsigned int vector,
-		    void *offset)
+	unsigned int vector,
+	void *offset)
 {
 	idt[vector] &= (~MASK_IDT_OFFSET);
 	idt[vector] |= MAKE_IDT_OFFSET((vir_addr_t)offset);
 }
 
 void idt_set_selector(idt_descriptor_t *idt,
-		      unsigned int vector,
-		      unsigned int selector)
+	unsigned int vector,
+	unsigned int selector)
 {
 	idt[vector] &= (~MASK_IDT_SEL);
 	idt[vector] |= MAKE_IDT_SEL(selector);
@@ -679,29 +678,28 @@ void idt_set_selector(idt_descriptor_t *idt,
 
 
 void idt_set_bit(idt_descriptor_t *idt,
-		 unsigned int vector,
-		 bool value,
-		 unsigned int shift)
+	unsigned int vector,
+	bool value,
+	unsigned int shift)
 {
 	if (value) {
 		idt[vector] |= (((idt_descriptor_t)1)<<shift);
-	}
-	else {
+	} else {
 		idt[vector] &= (~(((idt_descriptor_t)1)<<shift));
 	}
 }
 
 void idt_set_dpl(idt_descriptor_t *idt,
-		 unsigned int vector,
-		 unsigned int dpl)
+	unsigned int vector,
+	unsigned int dpl)
 {
 	idt[vector] &= (~MASK_IDT_DPL);
 	idt[vector] |= MAKE_IDT_DPL(dpl);
 }
 
 void idt_set_type(idt_descriptor_t *idt,
-		  unsigned int vector,
-		  unsigned int type)
+	unsigned int vector,
+	unsigned int type)
 {
 	idt[vector] &= (~MASK_IDT_TYPE);
 	idt[vector] |= MAKE_IDT_TYPE(type);
@@ -791,7 +789,7 @@ static inline void debug_gdt_show_fields(void)
 
 static inline void debug_gdt_show_entry(unsigned int sel)
 {
-	#ifdef __TESTCASE_DEBUG__
+#ifdef __TESTCASE_DEBUG__
 	struct descriptor_table_ptr gdtr;
 	struct segment_desc *gdt;
 	gdt_descriptor_t *gdtl;
@@ -805,10 +803,10 @@ static inline void debug_gdt_show_entry(unsigned int sel)
 	i = (sel >> 3);
 
 	base  = (gdt[i].base1 << 0)
-	      + (gdt[i].base2 << 16)
-	      + (gdt[i].base3 << 24);
+		+ (gdt[i].base2 << 16)
+		+ (gdt[i].base3 << 24);
 	limit = (gdt[i].limit1 << 0)
-	      + (gdt[i].limit << 16);
+		+ (gdt[i].limit << 16);
 
 	DEBUG(" %03u ", i);
 	DEBUG(" %016lx ", base);
@@ -854,7 +852,7 @@ static inline void debug_idt_show_entry(unsigned int vector)
 	idt    = (struct interrupt_desc *)idtr.base;
 
 	offset = (((unsigned long)idt[vector].offset0) << 0)
-	       + (((unsigned long)idt[vector].offset1) << 16);
+		+ (((unsigned long)idt[vector].offset1) << 16);
 
 #ifdef __x86_64__
 	offset += (((unsigned long)idt[vector].offset2) << 32);
@@ -884,8 +882,7 @@ static inline void debug_gdt_show_count(unsigned int count)
 
 	DEBUG_GDT_SHOW_FIELDS();
 
-	for (i = 0; i < count; i++)
-	{
+	for (i = 0; i < count; i++) {
 		DEBUG_GDT_SHOW_ENTRY(i << 3);
 	}
 #endif
@@ -899,8 +896,7 @@ static inline void debug_idt_show_count(unsigned int count)
 	DEBUG("\n");
 	DEBUG_IDT_SHOW_FIELDS();
 
-	for (i = 0; i < count; i++)
-	{
+	for (i = 0; i < count; i++) {
 		DEBUG_IDT_SHOW_ENTRY(i);
 	}
 #endif
@@ -994,7 +990,7 @@ static inline unsigned int irqcounter_query(unsigned int vector)
  * Page control
  */
 void page_control_set_bit(void *gva, unsigned int level,
-			  unsigned int shift, u32 value)
+	unsigned int shift, u32 value)
 {
 	if (gva == NULL) {
 		ERROR("this address is NULL!\n");
@@ -1161,8 +1157,7 @@ asm("SYSCALL_VECTOR = X80_VECTOR\n\t");
 asm("false = 0\n\t");
 asm("true = 1\n\t");
 
-typedef struct
-{
+typedef struct {
 	const ulong	 vector;
 	void		*handler;
 	const char	*comment;
@@ -1345,8 +1340,8 @@ static const exception_infor_t *exception_infor(unsigned int vector)
 	const exception_infor_t *infor = g_exception_infor_head;
 
 	for (infor = g_exception_infor_head;
-	     infor <= g_exception_infor_tail;
-	     infor++) {
+		infor <= g_exception_infor_tail;
+		infor++) {
 		if (infor->vector == vector) {
 			return infor;
 		}
@@ -1388,8 +1383,8 @@ static USED void exception_befor_handler(exp_regs_t *regs, int ncase, int incre)
 		const exception_infor_t *infor = g_exception_infor_head;
 
 		for (infor = g_exception_infor_head;
-		infor <= g_exception_infor_tail;
-		infor++) {
+			infor <= g_exception_infor_tail;
+			infor++) {
 			if (infor->vector == regs->vector) {
 				IRQ_ERROR("***CPU %x capture unknow %s.\n", apic_id(), infor->comment);
 				IRQ_ERROR("     rip:  0x%08lx\n", regs->rip);
@@ -1403,8 +1398,7 @@ static USED void exception_befor_handler(exp_regs_t *regs, int ncase, int incre)
 		IRQ_ERROR("err code:  0x%08lx\n", regs->error_code);
 
 		while (true);
-	}
-	else {
+	} else {
 		IRQ_DEBUG("%s - %ld @ CPU %x(case %d).\n",
 			exception_comment(regs->vector), regs->vector, apic_id(), ncase);
 		IRQ_DEBUG("      ss:  0x%08lx\n", (unsigned long)read_ss());
@@ -1424,9 +1418,8 @@ static void exception_initialize(void)
 	const exception_infor_t *infor;
 
 	for (infor = g_exception_infor_head;
-	     infor <= g_exception_infor_tail;
-	     infor++)
-	{
+		infor <= g_exception_infor_tail;
+		infor++) {
 		DEBUG("Register %s\n", infor->comment);
 		PREPARE_INTERRUPT_GATE(infor->vector, KERNEL_CS, infor->handler, P1, DPL0, S0);
 	}
@@ -1442,8 +1435,7 @@ static void exception_initialize(void)
  */
 static volatile unsigned long g_systick = 0;
 
-DEFINE_SPECIAL_HANDLER(SYSTICK, X20_VECTOR,
-{
+DEFINE_SPECIAL_HANDLER(SYSTICK, X20_VECTOR, {
 	g_systick++;
 	eoi();
 });
@@ -1493,11 +1485,9 @@ static void DE_27484_exception_handler(exp_regs_t *regs)
 
 	if (GDT_GET_L((gdt_descriptor_t *)memgdtr.base, regs->cs)) {
 		regs->rip += 3;
-	}
-	else if (GDT_GET_DB((gdt_descriptor_t *)memgdtr.base, regs->cs)) {
+	} else if (GDT_GET_DB((gdt_descriptor_t *)memgdtr.base, regs->cs)) {
 		regs->rip += 2;
-	}
-	else {
+	} else {
 		DEBUG("Not support 16bits segment.\n");
 	}
 }
@@ -1637,7 +1627,7 @@ static void DF_24211_exception_handler(exp_regs_t *regs)
 	struct descriptor_table_ptr newgdtr;
 	sgdt(&newgdtr);
 	page_control_set_bit((void *)(newgdtr.base + PAGE_SIZE),
-			     PAGE_TYPE_PTE, SHIFT_PAGE_P, 1);
+		PAGE_TYPE_PTE, SHIFT_PAGE_P, 1);
 }
 
 PREPARE_INTERRUPT_HANDLER(DF, 24211, DF_VECTOR, DF_24211_exception_handler);
@@ -1702,7 +1692,7 @@ static void PF_26813_exception_handler(irq_regs_t *regs)
 	struct descriptor_table_ptr newgdtr;
 	sgdt(&newgdtr);
 	page_control_set_bit((void *)(newgdtr.base + PAGE_SIZE),
-			     PAGE_TYPE_PTE, SHIFT_PAGE_P, 1);
+		PAGE_TYPE_PTE, SHIFT_PAGE_P, 1);
 }
 
 static void GP_26813_exception_handler(irq_regs_t *regs)
@@ -1732,7 +1722,7 @@ static int simultaneous_exceptions_2nd_including_PF_with_GDT_exception_001(void)
 	unsigned char *newgdt;
 
 	DEBUG("26813.Interrupt Simultaneous exceptions-2nd "
-	      "including #PF with GDT exception 001 testing...\n");
+		"including #PF with GDT exception 001 testing...\n");
 
 	PREPARE_INTERRUPT_MONITOR();
 	newgdt = PREPARE_NEWGDT(&oldgdtr, &newgdtr);
@@ -1775,8 +1765,7 @@ static void X80_28831_interrupt_gate_handler(irq_regs_t *regs)
 {
 	unsigned long rflags = read_rflags();
 
-	if (0 == (rflags & X86_EFLAGS_IF))
-	{
+	if (0 == (rflags & X86_EFLAGS_IF)) {
 		irqcounter_incre(regs->vector);
 	}
 }
@@ -1815,8 +1804,7 @@ static void X80_28833_trap_gate_handler(irq_regs_t *regs)
 {
 	unsigned long rflags = read_rflags();
 
-	if (0 != (rflags & X86_EFLAGS_IF))
-	{
+	if (0 != (rflags & X86_EFLAGS_IF)) {
 		irqcounter_incre(regs->vector);
 	}
 }
@@ -1927,7 +1915,7 @@ static int shutdown_mode_001(void)
  */
 void X80_28827_task_gate_handler(void)
 {
-    start:
+start:
 	IRQ_DEBUG("%s - %d @ CPU %x(case %d).\n",
 		exception_comment(X80_VECTOR), X80_VECTOR, apic_id(), 28827);
 	IRQ_DEBUG("      ss:  0x%08lx\n", (unsigned long)read_ss());
@@ -1983,70 +1971,70 @@ int enter_to_ring3(ring3_routine_fn_t fn, void *param)
 
 	asm volatile (
 #ifdef __x86_64__
-	"push %r15; push %r14; push %r13; push %r12 \n\t"
-	"push %r11; push %r10; push %r9; push %r8 \n\t"
+		"push %r15; push %r14; push %r13; push %r12 \n\t"
+		"push %r11; push %r10; push %r9; push %r8 \n\t"
 #endif
-	"push %"R "di; push %"R "si; push %"R "bp;\n\t"
-	"push %"R "bx; push %"R "dx; push %"R "cx;\n\t"
+		"push %"R "di; push %"R "si; push %"R "bp;\n\t"
+		"push %"R "bx; push %"R "dx; push %"R "cx;\n\t"
 	);
 
 	asm volatile (
-	"mov %%" R "sp, %%" R "cx\n\t"		// kernel stack top >> rcx
-	"mov %[user_ds], %%dx\n\t"
-	"mov %%dx, %%es\n\t"
-	"mov %%dx, %%ds\n\t"
-	"mov %%dx, %%fs\n\t"
-	"mov %%dx, %%gs\n\t"
-	"mov %[user_ss], %%dx\n\t"
-	"push" W " %%" R "dx \n\t"		// push ss
-	"lea %[user_stack], %%" R "dx \n\t"
-	"push" W " %%" R "dx \n\t"		// push rsp
-	"pushf" W "\n\t"			// pushfq
-	"push" W " %[user_cs] \n\t"		// push cs
-	"push" W " $1f \n\t"			// push rip
-	"iret" W "\n\t"				// iretq
-	"1:\n\t"
-	"push %%" R "cx\n\t"			// kernel stack top >> [rsp]
+		"mov %%" R "sp, %%" R "cx\n\t"		// kernel stack top >> rcx
+		"mov %[user_ds], %%dx\n\t"
+		"mov %%dx, %%es\n\t"
+		"mov %%dx, %%ds\n\t"
+		"mov %%dx, %%fs\n\t"
+		"mov %%dx, %%gs\n\t"
+		"mov %[user_ss], %%dx\n\t"
+		"push" W " %%" R "dx \n\t"		// push ss
+		"lea %[user_stack], %%" R "dx \n\t"
+		"push" W " %%" R "dx \n\t"		// push rsp
+		"pushf" W "\n\t"			// pushfq
+		"push" W " %[user_cs] \n\t"		// push cs
+		"push" W " $1f \n\t"			// push rip
+		"iret" W "\n\t"				// iretq
+		"1:\n\t"
+		"push %%" R "cx\n\t"			// kernel stack top >> [rsp]
 #ifndef __x86_64__
-	"push %[param]\n\t"
+		"push %[param]\n\t"
 #else
-	"movq %[param],  %%" R "di\n\r"
+		"movq %[param],  %%" R "di\n\r"
 #endif
-	"call *%[fn]\n\t"
+		"call *%[fn]\n\t"
 #ifndef __x86_64__
-	"pop %%ecx\n\t"
+		"pop %%ecx\n\t"
 #endif
-	"pop %%" R "cx\n\t"
-	"mov $1f, %%" R "dx\n\t"
-	"int %[kernel_entry_vector]\n\t"
-	".section .text.entry \n\t"
-	"kernel_entry: \n\t"
-	"mov %%" R "cx, %%" R "sp \n\t"
-	"mov %[kernel_ds], %%cx\n\t"
-	"mov %%cx, %%ds\n\t"
-	"mov %%cx, %%es\n\t"
-	"mov %%cx, %%fs\n\t"
-	"mov %%cx, %%gs\n\t"
-	"jmp *%%" R "dx \n\t"
-	".section .text\n\t"
-	"1:\n\t"
-	:  [ret] "=&a" (ret)
-	:  [user_cs] "i" (CS_USER),
-	   [user_ss] "i" (SS_USER),
-	   [user_ds] "i" (DS_USER),
-	   [kernel_ds] "i" (KERNEL_DS),
-	   [user_stack] "m" (g_user_stack[sizeof g_user_stack]),
-	   [fn]"r"(fn),
-	   [param]"D"(param),
-	   [kernel_entry_vector]"i"(X80_VECTOR)
-	:  "rcx", "rdx");
+		"pop %%" R "cx\n\t"
+		"mov $1f, %%" R "dx\n\t"
+		"int %[kernel_entry_vector]\n\t"
+		".section .text.entry \n\t"
+		"kernel_entry: \n\t"
+		"mov %%" R "cx, %%" R "sp \n\t"
+		"mov %[kernel_ds], %%cx\n\t"
+		"mov %%cx, %%ds\n\t"
+		"mov %%cx, %%es\n\t"
+		"mov %%cx, %%fs\n\t"
+		"mov %%cx, %%gs\n\t"
+		"jmp *%%" R "dx \n\t"
+		".section .text\n\t"
+		"1:\n\t"
+		:  [ret] "=&a" (ret)
+		:  [user_cs] "i" (CS_USER),
+		[user_ss] "i" (SS_USER),
+		[user_ds] "i" (DS_USER),
+		[kernel_ds] "i" (KERNEL_DS),
+		[user_stack] "m" (g_user_stack[sizeof g_user_stack]),
+		[fn]"r"(fn),
+		[param]"D"(param),
+		[kernel_entry_vector]"i"(X80_VECTOR)
+		:  "rcx", "rdx");
 
 	asm volatile (
-	"pop %"R "cx; pop %"R "dx; pop %"R "bx \n\t"
-	"pop %"R "bp; pop %"R "si; pop %"R "di \n\t"
+		"pop %"R "cx; pop %"R "dx; pop %"R "bx \n\t"
+		"pop %"R "bp; pop %"R "si; pop %"R "di \n\t"
 #ifdef __x86_64__
-	"pop %r8; pop %r9; pop %r10; pop %r11 \n\t"
-	"pop %r12; pop %r13; pop %r14; pop %r15 \n\t"
+		"pop %r8; pop %r9; pop %r10; pop %r11 \n\t"
+		"pop %r12; pop %r13; pop %r14; pop %r15 \n\t"
 #endif
 	);
 	return ret;
@@ -2182,13 +2170,11 @@ int main(int argc, char *argv[])
 	DEBUG("ap_cpu_count       =  0x%08x\n", *ap_cpu_count);
 	DEBUG("bp_init_rflags     =  0x%08x\n", *bp_init_rflags);
 
-	for (i = 0; i < *ap_cpu_count; i++)
-	{
+	for (i = 0; i < *ap_cpu_count; i++) {
 		DEBUG("ap_startup_rflags[%u]   =  0x%08x\n", i, ap_startup_rflags[i]);
 	}
 
-	if (*bp_have_init == 0x0f0fa55a)
-	{
+	if (*bp_have_init == 0x0f0fa55a) {
 		result = EFLAGS_AC_following_init_001();
 		report("24136.Interrupt EFLAGS.AC following init 001, result 0x%08x\n",
 			result == 0, result);

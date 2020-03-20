@@ -306,7 +306,10 @@ bool cpuid_avx512pf_to_0(void)
  *@Expected Result:
  *      No step
  */
-bool cpuid_avx512_4vnniw_(void){ return 0; }
+bool cpuid_avx512_4vnniw_(void)
+{
+	return 0;
+}
 
 /**
  *@Sub-Conditions:
@@ -318,7 +321,10 @@ bool cpuid_avx512_4vnniw_(void){ return 0; }
  *@Expected Result:
  *      No step
  */
-bool cpuid_avx512_4fmaps_(void){ return 0; }
+bool cpuid_avx512_4fmaps_(void)
+{
+	return 0;
+}
 
 /**
  *@Sub-Conditions:
@@ -3063,7 +3069,7 @@ bool cr4_pcide_to_0(void)
 	bool result = false;
 
 	printf("***** Using MOV instruction to set the PCID-Enable Bit "
-	"CR4.PCIDE[bit 17] to 0 *****\n");
+		"CR4.PCIDE[bit 17] to 0 *****\n");
 
 	check_bit = read_cr4();
 	check_bit &= (~(FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_17)));
@@ -3488,8 +3494,7 @@ __unused void config_gdt_description(u32 index, u8 dpl, u8 is_code)
 
 	if (is_code) {
 		flag = SEGMENT_TYPE_CODE_EXE_RAED_ACCESSED;
-	}
-	else {
+	} else {
 		flag = SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED;
 	}
 	pnewgdt->access =  SEGMENT_PRESENT_SET|(dpl&0x60)|DESCRIPTOR_TYPE_CODE_OR_DATA|(flag&0xF);
@@ -3497,8 +3502,7 @@ __unused void config_gdt_description(u32 index, u8 dpl, u8 is_code)
 	pnewgdt->base_middle = 0x00;
 	if (is_code) {
 		pnewgdt->granularity = GRANULARITY_SET|L_64_BIT_CODE_SEGMENT|0xF;
-	}
-	else {
+	} else {
 		pnewgdt->granularity = GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT|0xF;
 	}
 	//printf("*******index=%d, table=%lx\n", index, *(u64 *)pnewgdt);
@@ -3528,7 +3532,7 @@ __unused void init_gdt_description(void)
 }
 
 int do_at_ring3(void (*fn)(void), const char *arg)
-	{
+{
 	static unsigned char user_stack[4096];
 	int ret;
 
@@ -3590,7 +3594,7 @@ uint64_t get_supported_xcr0(void)
 	struct cpuid r;
 	r = cpuid_indexed(0xd, 0);
 	printf("eax 0x%x, ebx 0x%x, ecx 0x%x, edx 0x%x\n",
-	r.a, r.b, r.c, r.d);
+		r.a, r.b, r.c, r.d);
 	return r.a + ((u64)r.d << 32);
 }
 

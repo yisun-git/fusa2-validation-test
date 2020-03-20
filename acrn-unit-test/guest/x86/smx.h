@@ -12,7 +12,9 @@
 #else
 #define uint64_t unsigned long long
 #endif
-struct emulate_register { u32 a, b, c, d; };
+struct emulate_register {
+	u32 a, b, c, d;
+};
 
 #endif
 

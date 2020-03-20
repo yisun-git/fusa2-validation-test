@@ -32,9 +32,9 @@
 #endif
 //#define test_debug(fmt...) printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
 #ifdef USE_DEBUG
- #define test_debug(fmt, args...)       printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#define test_debug(fmt, args...)       printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 #else
- #define test_debug(fmt, args...)
+#define test_debug(fmt, args...)
 #endif
 
 void memory_ordering_test1_entry(void);
@@ -98,15 +98,15 @@ void memory_ordering_test1_entry(void)
 void asm_test2(void)
 {
 	asm volatile(
-			"xor %0, %0\n\t"
-			"movl $1, %1\n\t"
+		"xor %0, %0\n\t"
+		"movl $1, %1\n\t"
 #ifdef CFG_TEST_MEMORY_ORDERING_MFENCE
-			"mfence\n\t"
+		"mfence\n\t"
 #endif
-			"movl %2, %0\n\t"
-			: "=r"(r2), "=m" (Y)
-			: "m"(X)
-			: "memory");
+		"movl %2, %0\n\t"
+		: "=r"(r2), "=m" (Y)
+		: "m"(X)
+		: "memory");
 }
 
 void memory_ordering_test2_entry(void)
@@ -183,8 +183,7 @@ void ap_main(void)
 	if (local_id >= CFG_TEST_MEMORY_ORDERING_CPU_NR) {
 		test_debug("<HALT *AP* > un-used processor id %d\n", local_id);
 		return;
-	}
-	else {
+	} else {
 		test_debug("<Enter *AP* > processor id %d\n", local_id);
 	}
 

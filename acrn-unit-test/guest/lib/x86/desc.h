@@ -57,7 +57,8 @@ typedef struct {
 	u16 iomap_base;
 } tss32_t;
 
-typedef struct  __attribute__((packed)) {
+typedef struct  __attribute__((packed))
+{
 	u32 res1;
 	u64 rsp0;
 	u64 rsp1;
@@ -73,7 +74,8 @@ typedef struct  __attribute__((packed)) {
 	u64 res3;
 	u16 res4;
 	u16 iomap_base;
-} tss64_t;
+}
+tss64_t;
 
 #ifdef __x86_64__
 #define ASM_TRY(catch)                                  \
@@ -228,7 +230,7 @@ handler handle_exception(u8 v, handler fn);
 void unhandled_exception(struct ex_regs *regs, bool cpu);
 
 bool test_for_exception(unsigned int ex, void (*trigger_func)(void *data),
-			void *data);
+	void *data);
 void __set_exception_jmpbuf(jmp_buf *addr);
 #define set_exception_jmpbuf(jmpbuf) \
 	(setjmp(jmpbuf) ? : (__set_exception_jmpbuf(&(jmpbuf)), 0))

@@ -89,67 +89,67 @@ static int enable_tsc_deadline_timer(void)
 void read_bp_startup(void)
 {
 	asm ("mov (0x8100) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(bp_eax_tscadj_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(bp_eax_tscadj_greg_64));
 
 	asm ("mov (0x8108) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(bp_edx_tscadj_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(bp_edx_tscadj_greg_64));
 
 	//tscaux
 	asm ("mov (0x8110) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(bp_eax_tscaux_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(bp_eax_tscaux_greg_64));
 
 	asm ("mov (0x8118) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(bp_edx_tscaux_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(bp_edx_tscaux_greg_64));
 
 	//tsc
 	asm ("mov (0x8120) ,%%eax\n\t"
-			 "mov %%eax,%0\n\t"
-			 : "=q"(bp_eax_tsc_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(bp_eax_tsc_greg_64));
 
 	asm ("mov (0x8128) ,%%eax\n\t"
-			 "mov %%eax,%0\n\t"
-			 : "=q"(bp_edx_tsc_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(bp_edx_tsc_greg_64));
 
 	//cr4
 	asm ("mov (0x8130) ,%%eax\n\t"
-			 "mov %%eax,%0\n\t"
-			 : "=q"(bp_cr4_greg_long));
+		"mov %%eax,%0\n\t"
+		: "=q"(bp_cr4_greg_long));
 }
 
 extern void send_sipi();
 void save_unchanged_reg(void)
 {
 	asm ("mov (0x8008) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(ap_cr4_greg_long));
+		"mov %%eax,%0\n\t"
+		: "=q"(ap_cr4_greg_long));
 
 	asm ("mov (0x8010) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(ap_eax_tscadj_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(ap_eax_tscadj_greg_64));
 
 	asm ("mov (0x8018) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(ap_edx_tscadj_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(ap_edx_tscadj_greg_64));
 
 	asm ("mov (0x8020) ,%%eax\n\t"
-		 "mov %%eax,%0\n\t"
-		 : "=q"(ap_eax_tscaux_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(ap_eax_tscaux_greg_64));
 
 	asm ("mov (0x8028) ,%%eax\n\t"
-			 "mov %%eax,%0\n\t"
-			 : "=q"(ap_edx_tscaux_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(ap_edx_tscaux_greg_64));
 
 	asm ("mov (0x8030) ,%%eax\n\t"
-			 "mov %%eax,%0\n\t"
-			 : "=q"(ap_eax_tsc_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(ap_eax_tsc_greg_64));
 
 	asm ("mov (0x8038) ,%%eax\n\t"
-			 "mov %%eax,%0\n\t"
-			 : "=q"(ap_edx_tsc_greg_64));
+		"mov %%eax,%0\n\t"
+		: "=q"(ap_edx_tsc_greg_64));
 }
 
 /**

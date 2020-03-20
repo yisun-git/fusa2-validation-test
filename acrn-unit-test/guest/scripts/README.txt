@@ -52,6 +52,9 @@ If you want to fix a file automatically, use --fix.
 ### Build && Install
 Install LLVM/Clang 9.0. Refer to https://apt.llvm.org/ on how to install LLVM/Clang 9.0 via apt. 
 The README.txt at the top of acrn-static-tool has more details on the configuration of LLVM/Clang 9.0 after installation.
+Recommended command:
+$ bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+$ apt-get install clang-9 clang-tools-9 clang-9-doc libclang-common-9-dev libclang-9-dev libclang1-9 clang-format-9 python-clang-9 clangd-9
 
 Clone acrn-clang-tidy from https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/acrn-clang-tidy.
 

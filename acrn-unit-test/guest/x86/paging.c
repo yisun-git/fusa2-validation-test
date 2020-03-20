@@ -32,9 +32,9 @@ u32 get_init_cr4()
 int test_instruction_fetch(void *p)
 {
 	asm volatile(ASM_TRY("1f")
-		 "call *%[addr]\n\t"
-		 "1:"
-		 : : [addr]"r"(p));
+		"call *%[addr]\n\t"
+		"1:"
+		: : [addr]"r"(p));
 
 	return exception_vector();
 }
@@ -64,52 +64,52 @@ int page_test_at_ring3(void (*fn)(void), const char *arg)
 	int ret;
 
 	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-		  "mov %%dx, %%ds\n\t"
-		  "mov %%dx, %%es\n\t"
-		  "mov %%dx, %%fs\n\t"
-		  "mov %%dx, %%gs\n\t"
-		  "mov %%" R "sp, %%" R "cx\n\t"
-		  "push" W " %%" R "dx \n\t"
-		  "lea %[user_stack_top], %%" R "dx \n\t"
-		  "push" W " %%" R "dx \n\t"
-		  "pushf" W "\n\t"
-		  "push" W " %[user_cs] \n\t"
-		  "push" W " $1f \n\t"
-		  "iret" W "\n"
-		  "1: \n\t"
-		  "push %%" R "cx\n\t"   /* save kernel SP */
+		"mov %%dx, %%ds\n\t"
+		"mov %%dx, %%es\n\t"
+		"mov %%dx, %%fs\n\t"
+		"mov %%dx, %%gs\n\t"
+		"mov %%" R "sp, %%" R "cx\n\t"
+		"push" W " %%" R "dx \n\t"
+		"lea %[user_stack_top], %%" R "dx \n\t"
+		"push" W " %%" R "dx \n\t"
+		"pushf" W "\n\t"
+		"push" W " %[user_cs] \n\t"
+		"push" W " $1f \n\t"
+		"iret" W "\n"
+		"1: \n\t"
+		"push %%" R "cx\n\t"   /* save kernel SP */
 
 #ifndef __x86_64__
-		  "push %[arg]\n\t"
+		"push %[arg]\n\t"
 #endif
-		  "call *%[fn]\n\t"
+		"call *%[fn]\n\t"
 #ifndef __x86_64__
-		  "pop %%ecx\n\t"
+		"pop %%ecx\n\t"
 #endif
 
-		  "pop %%" R "cx\n\t"
-		  "mov $1f, %%" R "dx\n\t"
-		  "int %[kernel_entry_vector]\n\t"
-		  ".section .text.entry \n\t"
-		  "kernel_entry: \n\t"
-		  "mov %%" R "cx, %%" R "sp \n\t"
-		  "mov %[kernel_ds], %%cx\n\t"
-		  "mov %%cx, %%ds\n\t"
-		  "mov %%cx, %%es\n\t"
-		  "mov %%cx, %%fs\n\t"
-		  "mov %%cx, %%gs\n\t"
-		  "jmp *%%" R "dx \n\t"
-		  ".section .text\n\t"
-		  "1:\n\t"
-		  : [ret] "=&a" (ret)
-		  : [user_ds] "i" (USER_DS),
-		    [user_cs] "i" (USER_CS),
-		    [user_stack_top]"m"(user_stack[sizeof user_stack]),
-		    [fn]"r"(fn),
-		    [arg]"D"(arg),
-		    [kernel_ds]"i"(KERNEL_DS),
-		    [kernel_entry_vector]"i"(0x20)
-		  : "rcx", "rdx");
+		"pop %%" R "cx\n\t"
+		"mov $1f, %%" R "dx\n\t"
+		"int %[kernel_entry_vector]\n\t"
+		".section .text.entry \n\t"
+		"kernel_entry: \n\t"
+		"mov %%" R "cx, %%" R "sp \n\t"
+		"mov %[kernel_ds], %%cx\n\t"
+		"mov %%cx, %%ds\n\t"
+		"mov %%cx, %%es\n\t"
+		"mov %%cx, %%fs\n\t"
+		"mov %%cx, %%gs\n\t"
+		"jmp *%%" R "dx \n\t"
+		".section .text\n\t"
+		"1:\n\t"
+		: [ret] "=&a" (ret)
+		: [user_ds] "i" (USER_DS),
+		[user_cs] "i" (USER_CS),
+		[user_stack_top]"m"(user_stack[sizeof user_stack]),
+		[fn]"r"(fn),
+		[arg]"D"(arg),
+		[kernel_ds]"i"(KERNEL_DS),
+		[kernel_entry_vector]"i"(0x20)
+		: "rcx", "rdx");
 	return ret;
 }
 
@@ -128,8 +128,9 @@ static void paging_rqmid_23896_check_tlb_info()
 {
 	struct cpuid r = cpuid(2);
 	u8 tlb_info[8] = {TYPE_TLB_01, TYPE_TLB_03, TYPE_TLB_63, TYPE_TLB_76,
-				TYPE_TLB_B6, TYPE_STLB_C3,
-				TYPE_PREFECTH_F0, TYPE_GENEAL_FF};
+			TYPE_TLB_B6, TYPE_STLB_C3,
+			TYPE_PREFECTH_F0, TYPE_GENEAL_FF
+		};
 	u32 cpuid_value[4] = {r.a, r.b, r.c, r.d};
 	u32 exist_num = 0;
 	u32 i;

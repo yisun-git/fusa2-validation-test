@@ -81,11 +81,11 @@ static __unused uint64_t get_random_value(void)
 	uint64_t random = 0UL;
 
 	asm volatile ("1: rdrand %%rax\n"
-			"jnc 1b\n"
-			"mov %%rax, %0\n"
-			: "=r"(random)
-			:
-			: "%rax");
+		"jnc 1b\n"
+		"mov %%rax, %0\n"
+		: "=r"(random)
+		:
+		: "%rax");
 	return random;
 }
 
@@ -105,52 +105,52 @@ int do_at_ring3(void (*fn)(void), const char *arg)
 	int ret;
 
 	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-		  "mov %%dx, %%ds\n\t"
-		  "mov %%dx, %%es\n\t"
-		  "mov %%dx, %%fs\n\t"
-		  "mov %%dx, %%gs\n\t"
-		  "mov %%" R "sp, %%" R "cx\n\t"
-		  "push" W " %%" R "dx \n\t"
-		  "lea %[user_stack_top], %%" R "dx \n\t"
-		  "push" W " %%" R "dx \n\t"
-		  "pushf" W "\n\t"
-		  "push" W " %[user_cs] \n\t"
-		  "push" W " $1f \n\t"
-		  "iret" W "\n"
-		  "1: \n\t"
-		  "push %%" R "cx\n\t"   /* save kernel SP */
+		"mov %%dx, %%ds\n\t"
+		"mov %%dx, %%es\n\t"
+		"mov %%dx, %%fs\n\t"
+		"mov %%dx, %%gs\n\t"
+		"mov %%" R "sp, %%" R "cx\n\t"
+		"push" W " %%" R "dx \n\t"
+		"lea %[user_stack_top], %%" R "dx \n\t"
+		"push" W " %%" R "dx \n\t"
+		"pushf" W "\n\t"
+		"push" W " %[user_cs] \n\t"
+		"push" W " $1f \n\t"
+		"iret" W "\n"
+		"1: \n\t"
+		"push %%" R "cx\n\t"   /* save kernel SP */
 
 #ifndef __x86_64__
-		  "push %[arg]\n\t"
+		"push %[arg]\n\t"
 #endif
-		  "call *%[fn]\n\t"
+		"call *%[fn]\n\t"
 #ifndef __x86_64__
-		  "pop %%ecx\n\t"
+		"pop %%ecx\n\t"
 #endif
 
-		  "pop %%" R "cx\n\t"
-		  "mov $1f, %%" R "dx\n\t"
-		  "int %[kernel_entry_vector]\n\t"
-		  ".section .text.entry \n\t"
-		  "kernel_entry: \n\t"
-		  "mov %%" R "cx, %%" R "sp \n\t"
-		  "mov %[kernel_ds], %%cx\n\t"
-		  "mov %%cx, %%ds\n\t"
-		  "mov %%cx, %%es\n\t"
-		  "mov %%cx, %%fs\n\t"
-		  "mov %%cx, %%gs\n\t"
-		  "jmp *%%" R "dx \n\t"
-		  ".section .text\n\t"
-		  "1:\n\t"
-		  : [ret] "=&a" (ret)
-		  : [user_ds] "i" (USER_DS),
-		    [user_cs] "i" (USER_CS),
-		    [user_stack_top]"m"(user_stack[sizeof user_stack]),
-		    [fn]"r"(fn),
-		    [arg]"D"(arg),
-		    [kernel_ds]"i"(KERNEL_DS),
-		    [kernel_entry_vector]"i"(0x20)
-		  : "rcx", "rdx");
+		"pop %%" R "cx\n\t"
+		"mov $1f, %%" R "dx\n\t"
+		"int %[kernel_entry_vector]\n\t"
+		".section .text.entry \n\t"
+		"kernel_entry: \n\t"
+		"mov %%" R "cx, %%" R "sp \n\t"
+		"mov %[kernel_ds], %%cx\n\t"
+		"mov %%cx, %%ds\n\t"
+		"mov %%cx, %%es\n\t"
+		"mov %%cx, %%fs\n\t"
+		"mov %%cx, %%gs\n\t"
+		"jmp *%%" R "dx \n\t"
+		".section .text\n\t"
+		"1:\n\t"
+		: [ret] "=&a" (ret)
+		: [user_ds] "i" (USER_DS),
+		[user_cs] "i" (USER_CS),
+		[user_stack_top]"m"(user_stack[sizeof user_stack]),
+		[fn]"r"(fn),
+		[arg]"D"(arg),
+		[kernel_ds]"i"(KERNEL_DS),
+		[kernel_entry_vector]"i"(0x20)
+		: "rcx", "rdx");
 	return ret;
 }
 
@@ -162,9 +162,9 @@ static __unused int xsetbv_checking(u32 index, u64 value)
 	u32 edx = value >> 32;
 
 	asm volatile(ASM_TRY("1f")
-		     "xsetbv\n\t" /* xsetbv */
-		     "1:"
-		     : : "a" (eax), "d" (edx), "c" (index));
+		"xsetbv\n\t" /* xsetbv */
+		"1:"
+		: : "a" (eax), "d" (edx), "c" (index));
 	return exception_vector();
 }
 
@@ -174,10 +174,10 @@ static __unused int xgetbv_checking(u32 index, u64 *result)
 	u32 eax, edx;
 
 	asm volatile(ASM_TRY("1f")
-	    ".byte 0x0f,0x01,0xd0\n\t" /* xgetbv */
-	    "1:"
-	    : "=a" (eax), "=d" (edx)
-	    : "c" (index));
+		".byte 0x0f,0x01,0xd0\n\t" /* xgetbv */
+		"1:"
+		: "=a" (eax), "=d" (edx)
+		: "c" (index));
 	*result = eax + ((u64)edx << 32);
 	return exception_vector();
 }
@@ -235,9 +235,9 @@ static __unused void xsave_rqmid_23631_hide_pkru_support_001(void)
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
-	#ifdef USE_DEBUG
+#ifdef USE_DEBUG
 	debug_print("The supported CPUID = %#lx\n", supported_xcr0);
-	#endif
+#endif
 	debug_print("******Step2: Get EAX[9], and compare with 0b.******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_PKRU_BIT);
@@ -268,9 +268,9 @@ static __unused void xsave_rqmid_23632_hide_mpx_support_001(void)
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
-	#ifdef USE_DEBUG
+#ifdef USE_DEBUG
 	debug_print("The supported CPUID = %#lx\n", supported_xcr0);
-	#endif
+#endif
 	debug_print("******Step2: Get EAX[4:3], and compare with 00b.******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_MPX_BNDREGS_BIT);
@@ -301,9 +301,9 @@ static __unused void xsave_rqmid_23633_hide_avx_512_support_001(void)
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
-	#ifdef USE_DEBUG
+#ifdef USE_DEBUG
 	debug_print("The supported CPUID = %lu\nThe supported CPUID = %#lx\n", supported_xcr0, supported_xcr0);
-	#endif
+#endif
 	debug_print("******Step2: Get EAX[7:5], and compare with 000b.******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_AVX_512_OPMASK);
@@ -333,9 +333,9 @@ static __unused void xsave_rqmid_28385_physical_x87_support_AC_001(void)
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
-	#ifdef USE_DEBUG
+#ifdef USE_DEBUG
 	debug_print("The supported CPUID = 0x%lx\n", supported_xcr0);
-	#endif
+#endif
 	debug_print("******Step2: Get EAX[0], and compare with 0b******\n");
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_X87_BIT);
@@ -390,9 +390,9 @@ static __unused void xsave_rqmid_28388_physical_sse_support_AC_001(void)
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
-	#ifdef USE_DEBUG
+#ifdef USE_DEBUG
 	debug_print("The supported CPUID = %lu\nThe supported CPUID = %#lx\n", supported_xcr0, supported_xcr0);
-	#endif
+#endif
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_SSE_BIT);
 	r_eax = 0x0001 & r_eax;
@@ -421,9 +421,9 @@ static __unused void xsave_rqmid_28390_physical_avx_support_AC_001(void)
 	uint64_t supported_xcr0;
 	supported_xcr0 = get_supported_xcr0();
 	i++;
-	#ifdef USE_DEBUG
+#ifdef USE_DEBUG
 	debug_print("The supported CPUID = %lu\nThe supported CPUID = 0x%lx\n", supported_xcr0, supported_xcr0);
-	#endif
+#endif
 	int r_eax;
 	r_eax = (u32)(supported_xcr0>>STATE_AVX_BIT);
 	r_eax = 0x0001 & r_eax;
@@ -902,8 +902,7 @@ static __unused void xsave_rqmid_23639_init_and_modified_optimizations_003(void)
 	debug_print("******Step4: Check the value of xstate_bv[4:0].******\n ");
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX | STATE_MPX_BNDREGS | STATE_MPX_BNDCSR);
-	if (state_bv == 0)
-	{
+	if (state_bv == 0) {
 		i++;
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23639:XSAVE init and modified optimizations_003, test case Passed.******\n");
@@ -960,8 +959,7 @@ static __unused void xsave_rqmid_23640_init_and_modified_optimizations_004(void)
 	debug_print("******Step5: Check the value of xstate_bv[2:0].******\n ");
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
-	if (state_bv == STATE_X87)
-	{
+	if (state_bv == STATE_X87) {
 		i++;
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23640:XSAVE init and modified optimizations_004, test case Passed.******\n");
@@ -1028,8 +1026,7 @@ static __unused void xsave_rqmid_23641_init_and_modified_optimizations_005(void)
 	debug_print("******Step6: Check the value of xstate_bv[2:0].******\n ");
 	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
 	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
-	if (state_bv == STATE_X87)
-	{
+	if (state_bv == STATE_X87) {
 		i++;
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23641:XSAVE init and modified optimizations_005, test case Passed.******\n");
@@ -1131,8 +1128,7 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 
 	debug_print("******Step11: Compare xstate_bv[2:0] with ox2H.******\n");
 	state_bv = xsave_area_created.xsave_hdr.xstate_bv;
-	if (state_bv == STATE_SSE)
-	{
+	if (state_bv == STATE_SSE) {
 		i++;
 		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
 		debug_print("******23642:XSAVE init and modified optimizations_006, test case Passed.******\n");
@@ -1154,10 +1150,10 @@ static __unused int xsave_checking(xsave_area_t *xsave_array, u64 xcr0)
 	u32 edx = xcr0 >> 32;
 
 	asm volatile(ASM_TRY("1f")
-		     "xsave %[addr]\n\t"
-		     "1:"
-		     : : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
-		     : "memory");
+		"xsave %[addr]\n\t"
+		"1:"
+		: : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
+		: "memory");
 
 	return exception_vector();
 }
@@ -1168,10 +1164,10 @@ static __unused int xsaves_checking(xsave_area_t *xsave_array, u64 xcr0)
 	u32 edx = xcr0 >> 32;
 
 	asm volatile(ASM_TRY("1f")
-		     "xsaves %[addr]\n\t"
-		     "1:"
-		     : : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
-		     : "memory");
+		"xsaves %[addr]\n\t"
+		"1:"
+		: : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
+		: "memory");
 
 	return exception_vector();
 }
@@ -1182,10 +1178,10 @@ static __unused int xrstors_checking(xsave_area_t *xsave_array, u64 xcr0)
 	u32 edx = xcr0 >> 32;
 
 	asm volatile(ASM_TRY("1f")
-		     "xrstors %[addr]\n\t"
-		     "1:"
-		     : : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
-		     : "memory");
+		"xrstors %[addr]\n\t"
+		"1:"
+		: : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
+		: "memory");
 
 	return exception_vector();
 }
@@ -1222,7 +1218,7 @@ static __unused __attribute__((target("avx"))) int execute_avx_test()
 }
 
 static __unused __attribute__((target("sse")))
-	void execute_sse_test(unsigned sse_data)
+void execute_sse_test(unsigned sse_data)
 {
 	sse_union sse;
 
@@ -1238,7 +1234,7 @@ static __unused __attribute__((target("sse")))
 }
 
 static __unused __attribute__((target("sse")))
-	void execute_sse_test1(void)
+void execute_sse_test1(void)
 {
 	write_cr0(read_cr0() & ~6);
 	write_cr4(read_cr4() | 0x200);
@@ -1339,7 +1335,7 @@ static __unused void test_xsetbv_at_ring3(void)
 	uint64_t test_bits;
 	test_bits = STATE_X87 | STATE_SSE;
 	report("xsave_rqmid_22844_xsetbv_at_ring3",
-	       xsetbv_checking(XCR0_MASK, test_bits) == GP_VECTOR);
+		xsetbv_checking(XCR0_MASK, test_bits) == GP_VECTOR);
 }
 
 /*
@@ -1439,11 +1435,11 @@ static __unused void xsave_rqmid_22866_expose_sse_support()
 static __unused void add_fpu(double *p, double *q)
 {
 	asm volatile("fld (%%rdi)\n\t"	// use double extended float
-	"fld (%%rsi)\n\t"		// use double extended float
-	"fadd %%st(0), %%st(1)\n\t"	// add st(0) and st(1)
-	// automatically truncate to single-float, write to the first arg and pop the value
-	"fstp (%%rdi)\n\t"
-	:::);
+		"fld (%%rsi)\n\t"		// use double extended float
+		"fadd %%st(0), %%st(1)\n\t"	// add st(0) and st(1)
+		// automatically truncate to single-float, write to the first arg and pop the value
+		"fstp (%%rdi)\n\t"
+		:::);
 }
 
 static __unused bool fpu_probe_without_cpuid(void)
@@ -1703,7 +1699,7 @@ static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_IN
 	xinuse1 = get_init_xinuse(0x7000, 0x7004);
 	debug_print("\n --->ap: after send sipi, XINUSE=%lx %d\n", xinuse1, ap_start_count);
 	report("%s",\
-	(xinuse == (STATE_SSE)) && (xinuse == xinuse1), __FUNCTION__);
+		(xinuse == (STATE_SSE)) && (xinuse == xinuse1), __FUNCTION__);
 }
 
 static void print_case_list(void)

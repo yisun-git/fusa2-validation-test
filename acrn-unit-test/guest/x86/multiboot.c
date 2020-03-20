@@ -32,11 +32,11 @@
 
 /** Defines a single entry in an E820 memory map. */
 struct e820_entry {
-   /** The base address of the memory range. */
+	/** The base address of the memory range. */
 	uint64_t baseaddr;
-   /** The length of the memory range. */
+	/** The length of the memory range. */
 	uint64_t length;
-   /** The type of memory region. */
+	/** The type of memory region. */
 	uint32_t type;
 }  __attribute__((packed));
 

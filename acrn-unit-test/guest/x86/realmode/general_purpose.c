@@ -48,7 +48,7 @@ void main()
 	asm volatile("mov %%sp, %%ax \n"
 		"mov %%ax, %0 \n"
 		: "=r"(sp)
-		);
+	);
 	print_serial("sp:");
 	print_serial_u32(sp);
 	print_serial("\n\r");

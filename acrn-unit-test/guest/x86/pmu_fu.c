@@ -31,8 +31,8 @@ static void pmu_rqmid_27001_cpuid_a(void)
 static void pmu_rqmid_27844_rdpmc(void)
 {
 	asm volatile(ASM_TRY("1f")
-					"rdpmc \n\t"
-					"1:":::);
+		"rdpmc \n\t"
+		"1:":::);
 
 	report("%s", exception_vector() == UD_VECTOR, __FUNCTION__);
 
@@ -48,9 +48,9 @@ static void pmu_rqmid_27141_rd_ia32_fixed_ctr_ctrl(void)
 {
 	u32 a, d;
 	asm volatile (ASM_TRY("1f")
-					"rdmsr\n\t"
-					"1:"
-					: "=a"(a), "=d"(d) : "c"(MSR_CORE_PERF_FIXED_CTR_CTRL) : "memory");
+		"rdmsr\n\t"
+		"1:"
+		: "=a"(a), "=d"(d) : "c"(MSR_CORE_PERF_FIXED_CTR_CTRL) : "memory");
 
 	report("%s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
 }
@@ -67,9 +67,9 @@ static void pmu_rqmid_27142_wt_ia32_fixed_ctr_ctrl(void)
 	u32 d = (val >> 32);
 
 	asm volatile (ASM_TRY("1f")
-					"wrmsr\n\t"
-					"1:"
-					: : "a"(a), "d"(d), "c"(MSR_CORE_PERF_FIXED_CTR_CTRL) : "memory");
+		"wrmsr\n\t"
+		"1:"
+		: : "a"(a), "d"(d), "c"(MSR_CORE_PERF_FIXED_CTR_CTRL) : "memory");
 
 	report("%s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
 }

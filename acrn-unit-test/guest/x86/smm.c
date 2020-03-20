@@ -11,8 +11,8 @@
 static void smm_rqmid_26882_rsm(void)
 {
 	asm volatile(ASM_TRY("1f")
-			"rsm \n\t"
-			"1:":::);
+		"rsm \n\t"
+		"1:":::);
 
 	report("%s", exception_vector() == UD_VECTOR, __FUNCTION__);
 

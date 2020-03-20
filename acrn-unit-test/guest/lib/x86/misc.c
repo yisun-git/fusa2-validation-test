@@ -128,9 +128,9 @@ int wrmsr_checking(u32 MSR_ADDR, u64 value)
 	u32 eax = value;
 
 	asm volatile(ASM_TRY("1f")
-		     "wrmsr \n\t"
-		     "1:"
-		     : : "c"(MSR_ADDR), "a"(eax), "d"(edx));
+		"wrmsr \n\t"
+		"1:"
+		: : "c"(MSR_ADDR), "a"(eax), "d"(edx));
 	return exception_vector();
 }
 /**
@@ -198,8 +198,8 @@ uint32_t get_lapic_id(void)
 {
 	uint32_t ebx;
 	asm volatile("cpuid" : "=b"(ebx)
-			: "a" (1)
-			: "memory");
+		: "a" (1)
+		: "memory");
 	return (ebx >> 24);
 }
 

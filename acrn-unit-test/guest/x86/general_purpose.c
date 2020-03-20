@@ -93,7 +93,7 @@ void load_gdt_and_set_segment_rigster(void)
 		"mov %ax, %fs\n"
 		"mov %ax, %gs\n"
 		"mov %ax, %ss\n"
-);
+	);
 }
 #endif
 
@@ -164,8 +164,8 @@ static void mov_gp_009(void)
 {
 	u32 r_a = 1;
 	asm volatile("mov %1, %0\n"
-	: "=m"(*(creat_non_canon_add()))
-	: "r"(r_a));
+		: "=m"(*(creat_non_canon_add()))
+		: "r"(r_a));
 }
 
 static void  gp_rqmid_31321_data_transfer_mov_gp_009(void)
@@ -193,8 +193,8 @@ static void mov_gp_010(void)
 
 	eflags_ac_to_0();
 	asm volatile("mov %1, %0 \n"
-	: "=r"(r_a)
-	: "m"(*(creat_non_canon_add())));
+		: "=r"(r_a)
+		: "m"(*(creat_non_canon_add())));
 }
 
 static void  gp_rqmid_31324_data_transfer_mov_gp_010(void)
@@ -386,7 +386,7 @@ static void  gp_rqmid_31370_data_transfer_mov_gp_013(void)
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
 
 	report("%s Execute Instruction:  MOV, to generate #GP",
-	ret == true, __FUNCTION__);
+		ret == true, __FUNCTION__);
 }
 
 /*
@@ -540,8 +540,7 @@ static void  gp_rqmid_31271_data_transfer_cmpxchg16b_gp_060(void)
 	if (is_support) {
 		fun = (gp_trigger_func)cmpxchg16b_gp_060;
 		ret = test_for_exception(GP_VECTOR, fun, NULL);
-	}
-	else {
+	} else {
 		ret = false;
 	}
 
@@ -937,8 +936,7 @@ static void  gp_rqmid_32163_random_number_rdrand_ud_006(void)
 	if (is_support) {
 		fun = (gp_trigger_func)rdrand_ud_006;
 		ret = test_for_exception(UD_VECTOR, fun, NULL);
-	}
-	else {
+	} else {
 		ret = false;
 	}
 
@@ -1059,9 +1057,9 @@ static void bound_32bit_br_001(void)
 	int t[2] = {0, 10};
 	u32 r_a = 0xff;
 	asm volatile ("bound %1, %[add]\n"
-	    : [add]"=m"(t[0])
-	    : "r"(r_a)
-	    : "memory");
+		: [add]"=m"(t[0])
+		: "r"(r_a)
+		: "memory");
 }
 
 static void  gp_rqmid_31956_data_transfer_bound_32bit_br_001(void)

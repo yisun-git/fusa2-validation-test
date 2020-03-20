@@ -289,22 +289,21 @@ int ap_main(void)
 		test_delay(1);
 	}
 	debug_print("ap start run %d\n", start_run_id);
-	switch (start_run_id)
-	{
-		case 27160:
-			MP_initialization_rqmid_27160_ap();
-			break;
+	switch (start_run_id) {
+	case 27160:
+		MP_initialization_rqmid_27160_ap();
+		break;
 
-		case 26996:
-			MP_initialization_rqmid_26996_ap();
-			break;
+	case 26996:
+		MP_initialization_rqmid_26996_ap();
+		break;
 
-		case 33850:
-			MP_initialization_rqmid_33850_ap();
-			break;
+	case 33850:
+		MP_initialization_rqmid_33850_ap();
+		break;
 
-		default:
-			break;
+	default:
+		break;
 	}
 	return 0;
 }

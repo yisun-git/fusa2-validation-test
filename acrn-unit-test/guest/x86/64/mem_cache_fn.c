@@ -34,12 +34,12 @@ void cache_rqmid_23875_check_l2_ucache_parameters(void)
 	id = cpuid_indexed(0x04, 2);
 
 	report("%s\n", (get_bit_range(id.a, 0, 4) == 0x3) &&
-			(get_bit_range(id.a, 5, 7) == 0x2) &&	(get_bit_range(id.a, 8, 8) == 0x1) &&
-			(get_bit_range(id.a, 9, 9) == 0x0) &&	(get_bit_range(id.a, 14, 25) == 0x1) &&
-			(get_bit_range(id.a, 26, 31) == 0x7) && (get_bit_range(id.b, 0, 11) == 0x3F) &&
-			(get_bit_range(id.b, 12, 21) == 0x0) && (get_bit_range(id.b, 22, 31) == 0x3) &&
-			(id.c == 0x3FF) && (get_bit_range(id.d, 0, 0) == 0x0) &&
-			(get_bit_range(id.d, 1, 1) == 0x0) &&	(get_bit_range(id.d, 2, 2) == 0x0), __FUNCTION__);
+		(get_bit_range(id.a, 5, 7) == 0x2) &&	(get_bit_range(id.a, 8, 8) == 0x1) &&
+		(get_bit_range(id.a, 9, 9) == 0x0) &&	(get_bit_range(id.a, 14, 25) == 0x1) &&
+		(get_bit_range(id.a, 26, 31) == 0x7) && (get_bit_range(id.b, 0, 11) == 0x3F) &&
+		(get_bit_range(id.b, 12, 21) == 0x0) && (get_bit_range(id.b, 22, 31) == 0x3) &&
+		(id.c == 0x3FF) && (get_bit_range(id.d, 0, 0) == 0x0) &&
+		(get_bit_range(id.d, 1, 1) == 0x0) &&	(get_bit_range(id.d, 2, 2) == 0x0), __FUNCTION__);
 }
 
 /**
@@ -121,7 +121,7 @@ void cache_rqmid_26972_guest_linear_normal_wb(void)
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WB, cache_over_l3_size);
 
 	report("%s WB read test\n",
-		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
+		(ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
 }
 
 /**

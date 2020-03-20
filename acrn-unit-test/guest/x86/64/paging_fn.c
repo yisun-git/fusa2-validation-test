@@ -38,9 +38,9 @@ static int read_memory_checking(void *p)
 {
 	u64 value = 1;
 	asm volatile(ASM_TRY("1f")
-		     "mov (%[p]), %[value]\n\t"
-		     "1:"
-		     : : [value]"r"(value), [p]"r"(p));
+		"mov (%[p]), %[value]\n\t"
+		"1:"
+		: : [value]"r"(value), [p]"r"(p));
 	return exception_vector();
 }
 
@@ -48,9 +48,9 @@ static void get_vector_error_code_by_read_memory(void *gva, u8 *vector, u16 *err
 {
 	u64 value = 1;
 	asm volatile(ASM_TRY("1f")
-		     "mov (%[gva]), %[value]\n\t"
-		     "1:"
-		     : : [value]"r"(value), [gva]"r"(gva));
+		"mov (%[gva]), %[value]\n\t"
+		"1:"
+		: : [value]"r"(value), [gva]"r"(gva));
 	*vector = exception_vector();
 	*error_code = exception_error_code();
 }
@@ -60,9 +60,9 @@ static int write_memory_checking(void *p)
 	assert(p != NULL);
 	u8 value = WRITE_INITIAL_VALUE;
 	asm volatile(ASM_TRY("1f")
-		     "mov %[value], (%[p])\n\t"
-		     "1:"
-		     : : [value]"r"(value), [p]"r"(p));
+		"mov %[value], (%[p])\n\t"
+		"1:"
+		: : [value]"r"(value), [p]"r"(p));
 	return exception_vector();
 }
 
@@ -72,9 +72,9 @@ static bool write_memory_error_code_checking(void *p, u32 bit)
 	assert(p != NULL);
 	u8 value = WRITE_INITIAL_VALUE;
 	asm volatile(ASM_TRY("1f")
-		     "mov %[value], (%[p])\n\t"
-		     "1:"
-		     : : [value]"r"(value), [p]"r"(p));
+		"mov %[value], (%[p])\n\t"
+		"1:"
+		: : [value]"r"(value), [p]"r"(p));
 	if ((exception_vector() == PF_VECTOR) && ((exception_error_code() & bit) != 0)) {
 		flag = true;
 	}
@@ -198,16 +198,14 @@ static void paging_rqmid_24519_disable_global_paging()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == 0x12) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	write_cr3(read_cr3());
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -618,16 +616,14 @@ static void paging_rqmid_26827_enable_global_paging()
 	if ((cpuid(1).d & (1u << 13)) != 0) {
 		write_cr4(cr4 | X86_CR4_PGE);
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_PTE_GLOBAL_PAGE_FLAG, 1, true);
 	if (*gva == 0x12) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -635,8 +631,7 @@ static void paging_rqmid_26827_enable_global_paging()
 	write_cr3(read_cr3());
 	if (*gva == 0x12) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -670,16 +665,14 @@ void paging_rqmid_24460_cr4_smap_invalidate_tlb()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == 0x12) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
 	write_cr4(cr4 | X86_CR4_SMAP);
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -710,8 +703,7 @@ static void paging_rqmid_32328_ia32_efer_nxe_tlb()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -724,8 +716,7 @@ static void paging_rqmid_32328_ia32_efer_nxe_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -756,8 +747,7 @@ static void paging_rqmid_32329_cr4_smep_tlb()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -767,8 +757,7 @@ static void paging_rqmid_32329_cr4_smep_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -799,8 +788,7 @@ static void paging_rqmid_32344_cr4_pse_tlb()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -808,8 +796,7 @@ static void paging_rqmid_32344_cr4_pse_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -840,8 +827,7 @@ static void paging_rqmid_32406_cr4_pge_tlb()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -849,8 +835,7 @@ static void paging_rqmid_32406_cr4_pge_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -881,8 +866,7 @@ static void paging_rqmid_32234_cr0_wp_tlb()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -890,8 +874,7 @@ static void paging_rqmid_32234_cr0_wp_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -922,8 +905,7 @@ static void paging_rqmid_32236_cr0_cd_tlb()
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == WRITE_INITIAL_VALUE) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -931,8 +913,7 @@ static void paging_rqmid_32236_cr0_cd_tlb()
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
 		result++;
-	}
-	else {
+	} else {
 		printf("%s %d test fail\n", __FUNCTION__, __LINE__);
 	}
 
@@ -1199,8 +1180,8 @@ struct page_invpcid_desc {
 static int page_invpcid_checking(unsigned long type, void *desc)
 {
 	asm volatile (ASM_TRY("1f")
-		  ".byte 0x66,0x0f,0x38,0x82,0x18 \n\t" /* invpcid (%rax), %rbx */
-		  "1:" : : "a" (desc), "b" (type));
+		".byte 0x66,0x0f,0x38,0x82,0x18 \n\t" /* invpcid (%rax), %rbx */
+		"1:" : : "a" (desc), "b" (type));
 	return exception_vector();
 }
 

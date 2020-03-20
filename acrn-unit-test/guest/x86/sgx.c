@@ -31,7 +31,7 @@ static void sgx_rqmid_27375_write_msr_uncore_prmrr_phys_base()
 	u64 msr_uncore_prmrr_phys_base = VALUE_TO_WRITE_MSR;
 	report("\t\t sgx_rqmid_27375_write_msr_uncore_prmrr_phys_base",
 		wrmsr_checking(MSR_UNCORE_PRMRR_PHYS_BASE,
-		msr_uncore_prmrr_phys_base) == GP_VECTOR);
+			msr_uncore_prmrr_phys_base) == GP_VECTOR);
 
 }
 
@@ -97,7 +97,7 @@ static void sgx_rqmid_27372_read_msr_uncore_prmrr_phys_mask()
 	u64 msr_uncore_prmrr_phys_mask;
 	report("\t\t %s",
 		rdmsr_checking(MSR_UNCORE_PRMRR_PHYS_MASK,
-		&msr_uncore_prmrr_phys_mask) == GP_VECTOR, __FUNCTION__);
+			&msr_uncore_prmrr_phys_mask) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -110,7 +110,7 @@ static void sgx_rqmid_27373_write_msr_uncore_prmrr_phys_mask()
 	u64 msr_uncore_prmrr_phys_mask = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
 		wrmsr_checking(MSR_UNCORE_PRMRR_PHYS_MASK,
-		msr_uncore_prmrr_phys_mask) == GP_VECTOR, __FUNCTION__);
+			msr_uncore_prmrr_phys_mask) == GP_VECTOR, __FUNCTION__);
 }
 
 /**
@@ -123,7 +123,7 @@ static void sgx_rqmid_27374_read_msr_uncore_prmrr_phys_base()
 	u64 msr_uncore_prmrr_phys_base;
 	report("\t\t %s",
 		rdmsr_checking(MSR_UNCORE_PRMRR_PHYS_BASE,
-		&msr_uncore_prmrr_phys_base) == GP_VECTOR, __FUNCTION__);
+			&msr_uncore_prmrr_phys_base) == GP_VECTOR, __FUNCTION__);
 }
 
 /**

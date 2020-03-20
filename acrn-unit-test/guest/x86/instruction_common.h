@@ -314,7 +314,7 @@ typedef struct xsave_bndcsr_struct {
 typedef struct xsave_area_struct {
 	u8 fpu_sse[512];
 	struct xsave_header_struct xsave_hdr;//64
-    /*extended area*/
+	/*extended area*/
 	u8 ymm[256];
 	u8 lwp[128];/*this is a gap,i don't know what it should be until now....*/
 	struct xsave_bndreg_struct bndregs;//64 bytes
@@ -343,8 +343,7 @@ struct descriptor_table {
 	uint64_t base;
 } __packed;
 
-struct lseg_st
-{
+struct lseg_st {
 	long  a;
 	int16_t b;
 };

@@ -129,8 +129,7 @@ static volatile unsigned long g_llvt_count = 0;
 static volatile unsigned long g_main_ticks = 0;
 static volatile unsigned long g_test_ticks = 0;
 
-typedef struct
-{
+typedef struct {
 	unsigned long rip;
 	unsigned long cs;
 	unsigned long rflags;
@@ -138,8 +137,7 @@ typedef struct
 
 typedef void cpu_routine_t(void);
 
-typedef enum _SEGMENT_REGISTER
-{
+typedef enum _SEGMENT_REGISTER {
 	REG_CS = 0,
 	REG_DS,
 	REG_ES,
@@ -148,8 +146,7 @@ typedef enum _SEGMENT_REGISTER
 	REG_SS
 } SEG_REG;
 
-typedef enum _SEGMENT_REGISTER_BIT
-{
+typedef enum _SEGMENT_REGISTER_BIT {
 	BIT_L = 0,
 	BIT_B,
 	BIT_D

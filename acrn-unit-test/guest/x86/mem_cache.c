@@ -325,55 +325,53 @@ void set_memory_type_pt(void *address, u64 type, u64 size)
 
 	PT_MEMORY_TYPE = type;
 
-	for (i = 0; i < size; i += PAGE_SIZE)
-	{
+	for (i = 0; i < size; i += PAGE_SIZE) {
 		j++;
 		next_addr = (u64 *)((u8 *)address + i);
-		switch (type)
-		{
-			case PT_MEMORY_TYPE_MASK0:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
-				break;
-			case PT_MEMORY_TYPE_MASK1:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
-				break;
-			case PT_MEMORY_TYPE_MASK2:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
-				break;
-			case PT_MEMORY_TYPE_MASK3:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
-				break;
-			case PT_MEMORY_TYPE_MASK4:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
-				break;
-			case PT_MEMORY_TYPE_MASK5:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
-				break;
-			case PT_MEMORY_TYPE_MASK6:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
-				break;
-			case PT_MEMORY_TYPE_MASK7:
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-				set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
-				break;
-			default:
-				debug_error("error type\n");
-				break;
+		switch (type) {
+		case PT_MEMORY_TYPE_MASK0:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK1:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK2:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK3:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK4:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK5:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK6:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK7:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			break;
+		default:
+			debug_error("error type\n");
+			break;
 		}
 	}
 }
@@ -440,8 +438,7 @@ void set_mem_cache_type(u64 cache_type)
 
 	if (ia32_pat_test != cache_type) {
 		debug_print("set pat type error set=0x%lx, get=0x%lx\n", cache_type, ia32_pat_test);
-	}
-	else {
+	} else {
 		debug_print("set pat type sucess type=0x%lx get=0x%lx\n", cache_type, ia32_pat_test);
 	}
 
@@ -470,16 +467,14 @@ void set_mem_cache_type_all(u64 cache_type)
 	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
 	if (ia32_pat_test != cache_type) {
 		debug_print("set pat type all error set=0x%lx, get=0x%lx\n", cache_type, ia32_pat_test);
-	}
-	else {
+	} else {
 		debug_print("set pat type all sucess type=0x%lx\n", cache_type);
 	}
 #elif __i386__
 	debug_print("ia32_pat_test 0x%llx \n", ia32_pat_test);
 	if (ia32_pat_test != cache_type) {
 		debug_print("set pat type all error set=0x%llx, get=0x%llx\n", cache_type, ia32_pat_test);
-	}
-	else {
+	} else {
 		debug_print("set pat type all sucess type=0x%llx\n", cache_type);
 	}
 #endif
@@ -542,7 +537,7 @@ bool cache_check_memory_type(u64 average, u64 native_aver, u64 native_std, u64 s
 	bool ret = true;
 
 	if ((average < ((native_aver*(100-ERROR_RANG))/100)) \
-			|| (average > ((native_aver*(100+ERROR_RANG))/100))) {
+		|| (average > ((native_aver*(100+ERROR_RANG))/100))) {
 		ret = false;
 	}
 
@@ -627,7 +622,7 @@ void save_unchanged_reg()
 	u32 a, d;
 	asm volatile ("rdmsr" : "=a"(a), "=d"(d) : "c"(IA32_PAT_MSR) : "memory");
 	asm volatile ("mov %eax, (0x7000)\r\n"
-				  "mov %edx, (0x7004)\r\n");
+		"mov %edx, (0x7004)\r\n");
 }
 void print_case_list_init_startup()
 {
@@ -756,11 +751,11 @@ int main(int ac, char **av)
 
 	//delay(10);
 #ifdef __x86_64__
-	#ifndef CACHE_IN_NATIVE
-		cache_test_64(rqmid);
-	#else
-		/*cache_test_native(rqmid);*/
-	#endif
+#ifndef CACHE_IN_NATIVE
+	cache_test_64(rqmid);
+#else
+	/*cache_test_native(rqmid);*/
+#endif
 #elif defined(__i386__)
 	/*cache_test_32(rqmid);*/
 #endif

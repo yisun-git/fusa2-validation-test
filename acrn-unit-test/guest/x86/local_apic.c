@@ -196,17 +196,15 @@ void local_apic_rqmid_27645_expose_periodic_timer_mode_support_001(void)
 	asm volatile ("nop");
 
 	initial_value *= LAPIC_TIMER_WAIT_MULTIPLIER;
-	while (atomic_read(&lapic_timer_isr_count) < 2)
-	{
+	while (atomic_read(&lapic_timer_isr_count) < 2) {
 		--initial_value;
-		if (initial_value == 0U)
-		{
+		if (initial_value == 0U) {
 			apic_write(APIC_TMICT, 0);
 			break;
 		}
 	}
 	report("%s", atomic_read(&lapic_timer_isr_count) >= 2,
-	       "local_apic_rqmid_27645_expose_periodic_timer_mode_support_001");
+		"local_apic_rqmid_27645_expose_periodic_timer_mode_support_001");
 }
 
 /**
@@ -265,11 +263,11 @@ void local_apic_rqmid_27926_cr8_is_mirror_of_tpr(void)
 
 	write_cr8(0x5);
 	tmp_tpr = apic_read(APIC_TASKPRI);
-    //write old tpr back
+	//write old tpr back
 	apic_write(APIC_TASKPRI, old_tpr);
 	report("%s", ((LAPIC_TPR_MAX >> 4) == first_cr8) && ((LAPIC_TPR_MID >> 4) == sec_cr8)	\
-					&& ((tmp_tpr & 0xf) == 0U) && ((tmp_tpr >> 4) == 0x5),	\
-					"local_apic_rqmid_27926_cr8_is_mirror_of_tpr");
+		&& ((tmp_tpr & 0xf) == 0U) && ((tmp_tpr >> 4) == 0x5),	\
+		"local_apic_rqmid_27926_cr8_is_mirror_of_tpr");
 }
 
 int main(int ac, char **av)
@@ -277,11 +275,11 @@ int main(int ac, char **av)
 	(void) ac;
 	(void) av;
 
-    /* setup_vm(); */
-    /* smp_init(); */
+	/* setup_vm(); */
+	/* smp_init(); */
 	setup_idt();
 
-    /* API to select one or all case to run */
+	/* API to select one or all case to run */
 	local_apic_rqmid_27645_expose_periodic_timer_mode_support_001();
 	local_apic_rqmid_27694_x2apic_capability_001();
 	local_apic_rqmid_27926_cr8_is_mirror_of_tpr();

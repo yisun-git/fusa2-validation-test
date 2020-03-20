@@ -15,11 +15,11 @@
 static unsigned rdmsr_checking(u32 index)
 {
 	asm volatile(ASM_TRY("1f")
-				 "rdmsr\n\t" //rdmsr, 0x0f, 0x32
-				 "1:"
-				 :
-				 : "c"(index)
-				 : "memory");
+		"rdmsr\n\t" //rdmsr, 0x0f, 0x32
+		"1:"
+		:
+		: "c"(index)
+		: "memory");
 
 	return exception_vector();
 }
@@ -28,11 +28,11 @@ static unsigned wrmsr_checking(u32 index, u64 val)
 	u32 a = val, d = val >> 32;
 
 	asm volatile (ASM_TRY("1f")
-				  "wrmsr\n\t" //wrmsr: 0x0f, 0x30
-				  "1:"
-				  :
-				  : "a"(a), "d"(d), "c"(index)
-				  : "memory");
+		"wrmsr\n\t" //wrmsr: 0x0f, 0x30
+		"1:"
+		:
+		: "a"(a), "d"(d), "c"(index)
+		: "memory");
 
 	return exception_vector();
 }

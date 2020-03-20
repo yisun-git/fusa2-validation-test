@@ -41,59 +41,78 @@ extern struct ex_record exception_table_start, exception_table_end;
 static const char *exception_mnemonic(int vector)
 {
 	switch (vector) {
-	case 0: return "#DE";
-	case 1: return "#DB";
-	case 2: return "#NMI";
-	case 3: return "#BP";
-	case 4: return "#OF";
-	case 5: return "#BR";
-	case 6: return "#UD";
-	case 7: return "#NM";
-	case 8: return "#DF";
-	case 10: return "#TS";
-	case 11: return "#NP";
-	case 12: return "#SS";
-	case 13: return "#GP";
-	case 14: return "#PF";
-	case 16: return "#MF";
-	case 17: return "#AC";
-	case 18: return "#MC";
-	case 19: return "#XM";
-	default: return "#??";
+	case 0:
+		return "#DE";
+	case 1:
+		return "#DB";
+	case 2:
+		return "#NMI";
+	case 3:
+		return "#BP";
+	case 4:
+		return "#OF";
+	case 5:
+		return "#BR";
+	case 6:
+		return "#UD";
+	case 7:
+		return "#NM";
+	case 8:
+		return "#DF";
+	case 10:
+		return "#TS";
+	case 11:
+		return "#NP";
+	case 12:
+		return "#SS";
+	case 13:
+		return "#GP";
+	case 14:
+		return "#PF";
+	case 16:
+		return "#MF";
+	case 17:
+		return "#AC";
+	case 18:
+		return "#MC";
+	case 19:
+		return "#XM";
+	default:
+		return "#??";
 	}
 }
 
 void unhandled_exception(struct ex_regs *regs, bool cpu)
 {
 	printf("Unhandled %sexception %ld %s at ip %016lx\n",
-	       cpu ? "cpu " : "", regs->vector,
-	       exception_mnemonic(regs->vector), regs->rip);
+		cpu ? "cpu " : "", regs->vector,
+		exception_mnemonic(regs->vector), regs->rip);
 	if (regs->vector == 14) {
 		printf("PF at %#lx addr %#lx\n", regs->rip, read_cr2());
 	}
 
 	printf("error_code=%04lx      rflags=%08lx      cs=%08lx\n"
-	       "rax=%016lx rcx=%016lx rdx=%016lx rbx=%016lx\n"
-	       "rbp=%016lx rsi=%016lx rdi=%016lx\n"
+		"rax=%016lx rcx=%016lx rdx=%016lx rbx=%016lx\n"
+		"rbp=%016lx rsi=%016lx rdi=%016lx\n"
 #ifdef __x86_64__
-	       " r8=%016lx  r9=%016lx r10=%016lx r11=%016lx\n"
-	       "r12=%016lx r13=%016lx r14=%016lx r15=%016lx\n"
+		" r8=%016lx  r9=%016lx r10=%016lx r11=%016lx\n"
+		"r12=%016lx r13=%016lx r14=%016lx r15=%016lx\n"
 #endif
-	       "cr0=%016lx cr2=%016lx cr3=%016lx cr4=%016lx\n"
+		"cr0=%016lx cr2=%016lx cr3=%016lx cr4=%016lx\n"
 #ifdef __x86_64__
-	       "cr8=%016lx\n"
+		"cr8=%016lx\n"
 #endif
-	       ,
-	       regs->error_code, regs->rflags, regs->cs,
-	       regs->rax, regs->rcx, regs->rdx, regs->rbx,
-	       regs->rbp, regs->rsi, regs->rdi,
+		,
+		regs->error_code, regs->rflags, regs->cs,
+		regs->rax, regs->rcx, regs->rdx, regs->rbx,
+		regs->rbp, regs->rsi, regs->rdi,
 #ifdef __x86_64__
-	       regs->r8, regs->r9, regs->r10, regs->r11,
-	       regs->r12, regs->r13, regs->r14, regs->r15,
+		regs->r8, regs->r9, regs->r10, regs->r11,
+		regs->r12, regs->r13, regs->r14, regs->r15,
 #endif
-	       read_cr0(), read_cr2(), read_cr3(), read_cr4()
+		read_cr0(), read_cr2(), read_cr3(), read_cr4()
 #ifdef __x86_64__
-	       , read_cr8()
+		, read_cr8()
 #endif
 	);
 	dump_frame_stack((void *) regs->rip, (void *) regs->rbp);
@@ -178,29 +197,29 @@ EX(mc, 18);
 EX(xm, 19);
 
 asm (".pushsection .text \n\t"
-	 "__handle_exception: \n\t"
+	"__handle_exception: \n\t"
 #ifdef __x86_64__
-	 "push %r15; push %r14; push %r13; push %r12 \n\t"
-	 "push %r11; push %r10; push %r9; push %r8 \n\t"
+	"push %r15; push %r14; push %r13; push %r12 \n\t"
+	"push %r11; push %r10; push %r9; push %r8 \n\t"
 #endif
-	 "push %"R "di; push %"R "si; push %"R "bp; sub $"S", %"R "sp \n\t"
-	 "push %"R "bx; push %"R "dx; push %"R "cx; push %"R "ax \n\t"
+	"push %"R "di; push %"R "si; push %"R "bp; sub $"S", %"R "sp \n\t"
+	"push %"R "bx; push %"R "dx; push %"R "cx; push %"R "ax \n\t"
 #ifdef __x86_64__
-	 "mov %"R "sp, %"R "di \n\t"
+	"mov %"R "sp, %"R "di \n\t"
 #else
-	 "mov %"R "sp, %"R "ax \n\t"
+	"mov %"R "sp, %"R "ax \n\t"
 #endif
-	 "call do_handle_exception \n\t"
-	 "pop %"R "ax; pop %"R "cx; pop %"R "dx; pop %"R "bx \n\t"
-	 "add $"S", %"R "sp; pop %"R "bp; pop %"R "si; pop %"R "di \n\t"
+	"call do_handle_exception \n\t"
+	"pop %"R "ax; pop %"R "cx; pop %"R "dx; pop %"R "bx \n\t"
+	"add $"S", %"R "sp; pop %"R "bp; pop %"R "si; pop %"R "di \n\t"
 #ifdef __x86_64__
-	 "pop %r8; pop %r9; pop %r10; pop %r11 \n\t"
-	 "pop %r12; pop %r13; pop %r14; pop %r15 \n\t"
+	"pop %r8; pop %r9; pop %r10; pop %r11 \n\t"
+	"pop %r12; pop %r13; pop %r14; pop %r15 \n\t"
 #endif
-	 "add $"S", %"R "sp \n\t"
-	 "add $"S", %"R "sp \n\t"
-	 "iret"W" \n\t"
-	 ".popsection");
+	"add $"S", %"R "sp \n\t"
+	"add $"S", %"R "sp \n\t"
+	"iret"W" \n\t"
+	".popsection");
 
 static void *idt_handlers[32] = {
 	[0] = &de_fault,
@@ -320,7 +339,7 @@ void setup_tss32(void)
 	tss_intr.cr3 = read_cr3();
 	tss_intr.ss0 = tss_intr.ss1 = tss_intr.ss2 = 0x10;
 	tss_intr.esp = tss_intr.esp0 = tss_intr.esp1 = tss_intr.esp2 =
-		(u32)intr_alt_stack + 4096;
+					(u32)intr_alt_stack + 4096;
 	tss_intr.cs = 0x08;
 	tss_intr.ds = tss_intr.es = tss_intr.fs = tss_intr.gs = tss_intr.ss = 0x10;
 	tss_intr.iomap_base = (u16)desc_size;
@@ -347,11 +366,11 @@ void print_current_tss_info(void)
 {
 	u16 tr = str();
 
-	if (tr != TSS_MAIN && tr != TSS_INTR)
+	if (tr != TSS_MAIN && tr != TSS_INTR) {
 		printf("Unknown TSS %x\n", tr);
-	else
+	} else
 		printf("TR=%x (%s) Main TSS back link %x. Intr TSS back link %x\n",
-		       tr, tr ? "interrupt" : "main", tss.prev, tss_intr.prev);
+			tr, tr ? "interrupt" : "main", tss.prev, tss_intr.prev);
 }
 #else
 void set_intr_alt_stack(int e, void *addr)
@@ -383,7 +402,7 @@ static void exception_handler(struct ex_regs *regs)
 }
 
 bool test_for_exception(unsigned int ex, void (*trigger_func)(void *data),
-			void *data)
+	void *data)
 {
 	handler old;
 	jmp_buf jmpbuf;
