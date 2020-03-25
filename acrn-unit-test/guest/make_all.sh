@@ -2,9 +2,10 @@
 
 BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboot \
 	memory_order tsc mp_initialization xsave local_apic paging general_purpose pmu_fu rdt branch_profile \
-	device_passthrough"
+	device_passthrough mmx"
+
 #BUILD_64BIT_FEATURE="mem_cache"
-BUILD_32BIT_FEATURE="segmentation paging general_purpose"
+BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
 BUILD_NATIVE_64_FEATURE="xsave device_passthrough"

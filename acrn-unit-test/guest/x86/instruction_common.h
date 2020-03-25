@@ -397,7 +397,7 @@ uint64_t get_random_value(void);
 #define LGS_LEN 4
 #define CMPXCHG8B_LEN 3
 
-static ulong instruction_len = 0;
+__unused static ulong instruction_len = 0;
 static volatile bool de_ocurred = false;
 static volatile bool db_ocurred = false;
 static volatile bool nmi_ocurred = false;
