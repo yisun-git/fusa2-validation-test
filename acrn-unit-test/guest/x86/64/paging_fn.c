@@ -2,9 +2,9 @@ u8 *g_gva = NULL;
 /* test at ring3, return the result to this global value */
 bool g_ring3_is_pass = false;
 
-static void map_first_16m_supervisor_pages()
+static void map_first_32m_supervisor_pages()
 {
-	/* Map first 16MB as supervisor pages */
+	/* Map first 32MB as supervisor pages */
 	unsigned long i;
 	for (i = 0; i < USER_BASE; i += PAGE_SIZE) {
 		*get_pte(phys_to_virt(read_cr3()), phys_to_virt(i)) &= ~PT_USER_MASK;
@@ -26,7 +26,7 @@ static void resume_environment()
 	write_cr0(read_cr0() | X86_CR0_WP);
 	write_cr0(read_cr0() & ~X86_CR0_CD);
 	clac();
-	/* Map first 16MB as user pages */
+	/* Map first 32MB as user pages */
 	for (i = 0; i < USER_BASE; i += PAGE_SIZE) {
 		*get_pte(phys_to_virt(read_cr3()), phys_to_virt(i)) |= PT_USER_MASK;
 		invlpg((void *)i);
@@ -276,7 +276,7 @@ static void paging_rqmid_32228_write_protect_support_011()
 
 	write_cr0(read_cr0() | X86_CR0_WP);
 
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(read_cr4() | X86_CR4_SMAP);
 
 	clac();
@@ -299,7 +299,7 @@ static void paging_rqmid_32229_write_protect_support_010()
 
 	write_cr0(read_cr0() | X86_CR0_WP);
 
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(read_cr4() | X86_CR4_SMAP);
 
 	stac();
@@ -328,7 +328,7 @@ static void paging_rqmid_32230_write_protect_support_009()
 
 	write_cr0(read_cr0() | X86_CR0_WP);
 
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(read_cr4() | X86_CR4_SMAP);
 
 	stac();
@@ -402,7 +402,7 @@ static void paging_rqmid_32233_write_protect_support_006()
 	write_cr0(read_cr0() & ~X86_CR0_WP);
 
 	/* for set CR4.SMAP, set first 16M to supervisor-mode pages */
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(read_cr4() | X86_CR4_SMAP);
 
 	clac();
@@ -427,7 +427,7 @@ static void paging_rqmid_32307_write_protect_support_005()
 	write_cr0(read_cr0() & ~X86_CR0_WP);
 
 	/* for set CR4.SMAP, set first 16M to supervisor-mode pages */
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(read_cr4() | X86_CR4_SMAP);
 
 	stac();
@@ -556,7 +556,7 @@ static void paging_rqmid_32312_smap_003()
 	*gva = WRITE_INITIAL_VALUE;
 
 	/* for set CR4.SMAP, set first 16M to supervisor-mode pages */
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(read_cr4() | X86_CR4_SMAP);
 
 	clac();
@@ -581,7 +581,7 @@ static void paging_rqmid_32326_smap_002()
 	*gva = WRITE_INITIAL_VALUE;
 
 	/* for set CR4.SMAP, set first 16M to supervisor-mode pages */
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(read_cr4() | X86_CR4_SMAP);
 
 	stac();
@@ -649,7 +649,7 @@ static void paging_rqmid_26827_enable_global_paging()
  *          normally for paging frame information is cached in TLB. After changing CR4.SMAP,
  *          we will get #PF because TLB is invalidated and get PTE directly from memory.
  */
-void paging_rqmid_24460_cr4_smap_invalidate_tlb()
+static void paging_rqmid_24460_cr4_smap_invalidate_tlb()
 {
 	unsigned long cr4 = read_cr4();
 	u8 *gva = malloc(sizeof(u8));
@@ -659,7 +659,7 @@ void paging_rqmid_24460_cr4_smap_invalidate_tlb()
 		return;
 	}
 
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	*gva = 0x12;
 
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
@@ -752,7 +752,7 @@ static void paging_rqmid_32329_cr4_smep_tlb()
 	}
 
 	/* for set CR4.SMEP, set first 16M to supervisor-mode pages */
-	map_first_16m_supervisor_pages();
+	map_first_32m_supervisor_pages();
 	write_cr4(cr4 | X86_CR4_SMEP);
 
 	if (read_memory_checking((void *)gva) == PF_VECTOR) {
@@ -1213,8 +1213,7 @@ void test_paging_64bit_mode()
 	paging_rqmid_24519_disable_global_paging();
 	paging_rqmid_26017_smep_support();
 	paging_rqmid_23917_protection_keys_hide();
-	/*HV bug*/
-	//paging_rqmid_24460_cr4_smap_invalidate_tlb();
+	paging_rqmid_24460_cr4_smap_invalidate_tlb();
 	paging_rqmid_26827_enable_global_paging();
 }
 

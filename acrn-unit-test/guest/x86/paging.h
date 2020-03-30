@@ -19,7 +19,7 @@
 #define X86_CR4_PGE (1ul << 7)
 #define X86_CR0_CD		(1UL << 30)
 
-#define USER_BASE		(1ul << 24)
+#define USER_BASE		(1ul << 25)
 #define PHYSICAL_ADDRESS_WIDTH	39
 #define LINEAR_ADDRESS_WIDTH	48
 #define PAGE_PTE_RESERVED_BIT	51
