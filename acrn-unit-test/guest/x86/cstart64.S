@@ -6,7 +6,6 @@
 .globl tss_descr
 .globl gdt64_desc
 .globl cpu_online_count
-.globl sipi_cnt
 /*Adding for GP at X64 environment*/
 .globl gdt64
 
@@ -106,7 +105,6 @@ mb_boot_info:	.quad 0
 
 pt_root:	.quad ptl4
 
-sipi_cnt:   .byte 0
 
 .section .init
 
@@ -114,8 +112,8 @@ sipi_cnt:   .byte 0
 
 mb_magic = 0x1BADB002
 mb_flags = 0x2
-
-#if (defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE))
+/*only  safte vm image does not have multiboot header*/
+#ifndef IN_SAFETY_VM
 	# multiboot header
 	.long mb_magic, mb_flags, 0 - (mb_magic + mb_flags)
 #endif
@@ -242,7 +240,6 @@ ap_start64:
 	sti
 	nop
 	lock incw cpu_online_count
-	lock incb sipi_cnt
 #ifdef AP_USE_MAIN
 	call ap_main
 #endif
@@ -324,9 +321,10 @@ smp_init:
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
 
-#if (defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE))
 	call fwcfg_get_nb_cpus
 	movl %eax, %edx
+	cmp $1, %edx
+	je  2f
 #ifdef IN_NATIVE
 	shll $1, %edx
 #endif
@@ -342,10 +340,9 @@ smp_init:
 	cmp $0, %edx
 	jnz 1b
 	call fwcfg_get_nb_cpus
-1:	pause
+2:	pause
 	cmpw %ax, cpu_online_count
-	jne 1b
-#endif
+	jne 2b
 smp_init_done:
 	ret
 

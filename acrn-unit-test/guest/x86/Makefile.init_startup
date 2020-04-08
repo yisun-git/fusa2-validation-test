@@ -59,3 +59,10 @@ $(TEST_DIR)/device_passthrough.o: $(TEST_DIR)/device_passthrough.c $(TEST_DIR)/d
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/machine_check.o: CFLAGS += -DAP_INIT_CHECK=\"mca_init.S\"
+$(TEST_DIR)/machine_check.o: CFLAGS += -DBP_STARTUP_CHECK=\"mca_startup.S\"
+$(TEST_DIR)/machine_check.o: $(TEST_DIR)/machine_check.c $(TEST_DIR)/machine_check.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

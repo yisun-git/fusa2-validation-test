@@ -2,7 +2,6 @@
 
 .globl boot_idt
 
-.globl sipi_cnt
 .globl cpu_online_count
 
 ipi_vector = 0x20
@@ -78,7 +77,6 @@ idt_descr:
 	.word 16 * 256 - 1
 	.long boot_idt
 
-sipi_cnt:	.byte 0
 
 .section .init
 
@@ -156,7 +154,6 @@ ap_start32:
 	sti
 	nop
 	lock incw cpu_online_count
-	lock incb sipi_cnt
 #ifdef AP_USE_MAIN
 	call ap_main
 #endif
@@ -217,9 +214,10 @@ smp_init:
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
 
-#if (defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE))
 	call fwcfg_get_nb_cpus
 	movl %eax, %edx
+	cmp $1, %edx
+	je  2f
 #ifdef IN_NATIVE
 	shll $1, %edx
 #endif
@@ -236,10 +234,9 @@ smp_init:
 	jnz 1b
 
 	call fwcfg_get_nb_cpus
-1:	pause
+2:	pause
 	cmpw %ax, cpu_online_count
-	jne 1b
-#endif
+	jne 2b
 smp_init_done:
 	ret
 

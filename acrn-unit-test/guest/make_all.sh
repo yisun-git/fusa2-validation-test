@@ -2,7 +2,7 @@
 
 BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboot \
 	memory_order tsc mp_initialization xsave local_apic paging general_purpose pmu_fu rdt branch_profile \
-	device_passthrough mmx locked_atomic"
+	device_passthrough mmx locked_atomic machine_check"
 
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx"
@@ -100,6 +100,14 @@ do
 	    exit $RESULT
         fi
 done
+
+./make_qemu.sh;
+       make_result=$?
+       if [ $make_result -ne 0 ]; then
+           RESULT=$make_result
+           echo "FAILED TO MAKE $i"
+       exit $RESULT
+       fi
 
 cp x86/obj/*  x86/
 

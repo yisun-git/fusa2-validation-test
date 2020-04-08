@@ -34,7 +34,9 @@ ifeq ($(VM), safety)
 else ifeq ($(VM), non-safety)
     CFLAGS += -DIN_NON_SAFETY_VM
 else ifeq ($(NATIVE), yes)
-   CFLAGS += -DIN_NATIVE
+	CFLAGS += -DIN_NATIVE
+else ifeq ($(QEMU), 1)
+	CFLAGS += -DQEMU
 endif
 
 libgcc := $(shell $(CC) --print-libgcc-file-name)
