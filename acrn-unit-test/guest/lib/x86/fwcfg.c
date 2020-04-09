@@ -43,6 +43,8 @@ unsigned fwcfg_get_nb_cpus(void)
 {
 #ifdef IN_SAFETY_VM
 	return 1;
+#elif defined IN_NATIVE
+	return 4;
 #else
 	return 3;
 #endif
