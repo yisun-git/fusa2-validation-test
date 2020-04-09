@@ -17,3 +17,9 @@ $(TEST_DIR)/locked_atomic.o: $(TEST_DIR)/locked_atomic.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/hsi.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/hsi.o: $(TEST_DIR)/hsi.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
