@@ -11,3 +11,9 @@ $(TEST_DIR)/mp_initialization.o: $(TEST_DIR)/mp_initialization.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/locked_atomic.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/locked_atomic.o: $(TEST_DIR)/locked_atomic.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
