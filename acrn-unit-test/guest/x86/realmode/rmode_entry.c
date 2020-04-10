@@ -160,7 +160,8 @@ void report_summary(void)
 {
 	print_serial("SUMMERY: ");
 	print_serial_u32(tests);
-	print_serial("tests");
+	print_serial(" tests");
+	print_serial("\n");
 	if (failed) {
 		print_serial(", ");
 		print_serial_u32(failed);
@@ -238,5 +239,7 @@ void rmode_start()
 {
 	main();
 	rmode_exit(0);
+
+	asm("hlt\n\t");
 }
 

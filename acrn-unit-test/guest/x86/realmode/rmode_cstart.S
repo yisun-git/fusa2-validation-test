@@ -151,6 +151,7 @@ start32:
 *
 */
 	mov $1, %bx
+	hlt
 1:	pause
 	cmpw %bx, ap_end_life
 	jne 1b
