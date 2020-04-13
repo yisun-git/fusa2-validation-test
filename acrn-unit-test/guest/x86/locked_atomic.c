@@ -162,7 +162,7 @@ void ap2_test(int vcpu, int is_lock)
 	debug_print("ap2 stop\n");
 }
 
-static void locked_atomic_rqmid_32739_ap()
+__attribute__((unused)) static void locked_atomic_rqmid_32739_ap()
 {
 	u32 vcpu;
 
@@ -198,7 +198,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_32739_expose_lock_prefix
 	report("%s pass=%d", (ret == TEST_TIME), __FUNCTION__, ret);
 }
 
-static void locked_atomic_rqmid_32742_ap()
+__attribute__((unused)) static void locked_atomic_rqmid_32742_ap()
 {
 	u32 vcpu;
 
@@ -220,7 +220,7 @@ static void locked_atomic_rqmid_32742_ap()
  * Summary:Under 64 bit mode, Test the atomicity of the lock instruction(BTS)
  * in the case of multicore concurrency(without lock prifex).
  */
-static void locked_atomic_rqmid_32742_expose_unlock_prefix_03()
+__attribute__((unused)) static void locked_atomic_rqmid_32742_expose_unlock_prefix_03()
 {
 	u32 vcpu;
 	int ret;
@@ -236,6 +236,8 @@ static void locked_atomic_rqmid_32742_expose_unlock_prefix_03()
 
 void ap_main(void)
 {
+/* safety only 1 vcpu, no ap run*/
+#ifdef IN_NON_SAFETY_VM
 	printf("ap %d main test start\n", get_cur_lapic_id());
 	while (start_case_id != CASE_ID_1) {
 		nop();
@@ -247,16 +249,28 @@ void ap_main(void)
 	}
 	locked_atomic_rqmid_32742_ap();
 	debug_print("ap main test stop\n");
+#endif
+}
+
+static void print_case_list()
+{
+	printf("locked atomic feature case list:\n\r");
+#ifdef IN_NON_SAFETY_VM
+	printf("\t\t Case ID:%d case name:%s\n\r", 32739U, "Atomic - expose LOCK prefix to VM_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32742u, "Atomic - expose LOCK prefix to VM_003");
+#endif
 }
 
 int main(int ac, char **av)
 {
+	print_case_list();
 	/*smp_init();*/
 
 	/*first run case id 32739*/
+#ifdef IN_NON_SAFETY_VM
 	locked_atomic_rqmid_32739_expose_lock_prefix_02();
 	locked_atomic_rqmid_32742_expose_unlock_prefix_03();
-
+#endif
 	return report_summary();
 }
 
