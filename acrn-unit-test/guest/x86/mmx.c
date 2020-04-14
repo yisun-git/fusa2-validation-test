@@ -309,6 +309,7 @@ static void mmx_rqmid_31859_acrn_general_support_64bit_mode_emms_mf_001(void)
 				 :: "m"(cw), "m"(op1), "m"(op2));
 
 	report("%s", (exception_vector() == MF_VECTOR),  __FUNCTION__);
+	asm volatile("fninit");
 }
 #endif
 
