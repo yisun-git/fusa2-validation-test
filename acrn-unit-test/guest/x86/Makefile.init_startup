@@ -73,3 +73,10 @@ $(TEST_DIR)/cpumode.o: $(TEST_DIR)/cpumode.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/vmx.o: CFLAGS += -DAP_INIT_CHECK=\"vmx_init.S\"
+$(TEST_DIR)/vmx.o: CFLAGS += -DBP_STARTUP_CHECK=\"vmx_startup.S\"
+$(TEST_DIR)/vmx.o: $(TEST_DIR)/vmx.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

@@ -135,7 +135,7 @@ $(TEST_DIR)/hyperv_stimer_prelink.o: $(TEST_DIR)/hyperv.o
 
 $(TEST_DIR)/hyperv_connections_prelink.o: $(TEST_DIR)/hyperv.o
 
-$(TEST_DIR)/vmx_prelink.o: $(TEST_DIR)/vmx_tests.o
+$(TEST_DIR)/vmx_prelink.o: $(TEST_DIR)/vmx.o
 
 $(TEST_DIR)/realmode/%.raw: ENTRY_OFFSET = 0x4000
 $(TEST_DIR)/realmode/%.bzimage: ENTRY_OFFSET = 0x4000
