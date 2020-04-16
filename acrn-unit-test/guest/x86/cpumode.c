@@ -1,10 +1,10 @@
 /*
- * Test for x86 debugging facilities
+ * Test for x86 cpumode 
  *
- * Copyright (c) Siemens AG, 2014
+ * Copyright (c) intel, 2020
  *
  * Authors:
- *  Jan Kiszka <jan.kiszka@siemens.com>
+ *  wenwumax <wenwux.ma@intel.com>
  *
  * This work is licensed under the terms of the GNU GPL, version 2.
  */
