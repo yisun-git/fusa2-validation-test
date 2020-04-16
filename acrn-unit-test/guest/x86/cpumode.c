@@ -1,5 +1,5 @@
 /*
- * Test for x86 cpumode 
+ * Test for x86 cpumode
  *
  * Copyright (c) intel, 2020
  *
