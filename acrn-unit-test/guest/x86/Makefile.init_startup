@@ -66,3 +66,10 @@ $(TEST_DIR)/machine_check.o: $(TEST_DIR)/machine_check.c $(TEST_DIR)/machine_che
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/cpumode.o: CFLAGS += -DAP_INIT_CHECK=\"cpumode_ap_init.S\"
+$(TEST_DIR)/cpumode.o: CFLAGS += -DBP_STARTUP_CHECK=\"cpumode_bp_startup.S\"
+$(TEST_DIR)/cpumode.o: $(TEST_DIR)/cpumode.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

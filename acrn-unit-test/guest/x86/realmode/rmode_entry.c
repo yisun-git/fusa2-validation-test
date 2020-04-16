@@ -141,7 +141,7 @@ static u16 tests;
 
 void rmode_exit(int code)
 {
-	outb(code, 0xf4);
+	while(1);
 	/*notify BP*/
 	ap_end_life = 1;
 }
@@ -240,6 +240,6 @@ void rmode_start()
 	main();
 	rmode_exit(0);
 
-	asm("hlt\n\t");
+	while(1);
 }
 
