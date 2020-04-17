@@ -16,11 +16,11 @@ max_cpus = 64
 
 .section stack
 
-	. = . + 4096 * max_cpus
+	. = . + 4096
 	.align 16
 stacktop:
 
-	. = . + 4096
+	. = . + 4096 * max_cpus
 	.align 16
 ring0stacktop:
 
