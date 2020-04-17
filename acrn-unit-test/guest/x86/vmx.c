@@ -134,7 +134,7 @@ static void print_case_list(void)
 
 	printf("\t\t Case ID:%d case name:%s\n\r", 26828u, "cpuid.01h:ECX[5]_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26856u, "IA32_VMX_CR0_FIXED0_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 29008u, "VMCALL");
+	printf("\t\t Case ID:%d case name:%s\n\r", 29008u, "VMCALL_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28988u, "CR4.VMXE[13] initial INIT_001");
 }
 
