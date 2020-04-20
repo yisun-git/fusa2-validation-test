@@ -102,11 +102,7 @@ bool calc_flush_cmd(void)
 	cpuid7 = cpuid_indexed(7, 0);
 
 	/* IA32_FLUSH_CMD */
-<<<<<<< HEAD
 	if (!(cpuid7.d & (1U << 28)))
-=======
-	if(!(cpuid7.d & (1U << 28)))
->>>>>>> add infoleak_sample_case_code,9 case fix
 	{
 		printf("-------------------not support L1D FLUSH\n");
 		return false;
