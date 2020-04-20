@@ -102,7 +102,11 @@ bool calc_flush_cmd(void)
 	cpuid7 = cpuid_indexed(7, 0);
 
 	/* IA32_FLUSH_CMD */
+<<<<<<< HEAD
 	if (!(cpuid7.d & (1U << 28)))
+=======
+	if(!(cpuid7.d & (1U << 28)))
+>>>>>>> add infoleak_sample_case_code,9 case fix
 	{
 		printf("-------------------not support L1D FLUSH\n");
 		return false;
@@ -227,6 +231,10 @@ void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_002(void)
 	int64_t tsc_average2 = 0;
 	int64_t tsc_stdevv1 = 0;
 
+<<<<<<< HEAD
+=======
+	cache_test_array = (u64 *)malloc(cache_malloc_size*8);
+>>>>>>> add infoleak_sample_case_code,9 case fix
 	if (cache_test_array == NULL)
 	{
 		debug_error("malloc error\n");
