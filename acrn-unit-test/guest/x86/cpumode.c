@@ -99,10 +99,18 @@ void cpumode_rqmid_27841_CPU_Mode_of_Operation_INITIAL_GUEST_MODE_FOLLOWING_INIT
 	report("\t\t %s", (cr0 & 0x01) == 0, __FUNCTION__);
 }
 
+static void print_case_list(void)
+{
+	printf("cpumode feature case list:\n\r");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28141u, "Forbidden switch back to real address mode_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27815u, "INITIAL GUEST IA32 EFER LME FOLLOWING STARTUP_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27841u, "INITIAL GUEST MODE FOLLOWING INIT_001");
+}
 
 int main(int ac, char **av)
 {
 	setup_idt();
+	print_case_list();
 
 	cpumode_rqmid_28141_CPU_Mode_of_Operation_Forbidden_switch_back_to_real_address_mode_001();
 	cpumode_rqmid_27815_CPU_Mode_of_Operation_INITIAL_GUEST_IA32_EFER_LME_FOLLOWING_STARTUP_001();
