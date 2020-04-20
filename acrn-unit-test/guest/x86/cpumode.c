@@ -27,7 +27,7 @@
 void cpumode_rqmid_28141_CPU_Mode_of_Operation_Forbidden_switch_back_to_real_address_mode_001(void)
 {
 	u32 cr0 = read_cr0();
-	if ((cr0 & X86_CR0_PE) && (cr0 & X86_CR0_PG))
+	if (cr0 & X86_CR0_PE)
 	{
 		u32 cur_cr0 = cr0 & ~X86_CR0_PE;
 
