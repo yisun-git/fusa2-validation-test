@@ -67,6 +67,14 @@ $(TEST_DIR)/machine_check.o: $(TEST_DIR)/machine_check.c $(TEST_DIR)/machine_che
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/fpu.o: CFLAGS += -DAP_INIT_CHECK=\"fpu_init.S\"
+$(TEST_DIR)/fpu.o: CFLAGS += -DBP_STARTUP_CHECK=\"fpu_startup.S\"
+$(TEST_DIR)/fpu.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/fpu.o: $(TEST_DIR)/fpu.c $(TEST_DIR)/fpu.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
 $(TEST_DIR)/cpumode.o: CFLAGS += -DAP_INIT_CHECK=\"cpumode_ap_init.S\"
 $(TEST_DIR)/cpumode.o: CFLAGS += -DBP_STARTUP_CHECK=\"cpumode_bp_startup.S\"
 $(TEST_DIR)/cpumode.o: $(TEST_DIR)/cpumode.c
