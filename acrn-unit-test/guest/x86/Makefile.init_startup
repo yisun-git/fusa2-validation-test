@@ -95,3 +95,10 @@ $(TEST_DIR)/info_leakage.o: $(TEST_DIR)/info_leakage.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/idle_block.o: CFLAGS += -DAP_INIT_CHECK=\"idle_block_init.S\"
+$(TEST_DIR)/idle_block.o: CFLAGS += -DBP_STARTUP_CHECK=\"idle_block_startup.S\"
+$(TEST_DIR)/idle_block.o: $(TEST_DIR)/idle_block.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
