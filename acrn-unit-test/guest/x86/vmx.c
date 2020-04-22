@@ -88,14 +88,15 @@ static __unused void vmx_rqmid_29008_VMCALL_001(void)
 				:
 				: "a"(phy_addr)
 				: "cc", "memory");
-	ret += (exception_vector() == UD_VECTOR) && (exception_error_code() == 0);
+	ret += (exception_vector() == UD_VECTOR);
+
 	/*execute VMCALL*/
 	asm volatile (ASM_TRY("1f")
 				"vmcall\n\t"
 				"1:"
 				: "+a"(a), "=b"(b), "=c"(c), "=d"(d));
-	vmx_debug("\nexception_error_code = %d \n", exception_error_code());
-	ret += (exception_vector() == UD_VECTOR) && (exception_error_code() == 0);
+
+	ret += (exception_vector() == UD_VECTOR);
 	free_page(mem);
 	report("%s", (ret == 2), __FUNCTION__);
 }
@@ -110,22 +111,18 @@ static __unused void vmx_rqmid_28988_CR4_VMXE_initial_INIT_001(void)
 
 	volatile u16 ap_cr4 = 0;
 	volatile u32 *ptr = NULL;
-	volatile u32 bp_cr4 = 0;
+	/*Start up AP, refer to cstart64.S*/
 
-	ptr = (volatile u32 *)0x7000;
-	bp_cr4 = *ptr;
-	/*Startup check*/
-	vmx_debug("BP:\n\r");
-	vmx_debug("bp_greg_cr4:0x%x\n\r", bp_cr4);
-	/*Init check*/
+	/*Get CR4 register value after AP start INIT, refer to ASM/vmx_init.S*/
+
+	/*Check CR4.VMXE value*/
 	ptr = (volatile u32 *)0x7004;
 	ap_cr4 = *ptr;
 	vmx_debug("AP:\n\r");
 	vmx_debug("ap_greg_cr4:0x%x\n\r", ap_cr4);
-	bp_cr4 &= CR4_VMXE_BIT_MASK;
 	ap_cr4 &= CR4_VMXE_BIT_MASK;
 
-	report("%s", ((bp_cr4 == 0) && (ap_cr4 == 0)), __FUNCTION__);
+	report("%s", (ap_cr4 == 0), __FUNCTION__);
 }
 
 static void print_case_list(void)
