@@ -53,7 +53,6 @@ static atomic_t wait_ap;
 
 static volatile int target_ap_startup = 0;
 static atomic_t ap_run_nums;
-static atomic_t ap_finished;
 static atomic_t ap_chk;
 
 static void test_delay(u32 time)
@@ -154,7 +153,7 @@ static void arm_5ms_PIT(bool flag)
  * when set EFLAGS.IF, apic timer interrupt is delivered;
  * when clear EFLAGS.IF, apic timer interrupt is not delivered.
  */
-void hsi_rqmid_35949_generic_processor_features_eflags_interrupt_flag_001(void)
+static void hsi_rqmid_35949_generic_processor_features_eflags_interrupt_flag_001(void)
 {
 	u32 chk = 0;
 	u32 lvtt;
@@ -222,7 +221,7 @@ void hsi_rqmid_35949_generic_processor_features_eflags_interrupt_flag_001(void)
  * Summary: Under 64 bit mode on native board, BP send INIT IPI
  * and startup IPI to target AP, target AP should restart successfully.
  */
-static __unused void hsi_rqmid_35951_generic_processor_features_inter_processor_interrupt_001(void)
+static void hsi_rqmid_35951_generic_processor_features_inter_processor_interrupt_001(void)
 {
 	start_run_id = 35951;
 
@@ -261,7 +260,6 @@ static void hsi_rqmid_35950_generic_processor_features_x2apic_mode_001(void)
 	u64 base_org;
 	u8 ap_nums = fwcfg_get_nb_cpus() - 1;
 	atomic_set(&ap_chk, 0);
-	atomic_set(&ap_finished, 0);
 
 	start_run_id = 35950;
 
@@ -277,9 +275,8 @@ static void hsi_rqmid_35950_generic_processor_features_x2apic_mode_001(void)
 		}
 		wrmsr(MSR_IA32_APIC_BASE, base_org);
 	}
-	while (atomic_read(&ap_finished) < ap_nums) {
-		test_delay(1);
-	}
+	test_delay(100);
+
 	start_run_id = 0;
 	report("%s", ((bp_chk == 1) && (atomic_read(&ap_chk) == ap_nums)), __FUNCTION__);
 }
@@ -301,7 +298,6 @@ static void hsi_rqmid_35950_ap(void)
 		}
 		wrmsr(MSR_IA32_APIC_BASE, base_org);
 	}
-	atomic_inc(&ap_finished);
 }
 
 /*
@@ -446,8 +442,8 @@ static void print_case_list(void)
 	/*_x86_64__*/
 	printf("\t HSI test case list: \n\r");
 #ifdef IN_NATIVE
-	printf("\t Case ID: %d Case name: %s\n\r", 35951u, "HSI generic processor features \
-		inter processor interrupt 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 35951u, "HSI generic processor features " \
+		"inter processor interrupt 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 35950u, "HSI generic processor features x2apic mode 001");
 
 	printf("\t Case ID: %d Case name: %s\n\r", 35949u, "HSI generic processor features eflags interrupt flag 001");
