@@ -683,7 +683,7 @@ void setup_ring_env()
 }
 static void print_case_list(void)
 {
-	printf("machine check feature case list:\n\r");
+	printf("FPU feature case list:\n\r");
 #ifdef IN_NON_SAFETY_VM
 #ifdef __i386__
 	printf("\t Case ID:%d case name:%s\n\r", 32375, "shall expose deprecated cs ds 001");
