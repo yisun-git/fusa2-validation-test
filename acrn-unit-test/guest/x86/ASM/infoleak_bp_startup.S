@@ -1,7 +1,8 @@
+#include "../info_leakage.h"
 
 #ia32_spec_ctrl
-efer = 0x00000048
-mov $efer, %ecx
+spec_ctrl = IA32_SPEC_CTRL_MSR
+mov $spec_ctrl, %ecx
 rdmsr
-mov %eax, (0x8100)
+mov %eax, (BP_IA32_SPEC_CTRL_ADDR)
 

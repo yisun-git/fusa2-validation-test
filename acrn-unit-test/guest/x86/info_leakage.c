@@ -16,11 +16,8 @@
 #include "vmalloc.h"
 #include "alloc.h"
 #include "misc.h"
+#include "info_leakage.h"
 
-#define CPUID_BASIC_INFORMATION_07	0x07
-#define EXTENDED_STATE_SUBLEAF_0	0x00
-
-#define FEATURE_INFORMATION_BIT(SAL)	({ (0x1ul << SAL); })
 
 #ifdef	USE_DEBUG
 #define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
@@ -29,7 +26,6 @@
 #endif
 #define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 
-#define IA32_FLUSH_CMD_MSR 0x0000010B
 
 u64 *cache_test_array = NULL;
 u64 cache_l1_size = 0x800;	/* 16K/8 */
@@ -190,7 +186,8 @@ bool calc_flush_cmd(void)
  * @brief Case name: information leakage of SFR-08 ACRN hypervisor shall mitigate the L1TF
  * variant affecting VMM_benchmark_001
  *
- * Summary: This part verifies L1D FLUSH cache on hypervisor, target is to get benchmark data
+ * Summary: In 64bit mode, L1D FLUSH should support; Enable cache and paging, configure
+ * the memory type to WB, the read with L1D FLUSH should slower than without L1D FLUSH read.
  *
  */
 void infoleak_rqmid_33619_mitigate_L1TF_variant_affecting_VMM_benchmark_001(void)
@@ -218,7 +215,9 @@ void infoleak_rqmid_33619_mitigate_L1TF_variant_affecting_VMM_benchmark_001(void
 /**
  * @brief Case name: SFR-08 ACRN hypervisor shall mitigate the L1TF variant affecting VMM_002
  *
- * Summary: ACRN hypervisor shall expose IA32_FLUSH_CMD general support from any VM
+ * Summary: In 64bit mode, L1D FLUSH should support; Enable cache and paging, configure
+ * the memory type to WB, the read with L1D FLUSH should slower than without L1D FLUSH read.
+ * Compare delta average with benchmark data, should in (average-3 *stdev, average+3*stdev).
  *
  */
 void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_002(void)
@@ -259,7 +258,6 @@ void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_002(void)
 	return;
 }
 
-/*check CPUID.(EAX=7H,ECX=0):EDX EDX[28] got enumerated*/
 bool infoleak_L1D_FLUSH_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -280,9 +278,8 @@ bool infoleak_L1D_FLUSH_to_1(void)
 /**
  * @brief Case name: information leakage of L1D_Flush expose_001
  *
- * Summary:  ACRN hypervisor shall expose writeback and invalidate the L1 data cache and flush
- * microarchitectural structures to any VM in compliance with Chapter 5.1 and 5.5, SESCM.
- *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[28] is set to 1,Execute
+ * WRMSR instruction to write 1H to IA32_FLUSH_CMD[0] no exception
  */
 void infoleak_rqmid_33873_L1D_FLUSH_expose_001(void)
 {
@@ -303,16 +300,17 @@ static u32 bp_eax_ia32_spec_ctrl = 0xff;
 void read_bp_startup(void)
 {
 	//ia32_spec_ctrl
-	asm ("mov (0x8100) ,%%eax\n\t"
+	uint32_t *bp_spec_ctrl_addr = (uint32_t *)BP_IA32_SPEC_CTRL_ADDR;
+	asm ("mov %1, %%eax\n\t"
 		"mov %%eax,%0\n\t"
-		: "=q"(bp_eax_ia32_spec_ctrl));
+		: "=m"(bp_eax_ia32_spec_ctrl), "=m"(*bp_spec_ctrl_addr));
 }
 
 
 /**
  * @brief Case name: information leakage of IA32_SPEC_CTRL start-up_001
  *
- * Summary: ACRN hypervisor shall set initial guest IA32_SPEC_CTRL to 0 following start-up. 
+ * Summary: Get IA32_SPEC_CTRL at BP start-up, shall be 0 and same with SESCM definition.
  *
  */
 void infoleak_rqmid_33869_IA32_SPEC_CTRL_startup_001(void)
@@ -332,12 +330,10 @@ void infoleak_rqmid_33869_IA32_SPEC_CTRL_startup_001(void)
 }
 
 
-#define IA32_SPEC_CTRL_MSR	0x48
 /**
  * @brief Case name: information leakage of IBRS expose_001
  *
- * Summary: ACRN hypervisor shall expose indirect branch restricted speculation(IBRS) to
- * any VM in compliance with Chapter 2.4.1, SESCM.
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[26] is set to 1,IA32_SPEC_CTRL.bit[0]  can be set and clear under VM.
  *
  */
 void infoleak_rqmid_33872_IBRS_expose_001(void)
@@ -378,8 +374,8 @@ void infoleak_rqmid_33872_IBRS_expose_001(void)
 /**
  * @brief Case name: information leakage of SSBD expose_001
  *
- * Summary: ACRN hypervisor shall expose speculative store bypass disable (SSBD) to
- * any VM in compliance with Chapter 4.2.2 and 5.1, SESCM.
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[31] is set to 1,Execute
+ * WRMSR and RDMSR instruction to check IA32_SPEC_CTRL.bit[2].
  *
  */
 void infoleak_rqmid_33875_SSBD_expose_001(void)
@@ -420,8 +416,7 @@ void infoleak_rqmid_33875_SSBD_expose_001(void)
 /**
  * @brief Case name: information leakage of MDS mitigation mechnism expose_001
  *
- * Summary: ACRN hypervisor shall expose additional functionality that will flush
- * microarchitectural structures to any VM in compliance with MDS mitigation guide from Intel.
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[10] is set to 1,call VERW instruction has no exception.
  *
  */
 void infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001(void)
@@ -443,13 +438,10 @@ void infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001(void)
 	report("\t\t %s", 1, __FUNCTION__);
 }
 
-
-#define IA32_PRED_CMD_MSR	0x49
 /**
  * @brief Case name: information leakage of IBPB expose_001
  *
- * Summary: ACRN hypervisor shall expose indirect branch predictor barrier(IBPB) to
- * any VM in compliance with Chapter 2.4.3 and 5.4, SESCM.
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[26] is set to 1,Execute WRMSR instruction and no exception.
  *
  */
 void infoleak_rqmid_33874_IBPB_expose_001(void)
@@ -475,18 +467,21 @@ static u32 ap_eax_ia32_spec_ctrl = 0xff;
 void read_ap_init(void)
 {
 	//ia32_spec_ctrl
-	asm ("mov (0x8200),%%eax\n\t"
+
+	uint32_t *ap_spec_ctrl_addr = (uint32_t *)AP_IA32_SPEC_CTRL_ADDR;
+	asm ("mov %1, %%eax\n\t"
 		"mov %%eax, %0\n\t"
 		"mov $0xff, %%eax\n\t"
-		"mov %%eax, (0x8200)\n\t"
-		: "=q"(ap_eax_ia32_spec_ctrl));
+		"mov %%eax, %1\n\t"
+		: "=m"(ap_eax_ia32_spec_ctrl), "=m"(*ap_spec_ctrl_addr));
 }
 
 
 /**
  * @brief Case name: IA32_SPEC_CTRL INIT_001
  *
- * Summary: ACRN hypervisor shall keep guest IA32_SPEC_CTRL unchanged following INIT.
+ * Summary: After AP receives first INIT, set the value of IA32_SPEC_CTRL;
+ * Dump IA32_SPEC_CTRL value shall get the same value after second INIT.
  *
  */
 void infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001(void)
