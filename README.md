@@ -1,42 +1,42 @@
-Readme
+### Readme
 
-Fusa SRS Test building step.
+### Fusa SRS Test building step.
 
-1.setup your local building environment firstly. 
+#### 1.setup your local building environment firstly. 
 
     setup docker environment,pls refer https://wiki.ith.intel.com/display/OTCCWPQA/BKM%3A+Setup+ACRN+docker+environment
 
-2.get SRS code 
-""""
-    git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/acrn-validation-test.git  # branch: master
-""""
-3.get Hypervisor code
-""""
-    git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/acrn-sliced-mainline.git  # branch: master
-""""
-4.compile hypervisor
-"""
-    cd acrn-sliced-mainline/hypervisor
-    make clean
-    make RELEASE=0
-"""
+#### 2.get SRS code 
+
+    $git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/acrn-validation-test.git  # branch: master
+
+#### 3.get Hypervisor code
+
+    $git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/acrn-sliced-mainline.git  # branch: master
+
+#### 4.compile hypervisor
+
+    $cd acrn-sliced-mainline/hypervisor
+    $make clean
+    $make RELEASE=0
+
     path: acrn-sliced-mainline/hypervisor/build/acrn.32.out
 
-5. compile unit-test
-"""
-    sudo ./acrn-ebtool/docker_run.sh clearlinux_acrn:latest
-    cd acrn-validation-test
-    git reset --hard && git checkout master && git pull
-    mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
-    cp -r ../acrn-unit-test/* acrn-unit-test/
-    cd acrn-unit-test/guest/
-    ./make_all.sh
-"""
+#### 5.compile unit-test
+
+    $docker run -v -it clearlinux_acrn:latest /bin/bash
+    $cd acrn-validation-test
+    $git reset --hard && git checkout master && git pull
+    $mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+    $cp -r ../acrn-unit-test/* acrn-unit-test/
+    $cd acrn-unit-test/guest/
+    $./make_all.sh
+
     path: acrn-validation-test/github/acrn-unit-test/guest/x86/obj/
     (There are three kinds of files: *.bzimage for non-safety, *.raw for safety and *.elf for native)
 
-BTW, you need to append "ACRN_unit_test_image" after the unit test module for the unit-test to boot.
-
+### 6.BTW, you need to append "ACRN_unit_test_image" after the unit test module for the unit-test to boot.
+```
     40_custom_logic_partition_2_vm:
 
     menuentry 'ACRN SRS LOGICAL 2VMs' --class ubuntu --class gnu-linux --class gnu --class os $menuentry_id_option 'gnulinux-simple-e23c76ae-b06d-4a6e-ad42-46b8eedfd7d3' {
@@ -66,3 +66,4 @@ BTW, you need to append "ACRN_unit_test_image" after the unit test module for th
     echo 'Loading native unit test ...'
     multiboot /boot/xxx.elf
  }
+ ```
