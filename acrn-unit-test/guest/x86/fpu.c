@@ -228,7 +228,7 @@ void fpu_st_reg_unchanged_on_ap()
 	fpu_save = (volatile struct fxsave_struct *)INIT_UNCHANGED_FPU_SAVE_ADDR;
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xcU);/*clear TS EM*/
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
 
 	asm volatile("fninit");
 	/*load 1.1 to st7-st0 to change st7-st0 different*/
@@ -264,7 +264,7 @@ static void fpu_rqmid_32375_shall_expose_deprecated_cs_ds_001()
 	u8 fsave[96] = {0};
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xc);/*clear TS EM*/
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
 
 	asm volatile("fsave %0 \n\t"
 				 : "=m"(fsave) : : "memory");
@@ -296,7 +296,7 @@ static void fpu_rqmid_31656_execution_environment_protected_mode_FADD_pf_001()
 	u32 *op1;
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xcUL);/*clear TS EM*/
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
 
 	op1 = malloc(sizeof(u32));
 	set_page_control_bit((void *)op1, PAGE_PTE, PAGE_P_FLAG, 0, true);
@@ -360,7 +360,7 @@ static void fpu_rqmid_32366_st0_through_st7_states_following_INIT_001()
 	volatile struct fxsave_struct *fpu_save_unchanged;
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xcU);/*clear TS EM*/
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
 
 	/*check INIT value fistly*/
 	fpu_save_init = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
@@ -487,7 +487,7 @@ static void fpu_rqmid_31189_execution_environment_64_bit_Mode_FICOMP_PF_001()
 	u16 *op1;
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xc);/*clear TS EM*/
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
 
 	op1 = malloc(sizeof(u16));
 	set_page_control_bit((void *)op1, PAGE_PTE, PAGE_P_FLAG, 0, true);
@@ -522,7 +522,7 @@ static void fpu_rqmid_31436_execution_environment_64_bit_Mode_FIST_GP_001()
 	}
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xc);/*clear TS EM*/
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
 
 	op1 = malloc(sizeof(u16));
 	op1 = (u16 *)((ulong)(op1) ^ (1ULL << 63)); /*make non-canonical address*/
@@ -570,7 +570,7 @@ static void fpu_rqmid_31097_execution_environment_64_bit_Mode_FILD_MF_002()
 	u32 cr0;
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xc);/*clear TS EM*/
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
 	write_cr0(read_cr0() | (1 << 5));/*set cr0.ne*/
 
 	do_at_ring1(fpu_64_bit_mode_FILD_at_ring1, "");
@@ -624,7 +624,7 @@ static void fpu_rqmid_31551_execution_environment_64_bit_Mode_FSAVE_SS_010()
 	ulong eflags;
 
 	cr0 = read_cr0();
-	write_cr0(cr0 | ~0xc);/*clear EM TS*/
+	write_cr0(cr0 & ~0xc);/*clear EM TS*/
 
 	/*disable eflags AC check eflags[bit18]*/
 	asm volatile(
