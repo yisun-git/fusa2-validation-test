@@ -565,7 +565,7 @@ static void fpu_64_bit_mode_FILD_at_ring1()
  * Under 64 bit Mode and CPL1 ,
  * If there is a pending x87 FPU exception(FPU excp: hold), executing FILD shall generate #MF .
  */
-static void fpu_rqmid_31097_execution_environment_64_bit_Mode_FILD_MF_002()
+static void fpu_rqmid_31907_execution_environment_64_bit_Mode_FILD_MF_002()
 {
 	u32 cr0;
 
@@ -576,14 +576,19 @@ static void fpu_rqmid_31097_execution_environment_64_bit_Mode_FILD_MF_002()
 	do_at_ring1(fpu_64_bit_mode_FILD_at_ring1, "");
 	report("%s", ret_ring1,  __FUNCTION__);
 
-	//asm volatile("fninit");/*init the FPU exception status*/
+	asm volatile("fninit");/*init the FPU exception status*/
 	ret_ring1 = false;/*reset the ring1 result*/
 	write_cr0(cr0);
 }
-static volatile bool fpu_64bit_ss = false;
 static void fpu_64bit_ss_handler(struct ex_regs *regs)
 {
-	fpu_64bit_ss = true;
+	unsigned ex_val;
+	extern unsigned char fsave_ss_ret;
+	ex_val = regs->vector | (regs->error_code << 16) |
+			 (((regs->rflags >> 16) & 1) << 8);
+	asm("mov %0, %%gs:4" : : "r"(ex_val));
+
+	regs->rip = (unsigned long)&fsave_ss_ret;
 }
 static void fpu_64bit_mode_fsave_ss_at_ring3()
 {
@@ -592,18 +597,16 @@ static void fpu_64bit_mode_fsave_ss_at_ring3()
 	handler old;
 	u8 fsave[94] = {0};
 
-	level = read_cs() & 0x3;
-
 	old = handle_exception(SS_VECTOR, fpu_64bit_ss_handler);
 	op1 = (ulong)fsave;
 	op1 ^= (1UL << 63);/*make non-cannoical addr*/
 	asm volatile(
 		"fsave %0 \n\t"
-		"1:"
-		: "=m"(*(ulong *)op1)::);
+		"fsave_ss_ret:"
+		: "=m"(*(ulong *)op1));
 
-	ret_ring3 = fpu_64bit_ss && (level == 3);
-	fpu_64bit_ss = false;
+	level = read_cs() & 0x3;
+	ret_ring3 = (exception_vector() == SS_VECTOR) && (level == 3);
 	handle_exception(SS_VECTOR, old);
 }
 /*
@@ -635,7 +638,6 @@ static void fpu_rqmid_31551_execution_environment_64_bit_Mode_FSAVE_SS_010()
 		"push %%" R "ax\n\t"
 		"popf\n\t"
 		: "=m"(eflags) : :);
-
 
 	do_at_ring3(fpu_64bit_mode_fsave_ss_at_ring3, "");
 	report("%s", ret_ring3,  __FUNCTION__);
@@ -704,7 +706,7 @@ static void print_case_list(void)
 		   "execution environment 64 bit Mode FICOMP PF 001");
 	printf("\t Case ID:%d case name:%s\n\r", 31436,
 		   "execution environment 64 bit Mode FIST GP 001");
-	printf("\t Case ID:%d case name:%s\n\r", 31097,
+	printf("\t Case ID:%d case name:%s\n\r", 31907,
 		   "execution environment 64 bit Mode FIST MF 002");
 	printf("\t Case ID:%d case name:%s\n\r", 31551,
 		   "execution environment 64 bit Mode FSAVE SS 010");
@@ -731,7 +733,7 @@ int main(void)
 	fpu_rqmid_32381_cr0_mp_state_following_startup_001();
 	fpu_rqmid_31189_execution_environment_64_bit_Mode_FICOMP_PF_001();
 	fpu_rqmid_31436_execution_environment_64_bit_Mode_FIST_GP_001();
-	fpu_rqmid_31097_execution_environment_64_bit_Mode_FILD_MF_002();
+	fpu_rqmid_31907_execution_environment_64_bit_Mode_FILD_MF_002();
 	fpu_rqmid_31551_execution_environment_64_bit_Mode_FSAVE_SS_010();
 #endif
 #endif
