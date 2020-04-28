@@ -46,172 +46,6 @@ typedef struct fxsave_64bit_struct {
 	sse_xmm xmm_regs[8];
 } __attribute__((packed)) fxsave_64bit_t;
 
-volatile bool ret_ring1 = false;
-int do_at_ring1(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-				  "mov %%dx, %%ds\n\t"
-				  "mov %%dx, %%es\n\t"
-				  "mov %%dx, %%fs\n\t"
-				  "mov %%dx, %%gs\n\t"
-				  "mov %%" R "sp, %%" R "cx\n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "lea %[user_stack_top], %%" R "dx \n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "pushf" W "\n\t"
-				  "push" W " %[user_cs] \n\t"
-				  "push" W " $1f \n\t"
-				  "iret" W "\n"
-				  "1: \n\t"
-				  "push %%" R "cx\n\t"   /* save kernel SP */
-
-#ifndef __x86_64__
-				  "push %[arg]\n\t"
-#endif
-				  "call *%[fn]\n\t"
-#ifndef __x86_64__
-				  "pop %%ecx\n\t"
-#endif
-
-				  "pop %%" R "cx\n\t"
-				  "mov $1f, %%" R "dx\n\t"
-				  "int %[kernel_entry_vector]\n\t"
-				  ".section .text.entry \n\t"
-				  "kernel_entry1: \n\t"
-				  "mov %%" R "cx, %%" R "sp \n\t"
-				  "mov %[kernel_ds], %%cx\n\t"
-				  "mov %%cx, %%ds\n\t"
-				  "mov %%cx, %%es\n\t"
-				  "mov %%cx, %%fs\n\t"
-				  "mov %%cx, %%gs\n\t"
-				  "jmp *%%" R "dx \n\t"
-				  ".section .text\n\t"
-				  "1:\n\t"
-				  : [ret] "=&a" (ret)
-				  : [user_ds] "i" (OSSERVISE1_DS),
-				  [user_cs] "i" (OSSERVISE1_CS32),
-				  [user_stack_top]"m"(user_stack[sizeof user_stack]),
-				  [fn]"r"(fn),
-				  [arg]"D"(arg),
-				  [kernel_ds]"i"(KERNEL_DS),
-				  [kernel_entry_vector]"i"(0x21)
-				  : "rcx", "rdx");
-	return ret;
-}
-
-int do_at_ring2(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-				  "mov %%dx, %%ds\n\t"
-				  "mov %%dx, %%es\n\t"
-				  "mov %%dx, %%fs\n\t"
-				  "mov %%dx, %%gs\n\t"
-				  "mov %%" R "sp, %%" R "cx\n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "lea %[user_stack_top], %%" R "dx \n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "pushf" W "\n\t"
-				  "push" W " %[user_cs] \n\t"
-				  "push" W " $1f \n\t"
-				  "iret" W "\n"
-				  "1: \n\t"
-				  "push %%" R "cx\n\t"   /* save kernel SP */
-
-#ifndef __x86_64__
-				  "push %[arg]\n\t"
-#endif
-				  "call *%[fn]\n\t"
-#ifndef __x86_64__
-				  "pop %%ecx\n\t"
-#endif
-
-				  "pop %%" R "cx\n\t"
-				  "mov $1f, %%" R "dx\n\t"
-				  "int %[kernel_entry_vector]\n\t"
-				  ".section .text.entry \n\t"
-				  "kernel_entry2: \n\t"
-				  "mov %%" R "cx, %%" R "sp \n\t"
-				  "mov %[kernel_ds], %%cx\n\t"
-				  "mov %%cx, %%ds\n\t"
-				  "mov %%cx, %%es\n\t"
-				  "mov %%cx, %%fs\n\t"
-				  "mov %%cx, %%gs\n\t"
-				  "jmp *%%" R "dx \n\t"
-				  ".section .text\n\t"
-				  "1:\n\t"
-				  : [ret] "=&a" (ret)
-				  : [user_ds] "i" (OSSERVISE2_DS),
-				  [user_cs] "i" (OSSERVISE2_CS32),
-				  [user_stack_top]"m"(user_stack[sizeof user_stack]),
-				  [fn]"r"(fn),
-				  [arg]"D"(arg),
-				  [kernel_ds]"i"(KERNEL_DS),
-				  [kernel_entry_vector]"i"(0x22)
-				  : "rcx", "rdx");
-	return ret;
-}
-volatile bool ret_ring3 = false;
-int do_at_ring3(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-				  "mov %%dx, %%ds\n\t"
-				  "mov %%dx, %%es\n\t"
-				  "mov %%dx, %%fs\n\t"
-				  "mov %%dx, %%gs\n\t"
-				  "mov %%" R "sp, %%" R "cx\n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "lea %[user_stack_top], %%" R "dx \n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "pushf" W "\n\t"
-				  "push" W " %[user_cs] \n\t"
-				  "push" W " $1f \n\t"
-				  "iret" W "\n"
-				  "1: \n\t"
-				  /* save kernel SP */
-				  "push %%" R "cx\n\t"
-
-#ifndef __x86_64__
-				  "push %[arg]\n\t"
-#endif
-				  "call *%[fn]\n\t"
-#ifndef __x86_64__
-				  "pop %%ecx\n\t"
-#endif
-
-				  "pop %%" R "cx\n\t"
-				  "mov $1f, %%" R "dx\n\t"
-				  "int %[kernel_entry_vector]\n\t"
-				  ".section .text.entry \n\t"
-				  "kernel_entry: \n\t"
-				  "mov %%" R "cx, %%" R "sp \n\t"
-				  "mov %[kernel_ds], %%cx\n\t"
-				  "mov %%cx, %%ds\n\t"
-				  "mov %%cx, %%es\n\t"
-				  "mov %%cx, %%fs\n\t"
-				  "mov %%cx, %%gs\n\t"
-				  "jmp *%%" R "dx \n\t"
-				  ".section .text\n\t"
-				  "1:\n\t"
-				  : [ret] "=&a" (ret)
-				  : [user_ds] "i" (USER_DS),
-				  [user_cs] "i" (USER_CS),
-				  [user_stack_top]"m"(user_stack[sizeof user_stack]),
-				  [fn]"r"(fn),
-				  [arg]"D"(arg),
-				  [kernel_ds]"i"(KERNEL_DS),
-				  [kernel_entry_vector]"i"(0x23)
-				  : "rcx", "rdx");
-	return ret;
-}
 
 #ifdef __i386__
 void save_unchanged_reg()
@@ -534,7 +368,7 @@ static void fpu_rqmid_31436_execution_environment_64_bit_Mode_FIST_GP_001()
 	report("%s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
 	write_cr0(cr0);
 }
-static void fpu_64_bit_mode_FILD_at_ring1()
+static void fpu_64_bit_mode_FILD_at_ring1(const char *msg)
 {
 	u8 level;
 	float op1 = 1.2;
@@ -551,7 +385,7 @@ static void fpu_64_bit_mode_FILD_at_ring1()
 				 "1:"
 				 : : "m"(cw), "m"(op1), "m"(op2));
 
-	ret_ring1 = (exception_vector() == MF_VECTOR) && (level == 1);
+	ring1_ret = (exception_vector() == MF_VECTOR) && (level == 1);
 	asm volatile("fninit");
 }
 /*
@@ -574,10 +408,10 @@ static void fpu_rqmid_31907_execution_environment_64_bit_Mode_FILD_MF_002()
 	write_cr0(read_cr0() | (1 << 5));/*set cr0.ne*/
 
 	do_at_ring1(fpu_64_bit_mode_FILD_at_ring1, "");
-	report("%s", ret_ring1,  __FUNCTION__);
+	report("%s", ring1_ret,  __FUNCTION__);
 
 	asm volatile("fninit");/*init the FPU exception status*/
-	ret_ring1 = false;/*reset the ring1 result*/
+	ring1_ret = false;/*reset the ring1 result*/
 	write_cr0(cr0);
 }
 static void fpu_64bit_ss_handler(struct ex_regs *regs)
@@ -590,7 +424,7 @@ static void fpu_64bit_ss_handler(struct ex_regs *regs)
 
 	regs->rip = (unsigned long)&fsave_ss_ret;
 }
-static void fpu_64bit_mode_fsave_ss_at_ring3()
+static void fpu_64bit_mode_fsave_ss_at_ring3(const char *msg)
 {
 	u8 level;
 	ulong  op1;
@@ -606,7 +440,7 @@ static void fpu_64bit_mode_fsave_ss_at_ring3()
 		: "=m"(*(ulong *)op1));
 
 	level = read_cs() & 0x3;
-	ret_ring3 = (exception_vector() == SS_VECTOR) && (level == 3);
+	ring3_ret = (exception_vector() == SS_VECTOR) && (level == 3);
 	handle_exception(SS_VECTOR, old);
 }
 /*
@@ -640,7 +474,7 @@ static void fpu_rqmid_31551_execution_environment_64_bit_Mode_FSAVE_SS_010()
 		: "=m"(eflags) : :);
 
 	do_at_ring3(fpu_64bit_mode_fsave_ss_at_ring3, "");
-	report("%s", ret_ring3,  __FUNCTION__);
+	report("%s", ring3_ret,  __FUNCTION__);
 	/*restore flags back*/
 	asm volatile(
 		"mov %0, %%eax \n\t"
@@ -648,41 +482,11 @@ static void fpu_rqmid_31551_execution_environment_64_bit_Mode_FSAVE_SS_010()
 		"popf \n\t"
 		: : "m"(eflags) :);
 
-	ret_ring3 = false;/*reset the ring3 result*/
+	ring3_ret = false;/*reset the ring3 result*/
 	write_cr0(cr0);
 }
 #endif
 #endif
-/*
- *	@brief setup_ring
- *	Summary:setup ring environment:gdt entry and idt
- *		which will be used for CPU  switching to ring1, ring2,ring3
- */
-void setup_ring_env()
-{
-	/*for setup ring1 ring2 ring3 environment*/
-	extern unsigned char kernel_entry1;
-	set_idt_entry(0x21, &kernel_entry1, 1);
-	extern unsigned char kernel_entry2;
-	set_idt_entry(0x22, &kernel_entry2, 2);
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x23, &kernel_entry, 3);
-
-#ifdef __x86_64__
-	extern gdt_entry_t gdt64[];
-	*(u64 *)&gdt64[11] = RING1_CS64_GDT_DESC;
-	*(u64 *)&gdt64[12] = RING1_DS_GDT_DESC;
-	*(u64 *)&gdt64[13] = RING2_CS64_GDT_DESC;
-	*(u64 *)&gdt64[14] = RING2_DS_GDT_DESC;
-#elif __i386__
-	extern gdt_entry_t gdt32[];
-	*(u64 *)&gdt32[11] = RING1_CS32_GDT_DESC;
-	*(u64 *)&gdt32[12] = RING1_DS_GDT_DESC;
-	*(u64 *)&gdt32[13] = RING2_CS32_GDT_DESC;
-	*(u64 *)&gdt32[14] = RING2_DS_GDT_DESC;
-#endif
-
-}
 static void print_case_list(void)
 {
 	printf("FPU feature case list:\n\r");

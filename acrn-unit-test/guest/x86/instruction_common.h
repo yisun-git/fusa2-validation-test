@@ -115,12 +115,6 @@ typedef void (*gp_trigger_func)(void *data);
 
 #define SELECTOR_TI                                             0x4
 
-#define OSSERVISE1_CS32   0x59	//11 code
-#define OSSERVISE1_DS     0x61	//12 data
-
-#define OSSERVISE2_CS32   0x6A	//13
-#define OSSERVISE2_DS     0x72	//14
-/*----------------------------- ring1 ring2 end--------------------------*/
 
 /*----------------------------- avx_steven.h -------------------------*/
 #ifdef __x86_64__
@@ -1797,18 +1791,9 @@ bool of_flag_to_1(void);
 /* ---------------------- GP end-------------------- */
 /* ----------------------- common instruction(cpuid, cr*) end ---------------------------- */
 
-
-
-/*------------ring1 ring2--end----------------*/
-int do_at_ring1(void (*fn)(void), const char *arg);
-
-int do_at_ring2(void (*fn)(void), const char *arg);
-
 void config_gdt_description(u32 index, u8 dpl, u8 code_data_segmnet);
 
 void init_gdt_description(void);
-
-int do_at_ring3(void (*fn)(void), const char *arg);
 
 /*------------ring1 ring2--end----------------*/
 

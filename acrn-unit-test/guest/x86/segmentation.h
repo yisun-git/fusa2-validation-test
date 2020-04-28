@@ -85,13 +85,6 @@
 
 #define SELECTOR_TI                     0x4
 
-/* ring1 */
-#define OSSERVISE1_CS32                 0x59
-#define OSSERVISE1_DS                   0x61
-
-/* ring2 */
-#define OSSERVISE2_CS32                 0x6A
-#define OSSERVISE2_DS                   0x72
 
 #define	BASE1                           0x0
 #define	BASE2                           0x0

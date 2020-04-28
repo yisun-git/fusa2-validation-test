@@ -150,6 +150,14 @@ tss64_t;
 #define USER_CS     USER_CS32
 #endif
 
+/* ring1 */
+#define OSSERVISE1_CS32                 0x59 /*code sel:11*/
+#define OSSERVISE1_DS                   0x61 /*data sel:12*/
+
+/* ring2 */
+#define OSSERVISE2_CS32                 0x6A /*code sel:13*/
+#define OSSERVISE2_DS                   0x72 /*data sel:14*/
+
 #define FIRST_SPARE_SEL 0x50
 #define TSS_MAIN 0x80
 

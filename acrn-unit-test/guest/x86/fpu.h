@@ -16,11 +16,4 @@
 
 #define INVALID_ADDR_OUT_PHY			(3UL << 30)
 
-#define RING1_CS32_GDT_DESC (0x00cfbb000000ffffULL)
-#define RING1_CS64_GDT_DESC	(0x00afbb000000ffffULL)
-#define RING1_DS_GDT_DESC	(0x00cfb3000000ffffULL)
-
-#define RING2_CS32_GDT_DESC (0x00cfdb000000ffffULL)
-#define RING2_CS64_GDT_DESC (0x00afdb000000ffffULL)
-#define RING2_DS_GDT_DESC	(0x00cfd3000000ffffULL)
 #endif

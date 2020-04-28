@@ -12,180 +12,7 @@
 
 #define CPUID_1_EDX_MMX_SUPPROT	(1UL << 23)
 
-#define RING1_CS32_GDT_DESC (0x00cfbb000000ffffULL)
-#define RING1_CS64_GDT_DESC	(0x00afbb000000ffffULL)
-#define RING1_DS_GDT_DESC	(0x00cfb3000000ffffULL)
 
-#define RING2_CS32_GDT_DESC (0x00cfdb000000ffffULL)
-#define RING2_CS64_GDT_DESC (0x00afdb000000ffffULL)
-#define RING2_DS_GDT_DESC	(0x00cfd3000000ffffULL)
-
-int do_at_ring1(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-				  "mov %%dx, %%ds\n\t"
-				  "mov %%dx, %%es\n\t"
-				  "mov %%dx, %%fs\n\t"
-				  "mov %%dx, %%gs\n\t"
-				  "mov %%" R "sp, %%" R "cx\n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "lea %[user_stack_top], %%" R "dx \n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "pushf" W "\n\t"
-				  "push" W " %[user_cs] \n\t"
-				  "push" W " $1f \n\t"
-				  "iret" W "\n"
-				  "1: \n\t"
-				  "push %%" R "cx\n\t"   /* save kernel SP */
-
-#ifndef __x86_64__
-				  "push %[arg]\n\t"
-#endif
-				  "call *%[fn]\n\t"
-#ifndef __x86_64__
-				  "pop %%ecx\n\t"
-#endif
-
-				  "pop %%" R "cx\n\t"
-				  "mov $1f, %%" R "dx\n\t"
-				  "int %[kernel_entry_vector]\n\t"
-				  ".section .text.entry \n\t"
-				  "kernel_entry1: \n\t"
-				  "mov %%" R "cx, %%" R "sp \n\t"
-				  "mov %[kernel_ds], %%cx\n\t"
-				  "mov %%cx, %%ds\n\t"
-				  "mov %%cx, %%es\n\t"
-				  "mov %%cx, %%fs\n\t"
-				  "mov %%cx, %%gs\n\t"
-				  "jmp *%%" R "dx \n\t"
-				  ".section .text\n\t"
-				  "1:\n\t"
-				  : [ret] "=&a" (ret)
-				  : [user_ds] "i" (OSSERVISE1_DS),
-				  [user_cs] "i" (OSSERVISE1_CS32),
-				  [user_stack_top]"m"(user_stack[sizeof user_stack]),
-				  [fn]"r"(fn),
-				  [arg]"D"(arg),
-				  [kernel_ds]"i"(KERNEL_DS),
-				  [kernel_entry_vector]"i"(0x21)
-				  : "rcx", "rdx");
-	return ret;
-}
-
-int do_at_ring2(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-				  "mov %%dx, %%ds\n\t"
-				  "mov %%dx, %%es\n\t"
-				  "mov %%dx, %%fs\n\t"
-				  "mov %%dx, %%gs\n\t"
-				  "mov %%" R "sp, %%" R "cx\n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "lea %[user_stack_top], %%" R "dx \n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "pushf" W "\n\t"
-				  "push" W " %[user_cs] \n\t"
-				  "push" W " $1f \n\t"
-				  "iret" W "\n"
-				  "1: \n\t"
-				  "push %%" R "cx\n\t"   /* save kernel SP */
-
-#ifndef __x86_64__
-				  "push %[arg]\n\t"
-#endif
-				  "call *%[fn]\n\t"
-#ifndef __x86_64__
-				  "pop %%ecx\n\t"
-#endif
-
-				  "pop %%" R "cx\n\t"
-				  "mov $1f, %%" R "dx\n\t"
-				  "int %[kernel_entry_vector]\n\t"
-				  ".section .text.entry \n\t"
-				  "kernel_entry2: \n\t"
-				  "mov %%" R "cx, %%" R "sp \n\t"
-				  "mov %[kernel_ds], %%cx\n\t"
-				  "mov %%cx, %%ds\n\t"
-				  "mov %%cx, %%es\n\t"
-				  "mov %%cx, %%fs\n\t"
-				  "mov %%cx, %%gs\n\t"
-				  "jmp *%%" R "dx \n\t"
-				  ".section .text\n\t"
-				  "1:\n\t"
-				  : [ret] "=&a" (ret)
-				  : [user_ds] "i" (OSSERVISE2_DS),
-				  [user_cs] "i" (OSSERVISE2_CS32),
-				  [user_stack_top]"m"(user_stack[sizeof user_stack]),
-				  [fn]"r"(fn),
-				  [arg]"D"(arg),
-				  [kernel_ds]"i"(KERNEL_DS),
-				  [kernel_entry_vector]"i"(0x22)
-				  : "rcx", "rdx");
-	return ret;
-}
-
-volatile bool ret_ring3 = false;
-int do_at_ring3(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-				  "mov %%dx, %%ds\n\t"
-				  "mov %%dx, %%es\n\t"
-				  "mov %%dx, %%fs\n\t"
-				  "mov %%dx, %%gs\n\t"
-				  "mov %%" R "sp, %%" R "cx\n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "lea %[user_stack_top], %%" R "dx \n\t"
-				  "push" W " %%" R "dx \n\t"
-				  "pushf" W "\n\t"
-				  "push" W " %[user_cs] \n\t"
-				  "push" W " $1f \n\t"
-				  "iret" W "\n"
-				  "1: \n\t"
-				  /* save kernel SP */
-				  "push %%" R "cx\n\t"
-
-#ifndef __x86_64__
-				  "push %[arg]\n\t"
-#endif
-				  "call *%[fn]\n\t"
-#ifndef __x86_64__
-				  "pop %%ecx\n\t"
-#endif
-
-				  "pop %%" R "cx\n\t"
-				  "mov $1f, %%" R "dx\n\t"
-				  "int %[kernel_entry_vector]\n\t"
-				  ".section .text.entry \n\t"
-				  "kernel_entry: \n\t"
-				  "mov %%" R "cx, %%" R "sp \n\t"
-				  "mov %[kernel_ds], %%cx\n\t"
-				  "mov %%cx, %%ds\n\t"
-				  "mov %%cx, %%es\n\t"
-				  "mov %%cx, %%fs\n\t"
-				  "mov %%cx, %%gs\n\t"
-				  "jmp *%%" R "dx \n\t"
-				  ".section .text\n\t"
-				  "1:\n\t"
-				  : [ret] "=&a" (ret)
-				  : [user_ds] "i" (USER_DS),
-				  [user_cs] "i" (USER_CS),
-				  [user_stack_top]"m"(user_stack[sizeof user_stack]),
-				  [fn]"r"(fn),
-				  [arg]"D"(arg),
-				  [kernel_ds]"i"(KERNEL_DS),
-				  [kernel_entry_vector]"i"(0x20)
-				  : "rcx", "rdx");
-	return ret;
-}
 #ifdef __x86_64__
 /*
  * @brief case name: General support_64 bit Mode_PADDSW_#PF_001
@@ -195,7 +22,6 @@ int do_at_ring3(void (*fn)(void), const char *arg)
  *	 Under 64 bit Mode , Rebulid the paging structure, to create the page fault(pgfault: occur),
  *	executing PADDSW shall generate #PF .
  */
-
 static void mmx_rqmid_30966_acrn_general_support_64bit_mode_paddsw_pf_001(void)
 {
 	int add2 = -8;
@@ -221,7 +47,7 @@ static void mmx_rqmid_30966_acrn_general_support_64bit_mode_paddsw_pf_001(void)
  *	 Under 64 bit Mode and CPL1 , The address of memory is Non-canonical(Ad. Cann.: non mem),
  *	 executing MOVD shall generate #GP .
  */
-static void  mmx_rqmid_31041_acrn_general_support_64bit_mode_movd_gp_002(void)
+static void  mmx_rqmid_31041_acrn_general_support_64bit_mode_movd_gp_002(const char *msg)
 {
 	int *op1, op2 = -8;
 	int level;
@@ -251,7 +77,7 @@ static void  mmx_rqmid_31041_acrn_general_support_64bit_mode_movd_gp_002(void)
  *	 and tests it when executing x87 FPU/MMX/SSE/SSE2/SSE3/SSSE3/SSE4 instructions(CR0.TS: 1),
  *	 executing PMULHW shall generate #NM .
  */
-static void  mmx_rqmid_31066_acrn_general_support_64bit_mode_pmulhw_nm_004(void)
+static void  mmx_rqmid_31066_acrn_general_support_64bit_mode_pmulhw_nm_004(const char *msg)
 {
 	int op1 = -1;
 	int level;
@@ -272,7 +98,7 @@ static void  mmx_rqmid_31066_acrn_general_support_64bit_mode_pmulhw_nm_004(void)
  *	executing MOVQ shall generate #UD .
  *
  */
-static void mmx_rqmid_31185_acrn_general_support_64bit_mode_movq_ud_003(void)
+static void mmx_rqmid_31185_acrn_general_support_64bit_mode_movq_ud_003(const char *msg)
 {
 	int op1 = -8;
 	int level;
@@ -336,7 +162,7 @@ static void mmx_rqmid_31094_acrn_general_support_protected_mode_movq_pf_001(void
 
 	report("%s", exception_vector() == PF_VECTOR, __FUNCTION__);
 }
-static void  mmx_movq_ac_at_ring3()
+static void  mmx_movq_ac_at_ring3(const char *msg)
 {
 	int *op1;
 	u8 level;
@@ -350,7 +176,7 @@ static void  mmx_movq_ac_at_ring3()
 				 ::"m"(*op1));
 
 	level = read_cs() & 0x3;
-	ret_ring3 = (exception_vector() == AC_VECTOR) && (level == 3);
+	ring3_ret = (exception_vector() == AC_VECTOR) && (level == 3);
 }
 /*
  * @brief case name: General support_Protected Mode_MOVQ_#AC_001
@@ -390,7 +216,7 @@ static void mmx_rqmid_31096_acrn_general_support_protected_mode_movq_ac_001(void
 		:: "m"(eflags)
 	);
 
-	report("%s", ret_ring3, __FUNCTION__);
+	report("%s", ring3_ret, __FUNCTION__);
 	write_cr0(cr0);
 }
 /*
@@ -403,7 +229,7 @@ static void mmx_rqmid_31096_acrn_general_support_protected_mode_movq_ac_001(void
  *	tests it when executing x87 FPU/MMX/SSE/SSE2/SSE3/SSSE3/SSE4 instructions(CR0.TS: 1),
  *	executing MOVD shall generate #NM .
  */
-static void mmx_rqmid_31117_acrn_general_support_protected_mode_movd_nm_001(void)
+static void mmx_rqmid_31117_acrn_general_support_protected_mode_movd_nm_001(const char *msg)
 {
 	int op1 = -8;
 	int level;
@@ -418,36 +244,6 @@ static void mmx_rqmid_31117_acrn_general_support_protected_mode_movd_nm_001(void
 
 }
 #endif
-/*
- *	@brief setup_ring
- *	Summary:setup ring environment:gdt entry and idt
- *		which will be used for CPU  switching to ring1, ring2,ring3
- */
-void setup_ring_env()
-{
-	/*for setup ring1 ring2 ring3 environment*/
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x20, &kernel_entry, 3);
-	extern unsigned char kernel_entry1;
-	set_idt_entry(0x21, &kernel_entry1, 1);
-	extern unsigned char kernel_entry2;
-	set_idt_entry(0x22, &kernel_entry2, 2);
-
-#ifdef __x86_64__
-	extern gdt_entry_t gdt64[];
-	*(u64 *)&gdt64[11] = RING1_CS64_GDT_DESC;
-	*(u64 *)&gdt64[12] = RING1_DS_GDT_DESC;
-	*(u64 *)&gdt64[13] = RING2_CS64_GDT_DESC;
-	*(u64 *)&gdt64[14] = RING2_DS_GDT_DESC;
-#elif __i386__
-	extern gdt_entry_t gdt32[];
-	*(u64 *)&gdt32[11] = RING1_CS32_GDT_DESC;
-	*(u64 *)&gdt32[12] = RING1_DS_GDT_DESC;
-	*(u64 *)&gdt32[13] = RING2_CS32_GDT_DESC;
-	*(u64 *)&gdt32[14] = RING2_DS_GDT_DESC;
-#endif
-
-}
 
 int main()
 {

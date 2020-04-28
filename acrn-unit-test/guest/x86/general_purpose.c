@@ -141,7 +141,7 @@ static void mov_gp_008(void)
 		: "r"(r_a));
 }
 
-static void gp_rqmid_31318_data_transfer_mov_gp_008(void)
+static void gp_rqmid_31318_data_transfer_mov_gp_008(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -168,7 +168,7 @@ static void mov_gp_009(void)
 		: "r"(r_a));
 }
 
-static void  gp_rqmid_31321_data_transfer_mov_gp_009(void)
+static void  gp_rqmid_31321_data_transfer_mov_gp_009(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -197,7 +197,7 @@ static void mov_gp_010(void)
 		: "m"(*(creat_non_canon_add())));
 }
 
-static void  gp_rqmid_31324_data_transfer_mov_gp_010(void)
+static void  gp_rqmid_31324_data_transfer_mov_gp_010(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -224,7 +224,7 @@ static void mov_gp_011(void)
 		: "r"(r_a));
 }
 
-static void ring3_mov_gp_011(void)
+static void ring3_mov_gp_011(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -257,7 +257,7 @@ static void mov_gp_012(void)
 		: "m"(*(creat_non_canon_add())));
 }
 
-static void  ring3_mov_gp_012(void)
+static void  ring3_mov_gp_012(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -310,7 +310,7 @@ static void  gp_rqmid_31333_data_transfer_mov_ud_001(void)
  *  If attempt is made to load the CS register(CSLoad: true),
  *  executing MOV shall generate #UD.
  */
-static void  gp_rqmid_31336_data_transfer_mov_ud_002(void)
+static void  gp_rqmid_31336_data_transfer_mov_ud_002(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -329,7 +329,7 @@ static void  gp_rqmid_31336_data_transfer_mov_ud_002(void)
  *  If attempt is made to load the CS register(CSLoad: true),
  *  executing MOV shall generate #UD.
  */
-static void  gp_rqmid_31339_data_transfer_mov_ud_003(void)
+static void  gp_rqmid_31339_data_transfer_mov_ud_003(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -348,7 +348,7 @@ static void  gp_rqmid_31339_data_transfer_mov_ud_003(void)
  *  If attempt is made to load the CS register(CSLoad: true),
  *  executing MOV shall generate #UD.
  */
-static void  gp_rqmid_31342_data_transfer_mov_ud_004(void)
+static void  gp_rqmid_31342_data_transfer_mov_ud_004(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -488,7 +488,7 @@ static void  gp_rqmid_31609_data_transfer_mov_db_001(void)
  *  executing MOV shall generate #GP.
  */
 ulong dr7_check_bit;
-static void  ring1_mov_gp_035(void)
+static void  ring1_mov_gp_035(const char *msg)
 {
 	gp_trigger_func fun;
 	int level;
@@ -826,7 +826,7 @@ __unused static void lss_gp_132(void)
 		: : "r"(creat_non_canon_add()));
 }
 
-static void  ring3_lss_gp_132(void)
+static void  ring3_lss_gp_132(const char *msg)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -838,7 +838,7 @@ static void  ring3_lss_gp_132(void)
 	report("%s Execute Instruction: LFS", ret == true, __FUNCTION__);
 }
 
-static void  gp_rqmid_31751_segment_instruction_lss_gp_132(void)
+static void  gp_rqmid_31751_segment_instruction_lss_gp_132(const char *msg)
 {
 	cr0_am_to_0();
 
@@ -1123,12 +1123,13 @@ int main(void)
 {
 	printf("----------eflag = %lx\n", read_rflags());
 
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x20, &kernel_entry, 3);
 	extern unsigned char kernel_entry1;
 	set_idt_entry(0x21, &kernel_entry1, 1);
 	extern unsigned char kernel_entry2;
 	set_idt_entry(0x22, &kernel_entry2, 2);
+	extern unsigned char kernel_entry;
+	set_idt_entry(0x23, &kernel_entry, 3);
+
 	setup_idt();
 	setup_vm();
 	handle_exception(DE_VECTOR, de_exception_hander);

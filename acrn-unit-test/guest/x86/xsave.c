@@ -99,62 +99,6 @@ u16 *creat_non_aligned_add(void)
 }
 
 
-int do_at_ring3(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-		"mov %%dx, %%ds\n\t"
-		"mov %%dx, %%es\n\t"
-		"mov %%dx, %%fs\n\t"
-		"mov %%dx, %%gs\n\t"
-		"mov %%" R "sp, %%" R "cx\n\t"
-		"push" W " %%" R "dx \n\t"
-		"lea %[user_stack_top], %%" R "dx \n\t"
-		"push" W " %%" R "dx \n\t"
-		"pushf" W "\n\t"
-		"push" W " %[user_cs] \n\t"
-		"push" W " $1f \n\t"
-		"iret" W "\n"
-		"1: \n\t"
-		"push %%" R "cx\n\t"   /* save kernel SP */
-
-#ifndef __x86_64__
-		"push %[arg]\n\t"
-#endif
-		"call *%[fn]\n\t"
-#ifndef __x86_64__
-		"pop %%ecx\n\t"
-#endif
-
-		"pop %%" R "cx\n\t"
-		"mov $1f, %%" R "dx\n\t"
-		"int %[kernel_entry_vector]\n\t"
-		".section .text.entry \n\t"
-		"kernel_entry: \n\t"
-		"mov %%" R "cx, %%" R "sp \n\t"
-		"mov %[kernel_ds], %%cx\n\t"
-		"mov %%cx, %%ds\n\t"
-		"mov %%cx, %%es\n\t"
-		"mov %%cx, %%fs\n\t"
-		"mov %%cx, %%gs\n\t"
-		"jmp *%%" R "dx \n\t"
-		".section .text\n\t"
-		"1:\n\t"
-		: [ret] "=&a" (ret)
-		: [user_ds] "i" (USER_DS),
-		[user_cs] "i" (USER_CS),
-		[user_stack_top]"m"(user_stack[sizeof user_stack]),
-		[fn]"r"(fn),
-		[arg]"D"(arg),
-		[kernel_ds]"i"(KERNEL_DS),
-		[kernel_entry_vector]"i"(0x20)
-		: "rcx", "rdx");
-	return ret;
-}
-
-
 /**Function about XSAVE feature: **/
 static __unused int xsetbv_checking(u32 index, u64 value)
 {
@@ -561,7 +505,7 @@ static __unused void xsave_rqmid_28393_general_support_009(void)
  *	    If the address of the XSAVE area is not 64-byte aligned, a general-protection exception (#GP) occurs;
  *	    If CR0.AM = 1, CPL = 3, and EFLAGS.AC =1, an alignment-check exception (#AC) may occur instead of #GP.
  */
-static __unused void xsave_rqmid_28395_general_support_012_subfun(void)
+static __unused void xsave_rqmid_28395_general_support_012_subfun(const char *msg)
 {
 	u32 r_eax = 0;
 	u32 r_edx = 0;
@@ -1330,7 +1274,7 @@ static __unused void xsave_rqmid_22867_expose_avx_support()
 }
 
 
-static __unused void test_xsetbv_at_ring3(void)
+static __unused void test_xsetbv_at_ring3(const char *msg)
 {
 	uint64_t test_bits;
 	test_bits = STATE_X87 | STATE_SSE;
@@ -1344,7 +1288,7 @@ static __unused void test_xsetbv_at_ring3(void)
  * Summary:Use XGETBV set XCR0= 0x3 at ring0 mode, can set succes;
  *         Use XGETBV set XCR0= 0x3 at ring3 mode, can not set ,cause #GP exception.
  */
-static __unused void xsave_rqmid_22844_xsetbv_at_ring3()
+static __unused void xsave_rqmid_22844_xsetbv_at_ring3(void)
 {
 	uint64_t test_bits;
 	u32 i = 0;
@@ -1733,7 +1677,7 @@ int main(void)
 {
 	extern unsigned char kernel_entry;
 	setup_idt();
-	set_idt_entry(0x20, &kernel_entry, 3);
+	set_idt_entry(0x23, &kernel_entry, 3);
 	asm volatile("fninit");
 
 	print_case_list();
