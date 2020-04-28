@@ -93,7 +93,6 @@ bool calc_flush_cmd(void)
 	u64 tsc_delay_total1;
 	u64 tsc_delay2[test_time];
 	u64 tsc_delay_total2;
-	u64 t[2];
 	struct cpuid cpuid7;
 	cpuid7 = cpuid_indexed(7, 0);
 
@@ -104,16 +103,7 @@ bool calc_flush_cmd(void)
 		return false;
 	}
 
-	t[0] = asm_read_tsc();
-	while (1)
-	{
-		t[1] = asm_read_tsc();
-		if ((t[1] - t[0]) > 5000000000)
-		{
-			break;
-		}
-	}
-
+	/* clear cr0.cd[bit30] and cr0.nw[bit29] */
 	uint32_t cr0 = read_cr0();
 	cr0 = cr0 & 0x9fffffff;
 	write_cr0(cr0);
@@ -159,6 +149,7 @@ bool calc_flush_cmd(void)
 	}
 	tsc_average = tsc_total / (test_time - 1);
 
+	/* calculate variance of tsc_average */
 	u64 tsc_stdevt = 0;
 	u64 tsc_stdev[test_time];
 	for (j = 0; j < (test_time - 1); j++)
@@ -168,6 +159,7 @@ bool calc_flush_cmd(void)
 	}
 	tsc_stdevv = tsc_stdevt / (test_time - 1);
 
+	/* calculate the square root of tsc_stdevv,get standard variance */
 	i = 1;
 	while (1)
 	{
