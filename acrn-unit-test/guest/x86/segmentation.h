@@ -37,6 +37,7 @@
 /* GDT description info */
 #define SEGMENT_LIMIT                                           0xFFFF
 #define SEGMENT_LIMIT2                                          0xF
+#define SEGMENT_LIMIT_ALL										0xFFFFF
 
 #define SEGMENT_PRESENT_SET                                     0x80
 #define SEGMENT_PRESENT_CLEAR                                   0x00
@@ -58,8 +59,8 @@
 
 #define SEGMENT_TYPE_CODE_EXE_ONLY                              0x8
 #define SEGMENT_TYPE_CODE_EXE_ONLY_ACCESSED                     0x9
-#define SEGMENT_TYPE_CODE_EXE_RAED                              0xA
-#define SEGMENT_TYPE_CODE_EXE_RAED_ACCESSED                     0xB
+#define SEGMENT_TYPE_CODE_EXE_READ                              0xA
+#define SEGMENT_TYPE_CODE_EXE_READ_ACCESSED                     0xB
 #define SEGMENT_TYPE_CODE_EXE_ONLY_CONFORMING                   0xC
 #define SEGMENT_TYPE_CODE_EXE_ONLY_CONFORMING_ACCESSED          0xD
 #define SEGMENT_TYPE_CODE_EXE_READ_CONFORMING                   0xE
@@ -74,7 +75,7 @@
 #define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TRAPGATE          0xF
 
 #define GRANULARITY_SET                                         0x80
-#define GRANULARITY_clear                                       0x00
+#define GRANULARITY_CLEAR                                       0x00
 #define DEFAULT_OPERATION_SIZE_16BIT_SEGMENT                    0x00
 #define DEFAULT_OPERATION_SIZE_32BIT_SEGMENT                    0x40
 #define L_64_BIT_CODE_SEGMENT                                   0x20
@@ -93,9 +94,10 @@
 
 #define GRANULARITY                     0x1
 
+#define SEGMENT_NOT_PRESENT             0x0
 #define SEGMENT_PRESENT                 0x1
-#define DESCRIPTOR_TYPE_SYS_SEGMENT     0x1
-#define DESCRIPTOR_TYPE_CODE_DATE_SEG   0x0
+#define DESCRIPTOR_TYPE_SYS_SEGMENT     0x0
+#define DESCRIPTOR_TYPE_CODE_DATE_SEG   0x1
 #define BIT64_CODE_SEGMENT              0x1
 #define DEFAULT_OPERtion_16_BIT_SEG     0
 #define DEFAULT_OPERtion_32_BIT_SEG     1
@@ -240,5 +242,16 @@ struct task_gate {
 #define NON_ZERO_UPPER_TYPE_IN_CALL_GATE_DESCRIPTOR_GENERATES_146860
 #define D_AND_L_BITS_IN_SEGMENT_DESCRIPTOR_GENERATE_146849
 #define EXPOSE_FS_GS_MSRS_146120
+
+struct lseg_st {
+	u32  offset;
+	int16_t selector;
+};
+
+
+struct lseg_st64 {
+	u64  offset;
+	int16_t selector;
+};
 
 #endif
