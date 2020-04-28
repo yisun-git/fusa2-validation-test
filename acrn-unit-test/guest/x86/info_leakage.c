@@ -103,7 +103,7 @@ bool calc_flush_cmd(void)
 		return false;
 	}
 
-	/* clear cr0.cd[bit30] and cr0.nw[bit29] */
+	/* clear cr0.cd[bit30] and cr0.nw[bit29], enable cache and write-back or write-through */
 	uint32_t cr0 = read_cr0();
 	cr0 = cr0 & 0x9fffffff;
 	write_cr0(cr0);
