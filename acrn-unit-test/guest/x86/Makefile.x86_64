@@ -6,6 +6,9 @@ COMMON_CFLAGS += -mno-red-zone -mno-sse -mno-sse2
 cflatobjs += lib/x86/setjmp64.o
 cflatobjs += lib/x86/intel-iommu.o
 cflatobjs += lib/x86/usermode.o
+cflatobjs += lib/pci_util.o
+cflatobjs += lib/pci_msi.o
+cflatobjs += lib/e1000e.o
 
 tests = $(TEST_DIR)/access.flat $(TEST_DIR)/apic.flat \
 	  $(TEST_DIR)/emulator.flat $(TEST_DIR)/idt_test.flat \
@@ -23,5 +26,6 @@ tests += $(TEST_DIR)/hyperv_clock.flat
 tests += $(TEST_DIR)/smx.flat
 tests += $(TEST_DIR)/pt.flat
 tests += $(TEST_DIR)/sgx.flat
+tests += $(TEST_DIR)/pci.flat
 
 include $(SRCDIR)/$(TEST_DIR)/Makefile.common

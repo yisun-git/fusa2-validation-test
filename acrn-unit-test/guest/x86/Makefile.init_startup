@@ -110,3 +110,8 @@ $(TEST_DIR)/mem_cache.o: $(TEST_DIR)/mem_cache.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+$(TEST_DIR)/pci.o:CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/pci.o:$(TEST_DIR)/pci.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
