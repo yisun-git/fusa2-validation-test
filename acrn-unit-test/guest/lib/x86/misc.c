@@ -38,9 +38,24 @@ void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32
 	u32 pt_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_PTE);
 	pteval_t *pml4 = (pteval_t *)cr3;
 
-	pteval_t *pdpte = (pteval_t *)(pml4[pml4_offset] & PAGE_MASK);
-	pteval_t *pd = (pteval_t *)(pdpte[pdpte_offset] & PAGE_MASK);
-	pteval_t *pt = (pteval_t *)(pd[pd_offset] & PAGE_MASK);
+	pteval_t *pdpte;
+	pteval_t *pd;
+	pteval_t *pt;
+
+	pdpte = (pteval_t *)(pml4[pml4_offset] & PAGE_MASK);
+	if ((pdpte[pd_offset] & (1 << PAGE_PS_FLAG)) &&
+		((level == PAGE_PDE) || (level == PAGE_PTE))) {
+		level = PAGE_PDPTE;
+	}
+	else {
+		pd = (pteval_t *)(pdpte[pdpte_offset] & PAGE_MASK);
+		if ((pd[pd_offset] & (1 << PAGE_PS_FLAG)) && level == PAGE_PTE) {
+			level = PAGE_PDE;
+		}
+		else {
+			pt = (pteval_t *)(pd[pd_offset] & PAGE_MASK);
+		}
+	}
 
 	switch (level) {
 	case PAGE_PML4:
@@ -77,8 +92,14 @@ void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32
 	u32 pde_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_PDE);
 	u32 pte_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_PTE);
 	pteval_t *pde = (pgd_t *)cr3;
+	pteval_t *pte;
 
-	pteval_t *pte = (pteval_t *)(pde[pde_offset] & PAGE_MASK);
+	if ((pde[pde_offset] & (1 << PAGE_PS_FLAG)) && (level == PAGE_PTE)) {
+		level = PAGE_PDE;
+	}
+	else {
+		pte = (pteval_t *)(pde[pde_offset] & PAGE_MASK);
+	}
 
 	if (level == PAGE_PDE) {
 		if (value == 1) {
