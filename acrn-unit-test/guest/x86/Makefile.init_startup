@@ -102,3 +102,11 @@ $(TEST_DIR)/idle_block.o: $(TEST_DIR)/idle_block.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/sse.o: CFLAGS += -DAP_INIT_CHECK=\"sse_init.S\"
+$(TEST_DIR)/sse.o: CFLAGS += -DBP_STARTUP_CHECK=\"sse_startup.S\"
+$(TEST_DIR)/sse.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/sse.o: $(TEST_DIR)/sse.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
