@@ -55,14 +55,14 @@ static volatile uint32_t ap_cr4 = 0x0U;
 void save_unchanged_reg(void)
 {
 	sse_debug("\n%s\n", __FUNCTION__);
-	bp_cr4 = *(volatile uint32_t*)(0x7000);
-	ap_cr4 = *(volatile uint32_t*)(0x7004);
+	bp_cr4 = *(volatile uint32_t *)(0x7000);
+	ap_cr4 = *(volatile uint32_t *)(0x7004);
 }
 
 static bool is_sse_x_support(enum sse_instuction_e ins_type)
 {
 	bool is = false;
-	switch(ins_type) {
+	switch (ins_type) {
 	case SSE_INS:
 		is = cpuid_sse_to_1();
 		break;
@@ -83,7 +83,7 @@ static bool is_sse_x_support(enum sse_instuction_e ins_type)
 		break;
 	default:
 		break;
-	}	
+	}
 	return is;
 }
 
@@ -136,7 +136,7 @@ static inline unsigned long _read_rflag(void)
 
 static inline void _write_rflags(unsigned long f)
 {
-    asm volatile ("pushq %0; popfq\n\t" : : "rm"(f));
+	asm volatile ("pushq %0; popfq\n\t" : : "rm"(f));
 }
 
 #ifdef IN_NATIVE
@@ -161,7 +161,7 @@ static __unused void sse_rqmid_27868_Physical_POPCNT_instruction_support_001(voi
 {
 	bool is_pass = false;
 	uint32_t check_bit = 0U;
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01,EXTENDED_STATE_SUBLEAF_0).c;
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01, EXTENDED_STATE_SUBLEAF_0).c;
 	check_bit &= (1 << FEATURE_INFORMATION_23);
 	is_pass = (check_bit == (1 << FEATURE_INFORMATION_23)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -260,12 +260,12 @@ static __unused void sse_rqmid_27813_SSE2_instructions_support_004(void)
 	} else {
 		sse_debug("\nEFLAG.ID[bit21] should be 1 \n");
 	}
-	if(cpuid_sse_to_1() == true) {
+	if (cpuid_sse_to_1() == true) {
 		cnt++;
 	} else {
 		sse_debug("\ncpuid_sse_to_1 false \n");
 	}
-	if(cpuid_sse2_to_1() == true) {
+	if (cpuid_sse2_to_1() == true) {
 		cnt++;
 	} else {
 		sse_debug("\ncpuid_sse2_to_1 false \n");
@@ -284,8 +284,8 @@ static __unused void sse2_cvtps2dq_pf(void *add2)
 {
 	sse_union add1;
 	add1.u[0] = 1;
-	add1.u[1] = 2; 
-	add1.u[2] = 3; 
+	add1.u[1] = 2;
+	add1.u[2] = 3;
 	add1.u[3] = 4;
 	asm volatile(ASM_TRY("1f")
 							"cvtps2dq %1, %%xmm1\n"
@@ -331,7 +331,7 @@ static __unused void cvtps2dq_checking(void *param)
 
 	add1.u[0] = 1; add1.u[1] = 2; add1.u[2] = 3; add1.u[3] = 4;
 	asm volatile(ASM_TRY("1f")
-		     "cvtps2dq %[add2], %%xmm1\n" 
+		     "cvtps2dq %[add2], %%xmm1\n"
 		     "1:"
 		     : [add1] "=m" (add1)
 		     : [add2] "m" (add2.u));
@@ -397,7 +397,7 @@ static __unused void sse_rqmid_27811_SSE4_2_POPCNT_instruction_support_001(void)
 	if (ret == true) {
 		cnt++;
 	}
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01,EXTENDED_STATE_SUBLEAF_0).c;
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01, EXTENDED_STATE_SUBLEAF_0).c;
 	check_bit &= (1U << FEATURE_INFORMATION_23);
 	if (check_bit == (1U << FEATURE_INFORMATION_23)) {
 		cnt++;
@@ -423,7 +423,7 @@ static __unused void sse_64bit_Mode_RCPPS_pf(void *add2)
 							"rcpps %[add2], %%xmm1\n\t"
 							"1:"
 							:
-							:[add2] "m" (*(sse_union *)add2));
+							: [add2] "m" (*(sse_union *)add2));
 }
 
 static __unused void sse_rqmid_30098_SSE_instructions_support_64bit_Mode_RCPPS_PF_002(void)
@@ -445,7 +445,7 @@ static __unused void sse2_64bit_Mode_MOVNTDQ_pf(void *add2)
 							"movntdq %%xmm1, %[add2]\n\t"
 							"1:"
 							:
-							:[add2] "m" (*(sse_union *)add2));
+							: [add2] "m" (*(sse_union *)add2));
 }
 
 static __unused void sse_rqmid_30341_SSE2_instructions_support_64bit_Mode_MOVNTDQ_PF_003(void)
@@ -468,7 +468,7 @@ static __unused void sse3_64bit_Mode_LDDQU_pf(void *add2)
 							"lddqu %[add2], %%xmm1\n\t"
 							"1:"
 							:
-							:[add2] "m" (*(sse_union *)add2));
+							: [add2] "m" (*(sse_union *)add2));
 }
 
 static __unused void sse_rqmid_30305_SSE3_instructions_support_64bit_Mode_LDDQU_PF_005(void)
@@ -495,7 +495,7 @@ static __unused void sse4_1_64bit_Mode_PMAXUW_pf(void *add2)
 							"pmaxuw %[add2], %%xmm1\n\t"
 							"1:"
 							:
-							:[add2] "m" (*(sse_union *)add2));
+							: [add2] "m" (*(sse_union *)add2));
 }
 
 static __unused void sse_rqmid_30543_SSE4_1_instructions_support_64bit_Mode_PMAXUW_PF_006(void)
@@ -622,7 +622,7 @@ static __unused void sse_proctect_mode_MINPS_pf(void *add2)
 							"minps %[add2], %%xmm1\n\t"
 							"1:"
 							:
-							:[add2] "m" (*(sse_union *)add2));
+							: [add2] "m" (*(sse_union *)add2));
 	sse_debug("\n exception_vector = %d \n", exception_vector());
 }
 
