@@ -1893,7 +1893,7 @@ bool cr4_osxsave_to_1(void)
  *@test purpose:
  *      Disable FXSAVE and FXRSTOR feature set
  *@Design Steps:
- *      Clear CR4.OSXSAVE[bit 9] to 0
+ *      Clear CR4.OSFXSR[bit 9] to 0
  *@Expected Result:
  *      N/A
  */
@@ -1902,7 +1902,7 @@ bool cr4_osfxsr_to_0(void)
 	unsigned long check_bit = 0;
 	bool result = false;
 
-	printf("***** Clear CR4.OSXSAVE[bit 19] to 0 *****\n");
+	printf("***** Clear CR4.OSFXSR[bit 9] to 0 *****\n");
 
 	check_bit = read_cr4();
 	check_bit &= (~(FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_09)));
@@ -1924,7 +1924,7 @@ bool cr4_osfxsr_to_0(void)
  *@test purpose:
  *      Enable FXSAVE and FXRSTOR feature set
  *@Design Steps:
- *      Set CR4.OSXSAVE[bit 9] to 1
+ *      Set CR4.OSFXSR[bit 9] to 1
  *@Expected Result:
  *      N/A
  */
@@ -1933,7 +1933,7 @@ bool cr4_osfxsr_to_1(void)
 	unsigned long check_bit = 0;
 	bool result = false;
 
-	printf("***** Set CR4.OSXSAVE[bit 19] to 1 *****\n");
+	printf("***** Set CR4.OSFXSR[bit 9] to 1 *****\n");
 
 	check_bit = read_cr4();
 	check_bit |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_09));
