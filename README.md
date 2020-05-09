@@ -4,7 +4,7 @@
 
 #### 1.setup your local building environment firstly. 
 
-    setup docker environment,pls refer https://wiki.ith.intel.com/display/OTCCWPQA/BKM%3A+Setup+ACRN+docker+environment
+    setup docker environment, pls refer http://sit-image.sh.intel.com/FUSA/docker_20200421/ReadMe.txt
 
 #### 2.get SRS code 
 
