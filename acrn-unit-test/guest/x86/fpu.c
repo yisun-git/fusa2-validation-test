@@ -79,6 +79,22 @@ void save_unchanged_reg()
 	fpu_st_reg_unchanged_on_ap();
 }
 #endif
+#ifdef __x86_64__
+/*
+ * @brief case name: CR0.MP state following start-up_001
+ *
+ *Summary:
+ *	regitster   power up     reset			init
+ *	CR0    60000010H		60000010H       60000010H
+ *
+ *	Get CR0.MP:cr0.bit[1] at BP start-up, the bit shall be 0 and same with SDM definition.
+ */
+static void fpu_rqmid_32381_cr0_mp_state_following_startup_001()
+{
+	report("%s", (*(u32 *)STARTUP_CR0_REG_ADDR & 0x2) == 0, __FUNCTION__);
+}
+
+#endif
 #ifdef IN_NON_SAFETY_VM
 /*
  * @brief case name: fpu shall expose deprecated fpu cs ds 001
@@ -296,19 +312,6 @@ static void fpu_rqmid_32378_FPU_capability_enumeration_001()
  * @brief case name: CR0.MP state following start-up_001
  *
  *Summary:
- *	regitster   power up     reset			init
- *	CR0    60000010H		60000010H       60000010H
- *
- *	Get CR0.MP:cr0.bit[1] at BP start-up, the bit shall be 0 and same with SDM definition.
- */
-static void fpu_rqmid_32381_cr0_mp_state_following_startup_001()
-{
-	report("%s", (*(u32 *)STARTUP_CR0_REG_ADDR & 0x2) == 0, __FUNCTION__);
-}
-/*
- * @brief case name: CR0.MP state following start-up_001
- *
- *Summary:
  *  ACRN hypervisor shall expose FPU execution environment to any guest,
  *	in compliance with Chapter 8.1 and 8.3, Vol. 1, SDM and Chapter 2.5, Vol.3, SDM.
  *
@@ -490,6 +493,10 @@ static void fpu_rqmid_31551_execution_environment_64_bit_Mode_FSAVE_SS_010()
 static void print_case_list(void)
 {
 	printf("FPU feature case list:\n\r");
+#ifdef __x86_64__
+	printf("\t Case ID:%d case name:%s\n\r", 32381,
+		   "cr0 mp state following startup 001");
+#endif
 #ifdef IN_NON_SAFETY_VM
 #ifdef __i386__
 	printf("\t Case ID:%d case name:%s\n\r", 32375, "shall expose deprecated cs ds 001");
@@ -504,8 +511,6 @@ static void print_case_list(void)
 		   "execution environment FDISI 001");
 	printf("\t Case ID:%d case name:%s\n\r", 32378,
 		   "FPU capability enumeration 001");
-	printf("\t Case ID:%d case name:%s\n\r", 32381,
-		   "cr0 mp state following startup 001");
 	printf("\t Case ID:%d case name:%s\n\r", 31189,
 		   "execution environment 64 bit Mode FICOMP PF 001");
 	printf("\t Case ID:%d case name:%s\n\r", 31436,
@@ -524,6 +529,9 @@ int main(void)
 	setup_vm();
 	setup_ring_env();
 	print_case_list();
+#ifdef __x86_64__
+	fpu_rqmid_32381_cr0_mp_state_following_startup_001();
+#endif
 #ifdef IN_NON_SAFETY_VM
 #ifdef __i386__
 	fpu_rqmid_32375_shall_expose_deprecated_cs_ds_001();
@@ -534,7 +542,6 @@ int main(void)
 	fpu_rqmid_32366_st0_through_st7_states_following_INIT_001();
 	fpu_rqmid_32377_execution_environment_FDISI_001();
 	fpu_rqmid_32378_FPU_capability_enumeration_001();
-	fpu_rqmid_32381_cr0_mp_state_following_startup_001();
 	fpu_rqmid_31189_execution_environment_64_bit_Mode_FICOMP_PF_001();
 	fpu_rqmid_31436_execution_environment_64_bit_Mode_FIST_GP_001();
 	fpu_rqmid_31907_execution_environment_64_bit_Mode_FILD_MF_002();
