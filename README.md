@@ -24,7 +24,7 @@
 
 #### 5.compile unit-test
 
-    $docker run -v -it clearlinux_acrn:latest /bin/bash
+    $docker run -v -it ubuntu:v1 /bin/bash
     $cd acrn-validation-test
     $git reset --hard && git checkout master && git pull
     $mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
