@@ -7,6 +7,7 @@
 #include "alloc.c"
 #include "misc.h"
 #include "delay.h"
+#include "fwcfg.h"
 
 //#define USE_DEBUG
 #ifdef USE_DEBUG
@@ -129,7 +130,7 @@ static __unused int xgetbv_checking(u32 index, u64 *result)
 int ap_start_count = 0;
 void save_unchanged_reg(void)
 {
-	if (get_lapic_id() != 1) {
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
@@ -418,17 +419,14 @@ static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_
 {
 	u32 i = 0;
 	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
-	int bit_support_compaction;
-	bit_support_compaction = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
-	bit_support_compaction = 0x007 & bit_support_compaction;
-	if (bit_support_compaction == 0x7) {
+	u32 bit_support_init_modified;
+
+	bit_support_init_modified = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
+	bit_support_init_modified = 0x5 & bit_support_init_modified;
+	if (bit_support_init_modified == 0x5) {
 		i++;
-		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
-		debug_print("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Passed******\n");
-	} else {
-		debug_print("The value of CPUID.(EAX=0DH,ECX=1H):EAX[bit2:0] = %#x \n", bit_support_compaction);
-		debug_print("******28392:XSAVE_physical_init_and_modified_optimizations_001, test case Failed******\n");
 	}
+
 	report("%s", (i == 1), __FUNCTION__);
 }
 
@@ -1632,18 +1630,29 @@ static __unused u64 get_init_xinuse(u64 eax_addr, u64 edx_addr)
  */
 static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT(void)
 {
+	u32 chk = 0;
 	u64 xinuse = 0;
 	u64 xinuse1 = 0;
 	xinuse = get_init_xinuse(0x7000, 0x7004);
 	debug_print("\n --->bp: before send sipi, XINUSE=%lx %d\n", xinuse, ap_start_count);
+
+	*((u32 volatile *)0x7000) = 0;
+	*((u32 volatile *)0x7004) = 0;
 
 	/*send sipi to ap*/
 	send_sipi();
 
 	xinuse1 = get_init_xinuse(0x7000, 0x7004);
 	debug_print("\n --->ap: after send sipi, XINUSE=%lx %d\n", xinuse1, ap_start_count);
-	report("%s",\
-		(xinuse == (STATE_SSE)) && (xinuse == xinuse1), __FUNCTION__);
+
+	if (xinuse == xinuse1) {
+		chk++;
+	}
+	if ((xinuse & STATE_SSE) == STATE_SSE) {
+		chk++;
+	}
+
+	report("%s", (chk == 2), __FUNCTION__);
 }
 
 static void print_case_list(void)
