@@ -73,6 +73,7 @@
 #define PT_PWT						3
 #define PT_PCD						4
 #define PT_PAT						7
+#define PT_PAT_LARGE_PAGE			12
 
 #define PT_PWT_MASK					(1ull << (PT_PWT))
 #define PT_PCD_MASK					(1ull << (PT_PCD))
@@ -319,55 +320,62 @@ u64 PT_MEMORY_TYPE   = PT_MEMORY_TYPE_MASK0;
 /*Modify the PTE/PCD/PWT bit in paging table entry*/
 void set_memory_type_pt(void *address, u64 type, u64 size)
 {
+	unsigned long *ptep;
 	u64 *next_addr;
 	int i;
 	int j = 0;
+	int pat = PT_PAT;
 
 	PT_MEMORY_TYPE = type;
 
 	for (i = 0; i < size; i += PAGE_SIZE) {
 		j++;
 		next_addr = (u64 *)((u8 *)address + i);
+
+		ptep = get_pte_level(current_page_table(), next_addr, 1);
+		if (ptep == NULL) {
+			pat = PT_PAT_LARGE_PAGE;
+		}
 		switch (type) {
 		case PT_MEMORY_TYPE_MASK0:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
 			break;
 		case PT_MEMORY_TYPE_MASK1:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
 			break;
 		case PT_MEMORY_TYPE_MASK2:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
 			break;
 		case PT_MEMORY_TYPE_MASK3:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
 			break;
 		case PT_MEMORY_TYPE_MASK4:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
 			break;
 		case PT_MEMORY_TYPE_MASK5:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
 			break;
 		case PT_MEMORY_TYPE_MASK6:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
 			break;
 		case PT_MEMORY_TYPE_MASK7:
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
 			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PAT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
 			break;
 		default:
 			debug_error("error type\n");
