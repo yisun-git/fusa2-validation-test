@@ -62,6 +62,14 @@ void bp_sync()
 	wait_ap = 0;
 }
 
+void reset_ap(int apic_id)
+{
+	/* send INIT to AP */
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
+	/* send SIPI to AP */
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
+}
+
 /**
  * @brief Case name:Multiple-Processor Initialization_AP in normal status ignore SIPI_001
  *
@@ -193,7 +201,7 @@ static void MP_initialization_rqmid_26996_bsp_in_normal_ignore_SIPI_001(void)
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*restart ap*/
-	send_sipi();
+	reset_ap(1);
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 
@@ -237,7 +245,7 @@ static void MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001(void)
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*restart ap*/
-	send_sipi();
+	reset_ap(1);
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*wait ap send INIT done*/
@@ -247,7 +255,7 @@ static void MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001(void)
 	report("\t\t %s", bsp_is_running == 0, __FUNCTION__);
 }
 
-static void test_MP_list(void)
+static void __unused test_MP_list(void)
 {
 	MP_initialization_rqmid_27160_expose_only_one_BSP_to_any_VM_001();
 	MP_initialization_rqmid_26995_vCPU_is_AP_in_normal_status_ignore_SIPI();
@@ -262,6 +270,7 @@ static void print_case_list(void)
 {
 	printf("\t\t MP initialization feature case list:\n\r");
 	printf("\t\t MP initialization 64-Bits Mode:\n\r");
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27160u,
 		"Multiple-Processor Initialization_ACRN expose only one BSP to any VM_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26995u,
@@ -274,6 +283,7 @@ static void print_case_list(void)
 		"Multiple-Processor Initialization_BSP in normal status ignore SIPI_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33850u,
 		"Multiple-Processor Initialization_vCPU is BSP in normal status ignore INIT_001");
+#endif
 }
 
 int ap_main(void)
@@ -312,7 +322,9 @@ int main(void)
 {
 	bsp_is_running++;
 	print_case_list();
+#ifdef IN_NON_SAFETY_VM
 	test_MP_list();
+#endif
 	return report_summary();
 }
 #endif /* endif __x86_64__ */
