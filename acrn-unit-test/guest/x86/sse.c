@@ -738,6 +738,7 @@ static __unused void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 27868u,
 	"Physical POPCNT instruction support_001");
 #else
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27797u,
 	"SSE instructions support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27800u,
@@ -777,7 +778,9 @@ static __unused void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 30637u,
 	"SSE3 instructions support_64 bit Mode MOVDDUP #PF_008");
 #endif
+#endif
 #else
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 30321u,
 	"SSE instructions support_Protected Mode MINPS #PF_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 30567u,
@@ -788,6 +791,7 @@ static __unused void print_case_list(void)
 	"SSE3 instructions support_Protected Mode PMADDUBSW #PF_009");
 	printf("\t\t Case ID:%d case name:%s\n\r", 30916u,
 	"SSE2 instructions support_Protected Mode PSUBQ #PF_013");
+#endif
 #endif
 }
 
@@ -801,6 +805,7 @@ int main(void)
 	sse_rqmid_27859_physical_sse_support_001();
 	sse_rqmid_27868_Physical_POPCNT_instruction_support_001();
 #else
+#ifdef IN_NON_SAFETY_VM
 	sse_rqmid_27797_SSE_instructions_support_001();
 	sse_rqmid_27800_SSE2_instructions_support_001();
 	sse_rqmid_27527_ACRN_General_support_001();
@@ -821,12 +826,15 @@ int main(void)
 	sse_rqmid_30813_SSE3_instructions_support_64bit_Mode_PALIGNR_PF_009();
 	sse_rqmid_30637_SSE3_instructions_support_64bit_Mode_MOVDDUP_PF_008();
 #endif
+#endif
 #else
+#ifdef IN_NON_SAFETY_VM
 	sse_rqmid_30321_SSE_instructions_support_Protected_Mode_MINPS_PF_002();
 	sse_rqmid_30567_SSE_instructions_support_Protected_Mode_PINSRW_PF_011();
 	sse_rqmid_30342_SSE2_instructions_support_Protected_Mode_MOVLPD_PF_003();
 	sse_rqmid_31054_SSE3_instructions_support_Protected_Mode_PMADDUBSW_PF_009();
 	sse_rqmid_30916_SSE2_instructions_support_Protected_Mode_PSUBQ_PF_013();
+#endif
 #endif
 	return report_summary();
 }
