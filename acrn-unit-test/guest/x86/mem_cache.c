@@ -635,8 +635,10 @@ void save_unchanged_reg()
 void print_case_list_init_startup()
 {
 	printf("cache init statup feature case list:\n\r");
+#ifdef IN_NON_SAFETY_VM
 	printf("\t Case ID:%d case name:%s\n\r", 23239u, "IA32_PAT INIT value_unchange_001");
 	printf("\t Case ID:%d case name:%s\n\r", 23241u, "CR0.CD INIT value_001");
+#endif
 	printf("\t Case ID:%d case name:%s\n\r", 23242u, "CR0.NW start-up value_001");
 }
 
@@ -647,7 +649,7 @@ void print_case_list_init_startup()
  * set the value of IA32_PAT to 0H; AP INIT again, then dump IA32_PAT
  * register value again, two dumps value should be equal. 
  */
-void cache_rqmid_23239_ia32_pat_init_unchange(void)
+void __unused cache_rqmid_23239_ia32_pat_init_unchange(void)
 {
 	volatile u64 ia32_pat1;
 	volatile u64 ia32_pat2;
@@ -679,7 +681,7 @@ void cache_rqmid_23239_ia32_pat_init_unchange(void)
  *
  * Summary: Get CR0.CD[bit 30] at AP init, the bit shall be 1 and same with SDM definition.
  */
-void cache_rqmid_23241_cr0_cd_init(void)
+void __unused cache_rqmid_23241_cr0_cd_init(void)
 {
 	volatile u32 ap_cr0 = 0;
 	volatile u32 *ptr;
@@ -712,8 +714,10 @@ void cache_test_init_startup(long rqmid)
 	print_case_list_init_startup();
 
 	struct case_fun_index case_fun[] = {
+	#ifdef IN_NON_SAFETY_VM
 		{23239, cache_rqmid_23239_ia32_pat_init_unchange},
 		{23241, cache_rqmid_23241_cr0_cd_init},
+	#endif
 		{23242, cache_rqmid_23242_cr0_nw_startup},
 	};
 
