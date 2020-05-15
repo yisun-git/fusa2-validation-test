@@ -1667,7 +1667,9 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 28390u, "XSAVE physical AVX support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28392u, "XSAVE physical init and modified optimizations_001");
 #else
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001");
+#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 23633u, "XSAVE hide AVX-512 support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23642u, "XSAVE init and modified optimizations_006");
 	printf("\t\t Case ID:%d case name:%s\n\r", 22826u, "XSAVE general support_010");
@@ -1699,7 +1701,9 @@ int main(void)
 	xsave_rqmid_28390_physical_avx_support_AC_001();
 	xsave_rqmid_28392_physical_init_and_modified_optimizations_AC_001();
 #else
+#ifdef IN_NON_SAFETY_VM
 	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT();
+#endif
 	xsave_rqmid_23633_hide_avx_512_support_001();
 	xsave_rqmid_23642_init_and_modified_optimizations_006();
 	xsave_rqmid_22826_check_reserved_bit();
