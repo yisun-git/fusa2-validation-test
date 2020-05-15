@@ -201,7 +201,7 @@ static int tsc_rqmid_26015_invariant_tsc_suppor(void)
  * Summary: To check whether valule of registers changed after INIT or not.
  *
  */
-static void  tsc_rqmid_25226_init_unchanged_check(void)
+static void __unused tsc_rqmid_25226_init_unchanged_check(void)
 {
 	u64 temp_ap_eax_tscadj_greg_64[2] = {0};
 	u64 temp_ap_edx_tscadj_greg_64[2] = {0};
@@ -268,13 +268,17 @@ static void  tsc_rqmid_25226_init_unchanged_check(void)
 static void print_case_list(void)
 {
 	printf("\t\t TSC feature case list:\n\r");
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 25226u, "CR4.TSD init value_001");
+#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 26015u, "Invariant TSC support_001");
 }
 
 static void test_tsc(void)
 {
+#ifdef IN_NON_SAFETY_VM
 	tsc_rqmid_25226_init_unchanged_check();
+#endif
 	tsc_rqmid_26015_invariant_tsc_suppor();
 }
 
