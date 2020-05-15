@@ -172,8 +172,10 @@ void memory_ordering_rqmid_24597_memory_ordering_instructions_001(void)
 static void print_case_list()
 {
 	printf("Memory ordering feature case list:\n\r");
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 24597u, "Memory ordering and "
 		"serialization_ACRN hypervisor shall expose memory ordering instructions to any VM_001");
+#endif
 }
 
 void ap_main(void)
@@ -198,7 +200,8 @@ int main(int ac, char **av)
 	test_debug("\n");
 
 	setup_idt();
+#ifdef IN_NON_SAFETY_VM
 	memory_ordering_rqmid_24597_memory_ordering_instructions_001();
-
+#endif
 	return report_summary();
 }
