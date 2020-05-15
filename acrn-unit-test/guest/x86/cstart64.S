@@ -256,9 +256,11 @@ start64:
 	mov %rbx, %rdi
 	call setup_multiboot
 	call setup_libcflat
+#ifndef IN_SAFETY_VM
 	mov mb_cmdline(%rbx), %eax
 	mov %rax, __args(%rip)
 	call __setup_args
+#endif
 	mov __argc(%rip), %edi
 	lea __argv(%rip), %rsi
 	lea __environ(%rip), %rdx

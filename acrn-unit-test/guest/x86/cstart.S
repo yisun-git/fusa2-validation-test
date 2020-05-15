@@ -110,9 +110,11 @@ start:
 	call bss_init
 	call setup_multiboot
 	call setup_libcflat
+#ifndef IN_SAFETY_VM
 	mov mb_cmdline(%ebx), %eax
 	mov %eax, __args
 	call __setup_args
+#endif
 	setup_percpu_area
 	call prepare_32
 	jmpl $8, $start32
