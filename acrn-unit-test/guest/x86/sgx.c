@@ -391,7 +391,7 @@ static void sgx_rqmid_27403_ia32_feature_control_startup()
  * Summary: After AP receives first INIT, set the value of IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18];
  *	    Dump IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18] value shall get the same value after second INIT.
  */
-static void sgx_rqmid_27404_ia32_feature_control_init()
+static __unused void sgx_rqmid_27404_ia32_feature_control_init()
 {
 	volatile u32 *ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT1_ADDR;
 	u64 ia32_init_second;
@@ -433,7 +433,7 @@ static void sgx_rqmid_29563_sgx_lauch_bit_startup()
  * Summary: After AP receives first INIT, set the value of IA32_FEATURE_CONTROL.SGX_LAUCH [bit 17];
  *	    Dump IA32_FEATURE_CONTROL.SGX_LAUCH [bit 17] value shall get the same value after second INIT.
  */
-static void sgx_rqmid_29562_sgx_lauch_bit_init()
+static __unused void sgx_rqmid_29562_sgx_lauch_bit_init()
 {
 	volatile u32 *ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT1_ADDR;
 	u64 ia32_init_second;
@@ -483,10 +483,12 @@ static void print_case_list()
 	printf("\t\t Case ID:%d case name:%s\n\r", 27402u, "Guest CPUID.SGX_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27403u, "Guest IA32 \
 		FEATURE CONTROL.SGX ENABLE following start-up_001");
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27404u, "Guest IA32 \
 		FEATURE CONTROL.SGX ENABLE following INIT_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 29562u, "Guest \
 		IA32_FEATURE_CONTROL.Launch Control Enable following INIT_001");
+#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 29563u, "Guest \
 		IA32_FEATURE_CONTROL.SGX_lauch Control following start-up_001");
 }
@@ -521,14 +523,18 @@ static void test_sgx()
 	sgx_rqmid_27390_read_ia32_sgx_svn_status();
 	sgx_rqmid_27402_check_supported_sgx();
 	sgx_rqmid_27403_ia32_feature_control_startup();
+#ifdef IN_NON_SAFETY_VM
 	sgx_rqmid_29562_sgx_lauch_bit_init();
+#endif
 	sgx_rqmid_29563_sgx_lauch_bit_startup();
 }
 
 int main(void)
 {
 	print_case_list();
+#ifdef IN_NON_SAFETY_VM
 	sgx_rqmid_27404_ia32_feature_control_init();
+#endif
 	setup_idt();
 	test_sgx();
 
