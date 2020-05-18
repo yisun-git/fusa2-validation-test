@@ -84,6 +84,7 @@
     $ cd /usr/src/linux-source-4.18.0
     $ make menuconfig
     $ make -j16
+    $ make modules
     $ make modules_install
     $ make install
 
