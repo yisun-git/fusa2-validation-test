@@ -8,14 +8,6 @@ $(TEST_DIR)/init_startup_sample.o: $(TEST_DIR)/init_startup_sample.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
-$(TEST_DIR)/interrupt.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_interrupt_init.S\"
-$(TEST_DIR)/interrupt.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_interrupt_startup.S\"
-$(TEST_DIR)/interrupt.o: CFLAGS += -DAP_UNCHANGED_CHECK
-$(TEST_DIR)/interrupt.o: $(TEST_DIR)/interrupt.c
-	@rm -rf  $(cstart.o)
-	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
-	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
-
 $(TEST_DIR)/sgx.o: CFLAGS += -DAP_INIT_CHECK=\"sgx_init.S\"
 $(TEST_DIR)/sgx.o: CFLAGS += -DBP_STARTUP_CHECK=\"sgx_startup.S\"
 $(TEST_DIR)/sgx.o: CFLAGS += -DAP_UNCHANGED_CHECK
