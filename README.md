@@ -68,37 +68,48 @@
  }
  ```
 
-### 7. Run acrn-unit-test in Qemu
+### QEMU environment setup step for SRS Test.
 
-	Rebuild kernel and kvm modules:
-	apt-cache search linux-source
-	sudo apt-get source linux-source-4.18.0
-	cd /usr/src
-	tar -jxvf linux-source-4.18.0.tar.bz2
-	/*apply this patch(https://intel.sharepoint.com/sites/ACRNFuSA/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches%2Fenable%5Finit%2Epatch&parent=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches&p=true&originalPath=aHR0cHM6Ly9pbnRlbC5zaGFyZXBvaW50LmNvbS86dTovcy9BQ1JORnVTQS9FVkpHVVlEVnM1Rk9yTWtWSEEzUVVDa0JMVWRhT1hNTG5BUEJwT0tpbFo3alp3P3J0aW1lPVR4THZublg0MTBn) to the linux-source-4.18.0*/
-	cp /usr/src/linux-headers-4.18.0-generic/.config /usr/src/linux-source-4.18.0
-	cd /usr/src/linux-source-4.18.0
-	make menuconfig
-	make bzImage
-	make modules
-	make install
-	sudo rmmod kvm_intel
-	sudo rmmod kvm
-	sudo insmod <path_to_updated_module>/kvm.ko
-	sudo insmod <path_to_updated_module>/kvm-intel.ko nested=Y
+### 1. Rebuild kernel and kvm modules (4.18.0 as an exemple)
 
-	Build qemu:
-	git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/qemu
-	cd qemu
-	mkdir build
-	cd build
-	../configure
-	make
-	make install
+    $ cd /usr/src
+    $ apt-cache search linux-source
+    $ sudo apt-get source linux-source-4.18.0
+    $ tar -jxvf linux-source-4.18.0.tar.bz2
+    $ sudo apt-get install libelf-dev xorriso flex bison
 
-	Run in qemu:
-	compile hypervisor(see ### 4)
-	compile unit-test (see ### 5)
-	./qemu.sh  safety_raw_file non_safety_bzimage_file
-	e.g.
-	./qemu.sh  xsave_64 xsave
+    Apply this patch to the linux-source-4.18.0: 
+    (https://intel.sharepoint.com/sites/ACRNFuSA/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches%2Fenable%5Finit%2Epatch&parent=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches&p=true&originalPath=aHR0cHM6Ly9pbnRlbC5zaGFyZXBvaW50LmNvbS86dTovcy9BQ1JORnVTQS9FVkpHVVlEVnM1Rk9yTWtWSEEzUVVDa0JMVWRhT1hNTG5BUEJwT0tpbFo3alp3P3J0aW1lPVR4THZublg0MTBn)
+    $ cp /usr/src/linux-headers-4.18.0-generic/.config /usr/src/linux-source-4.18.0
+    $ cd /usr/src/linux-source-4.18.0
+    $ make menuconfig
+    $ make -j16
+    $ make modules_install
+    $ make install
+
+    Reboot to use the new kernel.
+
+    $ sudo rmmod kvm_intel
+    $ sudo rmmod kvm
+    $ sudo insmod <path_to_updated_module>/kvm.ko
+    $ sudo insmod <path_to_updated_module>/kvm-intel.ko nested=Y
+
+### 2. Build QEMU
+    $ git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/qemu
+    $ cd qemu
+    $ mkdir build
+    $ cd build
+    $ ../configure
+    $ make
+    $ make install
+
+### 3. Run in QEMU
+    
+    Compile hypervisor (see ### 4).
+    Compile unit-test (see ### 5).
+
+    Under path: <path of acrn-validation-test>/github/acrn-unit-test/guest/, 
+    $ ./qemu.sh <safety_raw_file> <non_safety_bzimage_file>
+    e.g.
+    $ ./qemu.sh xsave_64 xsave
+
