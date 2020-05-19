@@ -238,8 +238,8 @@ typedef unsigned __attribute__((vector_size(32))) avx256;
 typedef float __attribute__((vector_size(16))) avx128;
 
 typedef union {
-	sse128 sse;
-	unsigned u[4];
+	sse128 sse __attribute__((aligned(16)));
+	unsigned u[4] __attribute__((aligned(16)));
 } sse_union;
 
 typedef union {
