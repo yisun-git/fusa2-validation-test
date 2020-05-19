@@ -469,6 +469,7 @@ void read_ap_init(void)
 }
 
 
+#ifdef IN_NON_SAFETY_VM
 /**
  * @brief Case name: IA32_SPEC_CTRL INIT_001
  *
@@ -509,6 +510,7 @@ void infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001(void)
 		report("\t\t %s", 0, __FUNCTION__);
 	}
 }
+#endif
 
 static void print_case_list(void)
 {
@@ -535,7 +537,9 @@ int main(int ac, char **av)
 	infoleak_rqmid_33875_SSBD_expose_001();
 	infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001();
 	infoleak_rqmid_33874_IBPB_expose_001();
+#ifdef IN_NON_SAFETY_VM
 	infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001();
+#endif
 	infoleak_rqmid_33619_mitigate_L1TF_variant_affecting_VMM_benchmark_001();
 	infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_002();
 
