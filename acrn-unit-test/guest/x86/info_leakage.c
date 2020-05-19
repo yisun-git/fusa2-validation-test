@@ -521,7 +521,9 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 33875u, "SSBD expose_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33871u, "MDS mitigation mechnism expose_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33874u, "IBPB expose_001");
+#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 33870u, "IA32_SPEC_CTRL INIT_001");
+#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 33619u, "mitigate the L1TF variant affecting VMM_benchmark_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33617u, "mitigate the L1TF variant affecting VMM_002");
 }
