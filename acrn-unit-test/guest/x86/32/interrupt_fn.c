@@ -268,6 +268,8 @@ static void print_case_list_32(void)
 {
 	printf("\t\t Interrupt feature 32-Bits Mode case list:\n\r");
 
+	printf("Case ID:%d case name:%s\n\r", 36246,
+		"Interrupt to non-present descriptor_002");
 	printf("Case ID:%d case name:%s\n\r", 36133,
 		"Contributory exception while handling a prior contributory exception_001");
 #ifdef IN_NON_SAFETY_VM
@@ -292,7 +294,7 @@ static void test_interrupt_32(void)
 #ifdef IN_NON_SAFETY_VM
 	interrupt_rqmid_36128_df_ts();	//non-safety VM shutdowns	not ok
 #endif
-#ifdef IN_NATIVE
+#ifdef IN_SAFETY_VM
 	interrupt_rqmid_36132_df_ts();	//safety call bsp_fatal_error()
 #endif
 }

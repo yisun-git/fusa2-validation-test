@@ -377,7 +377,7 @@ void test_delay(int time)
 {
 	__unused int count = 0;
 	u64 tsc;
-	tsc = rdtsc() + ((u64)time *1000000000);
+	tsc = rdtsc() + ((u64)time * 1000000000);
 
 	while (rdtsc() < tsc) {
 		;
@@ -713,6 +713,26 @@ static void print_case_list_64(void)
 
 	printf("Case ID:%d case name:%s\n\r", 24211,
 		"Page fault while handling a prior page fault_001");
+	printf("Case ID:%d case name:%s\n\r", 36241,
+		"Interrupt to non-present descriptor_001");
+	printf("Case ID:%d case name:%s\n\r", 36254,
+		"Expose exception and interrupt handling_GP_001");
+	printf("Case ID:%d case name:%s\n\r", 36255,
+		"Expose exception and interrupt handling_GP_002");
+	printf("Case ID:%d case name:%s\n\r", 36701,
+		"Expose exception and interrupt handling_MF_001");
+	printf("Case ID:%d case name:%s\n\r", 36702,
+		"Expose exception and interrupt handling_mf_002");
+	printf("Case ID:%d case name:%s\n\r", 36689,
+		"Expose priority among simultaneous exceptions and interrupts_P4_P7_001");
+	printf("Case ID:%d case name:%s\n\r", 36691,
+		"Expose priority among simultaneous exceptions and interrupts_P4_P8_001");
+	printf("Case ID:%d case name:%s\n\r", 36693,
+		"Expose priority among simultaneous exceptions and interrupts_P3_P4_001");
+	printf("Case ID:%d case name:%s\n\r", 36694,
+		"Expose masking and unmasking Instruction breakpoints_001");
+	printf("Case ID:%d case name:%s\n\r", 36695,
+		"Expose masking and unmasking Instruction breakpoints_005");
 }
 
 static void test_ap_interrupt_64(void)
