@@ -1,5 +1,5 @@
-#ifndef PT_H
-#define PT_H
+#ifndef __PT_H__
+#define __PT_H__
 
 #define PASS 0
 #ifdef __x86_64__
