@@ -69,4 +69,14 @@
 #define OSSERVISE1_CS32                 0x59
 #define OSSERVISE1_DS                   0x61
 
+#define EXTEND_INTERRUPT_E0				0xe0
+#define CR0_EM_BIT						(1<<2)
+#define CR0_NE_BIT						(1<<5)
+#define CR0_AM_BIT						(1<<18)
+#define CR4_RESERVED_BIT23				(1<<23)
+#define RFLAG_TF_BIT					(1<<8)
+#define RFLAG_NT_BIT					(1<<14)
+#define RFLAG_RF_BIT					(1<<16)
+#define RFLAG_VM_BIT					(1<<17)
+#define RFLAG_AC_BIT					(1<<18)
 #endif

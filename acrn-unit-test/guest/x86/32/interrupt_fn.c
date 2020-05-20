@@ -69,66 +69,63 @@ void handled_32_exception(struct ex_regs *regs)
 	regs->rip += execption_inc_len;
 }
 
-/**
- * @brief case name: Contributory exception while handling #DF in non-safety VM_001
- *
- * Summary: When a vCPU of the non-safety VM detected a second #TS exception while
- * calling the exception handler for a prior #DF, ACRN hypervisor shall guarantee that
- * any vCPU of the non-safety VM stops executing any instructions(VM shutdowns).
- */
-static void interrupt_rqmid_36128_df_ts(void)
+static void interru_df_ts(const char *fun)
 {
 	unsigned char *linear_addr;
 	struct descriptor_table_ptr old_gdt_desc;
 	struct descriptor_table_ptr new_gdt_desc;
 
-	/* step 1*/
+	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
+
+	/* length of the instruction that generated the exception
+	 * 'mov (%%rax), %%rbx' instructions len
+	 */
+	execption_inc_len = 2;
+
 	/* step 2 and 3 is define irqcounter_incre */
 
-	/* step 4 and step 5*/
+	/* step 4 initialize NEWTSS */
 	setup_tss32();
+
+	/* step 5 construct a segment descriptor in 4th entry (selector 0x20)
+	 * of OLDGDTR with P bit set to 1, Type set to 0x9, S bit set to 0,
+	 * BASE set to NEWTSS address, LIMIT set to 0x66(less than sizeof(NEWTSS) - 1).
+	 */
 	gdt32[TSS_INTR>>3].limit_low = 0x66;
 	tss_intr.eip = (u32)irq_tss;
 
-	/* step 6*/
+	/* step 6 prepare NEWGDT */
 	linear_addr = (unsigned char *)malloc(PAGE_SIZE * 2);
 	sgdt(&old_gdt_desc);
 	memcpy((void *)linear_addr, (void *)(old_gdt_desc.base), 0x200);
 	memcpy((void *)(linear_addr+PAGE_SIZE), (void *)(old_gdt_desc.base), 0x200);
 
-	/* step 7*/
+	/* step 7 load NEWGDT */
 	new_gdt_desc.base = (ulong)linear_addr;
 	new_gdt_desc.limit = PAGE_SIZE * 2;
 	lgdt(&new_gdt_desc);
 
-	/* step 8*/
-	/* IDT has been initialized. Only segment selector and handler are set here*/
-#if 0
-	//set_idt_sel(DF_VECTOR, 0x8);
-	handle_exception(DF_VECTOR, &handled_32_exception);
-#else
+	/* step 8 prepare the task-gate descriptor of #DF */
 	set_idt_task_gate(DF_VECTOR, TSS_INTR);
-#endif
 
-	/* step 9*/
-	/* IDT has been initialized. Only segment selector is set here*/
+	/* step 9 prepare the interrupt-gate descriptor of #PF.
+	 * IDT has been initialized. Only segment selector is set here
+	 */
 	set_idt_sel(PF_VECTOR, 0x1008);
 
-	/* step 10*/
+	/* step 10 prepare the not present page.*/
 	set_page_control_bit((void *)((ulong)(linear_addr + PAGE_SIZE)), PAGE_PTE, 0, 0, true);
 
-	/* setp 11 */
-	/* 'mov (%%rax), %%rbx' instructions len*/
-	execption_inc_len = 2;
+	/* setp 11 trigger #PF exception */
 	asm volatile(
 			"mov %0, %%eax\n\t"
 			"add $0x1000, %%eax\n\t"
 			"mov (%%eax), %%ebx\n\t"
 			::"m"(linear_addr));
 
-	/* step 12  shutdown vm, Control should not come here */
-	report("%s error_code=%ld", (0), __FUNCTION__, save_error_code);
+	/* step 12  report shutdown vm, Control should not come here */
+	report("%s ", (0), fun);
 
 	/* resume environment, just set, but not come here */
 	set_idt_sel(DF_VECTOR, read_cs());
@@ -140,6 +137,18 @@ static void interrupt_rqmid_36128_df_ts(void)
 }
 
 /**
+ * @brief case name: Contributory exception while handling #DF in non-safety VM_001
+ *
+ * Summary: When a vCPU of the non-safety VM detected a second #TS exception while
+ * calling the exception handler for a prior #DF, ACRN hypervisor shall guarantee that
+ * any vCPU of the non-safety VM stops executing any instructions(VM shutdowns).
+ */
+__attribute__((unused)) static void interrupt_rqmid_36128_df_ts(void)
+{
+	interru_df_ts(__FUNCTION__);
+}
+
+/**
  * @brief case name: Contributory exception while handling #DF in safety VM_001
  *
  * Summary: When a vCPU of the safety VM detected a second contributory
@@ -148,7 +157,7 @@ static void interrupt_rqmid_36128_df_ts(void)
  */
 __attribute__((unused)) static void interrupt_rqmid_36132_df_ts(void)
 {
-	interrupt_rqmid_36128_df_ts();
+	interru_df_ts(__FUNCTION__);
 }
 
 struct lseg_st {
@@ -181,30 +190,35 @@ static void interrupt_rqmid_36133_ss_gp(void)
 {
 	struct descriptor_table_ptr old_gdt_desc;
 
-	/* step 1*/
+	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
-	/* step 2, 3 and 4 is define irqcounter_incre */
+
+	/* length of the instruction that generated the exception
+	 * 'lss  %0, %%eax' instructions len
+	 */
 	execption_inc_len = 4;
+
+	/* step 2, 3 and 4 is define irqcounter_incre */
 	handle_exception(DF_VECTOR, &handled_32_exception);
 
-	/* step 5 */
+	/* step 5 prepare the interrupt-gate descriptor of #SS*/
 	set_idt_s_flag(SS_VECTOR, 1);
 
-	/* setp 6 */
+	/* setp 6 construct a data segment descriptor in 16th entry (selector 0x80) of GDT*/
 	sgdt(&old_gdt_desc);
 	set_gdt_entry(0x80, 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_CLEAR|DESCRIPTOR_PRIVILEGE_LEVEL_3|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 
-	/* setp 7 */
+	/* setp 7 reload  GDTR*/
 	lgdt(&old_gdt_desc);
 
 
-	/* setp 8 */
+	/* setp 8 and step 9 switch to ring3, execute LSS to load the segment of not present constructed in step 6 */
 	do_at_ring3(ring3_ss, "");
 
-	/* step 9*/
-	report("%s error_code=%ld", (irqcounter_query(DF_VECTOR) == 1), __FUNCTION__, save_error_code);
+	/* step 10 confirm #DF exception has been generated*/
+	report("%s", ((irqcounter_query(DF_VECTOR) == 1) && (save_error_code == 0)), __FUNCTION__);
 
 	/* resume environment */
 	set_idt_s_flag(SS_VECTOR, 0);
@@ -230,33 +244,39 @@ static void ring3_ac_add()
 static void interrupt_rqmid_36246_no_present_descriptor_002(void)
 {
 	ulong set_value = 0;
-	/* step 1 */
+
+	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
+
+	/* length of the instruction that generated the exception
+	 * 'incl %0' instructions len
+	 */
+	execption_inc_len = 3;
+
 	/* step 2 and 3 is define irqcounter_incre */
 	handle_exception(NP_VECTOR, &handled_32_exception);
 
-	/* step 4 */
-	/* BP vector p = 0*/
+	/* step 4 prepare the interrupt-gate descriptor of
+	 * #AC with P bit set to 0(not present)
+	 */
 	set_idt_present(AC_VECTOR, 0);
 
-	/* step 5 init by setup_idt*/
+	/* step 5 init by setup_idt */
 
-	/* step 6 */
-	execption_inc_len = 3;
-
+	/* step 6  set cr0.AM */
 	set_value = read_cr0();
-	set_value |= (1<<18);	//CR0.AM
+	set_value |= CR0_AM_BIT;
 	write_cr0(set_value);
 
-	/* step 7 */
+	/* step 7 set EFLAGS.AC */
 	set_value = read_rflags();
-	set_value |= (1<<18);	//EFLAGS.AC
+	set_value |= RFLAG_AC_BIT;
 	write_rflags(set_value);
 
-	/* step 8 and 9 */
+	/* step 8 and 9 switch to ring3 execute INC*/
 	do_at_ring3(ring3_ac_add, "");
 
-	/* step 10 */
+	/* step 10 confirm #NP exception has been generated*/
 	report("%s", ((irqcounter_query(NP_VECTOR) == 1)
 		& (save_error_code == ((AC_VECTOR*8)+3))), __FUNCTION__);
 
@@ -286,8 +306,6 @@ static void test_interrupt_32(void)
 {
 	/* __i386__ */
 	//task_gate_g_limit_ts();
-	printf("%s %d\n", __FUNCTION__, __LINE__);
-
 	interrupt_rqmid_36246_no_present_descriptor_002();
 	interrupt_rqmid_36133_ss_gp();	//DF
 

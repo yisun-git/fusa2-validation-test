@@ -13,6 +13,11 @@ static volatile unsigned int g_irqcounter[256] = { 0 };
 int INC_COUNT = 0;
 static inline void irqcounter_initialize(void)
 {
+	/* init g_irqcounter and INC_COUNT to 0
+	 * (INC_COUNT is the value added to the corresponding vector every
+	 * time an exception is generated. It has been used to determine
+	 * the sequence of the exceptions when multiple exceptions are generated)
+	 */
 	INC_COUNT = 0;
 	memset((void *)g_irqcounter, 0, sizeof(g_irqcounter));
 }
@@ -34,8 +39,17 @@ struct ex_record {
 
 extern struct ex_record exception_table_start, exception_table_end;
 
+/* The length of instruction to skip when the exception handler returns
+ * (equal to the length of instruction in which the exception occurred)
+ */
 u32 execption_inc_len = 0;
+/* Used for exception handling function to return error code
+ */
 ulong save_error_code = 0;
+/* save_rflags1 is used to save the rflag of  the stack when an exception is generated.
+ * save_rflags2 is used to save the rflag at the
+ * beginning of the exception handling function.
+ */
 ulong save_rflags1 = 0;
 ulong save_rflags2 = 0;
 
