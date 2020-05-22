@@ -10,13 +10,14 @@
 #define VMX_ECX_SUPPORT_MASK(b)		BIT_SHIFT(b)
 #define CR4_VMXE_BIT_MASK			BIT_SHIFT(13)
 
-//#define VMX_DEBUG
+#define VMX_DEBUG
 #ifdef VMX_DEBUG
  #define vmx_debug(fmt, args...)	printf(fmt, ##args)
 #else
  #define vmx_debug(fmt, args...)
 #endif
 
+#ifdef __x86_64__
 /*
  * @brief case name: cpuid.01h:ECX[5]_001
  *
@@ -57,7 +58,7 @@ static __unused void vmx_rqmid_26856_IA32_VMX_CR0_FIXED0_001(void)
 				: "=a"(a), "=d"(d)
 				: "c"(index)
 				: "memory");
-	vmx_debug("\nexception_error_code = %d, MSR_IA32_VMX_CR0_FIXED0 val = 0x%lx \n", exception_error_code());
+	vmx_debug("\nexception_error_code = %d \n", exception_error_code());
 	report("%s", (exception_vector() == GP_VECTOR) &&
 		(exception_error_code() == 0), __FUNCTION__);
 }
@@ -124,27 +125,33 @@ static __unused void vmx_rqmid_28988_CR4_VMXE_initial_INIT_001(void)
 
 	report("%s", (ap_cr4 == 0), __FUNCTION__);
 }
+#endif
 
 static void print_case_list(void)
 {
 	printf("\t\t VMX feature case list:\n\r");
-
+#ifdef __x86_64__
+#ifdef IN_NON_SAFETY_VM
+	printf("\t\t Case ID:%d case name:%s\n\r", 28988u, "CR4.VMXE[13] initial INIT_001");
+#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 26828u, "cpuid.01h:ECX[5]_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26856u, "IA32_VMX_CR0_FIXED0_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 29008u, "VMCALL_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28988u, "CR4.VMXE[13] initial INIT_001");
+#endif
 }
 
 int main(void)
 {
-	setup_vm();
 	setup_idt();
-
 	print_case_list();
+#ifdef __x86_64__
+#ifdef IN_NON_SAFETY_VM
+	vmx_rqmid_28988_CR4_VMXE_initial_INIT_001();
+#endif
+	setup_vm();
 	vmx_rqmid_26828_cpuid_01h_ECX_bit5_001();
 	vmx_rqmid_26856_IA32_VMX_CR0_FIXED0_001();
 	vmx_rqmid_29008_VMCALL_001();
-	vmx_rqmid_28988_CR4_VMXE_initial_INIT_001();
-
+#endif
 	return report_summary();
 }
