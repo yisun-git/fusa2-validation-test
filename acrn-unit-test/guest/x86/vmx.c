@@ -10,6 +10,7 @@
 #define VMX_ECX_SUPPORT_MASK(b)		BIT_SHIFT(b)
 #define CR4_VMXE_BIT_MASK			BIT_SHIFT(13)
 
+/*VMX_DEBUG for case log info*/
 #define VMX_DEBUG
 #ifdef VMX_DEBUG
  #define vmx_debug(fmt, args...)	printf(fmt, ##args)
