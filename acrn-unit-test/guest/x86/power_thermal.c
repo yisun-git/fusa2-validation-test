@@ -40,7 +40,7 @@ void power_rqmid_29021_IA32_MISC_ENABLE16_write_001(void)
 		: "a"(a), "d"(d), "c"(index)
 		: "memory");
 
-	report("\t\t %s", (exception_vector() == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
 }
 
 /**
@@ -60,7 +60,7 @@ void power_rqmid_28033_IA32_CLOCK_MODULATION_001(void)
 		"1:"
 		: "=a"(a), "=d"(d) : "c"(index) : "memory");
 
-	report("\t\t %s", (exception_vector() == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
 }
 
 /**
@@ -84,7 +84,7 @@ void power_rqmid_28034_IA32_CLOCK_MODULATION_002(void)
 		: "a"(a), "d"(d), "c"(index)
 		: "memory");
 
-	report("\t\t %s", (exception_vector() == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
 }
 
 /**
