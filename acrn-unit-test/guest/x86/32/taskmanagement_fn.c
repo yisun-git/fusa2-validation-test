@@ -1,6 +1,6 @@
 gdt_entry_t *new_gdt = NULL;
 struct descriptor_table_ptr old_gdt_desc;
-struct descriptor_table_ptr *new_gdt_desc;
+struct descriptor_table_ptr new_gdt_desc;
 
 void init_do_less_privilege(void)
 {
@@ -78,7 +78,7 @@ static void cond_10_desc_busy(void)
 /* cond 13 */
 void cond_13_desc_tss_not_page(void)
 {
-	u32 *linear_addr;
+	unsigned char *linear_addr;
 
 	tss_intr.eip = (u32)irq_tss;
 
@@ -90,16 +90,16 @@ void cond_13_desc_tss_not_page(void)
 
 	memcpy((void *)(&gdt32[TASK_GATE_SEL>>3]), (void *)(&gate), sizeof(struct task_gate));
 
-	linear_addr = (u32 *)malloc(PAGE_SIZE * 2);
+	linear_addr = (unsigned char *)malloc(PAGE_SIZE * 2);
 
 	sgdt(&old_gdt_desc);
 	memcpy((void *)linear_addr, (void *)(old_gdt_desc.base), 0x200);
 	memcpy((void *)(linear_addr+PAGE_SIZE), (void *)(old_gdt_desc.base), 0x200);
-	old_gdt_desc.base = (u32)linear_addr;
-	old_gdt_desc.limit = PAGE_SIZE * 2;
-	lgdt(&old_gdt_desc);
+	new_gdt_desc.base = (u32)linear_addr;
+	new_gdt_desc.limit = PAGE_SIZE * 2;
+	lgdt(&new_gdt_desc);
 
-	set_page_control_bit((void *)(phys_to_virt((unsigned long)(linear_addr + PAGE_SIZE))), 1, 0, 0, true);
+	set_page_control_bit((void *)((ulong)(linear_addr + PAGE_SIZE)), PAGE_PTE, 0, 0, true);
 }
 
 static void cond_3_iret_desc_type(void)
@@ -236,14 +236,16 @@ static void task_management_rqmid_26171_task_gate_page_fault(void)
 
 	cond_13_desc_tss_not_page();
 
-	memcpy((void *)(&gdt32[TASK_GATE_SEL>>3]), (void *)(&gate), sizeof(struct task_gate));
-
-	printf("%s can't catch this #PF exception\n", __FUNCTION__);
 	asm volatile(ASM_TRY("1f")
 			"lcall $" xstr(TASK_GATE_SEL) ", $0xf4f4f4f4\n\t"
 			"1:":::);
 
 	report("%s", (exception_vector() == PF_VECTOR), __FUNCTION__);
+
+	/* resume environment */
+	lgdt(&old_gdt_desc);
+	set_page_control_bit((void *)((ulong)(new_gdt_desc.base + PAGE_SIZE)), PAGE_PTE, 0, 1, true);
+	free((void *)new_gdt_desc.base);
 }
 
 /**
@@ -405,7 +407,7 @@ static void task_management_rqmid_24026_tr_start_up(void)
 	//printf("tss.esp0=0x%x esp=0x%x ss=0x%x\n", tss.esp0, read_esp(),read_ss());
 }
 /**
- * @brief case name:TR Initial value following INIT_001
+ * @brief case name:TR base following INIT_001
  *
  * Summary: Check the TR invisible part in INIT
  */
@@ -465,6 +467,6 @@ static void test_task_management_32(void)
 #ifdef IN_NON_SAFETY_VM
 	task_management_rqmid_24027_tr_init();
 #endif
-	task_management_rqmid_26171_task_gate_page_fault(); //PF ok ,can't catch
+	task_management_rqmid_26171_task_gate_page_fault();
 
 }
