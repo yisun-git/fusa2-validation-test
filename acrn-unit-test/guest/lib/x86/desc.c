@@ -119,6 +119,32 @@ void unhandled_exception(struct ex_regs *regs, bool cpu)
 	abort();
 }
 
+static struct ex_record runtime_exception_table[32];
+
+int register_runtime_exception(unsigned long rip, unsigned long handler)
+{
+	struct ex_record *e;
+
+	// find a free slot
+	for (int i = 0; i < ARRAY_SIZE(runtime_exception_table); i++) {
+		e = &runtime_exception_table[i];
+		if (e->rip == 0 && e->handler == 0) {
+			e->rip = rip;
+			e->handler = handler;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+void unregister_runtime_exception(int i)
+{
+	runtime_exception_table[i].rip = 0;
+	runtime_exception_table[i].handler = 0;
+}
+
+
 static void check_exception_table(struct ex_regs *regs)
 {
 	struct ex_record *ex;
@@ -129,6 +155,14 @@ static void check_exception_table(struct ex_regs *regs)
 	asm("mov %0, %%gs:"xstr(EXCEPTION_ADDR)"" : : "r"(ex_val));
 
 	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
+		if (ex->rip == regs->rip) {
+			regs->rip = ex->handler;
+			return;
+		}
+	}
+
+	for (int i = 0; i < ARRAY_SIZE(runtime_exception_table); i++) {
+		ex = &runtime_exception_table[i];
 		if (ex->rip == regs->rip) {
 			regs->rip = ex->handler;
 			return;

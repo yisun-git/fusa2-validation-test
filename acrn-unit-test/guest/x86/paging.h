@@ -49,5 +49,6 @@
 #define	ERROR_CODE_WR_BIT		(1ul << 1)
 #define ERROR_CODE_US_BIT		(1UL << 2)
 #define	ERROR_CODE_RSVD_BIT		(1UL << 3)
+#define	ERROR_CODE_ID_BIT		(1UL << 4)
 #endif
 

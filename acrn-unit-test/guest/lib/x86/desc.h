@@ -262,4 +262,6 @@ void __set_exception_jmpbuf(jmp_buf *addr);
 #define set_exception_jmpbuf(jmpbuf) \
 	(setjmp(jmpbuf) ? : (__set_exception_jmpbuf(&(jmpbuf)), 0))
 
+int register_runtime_exception(unsigned long rip, unsigned long handler);
+void unregister_runtime_exception(int i);
 #endif

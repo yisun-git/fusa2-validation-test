@@ -166,6 +166,7 @@ trampoline_start:
 	mov	%eax, MBI_MODS_COUNT(%esi)
 
 	/* TODO: parse the end of memory from e820 */
+	/* TODO: restore to 1Gb when hv ve820 patch is merged! */
 	mov	$(MEM_1M / MEM_1K * 512), %eax
 	mov	%eax, MBI_MEM_UPPER(%esi)
 

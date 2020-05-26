@@ -7,8 +7,9 @@ mov %cr4, %eax
 mov %eax, STARTUP_CR4_ADDR
 
 /* push 32bit eflags to eax */
-//pushf
-//pop
+mov $stacktop, %esp
+pushfl
+pop %eax
 mov %eax, STARTUP_EFLAGS_ADDR
 
 mov $0xc0000080, %ecx

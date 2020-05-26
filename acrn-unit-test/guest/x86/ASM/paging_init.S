@@ -6,6 +6,7 @@ mov %eax, INIT_CR2_ADDR
 mov %cr4, %eax
 mov %eax, INIT_CR4_ADDR
 /* push 32bit eflags to eax */
+mov $stacktop, %esp
 pushfl
 pop %eax
 mov %eax, INIT_EFLAGS_ADDR
