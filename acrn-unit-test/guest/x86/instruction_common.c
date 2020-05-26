@@ -3500,7 +3500,7 @@ __unused static void set_idt(struct descriptor_table idtd)
 		: : [idtd] "m"(idtd));
 }
 
-static void de_exception_hander(struct ex_regs *regs)
+__unused static void de_exception_hander(struct ex_regs *regs)
 {
 	de_ocurred = true;
 	printf("#DE exception:\n");
@@ -3509,7 +3509,7 @@ static void de_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void db_exception_hander(struct ex_regs *regs)
+__unused static void db_exception_hander(struct ex_regs *regs)
 {
 	db_ocurred = true;
 	printf("#DB exception:\n");
@@ -3518,7 +3518,7 @@ static void db_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void nmi_exception_hander(struct ex_regs *regs)
+__unused static void nmi_exception_hander(struct ex_regs *regs)
 {
 	nmi_ocurred = true;
 	printf("#NMI exception:\n");
@@ -3527,7 +3527,7 @@ static void nmi_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void bp_exception_hander(struct ex_regs *regs)
+__unused static void bp_exception_hander(struct ex_regs *regs)
 {
 	bp_ocurred = true;
 	printf("#BP exception:\n");
@@ -3536,7 +3536,7 @@ static void bp_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void of_exception_hander(struct ex_regs *regs)
+__unused static void of_exception_hander(struct ex_regs *regs)
 {
 	of_ocurred = true;
 	printf("#OF exception:\n");
@@ -3545,7 +3545,7 @@ static void of_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void br_exception_hander(struct ex_regs *regs)
+__unused static void br_exception_hander(struct ex_regs *regs)
 {
 	br_ocurred = true;
 	printf("#BR exception:\n");
@@ -3554,7 +3554,7 @@ static void br_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void ud_exception_hander(struct ex_regs *regs)
+__unused static void ud_exception_hander(struct ex_regs *regs)
 {
 	ud_ocurred = true;
 	printf("#UD exception:\n");
@@ -3563,7 +3563,7 @@ static void ud_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void nm_exception_hander(struct ex_regs *regs)
+__unused static void nm_exception_hander(struct ex_regs *regs)
 {
 	nm_ocurred = true;
 	printf("#NM exception:\n");
@@ -3572,7 +3572,7 @@ static void nm_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void df_exception_hander(struct ex_regs *regs)
+__unused static void df_exception_hander(struct ex_regs *regs)
 {
 	df_ocurred = true;
 	printf("#DF exception:\n");
@@ -3581,7 +3581,7 @@ static void df_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void ts_exception_hander(struct ex_regs *regs)
+__unused static void ts_exception_hander(struct ex_regs *regs)
 {
 	ts_ocurred = true;
 	printf("#TS exception:\n");
@@ -3590,7 +3590,7 @@ static void ts_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void np_exception_hander(struct ex_regs *regs)
+__unused static void np_exception_hander(struct ex_regs *regs)
 {
 	np_ocurred = true;
 	printf("#NP exception:\n");
@@ -3599,7 +3599,7 @@ static void np_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void ss_exception_hander(struct ex_regs *regs)
+__unused static void ss_exception_hander(struct ex_regs *regs)
 {
 	ss_ocurred = true;
 	printf("#SS exception:\n");
@@ -3608,7 +3608,7 @@ static void ss_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void gp_exception_hander(struct ex_regs *regs)
+__unused static void gp_exception_hander(struct ex_regs *regs)
 {
 	gp_ocurred = true;
 	printf("#GP exception:\n");
@@ -3617,7 +3617,7 @@ static void gp_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void pf_exception_hander(struct ex_regs *regs)
+__unused static void pf_exception_hander(struct ex_regs *regs)
 {
 	pf_ocurred = true;
 	printf("#PF exception:\n");
@@ -3626,7 +3626,7 @@ static void pf_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void mf_exception_hander(struct ex_regs *regs)
+__unused static void mf_exception_hander(struct ex_regs *regs)
 {
 	mf_ocurred = true;
 	printf("#MF exception:\n");
@@ -3635,7 +3635,7 @@ static void mf_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void mc_exception_hander(struct ex_regs *regs)
+__unused static void mc_exception_hander(struct ex_regs *regs)
 {
 	mc_ocurred = true;
 	printf("#MC exception:\n");
@@ -3644,7 +3644,7 @@ static void mc_exception_hander(struct ex_regs *regs)
 	regs->rip += instruction_len;
 }
 
-static void xm_exception_hander(struct ex_regs *regs)
+__unused static void xm_exception_hander(struct ex_regs *regs)
 {
 	xm_ocurred = true;
 	printf("#XM exception:\n");

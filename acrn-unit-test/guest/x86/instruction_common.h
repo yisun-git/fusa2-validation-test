@@ -245,6 +245,7 @@ typedef union {
 typedef union {
 	avx256 avx;
 	float m[8];
+	u32 avx_u[8];
 } avx_union;
 
 /*
