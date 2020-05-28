@@ -220,6 +220,12 @@ uint32_t get_lapic_id(void)
 }
 
 volatile bool ring1_ret = false;
+/**
+ * @brief execute void (*fn)(const char *) function at ring1; pass "const char *arg" to (*fn)
+ *
+ * @pre setup ring1 environment by call setup_ring_env()
+ *
+ */
 int do_at_ring1(void (*fn)(const char *), const char *arg)
 {
 	static unsigned char user_stack[4096];
@@ -277,6 +283,12 @@ int do_at_ring1(void (*fn)(const char *), const char *arg)
 }
 
 volatile bool ring2_ret = false;
+/**
+ * @brief execute void (*fn)(const char *) function at ring2; pass "const char *arg" to (*fn)
+ *
+ * @pre setup ring2 environment by call setup_ring_env()
+ *
+ */
 int do_at_ring2(void (*fn)(const char *), const char *arg)
 {
 	static unsigned char user_stack[4096];
@@ -334,6 +346,12 @@ int do_at_ring2(void (*fn)(const char *), const char *arg)
 }
 
 volatile bool ring3_ret = false;
+/**
+ * @brief execute void (*fn)(const char *) function at ring3; pass "const char *arg" to (*fn)
+ *
+ * @pre setup ring3 environment by call setup_ring_env()
+ *
+ */
 int do_at_ring3(void (*fn)(const char *), const char *arg)
 {
 	static unsigned char user_stack[4096];
