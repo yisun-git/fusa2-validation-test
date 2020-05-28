@@ -48,5 +48,7 @@ extern int do_at_ring1(void (*fn)(const char *), const char *arg);
 extern int do_at_ring2(void (*fn)(const char *), const char *arg);
 extern int do_at_ring3(void (*fn)(const char *), const char *arg);
 extern void setup_ring_env();
+extern void *msr_reg_dump(u32 *size);
+extern bool xsave_reg_dump(void *ptr);
 #endif
 

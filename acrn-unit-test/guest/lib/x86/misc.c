@@ -6,7 +6,9 @@
 #include "apic.h"
 #include "asm/spinlock.h"
 #include "fwcfg.h"
-
+#include "regdump.h"
+#include "../../x86/instruction_common.h"
+#include "alloc.h"
 extern short cpu_online_count;
 static struct spinlock lock;
 
@@ -46,13 +48,11 @@ void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32
 	if ((pdpte[pd_offset] & (1 << PAGE_PS_FLAG)) &&
 		((level == PAGE_PDE) || (level == PAGE_PTE))) {
 		level = PAGE_PDPTE;
-	}
-	else {
+	} else {
 		pd = (pteval_t *)(pdpte[pdpte_offset] & PAGE_MASK);
 		if ((pd[pd_offset] & (1 << PAGE_PS_FLAG)) && level == PAGE_PTE) {
 			level = PAGE_PDE;
-		}
-		else {
+		} else {
 			pt = (pteval_t *)(pd[pd_offset] & PAGE_MASK);
 		}
 	}
@@ -96,8 +96,7 @@ void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32
 
 	if ((pde[pde_offset] & (1 << PAGE_PS_FLAG)) && (level == PAGE_PTE)) {
 		level = PAGE_PDE;
-	}
-	else {
+	} else {
 		pte = (pteval_t *)(pde[pde_offset] & PAGE_MASK);
 	}
 
@@ -124,8 +123,8 @@ void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32
 int write_cr4_exception_checking(unsigned long val)
 {
 	asm volatile(ASM_TRY("1f")
-			"mov %0,%%cr4\n\t"
-			"1:" : : "r" (val));
+				 "mov %0,%%cr4\n\t"
+				 "1:" : : "r" (val));
 	return exception_vector();
 }
 
@@ -135,9 +134,9 @@ int rdmsr_checking(u32 MSR_ADDR, u64 *result)
 	u32 edx;
 
 	asm volatile(ASM_TRY("1f")
-			"rdmsr \n\t"
-			"1:"
-			: "=a"(eax), "=d"(edx) : "c"(MSR_ADDR));
+				 "rdmsr \n\t"
+				 "1:"
+				 : "=a"(eax), "=d"(edx) : "c"(MSR_ADDR));
 	*result = eax + ((u64)edx << 32);
 	return exception_vector();
 }
@@ -148,9 +147,9 @@ int wrmsr_checking(u32 MSR_ADDR, u64 value)
 	u32 eax = value;
 
 	asm volatile(ASM_TRY("1f")
-		"wrmsr \n\t"
-		"1:"
-		: : "c"(MSR_ADDR), "a"(eax), "d"(edx));
+				 "wrmsr \n\t"
+				 "1:"
+				 : : "c"(MSR_ADDR), "a"(eax), "d"(edx));
 	return exception_vector();
 }
 /**
@@ -214,8 +213,8 @@ uint32_t get_lapic_id(void)
 {
 	uint32_t ebx;
 	asm volatile("cpuid" : "=b"(ebx)
-		: "a" (1)
-		: "memory");
+				 : "a" (1)
+				 : "memory");
 	return (ebx >> 24);
 }
 
@@ -437,5 +436,119 @@ void setup_ring_env()
 	*(u64 *)&gdt32[14] = RING2_DS_GDT_DESC;
 #endif
 
+}
+/*-------------------------------------------------------*
+ *	@ dump all supported msr value to memory;
+ *	return the memory address and size
+ *	pls remember free the memory
+ *
+ */
+void *msr_reg_dump(u32 *size)
+{
+	u64 *msr_value;
+
+	assert(size);
+
+	*size = sizeof(u64) * SUPPORTED_MSR_NUM;
+	msr_value = malloc(*size);
+	assert(msr_value);
+	memset(msr_value, 0, *size);
+
+	for (u32 i = 0; i < SUPPORTED_MSR_NUM; i++) {
+		*(msr_value + i) = rdmsr(supported_msr_list[i]);
+	}
+
+	return msr_value;
+}
+int xsave_setbv(u32 index, u64 value)
+{
+	u32 eax = value;
+	u32 edx = value >> 32;
+
+	asm volatile("xsetbv\n\t" /* xsetbv */
+				 : : "a" (eax), "d" (edx), "c" (index));
+	return 0;
+}
+int xsave_getbv(u32 index, u64 *result)
+{
+	u32 eax, edx;
+
+	asm volatile("xgetbv\n" /* xgetbv */
+				 : "=a" (eax), "=d" (edx)
+				 : "c" (index));
+	*result = eax + ((u64)edx << 32);
+	return 0;
+}
+int xsave_instruction(u64 *xsave_addr, u64 xcr0)
+{
+	u32 eax = xcr0;
+	u32 edx = xcr0 >> 32;
+	asm volatile(
+		"xsave %[addr]\n"
+		: : [addr]"m"(*xsave_addr), "a"(eax), "d"(edx)
+		: "memory");
+	return 0;
+}
+
+u64 get_xcr0(void)
+{
+	struct cpuid r;
+	r = cpuid_indexed(0xd, 0);
+	return r.a + ((u64)r.d << 32);
+}
+
+/*------------------------------------------------------*
+ *   dump xsave reg to ptr
+ *   TURE:sucess
+ *   FALSE:failed
+ */
+bool xsave_reg_dump(void *ptr)
+{
+	void *mem;
+	uintptr_t p_align;
+	void *fpu_sse, *ymm_ptr, *bnd_ptr;
+	xsave_dump_t *xsave_reg;
+	xsave_area_t *xsave;
+	size_t alignment;
+	u64 supported_xcr0;
+	u64 xcr0;
+
+	assert(ptr);
+	memset(ptr, 0x0, sizeof(xsave_dump_t));
+	/*enable xsave feature set by set cr4.18*/
+	write_cr4(read_cr4() | (1 << 18)); /* osxsave */
+	supported_xcr0 = get_xcr0();
+	/*enable all xsave bitmap 0x3--we support until now!!
+	 *MPX component is hidden,so we add it ?
+	 */
+	xsave_getbv(0, &xcr0);
+	xsave_setbv(0, supported_xcr0);
+
+	/*allocate 2K memory to save xsave feature*/
+	mem = malloc(1 << 11);
+	assert(mem);
+	memset(mem, 0, (1 << 11));
+	/*mem base address must be 64 bytes aligned to excute "xsave". vol1 13.4 in SDM*/
+	alignment = 64;
+	p_align = (uintptr_t) mem;
+	p_align = ALIGN(p_align, alignment);
+	if (xsave_instruction((void *)p_align, supported_xcr0) != 0) {
+		free(mem);
+		return false;
+	}
+	/*copy to dump buffer*/
+	xsave_reg = (xsave_dump_t *)ptr;
+	xsave = (xsave_area_t *)p_align;
+	fpu_sse = (void *)xsave;
+	memcpy((void *)&(xsave_reg->fpu_sse), fpu_sse, sizeof(fpu_sse_t));
+	ymm_ptr = (void *)&xsave->ymm[0];
+	memcpy((void *)&(xsave_reg->ymm), ymm_ptr, sizeof(xsave_avx_t));
+	bnd_ptr = (void *)&xsave->bndregs;
+	memcpy((void *)&(xsave_reg->bndregs), bnd_ptr, \
+		   sizeof(xsave_bndreg_t) + sizeof(xsave_bndcsr_t));
+	free(mem);
+	/*set origin xcr0 back*/
+	xsave_setbv(0, xcr0);
+	return true;
 }
 
