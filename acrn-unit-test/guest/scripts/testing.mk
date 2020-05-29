@@ -42,4 +42,4 @@ codescan: $(C_CODESCAN)
 
 $(C_CODESCAN): %.c.codescan: %.c $(FN_HEADER) 
 	@echo "CODESCAN" $*.c
-	@clang-tidy $< -header-filter=.* --checks=-*,$(ACRN_CHECK) -- $(patsubst %, -I%, $(INCLUDE_PATH)) -I. -Wall -W -nostdlib -static -DSTACK_PROTECTOR -gdwarf-2 >> $(TMP_SCAN_OUT) 2>>$(TMP_SCAN_ERR)
+	@-clang-tidy $< -header-filter=.* --checks=-*,$(ACRN_CHECK) -- $(patsubst %, -I%, $(INCLUDE_PATH)) -I. -Wall -W -nostdlib -static -DSTACK_PROTECTOR -gdwarf-2 >> $(TMP_SCAN_OUT) 2>>$(TMP_SCAN_ERR)
