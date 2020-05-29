@@ -2,11 +2,6 @@
 #define __PT_H__
 
 #define PASS 0
-#ifdef __x86_64__
-#define uint64_t unsigned long
-#else
-#define uint64_t unsigned long long
-#endif
 #define IA32_RTIT_OUTPUT_BASE		0x00000560
 #define IA32_RTIT_OUTPUT_MASK_PTRS	0x00000561
 #define IA32_RTIT_CTL			0x00000570
@@ -23,6 +18,7 @@
 
 #define MSR_VALUE			0x11
 #define CPUID_07_PT_BIT			(1 << 25)
+#define CPUID_PTWRITE_BIT	(1 << 4)
 #define CPUID_14H_PT			0x14
 #endif
 

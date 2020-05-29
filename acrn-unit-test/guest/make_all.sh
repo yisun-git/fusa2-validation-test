@@ -9,7 +9,7 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
-BUILD_NATIVE_64_FEATURE="xsave device_passthrough hsi sse"
+BUILD_NATIVE_64_FEATURE="xsave device_passthrough hsi sse pt"
 BUILD_NATIVE_32_FEATURE=""
 
 RESULT=0
