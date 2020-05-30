@@ -224,7 +224,7 @@ static void mov_gp_011(void)
 		: "r"(r_a));
 }
 
-static void ring3_mov_gp_011(const char *msg)
+static void ring3_mov_gp_011(const char *fun_name)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -233,13 +233,13 @@ static void ring3_mov_gp_011(const char *msg)
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
 
 	report("%s Execute Instruction:  MOV, to generate #GP",
-		ret == true, __FUNCTION__);
+		ret == true, fun_name);
 }
 static void  gp_rqmid_31327_data_transfer_mov_gp_011(void)
 {
 	cr0_am_to_0();
 
-	do_at_ring3(ring3_mov_gp_011, "");
+	do_at_ring3(ring3_mov_gp_011, __FUNCTION__);
 }
 
 /*
@@ -257,7 +257,7 @@ static void mov_gp_012(void)
 		: "m"(*(creat_non_canon_add())));
 }
 
-static void  ring3_mov_gp_012(const char *msg)
+static void  ring3_mov_gp_012(const char *fun_name)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -266,7 +266,7 @@ static void  ring3_mov_gp_012(const char *msg)
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
 
 	report("%s Execute Instruction:  MOV, to generate #GP",
-		ret == true, __FUNCTION__);
+		ret == true, fun_name);
 }
 
 static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
@@ -274,7 +274,7 @@ static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
 	cr0_am_to_1();
 	eflags_ac_to_1();
 
-	do_at_ring3(ring3_mov_gp_012, "");
+	do_at_ring3(ring3_mov_gp_012, __FUNCTION__);
 }
 
 /*
@@ -284,23 +284,13 @@ static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
  *  If attempt is made to load the CS register(CSLoad: true),
  *  executing MOV shall generate #UD.
  */
-static void mov_ud_001(void)
-{
-	u32 r_a = 10;
-	asm volatile("mov %0, %%cs \n"
-		: : "r"(r_a) : );
-}
-
 static void  gp_rqmid_31333_data_transfer_mov_ud_001(void)
 {
-	gp_trigger_func fun;
-	bool ret;
-
-	fun = (gp_trigger_func)mov_ud_001;
-	ret = test_for_exception(UD_VECTOR, fun, NULL);
-
-	report("%s Execute Instruction:  MOV, to generate #UD",
-		ret == true, __FUNCTION__);
+	asm volatile(ASM_TRY("1f")
+		"mov %0, %%cs \n"
+		"1:"
+		: : "r"(0x8) : );
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
 }
 
 /*
@@ -312,14 +302,11 @@ static void  gp_rqmid_31333_data_transfer_mov_ud_001(void)
  */
 static void  gp_rqmid_31336_data_transfer_mov_ud_002(const char *msg)
 {
-	gp_trigger_func fun;
-	bool ret;
-
-	fun = (gp_trigger_func)mov_ud_001;
-	ret = test_for_exception(UD_VECTOR, fun, NULL);
-
-	report("%s Execute Instruction:  MOV, to generate #UD",
-		ret == true, __FUNCTION__);
+	asm volatile(ASM_TRY("1f")
+		"mov %0, %%cs \n"
+		"1:"
+		: : "r"(0x8) : );
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
 }
 
 /*
@@ -331,14 +318,11 @@ static void  gp_rqmid_31336_data_transfer_mov_ud_002(const char *msg)
  */
 static void  gp_rqmid_31339_data_transfer_mov_ud_003(const char *msg)
 {
-	gp_trigger_func fun;
-	bool ret;
-
-	fun = (gp_trigger_func)mov_ud_001;
-	ret = test_for_exception(UD_VECTOR, fun, NULL);
-
-	report("%s Execute Instruction:  MOV, to generate #UD",
-		ret == true, __FUNCTION__);
+	asm volatile(ASM_TRY("1f")
+		"mov %0, %%cs \n"
+		"1:"
+		: : "r"(0x8) : );
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
 }
 
 /*
@@ -350,14 +334,11 @@ static void  gp_rqmid_31339_data_transfer_mov_ud_003(const char *msg)
  */
 static void  gp_rqmid_31342_data_transfer_mov_ud_004(const char *msg)
 {
-	gp_trigger_func fun;
-	bool ret;
-
-	fun = (gp_trigger_func)mov_ud_001;
-	ret = test_for_exception(UD_VECTOR, fun, NULL);
-
-	report("%s Execute Instruction:  MOV, to generate #UD",
-		ret == true, __FUNCTION__);
+	asm volatile(ASM_TRY("1f")
+		"mov %0, %%cs \n"
+		"1:"
+		: : "r"(0x8) : );
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
 }
 
 /*
@@ -373,7 +354,7 @@ static void mov_gp_013(void)
 	check_bit = read_cr0();
 	check_bit &= (~(FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_31)));
 	asm volatile(
-		"mov %%cr0, %0 \n"
+		"mov %0, %%cr0\n"
 		: : "r"(check_bit) : "memory");
 }
 
@@ -420,7 +401,7 @@ static void  gp_rqmid_31378_data_transfer_mov_gp_015(void)
  */
 static void  gp_rqmid_31385_data_transfer_mov_gp_017(void)
 {
-	cr8_r_w_to_1();
+	cr8_r_w_to_1(__FUNCTION__);
 }
 
 /*
@@ -432,7 +413,7 @@ static void  gp_rqmid_31385_data_transfer_mov_gp_017(void)
  */
 static void  gp_rqmid_31398_data_transfer_mov_gp_019(void)
 {
-	cr3_r_w_to_1();
+	cr3_r_w_to_1(__FUNCTION__);
 }
 
 /*
@@ -754,25 +735,30 @@ __unused static void int_gp_115(void)
 	//asm volatile("INT1");
 }
 
-static void  gp_rqmid_31652_control_transfer_int_gp_115(void)
+static __unused void  gp_rqmid_31652_control_transfer_int_gp_115(void)
 {
+	struct descriptor_table old_idt;
+	struct descriptor_table new_idt;
 	gp_trigger_func fun;
 	bool ret;
 
-	printf("idt limit: %#x \n", stor_idt().limit);
+	old_idt = stor_idt();
+	printf("idt limit: %#x \n", old_idt.limit);
 
-	struct descriptor_table idtb1 = {0U, 0UL};
 
-	idtb1.limit = 0;
-	idtb1.base = stor_idt().base;
+	new_idt.limit = 0;
+	new_idt.base = old_idt.base;
 
-	set_idt(idtb1);
-	printf("modify idt limit to: %#x \n", stor_idt().limit);
+	set_idt(new_idt);
+	printf("modify idt limit to: %#x \n", new_idt.limit);
 
 	fun = (gp_trigger_func)int_gp_115;
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
 
 	report("%s Execute Instruction: CALL", ret == true, __FUNCTION__);
+
+	/* resume environment */
+	set_idt(old_idt);
 }
 
 /*
@@ -819,30 +805,39 @@ static void  gp_rqmid_31901_segment_instruction_lfs_gp_125(void)
  *  If the memory address is in a non-canonical form(Ad. Cann.: non mem),
  *  executing LSS shall generate #GP.
  */
-__unused static void lss_gp_132(void)
+__unused static void ring3_lss_gp_132(const char *fun_name)
 {
+	u64 address;
+	struct lseg_st lss;
+
 	eflags_ac_to_1();
-	asm volatile("lss (%0), %%eax  \n"
-		: : "r"(creat_non_canon_add()));
+
+	lss.a = 0xffffffff;
+	/*index =2*/
+	lss.b = 0x13;
+
+	address = (unsigned long)&lss;
+
+	if ((address >> 63) & 1) {
+		address = (address & (~(1ull << 63)));
+	} else {
+		address = (address|(1UL<<63));
+	}
+
+	asm volatile(ASM_TRY("1f")
+		"lss  %0, %%ebx\t\n"
+		"1:"
+		::"m"(address)
+	);
+
+	report("%s ", (exception_vector() == GP_VECTOR), fun_name);
 }
 
-static void  ring3_lss_gp_132(const char *msg)
-{
-	gp_trigger_func fun;
-	bool ret;
-
-	fun = (gp_trigger_func)lss_gp_132;
-	ret = test_for_exception(GP_VECTOR, fun, NULL);
-
-	/* Need modify unit-test framework, can't handle exception. */
-	report("%s Execute Instruction: LFS", ret == true, __FUNCTION__);
-}
-
-static void  gp_rqmid_31751_segment_instruction_lss_gp_132(const char *msg)
+static __unused void  gp_rqmid_31751_segment_instruction_lss_gp_132()
 {
 	cr0_am_to_0();
 
-	do_at_ring3(ring3_lss_gp_132, "");
+	do_at_ring3(ring3_lss_gp_132, __FUNCTION__);
 }
 
 /*
@@ -1099,25 +1094,6 @@ static void  gp_rqmid_32179_decimal_arithmetic_aam_32bit_de_001(void)
 
 #endif   /* #ifndef __x86_64__*/
 
-#ifdef __x86_64__
-void error_case()
-{
-	do_at_ring1(gp_rqmid_31336_data_transfer_mov_ud_002, "");	//not handler
-	do_at_ring2(gp_rqmid_31339_data_transfer_mov_ud_003, "");	//not handler
-	do_at_ring3(gp_rqmid_31342_data_transfer_mov_ud_004, "");	//not handler
-	gp_rqmid_31370_data_transfer_mov_gp_013();					//hypervisor bug
-	gp_rqmid_31385_data_transfer_mov_gp_017();					//fail
-	gp_rqmid_31398_data_transfer_mov_gp_019();					//hlt
-	gp_rqmid_31609_data_transfer_mov_db_001();					//fail
-	gp_rqmid_31652_control_transfer_int_gp_115();				//error
-	//gp_rqmid_31901_segment_instruction_lfs_gp_125();			//fail
-	do_at_ring3(gp_rqmid_31751_segment_instruction_lss_gp_132, "");//not handler
-	gp_rqmid_31937_msr_access_rdsmr_gp_004();					//rdmsr_vmexit_handler
-	gp_rqmid_31939_msr_access_rdsmr_gp_005();					//rdmsr_vmexit_handler
-	gp_rqmid_31949_msr_access_wrmsr_gp_009();					//wrmsr_vmexit_handler
-	gp_rqmid_31953_msr_access_wrmsr_gp_011();					//wrmsr_vmexit_handler
-}
-#endif
 /*------------------------------Test case End!---------------------------------*/
 int main(void)
 {
@@ -1132,24 +1108,6 @@ int main(void)
 
 	setup_idt();
 	setup_vm();
-	handle_exception(DE_VECTOR, de_exception_hander);
-	handle_exception(DB_VECTOR, db_exception_hander);
-	handle_exception(NMI_VECTOR, nmi_exception_hander);
-	handle_exception(BP_VECTOR, bp_exception_hander);
-	handle_exception(OF_VECTOR, of_exception_hander);
-	handle_exception(BR_VECTOR, br_exception_hander);
-	handle_exception(UD_VECTOR, ud_exception_hander);
-	handle_exception(NM_VECTOR, nm_exception_hander);
-	handle_exception(DF_VECTOR, df_exception_hander);
-	handle_exception(TS_VECTOR, ts_exception_hander);
-	handle_exception(NP_VECTOR, np_exception_hander);
-	handle_exception(SS_VECTOR, ss_exception_hander);
-	handle_exception(GP_VECTOR, gp_exception_hander);
-	handle_exception(PF_VECTOR, pf_exception_hander);
-	handle_exception(MF_VECTOR, mf_exception_hander);
-	handle_exception(MC_VECTOR, mc_exception_hander);
-	handle_exception(XM_VECTOR, xm_exception_hander);
-	irq_enable();
 
 #ifdef __x86_64__
 	init_gdt_description();
@@ -1160,12 +1118,16 @@ int main(void)
 	do_at_ring1(gp_rqmid_31318_data_transfer_mov_gp_008, "");
 	do_at_ring2(gp_rqmid_31321_data_transfer_mov_gp_009, "");
 	do_at_ring3(gp_rqmid_31324_data_transfer_mov_gp_010, "");
+	do_at_ring1(gp_rqmid_31336_data_transfer_mov_ud_002, "");
+	do_at_ring2(gp_rqmid_31339_data_transfer_mov_ud_003, "");
+	do_at_ring3(gp_rqmid_31342_data_transfer_mov_ud_004, "");
+	gp_rqmid_31751_segment_instruction_lss_gp_132();
 	gp_rqmid_31327_data_transfer_mov_gp_011();
 	gp_rqmid_31330_data_transfer_mov_gp_012();
 	gp_rqmid_31333_data_transfer_mov_ud_001();
 	gp_rqmid_31378_data_transfer_mov_gp_015();
 	gp_rqmid_32284_data_transfer_mov_gp_021();
-	gp_rqmid_31614_data_transfer_mov_gp_035();
+	gp_rqmid_31614_data_transfer_mov_gp_035();//hv bug
 	gp_rqmid_31271_data_transfer_cmpxchg16b_gp_060();
 	gp_rqmid_31323_data_transfer_push_ud_017();
 	gp_rqmid_32288_data_transfer_pop_ud_066();
@@ -1175,9 +1137,17 @@ int main(void)
 	gp_rqmid_31379_control_transfer_iret_gp_097();
 	gp_rqmid_32163_random_number_rdrand_ud_006();
 	gp_rqmid_32191_ud_instruction_ud1_ud_010();
+	gp_rqmid_31370_data_transfer_mov_gp_013();
+	gp_rqmid_31385_data_transfer_mov_gp_017();
+	gp_rqmid_31398_data_transfer_mov_gp_019();//native/hv all fail
+	gp_rqmid_31609_data_transfer_mov_db_001();//native/hv all fail
+	//gp_rqmid_31652_control_transfer_int_gp_115();//strategy is error
+	gp_rqmid_31937_msr_access_rdsmr_gp_004();
+	gp_rqmid_31939_msr_access_rdsmr_gp_005();
+	gp_rqmid_31949_msr_access_wrmsr_gp_009();
+	gp_rqmid_31953_msr_access_wrmsr_gp_011();
 	gp_rqmid_31901_segment_instruction_lfs_gp_125();
 	/*---64 bit end----*/
-
 #else /* #ifndef __x86_64__ */
 	/*--------------------------32 bit--------------------------*/
 	gp_rqmid_32003_data_transfer_mov_gp_001();

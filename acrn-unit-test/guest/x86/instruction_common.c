@@ -2960,7 +2960,7 @@ void write_cr3_checking(unsigned long val)
 		: : "r"(val));
 }
 
-void cr3_r_w_to_1(void)
+void cr3_r_w_to_1(const char *fun_name)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -2971,21 +2971,21 @@ void cr3_r_w_to_1(void)
 	switch (get_random_value()%2) {
 	case 0:
 		printf("***** Set the reserved bit in CR3, such as CR3[0:2]*****\n");
-		check_bit &= (FEATURE_INFORMATION_BIT_RANGE(CR3_RESEVED_BIT_2, FEATURE_INFORMATION_00));
+		check_bit |= (FEATURE_INFORMATION_BIT_RANGE(CR3_RESEVED_BIT_2, FEATURE_INFORMATION_00));
 
 		/* Expected write #GP exception */
 		fun = (gp_trigger_func)write_cr3_checking;
 		ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
-		report("#GP exception", ret == true);
+		report("%s", ret == true, fun_name);
 		break;
 	case 1:
 		printf("***** Set the reserved bit in CR3, such as CR3[5:11] *****\n");
-		check_bit &= (FEATURE_INFORMATION_BIT_RANGE(CR3_RESEVED_BIT_5, FEATURE_INFORMATION_05));
+		check_bit |= (FEATURE_INFORMATION_BIT_RANGE(CR3_RESEVED_BIT_5, FEATURE_INFORMATION_05));
 
 		/* Expected write #GP exception */
 		fun = (gp_trigger_func)write_cr3_checking;
 		ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
-		report("#GP exception", ret == true);
+		report("%s", ret == true, fun_name);
 		break;
 	}
 }
@@ -3005,7 +3005,7 @@ void write_cr8_checking(unsigned long val)
 	asm volatile("mov %0, %%cr8\n\t"
 		: : "r"(val));
 }
-inline void cr8_r_w_to_1(void)
+inline void cr8_r_w_to_1(const char *fun_name)
 {
 	gp_trigger_func fun;
 	bool ret;
@@ -3014,13 +3014,13 @@ inline void cr8_r_w_to_1(void)
 	printf("***** Set the reserved bit in CR8[64:4] *****\n");
 
 	check_bit = read_cr8();
-	check_bit &= (FEATURE_INFORMATION_BIT_RANGE(CR8_RESEVED_BIT_4, FEATURE_INFORMATION_04));
+	check_bit |= (FEATURE_INFORMATION_BIT_RANGE(CR8_RESEVED_BIT_4, FEATURE_INFORMATION_04));
 
 	fun = (gp_trigger_func)write_cr8_checking;
 	ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
 
 	/* Expected write #GP exception */
-	report("%s #GP exception", ret == true, __FUNCTION__);
+	report("%s #GP exception", ret == true, fun_name);
 }
 
 /**

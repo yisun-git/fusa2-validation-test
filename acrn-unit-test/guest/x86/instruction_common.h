@@ -1608,7 +1608,7 @@ void cr4_r_w_to_1(void);
  *      When executing the instruction in next step will generate #GP exception
  */
 void write_cr3_checking(unsigned long val);
-void cr3_r_w_to_1(void);
+void cr3_r_w_to_1(const char *fun_name);
 
 /**
  *@Sub-Conditions:
@@ -1621,7 +1621,7 @@ void cr3_r_w_to_1(void);
  *      When executing the instruction in next step will generate #GP exception
  */
 void write_cr8_checking(unsigned long val);
-void cr8_r_w_to_1(void);
+void cr8_r_w_to_1(const char *fun_name);
 
 /**
  *@Sub-Conditions:
