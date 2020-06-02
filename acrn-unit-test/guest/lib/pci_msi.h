@@ -16,12 +16,12 @@ struct msi {
 };
 
 struct pci_msi_ops {
-void (*msi_create)(struct pci_dev *pdev);
-void (*msi_destroy)(struct pci_dev *pdev);
-int (*msi_probe)(struct pci_dev *pdev);
-int (*msi_enable)(struct pci_dev *pdev, bool flag);
-int (*msi_config)(struct pci_dev *pdev, uint64_t addr, uint16_t data);
-void (*msi_irq_start)(struct pci_dev *pdev, void *irq_handler);
+	void (*msi_create)(struct pci_dev *pdev);
+	void (*msi_destroy)(struct pci_dev *pdev);
+	int (*msi_probe)(struct pci_dev *pdev);
+	int (*msi_enable)(struct pci_dev *pdev, bool flag);
+	int (*msi_config)(struct pci_dev *pdev, uint64_t addr, uint16_t data);
+	void (*msi_irq_start)(struct pci_dev *pdev, void *irq_handler);
 };
 
 #define PCI_MSI_PROBE(dev)		(dev)->msi_ops->msi_probe(dev)

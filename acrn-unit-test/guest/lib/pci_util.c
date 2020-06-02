@@ -1,9 +1,5 @@
 #include "pci_util.h"
 
-#define PCI_CONFIG_ADDR		0xCF8U
-#define PCI_CONFIG_DATA		0xCFCU
-#define PCI_CONFIG_ENABLE		0x80000000U
-
 /*
  * @brief calculate the PCI_CFG_PORT value.
  *
@@ -191,7 +187,18 @@ int pci_pdev_write_mem(union pci_bdf bdf, mem_size address, uint32_t bytes, uint
 	return OK;
 }
 
-uint32_t pci_pdev_get_bar_size(union pci_bdf bdf, uint32_t bar)
+/*
+ * @brief pci_pdev_get_bar_size
+ *
+ * caculate BAR space size by reading BAR register.
+ *
+ * @param union pci_bdf bdf:device BDF information
+ * @param uint32_t bar:the bar index from 0 to 5
+ *
+ * @return BAR space size.
+ *
+ */
+uint32_t pci_pdev_get_bar_size(IN union pci_bdf bdf, IN uint32_t bar)
 {
 	uint16_t command = 0;
 	uint16_t old_command = 0;
@@ -213,6 +220,84 @@ uint32_t pci_pdev_get_bar_size(union pci_bdf bdf, uint32_t bar)
 	pci_pdev_write_cfg(bdf, bar_id, 4, _bar);
 	pci_pdev_write_cfg(bdf, PCI_COMMAND, 2, old_command);
 	return size;
+}
+
+/*
+ * @brief pci_pdev_enumerate_dev
+ *
+ * Enumerate pci devices.
+ *
+ * @param struct pci_dev *devs:[OUT] pci_dev array.
+ * @param uint32_t *nr_dev:For IN, it means size of pci_dev array,
+ * and for OUT, it means total number of devices.
+ *
+ * @return BAR space size.
+ */
+void pci_pdev_enumerate_dev(OUT struct pci_dev *devs, INOUT uint32_t *nr_dev)
+{
+	uint32_t bus = 0;
+	uint32_t dev = 0;
+	uint32_t func = 0;
+	uint32_t i = 0;
+	uint32_t vender_id = 0U;
+	uint32_t device_id = 0U;
+	union pci_bdf bdf = {0};
+	for (bus = 0; bus < BUS_NUM; bus++) {
+		for (dev = 0; dev < DEV_NUM; dev++) {
+			for (func = 0; func < FUNC_NUM; func++) {
+				bdf.bits.b = bus;
+				bdf.bits.d = dev;
+				bdf.bits.f = func;
+				vender_id = pci_pdev_read_cfg(bdf, PCI_VENDOR_ID, 2);
+				device_id = pci_pdev_read_cfg(bdf, PCI_DEVICE_ID, 2);
+				if ((vender_id != 0xFFFFU) && (device_id != 0xFFFFU) && (i < *nr_dev)) {
+					devs[i].bdf = bdf;
+					devs[i].vender_id = vender_id;
+					devs[i].device_id = device_id;
+					i++;
+				}
+			}
+		}
+	}
+	*nr_dev = i;
+}
+
+bool get_pci_bdf_by_dev_vendor(struct pci_dev *devs, uint32_t nr_dev, uint32_t dev_vendor, union pci_bdf *pbdf)
+{
+	uint32_t ori_dev_ven = 0;
+	int i = 0;
+	for (i = 0; i < nr_dev; i++) {
+		ori_dev_ven = DEV_VEN(devs[i].device_id, devs[i].vender_id);
+		if (ori_dev_ven == dev_vendor) {
+			*pbdf = devs[i].bdf;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool is_dev_exist_by_dev_vendor(struct pci_dev *devs, uint32_t nr_dev, uint32_t dev_vendor)
+{
+	uint32_t ori_dev_ven = 0;
+	int i = 0;
+	for (i = 0; i < nr_dev; i++) {
+		ori_dev_ven = DEV_VEN(devs[i].device_id, devs[i].vender_id);
+		if (ori_dev_ven == dev_vendor) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool is_dev_exist_by_bdf(struct pci_dev *devs, uint32_t nr_dev, union pci_bdf bdf)
+{
+	int i = 0;
+	for (i = 0; i < nr_dev; i++) {
+		if (devs[i].bdf.value == bdf.value) {
+			return true;
+		}
+	}
+	return false;
 }
 
 uint64_t shift_umask(uint8_t msb, uint8_t lsb)

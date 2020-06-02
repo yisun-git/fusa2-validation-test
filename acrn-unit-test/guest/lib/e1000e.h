@@ -22,7 +22,7 @@ typedef int (*int_func)(void *p_arg);
  * Not support int disable connect
  */
 extern int msi_int_connect(int_func int_ck, void *p_arg);
-extern int e1000e_init(void);
+extern int e1000e_init(union pci_bdf bdf);
 extern void msi_int_simulate(void);
 extern int delay_loop_ms(uint32_t ms);
 extern uint64_t msi_int_cnt_get(void);

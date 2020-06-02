@@ -17,6 +17,18 @@
 #define NULL	(void *)(0)
 #endif
 
+#ifdef __x86_64__
+#define LD	"ld"
+#define LX	"lx"
+#define ptr_width	uint64_t
+#define mem_size	uint64_t
+#else
+#define LD	"lld"
+#define LX	"llx"
+#define ptr_width	uint32_t
+#define mem_size	uint32_t
+#endif
+
 #define ELEMENT_NUM(array)	sizeof(array) / sizeof(array[0])
 
 union pci_bdf {
@@ -27,12 +39,6 @@ union pci_bdf {
 		uint8_t b; /* BITs 8-15 */
 	} bits;
 };
-
-#ifdef __x86_64__
-#define mem_size	uint64_t
-#else
-#define mem_size	uint32_t
-#endif
 
 #define PCI_MAKE_BDF(name, bb, dd, ff) union pci_bdf  _##name##_bdf = {\
 	.bits = {\
@@ -50,6 +56,9 @@ struct pci_dev_ops;
 struct pci_msi_ops;
 struct pci_dev {
 	union pci_bdf bdf;
+	uint16_t vender_id;
+	uint16_t device_id;
+	#define DEV_VEN(device_id, vender_id)	((vender_id) | ((device_id) << 16))
 	uint32_t nr_bars;
 	uint32_t mmio_start[PCI_BAR_COUNT];
 	uint32_t mmio_end[PCI_BAR_COUNT];

@@ -160,7 +160,7 @@ union apic_icr {
 	asm volatile ("sti\n" : : : "cc");\
 }
 
-#define __readl(reg)	*(uint32_t *)(uint64_t)(reg)
+#define __readl(reg)	*(uint32_t *)(ptr_width)(reg)
 static inline uint32_t __er32(P_E1000E_DEV p_e1000e_dev, uint32_t reg)
 {
 	struct pci_dev *pdev = &(p_e1000e_dev->pci_obj);
@@ -168,7 +168,7 @@ static inline uint32_t __er32(P_E1000E_DEV p_e1000e_dev, uint32_t reg)
 }
 #define er32(reg)	__er32(p_e1000e_dev, E1000_##reg)
 
-#define __writel(reg, val)	*(uint32_t *)(uint64_t)(reg) = val;
+#define __writel(reg, val)	*(uint32_t *)(ptr_width)(reg) = val;
 static inline void __ew32(P_E1000E_DEV p_e1000e_dev, uint32_t reg, uint32_t val)
 {
 	struct pci_dev *pdev = &(p_e1000e_dev->pci_obj);
@@ -253,25 +253,32 @@ static E1000E_DEV e1000e_dev = {
 
 int msi_int_demo(uint32_t msi_trigger_num)
 {
+#define PCI_NET_VENDOR_ID	(0x8086)
+#define PCI_NET_DEVICE_ID	(0x156f)
 	uint32_t num = msi_trigger_num;
-
 	msi_int_connect(msi_int_handler_demo, (void *)1);
 	msi_int_connect(msi_int_handler_demo, (void *)2);
 	msi_int_connect(msi_int_handler_demo, (void *)3);
 	msi_int_connect(msi_int_handler_demo, (void *)4);
-
-	e1000e_init();
-	uint32_t lapic_id = apic_id();
-	uint64_t msi_msg_addr = MAKE_NET_MSI_MESSAGE_ADDR(0xFFE00000, lapic_id);
-	uint32_t msi_msg_data = MAKE_NET_MSI_MESSAGE_DATA(0x40);
-	e1000e_msi_config_enable(&e1000e_dev, msi_msg_addr, msi_msg_data);
-	while (num) {
-		num -= 1;
-		msi_int_simulate();
-		delay_loop_ms(1000);
-		printf("[ int ]MSI int cnt:%ld\r\n", msi_int_cnt_get());
+	union pci_bdf bdf = {0};
+	struct pci_dev pci_devs[32];
+	uint32_t nr_devs = 32;
+	pci_pdev_enumerate_dev(pci_devs, &nr_devs);
+	bool is = get_pci_bdf_by_dev_vendor(pci_devs, nr_devs,\
+	DEV_VEN(PCI_NET_DEVICE_ID, PCI_NET_VENDOR_ID), &bdf);
+	if (is) {
+		e1000e_init(bdf);
+		uint32_t lapic_id = apic_id();
+		uint64_t msi_msg_addr = MAKE_NET_MSI_MESSAGE_ADDR(0xFFE00000, lapic_id);
+		uint32_t msi_msg_data = MAKE_NET_MSI_MESSAGE_DATA(0x40);
+		e1000e_msi_config_enable(&e1000e_dev, msi_msg_addr, msi_msg_data);
+		while (num) {
+			num -= 1;
+			msi_int_simulate();
+			delay_loop_ms(1000);
+			printf("[ int ]MSI int cnt:%"LD"\r\n", msi_int_cnt_get());
+		}
 	}
-
 	return 0;
 }
 
@@ -289,13 +296,13 @@ void e1000e_msi_config(uint64_t msi_msg_addr, uint32_t msi_msg_data)
 	return;
 }
 
-int e1000e_init(void)
+int e1000e_init(union pci_bdf bdf)
 {
 	int ret = 0;
 	uint32_t size = 0;
 	P_E1000E_DEV p_e1000e_dev = (P_E1000E_DEV)&e1000e_dev;
 	struct pci_dev *pdev = &(e1000e_dev.pci_obj);
-
+	pdev->bdf = bdf;
 	set_log_level(E1000_DEBUG_LEVEL);
 	ret = pci_card_detect(p_e1000e_dev);
 	if (ret == -1) {
@@ -621,7 +628,7 @@ static void early_init_lapic(void)
 	/* Get local APIC base address */
 	base.value = msr_read(MSR_IA32_APIC_BASE);
 	sivr = msr_read(MSR_IA32_EXT_APIC_SIVR);
-	DBG_INFO("LocalAPIC BASE:%lxH ; SIVR:%lxH", base.value, sivr);
+	DBG_INFO("LocalAPIC BASE:%"LX"H ; SIVR:%"LX"H", base.value, sivr);
 
 	/* Enable LAPIC in x2APIC mode*/
 	/* The following sequence of msr writes to enable x2APIC
@@ -818,6 +825,6 @@ static inline void msr_write(uint32_t reg_num, uint64_t value64)
 
 static int msi_int_handler_demo(void *p_arg)
 {
-	printf("[ int ]Run %s(%d)\r\n", __func__, (uint32_t)(uint64_t)p_arg);
+	printf("[ int ]Run %s(%p)\r\n", __func__, p_arg);
 	return 0;
 }
