@@ -77,6 +77,7 @@
     $ sudo apt-get source linux-source-4.18.0
     $ tar -jxvf linux-source-4.18.0.tar.bz2
     $ sudo apt-get install libelf-dev xorriso flex bison
+    $ sudo apt-get install grub-pc-bin      # for UEFI machine
 
     Apply this patch to the linux-source-4.18.0: 
     (https://intel.sharepoint.com/sites/ACRNFuSA/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches%2Fenable%5Finit%2Epatch&parent=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches&p=true&originalPath=aHR0cHM6Ly9pbnRlbC5zaGFyZXBvaW50LmNvbS86dTovcy9BQ1JORnVTQS9FVkpHVVlEVnM1Rk9yTWtWSEEzUVVDa0JMVWRhT1hNTG5BUEJwT0tpbFo3alp3P3J0aW1lPVR4THZublg0MTBn)
@@ -106,7 +107,7 @@
 
 ### 3. Run in QEMU
     
-    Compile hypervisor (see ### 4).
+    Compile hypervisor (see ### 4). Add compile option QEMU=1.
     Compile unit-test (see ### 5).
 
     Under path: <path of acrn-validation-test>/github/acrn-unit-test/guest/, 

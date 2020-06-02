@@ -56,6 +56,13 @@ fi
 	echo    }
 ) > $isodir/boot/grub/grub.cfg
 
+if [ -z "`dpkg -l xorriso`" ]; then
+    echo "WARNING: Please install necessary package xorriso firstly!!"
+fi
+if [ -z "`dpkg -l grub-pc-bin`" ]; then
+    echo "WARNING: Please install necessary package grub-pc-bin firstly for UEFI machine!!"
+fi
+
 if which grub-mkrescue; then
     grub-mkrescue -o $isofile $isodir
 elif which grub2-mkrescue; then
