@@ -52,12 +52,6 @@ DECLARE_UNUSED_EXCETION_HANDLER(xm);
 
 static volatile uint32_t bp_cr4 = 0x0U;
 static volatile uint32_t ap_cr4 = 0x0U;
-void save_unchanged_reg(void)
-{
-	sse_debug("\n%s\n", __FUNCTION__);
-	bp_cr4 = *(volatile uint32_t *)(0x7000);
-	ap_cr4 = *(volatile uint32_t *)(0x7004);
-}
 
 static bool is_sse_x_support(enum sse_instuction_e ins_type)
 {
@@ -176,6 +170,7 @@ static __unused void sse_rqmid_27868_Physical_POPCNT_instruction_support_001(voi
 static __unused void sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_startup_001(void)
 {
 	bool  is_pass = false;
+	bp_cr4 = *(volatile uint32_t *)(0x7000);
 	sse_debug("\nDump bp_cr4 = 0x%x\n", bp_cr4);
 	is_pass = ((CR4_OSFXSR_BIT_MASK & bp_cr4) == 0);
 	report("%s \n", is_pass, __FUNCTION__);
@@ -189,6 +184,7 @@ static __unused void sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_star
 static __unused void sse_rqmid_23189_SSE_CR4_OSFXSR_initial_state_following_INIT_001(void)
 {
 	bool  is_pass = false;
+	ap_cr4 = *(volatile uint32_t *)(0x7004);
 	sse_debug("\nDump ap_cr4 = 0x%x\n", ap_cr4);
 	is_pass = ((CR4_OSFXSR_BIT_MASK & ap_cr4) == 0);
 	report("%s \n", is_pass, __FUNCTION__);
