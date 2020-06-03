@@ -10,7 +10,6 @@ $(TEST_DIR)/init_startup_sample.o: $(TEST_DIR)/init_startup_sample.c
 
 $(TEST_DIR)/sgx.o: CFLAGS += -DAP_INIT_CHECK=\"sgx_init.S\"
 $(TEST_DIR)/sgx.o: CFLAGS += -DBP_STARTUP_CHECK=\"sgx_startup.S\"
-$(TEST_DIR)/sgx.o: CFLAGS += -DAP_UNCHANGED_CHECK
 $(TEST_DIR)/sgx.o: $(TEST_DIR)/sgx.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)

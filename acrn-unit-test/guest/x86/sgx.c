@@ -8,19 +8,6 @@
 #include "apic.h"
 #include "isr.h"
 
-extern void send_sipi();
-bool g_is_init_ap = false;
-
-void save_unchanged_reg()
-{
-	asm volatile (
-		"mov $0x0000003a, %ecx\n"
-		"rdmsr\n"
-		"mov %eax, (0x7000)\n"
-		"mov %edx, (0x7004)"
-	);
-}
-
 /**
  * @brief case name: Guestee that MSR UNCORE PRMRR PHYS BASE_002
  *
@@ -364,11 +351,11 @@ static void sgx_rqmid_27390_read_ia32_sgx_svn_status()
 /**
  * @brief case name: Guest CPUID.SGX_001
  *
- * Summary: Execute CPUID.(EAX=7H, ECX=0H):EBX[bit 2] shall be 1H.
+ * Summary: Execute CPUID.(EAX=7H, ECX=0H):EBX[bit 2] shall be 0H.
  */
-static void sgx_rqmid_27402_check_supported_sgx()
+static void sgx_rqmid_32550_check_supported_sgx()
 {
-	report("\t\t %s", ((cpuid(7).b) & (1ul << 2)) == (1ul << 2), __FUNCTION__);
+	report("\t\t %s", ((cpuid(7).b) & (1ul << 2)) == 0, __FUNCTION__);
 }
 
 /**
@@ -388,28 +375,17 @@ static void sgx_rqmid_27403_ia32_feature_control_startup()
 /**
  * @brief case name: Guest IA32 FEATURE CONTROL.SGX ENABLE following INIT_001
  *
- * Summary: After AP receives first INIT, set the value of IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18];
- *	    Dump IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18] value shall get the same value after second INIT.
+ * Summary: Get IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18] at AP init,
+ * the bit shall be 0H.
  */
 static __unused void sgx_rqmid_27404_ia32_feature_control_init()
 {
 	volatile u32 *ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT1_ADDR;
-	u64 ia32_init_second;
 	u64 ia32_init_first;
 
 	ia32_init_first = *ptr + ((u64)(*(ptr + 1)) << 32);
 
-	/* send sipi to ap */
-	send_sipi();
-	/* set up init ap flag */
-	g_is_init_ap = true;
-
-
-	ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT2_ADDR;
-	ia32_init_second = *ptr + ((u64)(*(ptr + 1)) << 32);
-
-	report("\t\t %s", (ia32_init_first & SGX_ENABLE_BIT) == (ia32_init_second & SGX_ENABLE_BIT),
-		__FUNCTION__);
+	report("\t\t %s", (ia32_init_first & SGX_ENABLE_BIT) == 0, __FUNCTION__);
 }
 
 /**
@@ -436,20 +412,11 @@ static void sgx_rqmid_29563_sgx_lauch_bit_startup()
 static __unused void sgx_rqmid_29562_sgx_lauch_bit_init()
 {
 	volatile u32 *ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT1_ADDR;
-	u64 ia32_init_second;
 	u64 ia32_init_first;
 
 	ia32_init_first = *ptr + ((u64)(*(ptr + 1)) << 32);
 
-	ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT2_ADDR;
-	ia32_init_second = *ptr + ((u64)(*(ptr + 1)) << 32);
-
-	if (g_is_init_ap) {
-		report("\t\t %s", (ia32_init_first & SGX_LAUCH_BIT) == (ia32_init_second & SGX_LAUCH_BIT),
-			__FUNCTION__);
-	} else {
-		report("\t\t %s", false, __FUNCTION__);
-	}
+	report("\t\t %s", (ia32_init_first & SGX_LAUCH_BIT) == 0, __FUNCTION__);
 }
 
 static void print_case_list()
@@ -521,7 +488,7 @@ static void test_sgx()
 	sgx_rqmid_27398_read_ia32_sgxlepubkeyhash0();
 	sgx_rqmid_27391_write_ia32_sgx_svn_status();
 	sgx_rqmid_27390_read_ia32_sgx_svn_status();
-	sgx_rqmid_27402_check_supported_sgx();
+	sgx_rqmid_32550_check_supported_sgx();
 	sgx_rqmid_27403_ia32_feature_control_startup();
 #ifdef IN_NON_SAFETY_VM
 	sgx_rqmid_29562_sgx_lauch_bit_init();
