@@ -128,8 +128,11 @@ static __unused int xgetbv_checking(u32 index, u64 *result)
 }
 
 int ap_start_count = 0;
+u64 init_xinuse = 0;
+u64 set_xinuse = 0;
 void save_unchanged_reg(void)
 {
+	u32 volatile v1, v2;
 	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
@@ -138,6 +141,21 @@ void save_unchanged_reg(void)
 	write_cr4_osxsave(1);
 
 	if (ap_start_count == 0) {
+		/* XINUSE[bit 2:0] init value */
+		asm volatile(
+			"mov $0, %eax\n\t"
+			"mov $0, %edx\n\t"
+			"mov $1, %ecx\n\t"
+			"xgetbv\n\t"
+		);
+
+		/*store XCR0 & XINUSE to init_xinuse.*/
+		asm volatile (
+			"mov %%eax, %0\r\n"
+			"mov %%edx, %1\r\n"
+			: "=m"(v1), "=m"(v2));
+		init_xinuse = v1 | ((u64)v2 << 32UL);
+
 		/* exec SSE instrction. */
 		asm volatile("movapd %xmm1, %xmm2");
 
@@ -160,10 +178,12 @@ void save_unchanged_reg(void)
 		"xgetbv\n\t"
 	);
 
-	/*store XCR0 & XINUSE to memory.*/
+	/*store XCR0 & XINUSE to set_xinuse.*/
 	asm volatile (
-		"mov %eax, (0x7000)\r\n"
-		"mov %edx, (0x7004)\r\n");
+		"mov %%eax, %0\r\n"
+		"mov %%edx, %1\r\n"
+		: "=m"(v1), "=m"(v2));
+	set_xinuse = v1 | ((u64)v2 << 32UL);
 }
 
 /*
@@ -1626,23 +1646,23 @@ static __unused u64 get_init_xinuse(u64 eax_addr, u64 edx_addr)
 /*
  * @brief case name: XSAVE XINUSE[bit 2:0] initial state following INIT_001
  *
- * Summary: ACRN hypervisor shall keep guest XINUSE[bit 2:0] unchanged following INIT. SDM Vol1, Chapter 13.6.
+ * Summary: After AP receives first INIT, set the value of XINUSE with executing SSE
+ * instruction; executing XGETBV shall get the same XINUSE value after second INIT.
+ * And the test case pass when bit 1 of (XINUSE & XCR0) equals with 1.
+ * This case constructs the environment with XINUSE[1] is 1.
  */
-static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT(void)
+static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_01(void)
 {
 	u32 chk = 0;
 	u64 xinuse = 0;
 	u64 xinuse1 = 0;
-	xinuse = get_init_xinuse(0x7000, 0x7004);
+	xinuse = set_xinuse;
 	debug_print("\n --->bp: before send sipi, XINUSE=%lx %d\n", xinuse, ap_start_count);
-
-	*((u32 volatile *)0x7000) = 0;
-	*((u32 volatile *)0x7004) = 0;
 
 	/*send sipi to ap*/
 	send_sipi();
 
-	xinuse1 = get_init_xinuse(0x7000, 0x7004);
+	xinuse1 = set_xinuse;
 	debug_print("\n --->ap: after send sipi, XINUSE=%lx %d\n", xinuse1, ap_start_count);
 
 	if (xinuse == xinuse1) {
@@ -1653,6 +1673,31 @@ static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_IN
 	}
 
 	report("%s", (chk == 2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: XSAVE XINUSE[bit 2:0] initial state following INIT_002
+ *
+ * Summary: At BP executing 1st instruction and AP receives the first init,
+ * set the value of XINUSE with executing SSE instruction;
+ * execute XGETBV to get XINUSE value, and the two XINUSE values should be equal.
+ */
+static __unused void xsave_rqmid_37093_XINUSE_bit2to0_initial_state_following_INIT_02(void)
+{
+	u32 chk = 0;
+	u64 xinuse_bp = 0;
+	u64 xinuse_ap = 0;
+	xinuse_bp = get_init_xinuse(0x6000, 0x6004);
+	debug_print("\n --->bp: XINUSE=%lx\n", xinuse_bp);
+
+	xinuse_ap = init_xinuse;
+	debug_print("\n --->ap: XINUSE=%lx\n", xinuse_ap);
+
+	if (xinuse_bp == xinuse_ap) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
 }
 
 static void print_case_list(void)
@@ -1669,6 +1714,7 @@ static void print_case_list(void)
 #else
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 37093u, "XSAVE XINUSE[bit 2:0] initial state following INIT_002");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 23633u, "XSAVE hide AVX-512 support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23642u, "XSAVE init and modified optimizations_006");
@@ -1702,7 +1748,8 @@ int main(void)
 	xsave_rqmid_28392_physical_init_and_modified_optimizations_AC_001();
 #else
 #ifdef IN_NON_SAFETY_VM
-	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT();
+	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_01();
+	xsave_rqmid_37093_XINUSE_bit2to0_initial_state_following_INIT_02();
 #endif
 	xsave_rqmid_23633_hide_avx_512_support_001();
 	xsave_rqmid_23642_init_and_modified_optimizations_006();

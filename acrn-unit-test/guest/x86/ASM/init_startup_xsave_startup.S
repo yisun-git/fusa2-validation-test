@@ -4,6 +4,13 @@ mov $stacktop, %esp
 mov %cr4, %eax
 bts $18, %eax
 mov %eax, %cr4
+/* get XINUSE[bit 2:0] default value in bp */
+mov $0, %eax
+mov $0, %edx
+mov $1, %ecx
+xgetbv
+mov %eax, (0x6000)
+mov %edx, (0x6004)
 /*enable XCRO X87|SSE.*/
 mov $0, %ecx
 mov $0, %edx
