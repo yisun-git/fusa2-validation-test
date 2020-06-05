@@ -731,8 +731,8 @@ static void  gp_rqmid_31379_control_transfer_iret_gp_097(void)
  */
 __unused static void int_gp_115(void)
 {
-	asm volatile(".byte 0xf1");
-	//asm volatile("INT1");
+	//asm volatile(".byte 0xf1");
+	asm volatile("INT $14");
 }
 
 static __unused void  gp_rqmid_31652_control_transfer_int_gp_115(void)
@@ -745,8 +745,7 @@ static __unused void  gp_rqmid_31652_control_transfer_int_gp_115(void)
 	old_idt = stor_idt();
 	printf("idt limit: %#x \n", old_idt.limit);
 
-
-	new_idt.limit = 0;
+	new_idt.limit = (16*14) - 1;
 	new_idt.base = old_idt.base;
 
 	set_idt(new_idt);
@@ -1141,7 +1140,7 @@ int main(void)
 	gp_rqmid_31385_data_transfer_mov_gp_017();
 	gp_rqmid_31398_data_transfer_mov_gp_019();//native/hv all fail
 	gp_rqmid_31609_data_transfer_mov_db_001();//native/hv all fail
-	//gp_rqmid_31652_control_transfer_int_gp_115();//strategy is error
+	gp_rqmid_31652_control_transfer_int_gp_115();
 	gp_rqmid_31937_msr_access_rdsmr_gp_004();
 	gp_rqmid_31939_msr_access_rdsmr_gp_005();
 	gp_rqmid_31949_msr_access_wrmsr_gp_009();

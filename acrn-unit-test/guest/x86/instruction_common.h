@@ -336,7 +336,7 @@ typedef struct xsave_dump_struct {
 struct descriptor_table {
 	u16 limit;
 	uint64_t base;
-} __packed;
+} __attribute__((packed));
 
 struct lseg_st {
 	long  a;
