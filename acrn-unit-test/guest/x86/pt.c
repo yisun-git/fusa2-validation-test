@@ -38,16 +38,7 @@ static __unused void pt_rqmid_27261_Guest_IA32_RTIT_STATUS_002(void)
 	uint64_t ia32_rtit_status = MSR_VALUE;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t a = ia32_rtit_status;
-	uint32_t d = ia32_rtit_status >> 32;
-	uint32_t c = IA32_RTIT_STATUS;
-	asm volatile (ASM_TRY("1f")
-				  "wrmsr\n\t"
-				  "1:"
-				  :
-				  : "a"(a), "d"(d), "c"(c)
-				  : "memory");
-	vec = exception_vector();
+	vec = wrmsr_checking(IA32_RTIT_STATUS, ia32_rtit_status);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -64,14 +55,8 @@ static __unused void pt_rqmid_27246_Guest_IA32_RTIT_STATUS_001(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_STATUS;
-	asm volatile(ASM_TRY("1f")
-			 "rdmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c)
-			 : "memory");
-	vec = exception_vector();
+	uint64_t result = 0UL;
+	vec = rdmsr_checking(IA32_RTIT_STATUS, &result);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -191,26 +176,14 @@ static __unused bool test_Guest_IA32_RTIT_ADDR_x_GP_write(bool is_A, uint32_t IA
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
 	void *addr = NULL;
-	uint32_t c = 0U;
-	uint32_t a = 0U;
-	uint32_t d = 0U;
 	uint64_t addr1 = 0UL;
 	void *mem = alloc_page();
 	if (!mem) {
 		is_pass = false;
 	} else {
 		addr = (is_A) ? mem : (mem + (PAGE_SIZE - 1));
-		c = IA32_RTIT_ADDR_x;
 		swap_force(addr, addr1);
-		a = addr1;
-		d = addr1 >> 32;
-		asm volatile(ASM_TRY("1f")
-				 "wrmsr\n\t"
-				 "1:"
-				 :
-				 : "c"(c), "a"(a), "d"(d)
-				 : "memory");
-		vec = exception_vector();
+		vec = wrmsr_checking(IA32_RTIT_ADDR_x, addr1);
 		err_code = exception_error_code();
 		free_page((void *)mem);
 		is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
@@ -223,14 +196,8 @@ static __unused bool test_Guest_IA32_RTIT_ADDR_x_GP_read(uint32_t IA32_RTIT_ADDR
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_ADDR_x;
-	asm volatile(ASM_TRY("1f")
-			 "rdmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c)
-			 : "memory");
-	vec = exception_vector();
+	uint64_t result = 0UL;
+	vec = rdmsr_checking(IA32_RTIT_ADDR_x, &result);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	return is_pass;
@@ -455,14 +422,8 @@ static __unused void pt_rqmid_32493_Guest_IA32_RTIT_CR3_MATCH_001(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_CR3_MATCH;
-	asm volatile(ASM_TRY("1f")
-			 "rdmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c)
-			 : "memory");
-	vec = exception_vector();
+	uint64_t result = 0UL;
+	vec = rdmsr_checking(IA32_RTIT_CR3_MATCH, &result);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -479,24 +440,13 @@ static __unused void pt_rqmid_32525_Guest_IA32_RTIT_CR3_MATCH_002(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_CR3_MATCH;
 	uint64_t addr = 0UL;
-	uint32_t a = 0U;
-	uint32_t d = 0U;
 	void *mem = alloc_page();
 	if (!mem) {
 		is_pass = false;
 	} else {
 		addr = virt_to_phys(mem);
-		a = addr;
-		d = addr >> 32;
-		asm volatile(ASM_TRY("1f")
-				 "wrmsr\n\t"
-				 "1:"
-				 :
-				 : "c"(c), "a"(a), "d"(d)
-				 : "memory");
-		vec = exception_vector();
+		vec = wrmsr_checking(IA32_RTIT_CR3_MATCH, addr);
 		err_code = exception_error_code();
 		free_page((void *)mem);
 		is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
@@ -515,14 +465,8 @@ static __unused void pt_rqmid_32494_Guest_IA32_RTIT_CTL_001(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_CTL;
-	asm volatile(ASM_TRY("1f")
-			 "rdmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c)
-			 : "memory");
-	vec = exception_vector();
+	uint64_t result = 0UL;
+	vec = rdmsr_checking(IA32_RTIT_CTL, &result);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -539,16 +483,7 @@ static __unused void pt_rqmid_32526_Guest_IA32_RTIT_CTL_002(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_CTL;
-	uint32_t a = 0;
-	uint32_t d = 0;
-	asm volatile(ASM_TRY("1f")
-			 "wrmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c), "a"(a), "d"(d)
-			 : "memory");
-	vec = exception_vector();
+	vec = wrmsr_checking(IA32_RTIT_CTL, 0UL);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -565,14 +500,8 @@ static __unused void pt_rqmid_32495_Guest_IA32_RTIT_OUTPUT_BASE_001(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_OUTPUT_BASE;
-	asm volatile(ASM_TRY("1f")
-			 "rdmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c)
-			 : "memory");
-	vec = exception_vector();
+	uint64_t result = 0UL;
+	vec = rdmsr_checking(IA32_RTIT_OUTPUT_BASE, &result);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -589,26 +518,15 @@ static __unused void pt_rqmid_32527_Guest_IA32_RTIT_OUTPUT_BASE_002(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_OUTPUT_BASE;
 	void *addr = NULL;
 	uint64_t addr1 = 0UL;
-	uint32_t a = 0U;
-	uint32_t d = 0U;
 	void *mem = alloc_page();
 	if (!mem) {
 		is_pass = false;
 	} else {
 		addr = mem;
 		swap_force(addr, addr1);
-		a = addr1;
-		d = addr1 >> 32;
-		asm volatile(ASM_TRY("1f")
-				 "wrmsr\n\t"
-				 "1:"
-				 :
-				 : "c"(c), "a"(a), "d"(d)
-				 : "memory");
-		vec = exception_vector();
+		vec = wrmsr_checking(IA32_RTIT_OUTPUT_BASE, addr1);
 		err_code = exception_error_code();
 		free_page((void *)mem);
 		is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
@@ -627,14 +545,8 @@ static __unused void pt_rqmid_32496_Guest_IA32_RTIT_OUTPUT_MASK_PTRS_001(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_OUTPUT_MASK_PTRS;
-	asm volatile(ASM_TRY("1f")
-			 "rdmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c)
-			 : "memory");
-	vec = exception_vector();
+	uint64_t result = 0UL;
+	vec = rdmsr_checking(IA32_RTIT_OUTPUT_MASK_PTRS, &result);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
@@ -651,16 +563,7 @@ static __unused void pt_rqmid_32528_Guest_IA32_RTIT_OUTPUT_MASK_PTRS_002(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
-	uint32_t c = IA32_RTIT_OUTPUT_MASK_PTRS;
-	uint32_t a = 0xFF;
-	uint32_t d = 0;
-	asm volatile(ASM_TRY("1f")
-			 "wrmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c), "a"(a), "d"(d)
-			 : "memory");
-	vec = exception_vector();
+	vec = wrmsr_checking(IA32_RTIT_OUTPUT_MASK_PTRS, 0xFFUL);
 	err_code = exception_error_code();
 	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
