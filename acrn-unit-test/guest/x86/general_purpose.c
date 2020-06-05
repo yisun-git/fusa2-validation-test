@@ -277,6 +277,14 @@ static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
 	do_at_ring3(ring3_mov_gp_012, __FUNCTION__);
 }
 
+void gp_data_transfer_mov_ud(const char *fun_name)
+{
+	asm volatile(ASM_TRY("1f")
+		"mov %0, %%cs \n"
+		"1:"
+		: : "r"(0x8) : );
+	report("%s", (exception_vector() == UD_VECTOR), fun_name);
+}
 /*
  * @brief case name: 31333: Data transfer instructions Support_64 bit Mode_MOV_#UD_001.
  *
@@ -286,11 +294,7 @@ static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
  */
 static void  gp_rqmid_31333_data_transfer_mov_ud_001(void)
 {
-	asm volatile(ASM_TRY("1f")
-		"mov %0, %%cs \n"
-		"1:"
-		: : "r"(0x8) : );
-	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+	gp_data_transfer_mov_ud(__FUNCTION__);
 }
 
 /*
@@ -302,11 +306,7 @@ static void  gp_rqmid_31333_data_transfer_mov_ud_001(void)
  */
 static void  gp_rqmid_31336_data_transfer_mov_ud_002(const char *msg)
 {
-	asm volatile(ASM_TRY("1f")
-		"mov %0, %%cs \n"
-		"1:"
-		: : "r"(0x8) : );
-	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+	gp_data_transfer_mov_ud(__FUNCTION__);
 }
 
 /*
@@ -318,11 +318,7 @@ static void  gp_rqmid_31336_data_transfer_mov_ud_002(const char *msg)
  */
 static void  gp_rqmid_31339_data_transfer_mov_ud_003(const char *msg)
 {
-	asm volatile(ASM_TRY("1f")
-		"mov %0, %%cs \n"
-		"1:"
-		: : "r"(0x8) : );
-	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+	gp_data_transfer_mov_ud(__FUNCTION__);
 }
 
 /*
@@ -334,11 +330,7 @@ static void  gp_rqmid_31339_data_transfer_mov_ud_003(const char *msg)
  */
 static void  gp_rqmid_31342_data_transfer_mov_ud_004(const char *msg)
 {
-	asm volatile(ASM_TRY("1f")
-		"mov %0, %%cs \n"
-		"1:"
-		: : "r"(0x8) : );
-	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+	gp_data_transfer_mov_ud(__FUNCTION__);
 }
 
 /*
@@ -453,6 +445,9 @@ static void  gp_rqmid_31609_data_transfer_mov_db_001(void)
 
 	check_bit = read_dr7();
 	check_bit |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_13));
+
+	/*set DR7.GD to 1*/
+	mov_write_dr7(check_bit);
 
 	fun = (gp_trigger_func)mov_write_dr7;
 	ret = test_for_exception(DB_VECTOR, fun, (void *)check_bit);
@@ -804,35 +799,26 @@ static void  gp_rqmid_31901_segment_instruction_lfs_gp_125(void)
  *  If the memory address is in a non-canonical form(Ad. Cann.: non mem),
  *  executing LSS shall generate #GP.
  */
-__unused static void ring3_lss_gp_132(const char *fun_name)
+__unused static void lss_gp_132(void)
 {
-	u64 address;
-	struct lseg_st lss;
-
 	eflags_ac_to_1();
-
-	lss.a = 0xffffffff;
-	/*index =2*/
-	lss.b = 0x13;
-
-	address = (unsigned long)&lss;
-
-	if ((address >> 63) & 1) {
-		address = (address & (~(1ull << 63)));
-	} else {
-		address = (address|(1UL<<63));
-	}
-
-	asm volatile(ASM_TRY("1f")
-		"lss  %0, %%ebx\t\n"
-		"1:"
-		::"m"(address)
-	);
-
-	report("%s ", (exception_vector() == GP_VECTOR), fun_name);
+	asm volatile("lss (%0), %%eax  \n"
+		: : "r"(creat_non_canon_add()));
 }
 
-static __unused void  gp_rqmid_31751_segment_instruction_lss_gp_132()
+static void  ring3_lss_gp_132(const char *msg)
+{
+	gp_trigger_func fun;
+	bool ret;
+
+	fun = (gp_trigger_func)lss_gp_132;
+	ret = test_for_exception(GP_VECTOR, fun, NULL);
+
+	/* Need modify unit-test framework, can't handle exception. */
+	report("%s Execute Instruction: LFS", ret == true, msg);
+}
+
+static void  gp_rqmid_31751_segment_instruction_lss_gp_132()
 {
 	cr0_am_to_0();
 
