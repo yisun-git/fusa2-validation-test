@@ -190,29 +190,31 @@ static __unused bool test_Guest_IA32_RTIT_ADDR_x_GP_write(bool is_A, uint32_t IA
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
+	void *addr = NULL;
+	uint32_t c = 0U;
+	uint32_t a = 0U;
+	uint32_t d = 0U;
+	uint64_t addr1 = 0UL;
 	void *mem = alloc_page();
 	if (!mem) {
-		goto REPORT_END;
+		is_pass = false;
+	} else {
+		addr = (is_A) ? mem : (mem + (PAGE_SIZE - 1));
+		c = IA32_RTIT_ADDR_x;
+		swap_force(addr, addr1);
+		a = addr1;
+		d = addr1 >> 32;
+		asm volatile(ASM_TRY("1f")
+				 "wrmsr\n\t"
+				 "1:"
+				 :
+				 : "c"(c), "a"(a), "d"(d)
+				 : "memory");
+		vec = exception_vector();
+		err_code = exception_error_code();
+		free_page((void *)mem);
+		is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	}
-	void *addr = (is_A) ? mem : (mem + (PAGE_SIZE - 1));
-	uint32_t c = IA32_RTIT_ADDR_x;
-	uint32_t a = 0;
-	uint32_t d = 0;
-	uint64_t addr1 = 0;
-	swap_force(addr, addr1);
-	a = addr1;
-	d = addr1 >> 32;
-	asm volatile(ASM_TRY("1f")
-			 "wrmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c), "a"(a), "d"(d)
-			 : "memory");
-	vec = exception_vector();
-	err_code = exception_error_code();
-	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
-	free_page((void *)mem);
-REPORT_END:
 	return is_pass;
 }
 
@@ -477,25 +479,28 @@ static __unused void pt_rqmid_32525_Guest_IA32_RTIT_CR3_MATCH_002(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
+	uint32_t c = IA32_RTIT_CR3_MATCH;
+	uint64_t addr = 0UL;
+	uint32_t a = 0U;
+	uint32_t d = 0U;
 	void *mem = alloc_page();
 	if (!mem) {
-		goto REPORT_END;
+		is_pass = false;
+	} else {
+		addr = virt_to_phys(mem);
+		a = addr;
+		d = addr >> 32;
+		asm volatile(ASM_TRY("1f")
+				 "wrmsr\n\t"
+				 "1:"
+				 :
+				 : "c"(c), "a"(a), "d"(d)
+				 : "memory");
+		vec = exception_vector();
+		err_code = exception_error_code();
+		free_page((void *)mem);
+		is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	}
-	uint32_t c = IA32_RTIT_CR3_MATCH;
-	uint64_t addr = virt_to_phys(mem);
-	uint32_t a = addr;
-	uint32_t d = addr >> 32;
-	asm volatile(ASM_TRY("1f")
-			 "wrmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c), "a"(a), "d"(d)
-			 : "memory");
-	vec = exception_vector();
-	err_code = exception_error_code();
-	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
-	free_page((void *)mem);
-REPORT_END:
 	report("%s \n", is_pass, __FUNCTION__);
 }
 
@@ -584,27 +589,30 @@ static __unused void pt_rqmid_32527_Guest_IA32_RTIT_OUTPUT_BASE_002(void)
 	bool is_pass = false;
 	uint32_t vec = 0U;
 	uint32_t err_code = 0U;
+	uint32_t c = IA32_RTIT_OUTPUT_BASE;
+	void *addr = NULL;
+	uint64_t addr1 = 0UL;
+	uint32_t a = 0U;
+	uint32_t d = 0U;
 	void *mem = alloc_page();
 	if (!mem) {
-		goto REPORT_END;
+		is_pass = false;
+	} else {
+		addr = mem;
+		swap_force(addr, addr1);
+		a = addr1;
+		d = addr1 >> 32;
+		asm volatile(ASM_TRY("1f")
+				 "wrmsr\n\t"
+				 "1:"
+				 :
+				 : "c"(c), "a"(a), "d"(d)
+				 : "memory");
+		vec = exception_vector();
+		err_code = exception_error_code();
+		free_page((void *)mem);
+		is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
 	}
-	uint32_t c = IA32_RTIT_OUTPUT_BASE;
-	void *addr = mem;
-	uint64_t addr1 = 0;
-	swap_force(addr, addr1);
-	uint32_t a = addr1;
-	uint32_t d = addr1 >> 32;
-	asm volatile(ASM_TRY("1f")
-			 "wrmsr\n\t"
-			 "1:"
-			 :
-			 : "c"(c), "a"(a), "d"(d)
-			 : "memory");
-	vec = exception_vector();
-	err_code = exception_error_code();
-	is_pass = ((vec == GP_VECTOR) & (err_code == 0)) ? true : false;
-	free_page((void *)mem);
-REPORT_END:
 	report("%s \n", is_pass, __FUNCTION__);
 }
 
@@ -661,6 +669,8 @@ static __unused void pt_rqmid_32528_Guest_IA32_RTIT_OUTPUT_MASK_PTRS_002(void)
 static __unused void print_case_list(void)
 {
 	printf("PT feature case list:\n\r");
+#ifdef IN_NATIVE
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 27268u,
 	"guest cpuid pt bit_001");
 #ifdef __x86_64__
@@ -670,7 +680,18 @@ static __unused void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 27270u,
 	"Guest PTWRITE_001");
 #endif
-#ifndef IN_NATIVE
+
+#else
+
+	printf("\t\t Case ID:%d case name:%s\n\r", 27268u,
+	"guest cpuid pt bit_001");
+#ifdef __x86_64__
+	printf("\t\t Case ID:%d case name:%s\n\r", 36849u,
+	"Guest PTWRITE_002");
+#else
+	printf("\t\t Case ID:%d case name:%s\n\r", 27270u,
+	"Guest PTWRITE_001");
+#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 27267u,
 	"guest cpuid leaft 14h_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27261u,
@@ -744,6 +765,7 @@ int main(void)
 	extern unsigned char kernel_entry;
 	set_idt_entry(0x23, &kernel_entry, 3);
 	print_case_list();
+#ifdef IN_NATIVE
 
 	pt_rqmid_27268_guest_cpuid_pt_bit_001();
 #ifdef __x86_64__
@@ -752,7 +774,15 @@ int main(void)
 	pt_rqmid_27270_Guest_PTWRITE_001();
 #endif
 
-#ifndef IN_NATIVE
+#else
+
+	pt_rqmid_27268_guest_cpuid_pt_bit_001();
+#ifdef __x86_64__
+	pt_rqmid_36849_Guest_PTWRITE_002();
+#else
+	pt_rqmid_27270_Guest_PTWRITE_001();
+#endif
+
 	pt_rqmid_27267_guest_cpuid_leaft_14h_001();
 	pt_rqmid_27261_Guest_IA32_RTIT_STATUS_002();
 	pt_rqmid_27246_Guest_IA32_RTIT_STATUS_001();
