@@ -19,6 +19,7 @@
 #include "types.h"
 #include "apic.h"
 #include "isr.h"
+#include "fwcfg.h"
 
 /*#define CACHE_IN_NATIVE*/
 
@@ -625,13 +626,32 @@ void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 
 #ifdef __x86_64__
 extern void send_sipi();
+int ap_start_count = 0;
+volatile u64 init_pat = 0;
+volatile u64 set_pat = 0;
 void save_unchanged_reg()
 {
-	u32 a, d;
-	asm volatile ("rdmsr" : "=a"(a), "=d"(d) : "c"(IA32_PAT_MSR) : "memory");
-	asm volatile ("mov %eax, (0x7000)\r\n"
-		"mov %edx, (0x7004)\r\n");
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	if (ap_start_count == 0) {
+		/* save init value (defalut is 0007040600070406)*/
+		init_pat = rdmsr(IA32_PAT_MSR);
+
+		/* set new value to pat */
+		wrmsr(IA32_PAT_MSR, 0x6);
+		ap_start_count++;
+	}
+
+	set_pat = rdmsr(IA32_PAT_MSR);
+
+	if (ap_start_count == 2) {
+		/* resume environment */
+		wrmsr(IA32_PAT_MSR, init_pat);
+	}
 }
+
 void print_case_list_init_startup()
 {
 	printf("cache init statup feature case list:\n\r");
@@ -645,11 +665,35 @@ void print_case_list_init_startup()
 /**
  * @brief case name:IA32_PAT INIT value_unchange_001
  *
- * Summary: After AP receives first INIT, dump IA32_PAT register value,
- * set the value of IA32_PAT to 0H; AP INIT again, then dump IA32_PAT
- * register value again, two dumps value should be equal. 
+ * Summary: After AP receives first INIT, set the PAT value to 6H;
+ * dump IA32_PAT register value, AP INIT again, then dump IA32_PAT
+ * register value again, two dumps value should be equal.
  */
-void __unused cache_rqmid_23239_ia32_pat_init_unchange(void)
+void __unused cache_rqmid_23239_ia32_pat_init_unchange_01(void)
+{
+	volatile u64 ia32_pat1;
+	volatile u64 ia32_pat2;
+
+	/*get set_pat value */
+	ia32_pat1 = set_pat;
+
+	/*send sipi to ap*/
+	send_sipi();
+
+	/*get pat value again after ap reset*/
+	ia32_pat2 = set_pat;
+
+	/*compare init value with unchanged */
+	report("%s ", ia32_pat1 == ia32_pat2, __FUNCTION__);
+}
+
+/*
+ * @brief case name: IA32_PAT INIT value_unchange_002
+ *
+ * Summary: At BP executing 1st instruction and AP receives the first init,
+ * save the PAT value, and the two PAT values should be equal.
+ */
+void __unused cache_rqmid_37108_ia32_pat_init_unchange_02(void)
 {
 	volatile u64 ia32_pat1;
 	volatile u64 ia32_pat2;
@@ -657,24 +701,20 @@ void __unused cache_rqmid_23239_ia32_pat_init_unchange(void)
 	volatile u32 unchanged_ap_pat2 = 0;
 	volatile u32 *ptr;
 
-	/*cp ap register value to tmp before send sipi */
-	ptr = (volatile u32 *)0x7000;
+	/* startup pat value */
+	ptr = (volatile u32 *)(0x6000 + 0x8);
 	unchanged_ap_pat1 = *ptr;
 	unchanged_ap_pat2 = *(ptr + 1);
 	ia32_pat1 = unchanged_ap_pat1 | ((u64)unchanged_ap_pat2 << 32);
 
-	/*send sipi to ap*/
-	send_sipi();
-	/*get init value again after ap */
-	ptr = (volatile u32 *)0x7000;
+	/* init pat value */
+	ptr = (volatile u32 *)(0x8000 + 0x8);
 	unchanged_ap_pat1 = *ptr;
 	unchanged_ap_pat2 = *(ptr + 1);
 	ia32_pat2 = unchanged_ap_pat1 | ((u64)unchanged_ap_pat2 << 32);
 
-	/*compare init value with unchanged */
-	report("%s", ia32_pat1 == ia32_pat2, __FUNCTION__);
+	report("%s ", ia32_pat1 == ia32_pat2, __FUNCTION__);
 }
-
 
 /**
  * @brief case name:CR0.CD INIT value_001
@@ -715,7 +755,9 @@ void cache_test_init_startup(long rqmid)
 
 	struct case_fun_index case_fun[] = {
 	#ifdef IN_NON_SAFETY_VM
-		{23239, cache_rqmid_23239_ia32_pat_init_unchange},
+		/*Must be in front of 23239 */
+		{33333, cache_rqmid_37108_ia32_pat_init_unchange_02},
+		{23239, cache_rqmid_23239_ia32_pat_init_unchange_01},
 		{23241, cache_rqmid_23241_cr0_cd_init},
 	#endif
 		{23242, cache_rqmid_23242_cr0_nw_startup},
