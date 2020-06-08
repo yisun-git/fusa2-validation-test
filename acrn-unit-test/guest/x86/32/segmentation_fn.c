@@ -1,52 +1,9 @@
 __attribute__((aligned(4096))) static char ring1_stack[4096];
 
-asm ("boot_ldt = 0x400\n\t");
-
-void save_unchanged_reg(void)
-{
-
-}
-
-static void set_ldt_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran)
-{
-	int num = sel >> 3;
-
-	/* Setup the descriptor base address */
-	boot_ldt[num].base_low = (base & 0xFFFF);
-	boot_ldt[num].base_middle = (base >> 16) & 0xFF;
-	boot_ldt[num].base_high = (base >> 24) & 0xFF;
-
-	/* Setup the descriptor limits */
-	boot_ldt[num].limit_low = (limit & 0xFFFF);
-	boot_ldt[num].granularity = ((limit >> 16) & 0x0F);
-
-	/* Finally, set up the granularity and access flags */
-	boot_ldt[num].granularity |= (gran & 0xF0);
-	boot_ldt[num].access = access;
-}
-
-static void init_all_ldt_of_null(void)
-{
-	short i;
-	for (i = 0; i < 50; i++) {
-		set_ldt_entry(i*8, 0,  0, 0, 0);
-	}
-}
-
-static void enable_init(void)
-{
-	init_all_ldt_of_null();
-}
-
 #define CALL_GATE_SEL (0x31<<3)
 #define CODE_SEL	(0x30<<3)
 #define DATA_SEL	(0x32<<3)
 #define STACK_SEL	(0x33<<3)
-
-//u32 call_gate_selector = CALL_GATE_SEL;
-//u32 code_selector = CODE_SEL;
-//u32 data_selector = DATA_SEL;
-//u32 stack_selector = STACK_SEL;
 
 static void init_call_gate
 	(u32 index, u32 code_selector, u8 type, u8 dpl, u8 p, int copy, call_gate_fun fun)
@@ -1427,8 +1384,6 @@ static void test_segmentation_32(void)
 	/*386*/
 	switch (branch) {
 	case 0:
-		enable_init();
-
 		/* Table 16 */
 		segmentation_rqmid_35338_lfs_normal_table16_01();
 		segmentation_rqmid_35339_lfs_gp_table16_02();

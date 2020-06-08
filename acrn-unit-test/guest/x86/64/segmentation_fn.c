@@ -108,11 +108,6 @@ static void init_call_gate_64
 	printf("64 call gate %lx %lx\n", (u64)*point, (u64)*(point+1));
 }
 
-void save_unchanged_reg(void)
-{
-
-}
-
 u64 *creat_non_canon_add(u64 addr)
 {
 	u64 address = addr;
