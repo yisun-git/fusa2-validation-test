@@ -1084,15 +1084,15 @@ int main(void)
 {
 	printf("----------eflag = %lx\n", read_rflags());
 
+	setup_vm();
+	setup_idt();
+
 	extern unsigned char kernel_entry1;
 	set_idt_entry(0x21, &kernel_entry1, 1);
 	extern unsigned char kernel_entry2;
 	set_idt_entry(0x22, &kernel_entry2, 2);
 	extern unsigned char kernel_entry;
 	set_idt_entry(0x23, &kernel_entry, 3);
-
-	setup_idt();
-	setup_vm();
 
 #ifdef __x86_64__
 	init_gdt_description();
