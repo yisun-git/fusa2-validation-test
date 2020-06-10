@@ -48,12 +48,16 @@ typedef struct fxsave_64bit_struct {
 
 
 #ifdef __i386__
+/*
+ *
+ *This function for i386 compiling, do nothing
+ */
 void save_unchanged_reg()
 {
-	asm volatile ("mov %cr0,%eax");
+	asm volatile ("pause");
 }
 #elif __x86_64__
-void fpu_st_reg_unchanged_on_ap()
+void save_unchanged_reg()
 {
 	float m = 1.1;
 	ulong cr0;
@@ -72,11 +76,6 @@ void fpu_st_reg_unchanged_on_ap()
 	asm volatile("fxsave %0" : "=m"(*fpu_save));
 
 	write_cr0(cr0);
-}
-
-void save_unchanged_reg()
-{
-	fpu_st_reg_unchanged_on_ap();
 }
 #endif
 #ifdef __x86_64__
@@ -187,7 +186,32 @@ static void fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_followi
 		report("%s", 0, __FUNCTION__);
 	}
 }
+/*
+ * @brief case name: st0 through st7 states following INIT_002
+ *
+ *Summary:
+ *	register			power up		reset					init
+ *	ST0 through ST7     +0.0            +0.0                    FINIT/FNINIT: Unchanged
+ *
+ *  the registers of ST0 through ST7 following INIT should be equal to BP startup(power up value)
+ * Note: this case must run before 32366
+ */
+static void fpu_rqmid_37198_st0_through_st7_states_following_INIT_002()
+{
+	u8 *ptr;
+	volatile struct fxsave_struct *fpu_save_init;
 
+	/*the INIT value should be equal to BP startup value,because the startup value is 0,so we just compare with 0*/
+	fpu_save_init = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+	ptr = (u8 *)fpu_save_init->fpregs;
+	for (int i = 0; i < sizeof(fpu_save_init->fpregs); i++) {
+		if (*(ptr + i) != 0) {
+			report("%s", 0, __FUNCTION__);
+			return;
+		}
+	}
+	report("%s", 1, __FUNCTION__);
+}
 /*
  * @brief case name: st0 through st7 states following INIT_001
  *
@@ -203,7 +227,6 @@ static void fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_followi
  */
 static void fpu_rqmid_32366_st0_through_st7_states_following_INIT_001()
 {
-	u8 *ptr;
 	ulong cr0;
 	long double fpregs[8];
 	volatile struct fxsave_struct *fpu_save_init;
@@ -214,13 +237,6 @@ static void fpu_rqmid_32366_st0_through_st7_states_following_INIT_001()
 
 	/*check INIT value fistly*/
 	fpu_save_init = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
-	ptr = (u8 *)fpu_save_init->fpregs;
-	for (int i = 0; i < sizeof(fpu_save_init->fpregs); i++) {
-		if (*(ptr + i) != 0) {
-			report("%s", 0, __FUNCTION__);
-			return;
-		}
-	}
 
 	/*copy the changed value to buffer*/
 	fpu_save_unchanged = (struct fxsave_struct *)INIT_UNCHANGED_FPU_SAVE_ADDR;
@@ -505,6 +521,8 @@ static void print_case_list(void)
 #ifdef __x86_64__
 	printf("\t Case ID:%d case name:%s\n\r", 32361,
 		   "x87 FPU data operand and Inst pointer states following INIT 001");
+	printf("\t Case ID:%d case name:%s\n\r", 37198,
+		   "st0 through st7 states following INIT 002");
 	printf("\t Case ID:%d case name:%s\n\r", 32366,
 		   "st0 through st7 states following INIT 001();");
 	printf("\t Case ID:%d case name:%s\n\r", 32377,
@@ -539,6 +557,7 @@ int main(void)
 #endif
 #ifdef __x86_64__
 	fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_following_INIT_001();
+	fpu_rqmid_37198_st0_through_st7_states_following_INIT_002();
 	fpu_rqmid_32366_st0_through_st7_states_following_INIT_001();
 	fpu_rqmid_32377_execution_environment_FDISI_001();
 	fpu_rqmid_32378_FPU_capability_enumeration_001();
