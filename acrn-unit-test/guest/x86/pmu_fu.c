@@ -1363,7 +1363,8 @@ static void pmu_rqmid_29690_CR4_read_001(void)
  */
 static void pmu_rqmid_29689_CR4_write_001(void)
 {
-	u32 val = read_cr4();
+	unsigned long val = read_cr4();
+
 	if ((val & 0x100) == 0)
 	{
 		val |= 0x100;
