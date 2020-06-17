@@ -40,6 +40,7 @@ $(TEST_DIR)/pmu_fu.o: $(TEST_DIR)/pmu_fu.c $(TEST_DIR)/pmu_fu.h
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
 $(TEST_DIR)/branch_profile.o: CFLAGS += -DAP_INIT_CHECK=\"branch_profile_init.S\"
+$(TEST_DIR)/branch_profile.o: CFLAGS += -DBP_STARTUP_CHECK=\"branch_profile_startup.S\"
 $(TEST_DIR)/branch_profile.o: $(TEST_DIR)/branch_profile.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
@@ -153,4 +154,3 @@ $(TEST_DIR)/interrupt.o:$(TEST_DIR)/interrupt.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
-
