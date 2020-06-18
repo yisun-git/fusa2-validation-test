@@ -234,14 +234,8 @@ int main(void)
 {
 	setup_vm();
 
-#ifndef __x86_64__	/*i386*/
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x23, &kernel_entry, 3);
-	extern unsigned char kernel_entry1;
-	set_idt_entry(0x21, &kernel_entry1, 1);
-	extern unsigned char kernel_entry2;
-	set_idt_entry(0x22, &kernel_entry2, 2);
-#endif
+	setup_ring_env();
+
 	setup_idt();
 
 	print_case_list();

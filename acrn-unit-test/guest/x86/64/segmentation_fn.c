@@ -1207,9 +1207,16 @@ asm("call_gate_ent3:\n"
 	"1:"
 	/*resume code segment selector on stack top*/
 	"call call_gate_function3_1\n"
-	/* resume stacks */
-	"mov %rdi, %rsp\n"
-	"mov %rsi, %rbp\n"
+	/* resume stacks
+	 * Note that if RSI RDI is used in the code from the last time the stack
+	 * address was saved to now, it may cause recovery to the wrong address
+	 * If you have not manually modified RBP, or the value of RSP,
+	 * may not need to restore it
+	 */
+	/*
+	 *"mov %rdi, %rsp\n"
+	 *"mov %rsi, %rbp\n"
+	 */
 	/*return to normal code stream*/
 	"lretq\n"
 #endif
@@ -1282,9 +1289,16 @@ asm("call_gate_ent4:\n"
 	"1:"
 	/*resume code segment selector on stack top*/
 	"call call_gate_function4_1\n"
-	/* resume stacks */
-	"mov %rdi, %rsp\n"
-	"mov %rsi, %rbp\n"
+	/* resume stacks
+	 * Note that if RSI RDI is used in the code from the last time the stack
+	 * address was saved to now, it may cause recovery to the wrong address
+	 * If you have not manually modified RBP, or the value of RSP,
+	 * may not need to restore it
+	 */
+	/*
+	 *"mov %rdi, %rsp\n"
+	 *"mov %rsi, %rbp\n"
+	 */
 	/*return to normal code stream*/
 	"lretq\n"
 #endif
@@ -1328,8 +1342,6 @@ void call_gate_function15_1(void)
 {
 	struct descriptor_table_ptr old_gdt_desc;
 
-	sgdt(&old_gdt_desc);
-
 	asm volatile("mov %%rdi, %0\n\t"
 		::"m"(rsp_64)
 		);
@@ -1337,11 +1349,8 @@ void call_gate_function15_1(void)
 	/*set the code segment selector RPL at the top of stack to 3*/
 	rsp_val[1] = 0x8 + 3;
 
-	/*set the code segment D bit to 1*/
-	//set_gdt64_entry(code_selector, 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
-	//	DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
-	//	GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
-	/* GP is also generated without D settings */
+	sgdt(&old_gdt_desc);
+	/*Set all D and L bits of the return code segment to 1 */
 	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
@@ -1357,9 +1366,6 @@ void call_gate_function_end_15_1(void)
 
 	sgdt(&old_gdt_desc);
 	/*resume the code segment D bit to 0*/
-	//set_gdt64_entry(code_selector, 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
-	//	DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
-	//	GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
@@ -1371,7 +1377,7 @@ asm("call_gate_ent15_1:\n"
 	"mov %rsp, %rdi\n"
 	"mov %rbp, %rsi\n"
 	"call call_gate_function15_1\n"
-#if 0//def USE_HAND_EXECEPTION
+#ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
 	"movl $0, %gs:4 \n"
 	".pushsection .data.ex \n"
@@ -1380,13 +1386,20 @@ asm("call_gate_ent15_1:\n"
 	"1111:\n"
 #endif
 	"lretq\n"
-#if 0//def USE_HAND_EXECEPTION
+#ifdef USE_HAND_EXECEPTION
 	"1:"
 	/*resume code segment selector on stack top*/
 	"call call_gate_function_end_15_1\n"
-	/* resume stacks */
-	"mov %rdi, %rsp\n"
-	"mov %rsi, %rbp\n"
+	/* resume stacks
+	 * Note that if RSI RDI is used in the code from the last time the stack
+	 * address was saved to now, it may cause recovery to the wrong address
+	 * If you have not manually modified RBP, or the value of RSP,
+	 * may not need to restore it
+	 */
+	/*
+	 *"mov %rdi, %rsp\n"
+	 *"mov %rsi, %rbp\n"
+	 */
 	/*return to normal code stream*/
 	"lretq\n"
 #endif
@@ -1438,9 +1451,6 @@ void call_gate_function15_2(void)
 	rsp_val[1] = 0x8 + 2;
 
 	/*set the code segment DPL to 3 and conforming bit to 1*/
-	//set_gdt64_entry(code_selector, 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
-	//	DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED,
-	//	GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
@@ -1455,10 +1465,7 @@ void call_gate_function_end_15_2(void)
 	rsp_val[1] = 0x8;
 
 	sgdt(&old_gdt_desc);
-	/*resume the code segment D bit to 0*/
-	//set_gdt64_entry(code_selector, 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
-	//	DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
-	//	GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
+	/*resume code segment*/
 	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
@@ -1470,7 +1477,7 @@ asm("call_gate_ent15_2:\n"
 	"mov %rsp, %rdi\n"
 	"mov %rbp, %rsi\n"
 	"call call_gate_function15_2\n"
-#if 0//def USE_HAND_EXECEPTION
+#ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
 	"movl $0, %gs:4 \n"
 	".pushsection .data.ex \n"
@@ -1479,13 +1486,20 @@ asm("call_gate_ent15_2:\n"
 	"1111:\n"
 #endif
 	"lretq\n"
-#if 0//def USE_HAND_EXECEPTION
+#ifdef USE_HAND_EXECEPTION
 	"1:"
 	/*resume code segment selector on stack top*/
 	"call call_gate_function_end_15_2\n"
-	/* resume stacks */
-	"mov %rdi, %rsp\n"
-	"mov %rsi, %rbp\n"
+	/* resume stacks
+	 * Note that if RSI RDI is used in the code from the last time the stack
+	 * address was saved to now, it may cause recovery to the wrong address
+	 * If you have not manually modified RBP, or the value of RSP,
+	 * may not need to restore it
+	 */
+	/*
+	 *"mov %rdi, %rsp\n"
+	 *"mov %rsi, %rbp\n"
+	 */
 	/*return to normal code stream*/
 	"lretq\n"
 #endif
@@ -1628,6 +1642,8 @@ static void test_segmentation_64(void)
 		segmentation_rqmid_35330_cs_ret_gp_table14_04();
 
 		/*Table 15*/
+		segmentation_rqmid_35332_rpl_ret_gp_table15_01();
+		segmentation_rqmid_35334_rpl_ret_gp_table15_02();
 		segmentation_rqmid_35335_rpl_ret_gp_table15_20();
 		break;
 
@@ -1635,14 +1651,6 @@ static void test_segmentation_64(void)
 		/*Table 14*/
 		segmentation_rqmid_64_cs_ret_ss_table14_01();	//fail
 		segmentation_rqmid_64_cs_ret_ss_table14_02(); //fail
-		break;
-
-	case 2:
-		segmentation_rqmid_35332_rpl_ret_gp_table15_01();//can't catch execption
-		break;
-
-	case 3:
-		segmentation_rqmid_35334_rpl_ret_gp_table15_02();//can't catch execption
 		break;
 
 	default:

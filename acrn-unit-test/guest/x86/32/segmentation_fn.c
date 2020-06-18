@@ -671,10 +671,10 @@ void call_ring3_function27_1(const char *data)
 
 	asm volatile(ASM_TRY("1f")
 		"lcall $" xstr(CALL_GATE_SEL+3) ", $0x0\n\t"
-		//"1:\n\t"
-		//"mov $0x43, %ax\n\t"
-		//"mov %ax, %ss\n\t"
-		"1:"::);
+		"1:\n\t"
+		"mov $" xstr(USER_DS)", %%ax\n\t"
+		"mov %%ax, %%ss\n\t"
+		::);
 
 	test_ret_27 = exception_vector();
 }
@@ -1427,6 +1427,7 @@ static void test_segmentation_32(void)
 		segmentation_rqmid_35400_call_gate_call_gp_table26_02();
 
 		/* Table 27 */
+		segmentation_rqmid_35401_call_gate_call_ss_table27_01();
 		segmentation_rqmid_35402_call_gate_call_gp_table27_02();
 
 		/* Table 28 */
@@ -1444,11 +1445,6 @@ static void test_segmentation_32(void)
 		/* Table 31 */
 		segmentation_rqmid_35544_rpl_ret_gp_table31_02();
 		segmentation_rqmid_35546_rpl_ret_gp_table31_03();
-		break;
-
-	case 1:
-		/* Table 27*/
-		segmentation_rqmid_35401_call_gate_call_ss_table27_01();	//can't catch
 		break;
 
 	default:
