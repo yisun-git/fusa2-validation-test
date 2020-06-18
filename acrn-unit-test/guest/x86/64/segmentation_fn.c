@@ -265,10 +265,19 @@ static void segmentation_rqmid_35239_lfs_gp_table3_03()
  * Summary: In 64-bit mode,  the segment is a data segment and both RPL and
  * CPL are greater than DPL, execute LFS will generate #GP(Segmentation Selector)
  */
+static void test_lfs_gp_table3_04(const char *fun)
+{
+	int ret = 0;
+	trigger_func fun1;
+
+	fun1 = lfs_rpl_3_index_80;
+	ret = test_for_exception(GP_VECTOR, fun1, NULL);
+
+	report("\t\t %s", (ret == true), fun);
+}
+
 static void segmentation_rqmid_35240_lfs_gp_table3_04()
 {
-	int ret1 = 0;
-	trigger_func fun1;
 
 	struct descriptor_table_ptr old_gdt_desc;
 
@@ -278,11 +287,7 @@ static void segmentation_rqmid_35240_lfs_gp_table3_04()
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
 
-	fun1 = lfs_rpl_dpl_3_index_80;
-
-	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
-
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	do_at_ring3(test_lfs_gp_table3_04, __FUNCTION__);
 }
 
 /**
@@ -317,15 +322,20 @@ static void segmentation_rqmid_35241_lfs_np_table3_05()
  * Summary: In 64-bit mode, a NULL selector is attempted to be loaded
  * into the SS register in CPL3 and 64-bit mode will generate #GP(0)
  */
-static void segmentation_rqmid_35266_ss_gp_table4_01()
+static void test_ss_gp_table4_01(const char *fun)
 {
 	int ret1 = 0;
 	trigger_func fun1;
 
-	fun1 = lss_cpl_3_index_0;
+	fun1 = lss_index_0;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", (ret1 == true), fun);
+}
+
+static void segmentation_rqmid_35266_ss_gp_table4_01()
+{
+	do_at_ring3(test_ss_gp_table4_01, __FUNCTION__);
 }
 
 /**

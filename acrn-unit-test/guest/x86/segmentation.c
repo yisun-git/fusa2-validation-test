@@ -34,7 +34,6 @@ struct segment_desc {
 } __attribute__((__packed__));
 
 typedef void (*trigger_func)(void *data);
-typedef void (*privilege_func)(const char *);
 typedef void (*call_gate_fun)(void);
 
 void lss_index_0(void *data)
@@ -63,13 +62,6 @@ void lss_rpl_2_index_0(void *data)
 		"lss  %0, %%eax\t\n"
 		::"m"(lss)
 	);
-}
-
-void lss_cpl_3_index_0(void *data)
-{
-	privilege_func fun = (privilege_func)lss_index_0;
-	do_at_ring3(fun, "");
-	//lss_index_0(NULL);
 }
 
 void lss_index_48(void *data)
@@ -182,12 +174,6 @@ void lfs_rpl_3_index_80(void *data)
 		"lfs  %0, %%eax\t\n"
 		::"m"(lfs)
 	);
-}
-
-void lfs_rpl_dpl_3_index_80(void *data)
-{
-	privilege_func fun = (privilege_func)lfs_rpl_3_index_80;
-	do_at_ring3(fun, "");
 }
 
 void lfs_index_1024(void *data)
