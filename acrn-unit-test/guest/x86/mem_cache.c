@@ -92,6 +92,8 @@
 
 #define CACHE_TEST_TIME_MAX			40
 
+#define IA32_PAT_STARTUP_VALUE	0x0007040600070406
+
 static volatile int ud;
 static volatile int isize;
 
@@ -703,10 +705,7 @@ void __unused cache_rqmid_37108_ia32_pat_init_unchange_02(void)
 	volatile u32 *ptr;
 
 	/* startup pat value */
-	ptr = (volatile u32 *)(0x6000 + 0x8);
-	unchanged_ap_pat1 = *ptr;
-	unchanged_ap_pat2 = *(ptr + 1);
-	ia32_pat1 = unchanged_ap_pat1 | ((u64)unchanged_ap_pat2 << 32);
+	ia32_pat1 = IA32_PAT_STARTUP_VALUE;
 
 	/* init pat value */
 	ptr = (volatile u32 *)(0x8000 + 0x8);
