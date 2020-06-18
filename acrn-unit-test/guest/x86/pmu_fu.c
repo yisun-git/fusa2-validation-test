@@ -40,9 +40,8 @@ static void pmu_rqmid_36505_PMU_physical_MSR_PLATFORM_INFO_AC_001(void)
 {
 	u32 a, d;
 	u32 msr = MSR_PLATFORM_INFO;
-	asm volatile (ASM_TRY("1f")
+	asm volatile (
 		"rdmsr\n\t"
-		"1:"
 		: "=a"(a), "=d"(d) : "c"(msr) : "memory");
 
 	report("%s", true, __FUNCTION__);
@@ -1326,11 +1325,21 @@ static void pmu_rqmid_29220_rd_MSR_UNC_CBO_CONFIG_001(void)
 /**
  * @brief case name: MSR_UNC_CBO_CONFIG_002
  *
- * Summary: Execute WRMSR instruction to write SR_UNC_CBO_CONFIG with 1H shall generate #GP(0).
+ * Summary: Execute WRMSR instruction to write MSR_UNC_CBO_CONFIG with 1H shall generate #GP(0).
  */
 static void pmu_rqmid_29221_wt_MSR_UNC_CBO_CONFIG_002(void)
 {
 	pmu_test_wrmsr(MSR_UNC_CBO_CONFIG, GP_VECTOR, 0, __FUNCTION__);
+}
+
+/**
+ * @brief case name: MSR_PLATFORM_INFO_002
+ *
+ * Summary: Execute WRMSR instruction to write MSR_PLATFORM_INFO with 1H shall generate #GP(0).
+ */
+static void pmu_rqmid_37355_wt_MSR_PLATFORM_INFO_002(void)
+{
+	pmu_test_wrmsr(MSR_PLATFORM_INFO, GP_VECTOR, 0, __FUNCTION__);
 }
 
 /**
@@ -1359,7 +1368,7 @@ static void pmu_rqmid_29690_CR4_read_001(void)
 /**
  * @brief case name: cr4[8] write_001
  *
- * Summary: Write CR4.PCE[bit 8] shall generate #GP.
+ * Summary: Write CR4.PCE[bit 8] shall generate #GP(0).
  */
 static void pmu_rqmid_29689_CR4_write_001(void)
 {
@@ -1526,6 +1535,7 @@ static void print_case_list(void)
 	printf("\t Case ID:%d case name:%s\n\r", 29092, "MSR_UNC_PERF_GLOBAL_STATUS_002");
 	printf("\t Case ID:%d case name:%s\n\r", 29220, "MSR_UNC_CBO_CONFIG_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29221, "MSR_UNC_CBO_CONFIG_002");
+	printf("\t Case ID:%d case name:%s\n\r", 37355, "MSR_PLATFORM_INFO_002");
 	printf("\t Case ID:%d case name:%s\n\r", 27843, "CPUID.01H_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29690, "cr4[8] read_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29689, "cr4[8] write_001");
@@ -1670,6 +1680,7 @@ int main(void)
 	pmu_rqmid_29092_wt_MSR_UNC_PERF_GLOBAL_STATUS_002();
 	pmu_rqmid_29220_rd_MSR_UNC_CBO_CONFIG_001();
 	pmu_rqmid_29221_wt_MSR_UNC_CBO_CONFIG_002();
+	pmu_rqmid_37355_wt_MSR_PLATFORM_INFO_002();
 	pmu_rqmid_27843_CPUID_01H_001();
 	pmu_rqmid_29690_CR4_read_001();
 	pmu_rqmid_29689_CR4_write_001();
