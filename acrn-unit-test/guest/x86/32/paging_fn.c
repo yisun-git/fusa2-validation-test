@@ -39,9 +39,10 @@ static void paging_rqmid_25249_execute_disable_support()
  * Summary: In 32-bit paging mode with 4K page, the mapping between GVA and GPA shall be
  *	    correct by checking if the value reading directly from GVA and GPA is same.
  */
+/*The stack size is only 4K, and the variables placed on the stack cannot be too large*/
+u8 random_value[PAGE_SIZE] = {0};
 static void paging_rqmid_24415_32_bit_paging_support()
 {
-	u8 random_value[PAGE_SIZE] = {0};
 	u8 *gva = malloc(PAGE_SIZE);
 	ulong cr0 = read_cr0();
 	u8 *gva_old = gva;
