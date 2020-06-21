@@ -16,9 +16,6 @@
 #define XSTATE_SSE      0x2
 #define XSTATE_YMM      0x4
 
-
-#define PASS 0
-
 #define STATE_X87_BIT			0
 #define STATE_SSE_BIT			1
 #define STATE_AVX_BIT			2

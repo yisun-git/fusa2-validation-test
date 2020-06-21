@@ -1,7 +1,6 @@
 #ifndef PAGING_H
 #define PAGING_H
 
-#define PASS		0U
 #define TYPE_TLB_01	0x01
 #define TYPE_TLB_03	0x03
 #define TYPE_TLB_63	0x63

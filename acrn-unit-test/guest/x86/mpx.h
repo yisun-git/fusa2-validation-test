@@ -6,8 +6,6 @@
 #define XCR_XFEATURE_ENABLED_MASK       0x00000000
 #define XCR_XFEATURE_ILLEGAL_MASK       0x00000010
 
-#define PASS 0
-
 #define REX_PREFIX "0x48, "
 
 #define XS_BNDCFG 0x18

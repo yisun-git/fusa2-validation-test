@@ -348,7 +348,6 @@ struct lseg_st {
 /*----------------------------- sse_steven.h ----------------------*/
 
 /* Exception */
-#define PASS	  0
 #define DE_VECTOR 0
 #define DB_VECTOR 1
 #define NMI_VECTOR 2

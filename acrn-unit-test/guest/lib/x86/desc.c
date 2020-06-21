@@ -258,7 +258,9 @@ void setup_idt(void)
 		}
 	}
 }
-
+/*
+ *return 0-31:valid exception; 255:no exception.
+ */
 unsigned exception_vector(void)
 {
 	unsigned char vector;

@@ -1,7 +1,6 @@
 #ifndef SGX_H
 #define SGX_H
 
-#define PASS 0
 #ifdef __x86_64__
 #define uint64_t unsigned long
 #else

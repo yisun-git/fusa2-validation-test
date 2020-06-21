@@ -1,7 +1,6 @@
 #ifndef __PT_H__
 #define __PT_H__
 
-#define PASS 0
 #define IA32_RTIT_OUTPUT_BASE		0x00000560
 #define IA32_RTIT_OUTPUT_MASK_PTRS	0x00000561
 #define IA32_RTIT_CTL			0x00000570

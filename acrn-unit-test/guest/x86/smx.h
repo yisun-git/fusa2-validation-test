@@ -1,7 +1,6 @@
 #ifndef SMX_H
 #define SMX_H
 
-#define PASS 0
 #define CPUID_1_SMX_SUPPORTED	(1ul << 6)
 #define X86_CR4_SMX		(1ul << 14)
 #define IA32_FEATURE_CONTROL	0x0000003a
