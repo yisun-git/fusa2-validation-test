@@ -346,7 +346,7 @@ static void task_management_rqmid_23674_tr_expose(void)
 			"ltr %%ax\n\t"
 			"1:":::);
 
-	report("%s", (exception_vector() == INVALID_EXCEPTION), __FUNCTION__);
+	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
 
 /**

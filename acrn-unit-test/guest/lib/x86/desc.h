@@ -77,22 +77,22 @@ typedef struct  __attribute__((packed))
 }
 tss64_t;
 
-#define INVALID_EXCEPTION	0xFF
-#define PASS		INVALID_EXCEPTION
+#define NO_EXCEPTION	0xFF
+#define PASS		NO_EXCEPTION
 #ifdef __x86_64__
 /*
  *When testing exceptions, the valid vector is 0-31,
  *so modify the default value to 255.
  */
 #define ASM_TRY(catch)                                  \
-	"movl $"xstr(INVALID_EXCEPTION)", %%gs:4 \n\t"      \
+	"movl $"xstr(NO_EXCEPTION)", %%gs:4 \n\t"      \
 	".pushsection .data.ex \n\t"                        \
 	".quad 1111f, " catch "\n\t"                        \
 	".popsection \n\t"                                  \
 	"1111:"
 #else
 #define ASM_TRY(catch)                                  \
-	"movl $"xstr(INVALID_EXCEPTION)", %%gs:4 \n\t"      \
+	"movl $"xstr(NO_EXCEPTION)", %%gs:4 \n\t"      \
 	".pushsection .data.ex \n\t"                        \
 	".long 1111f, " catch "\n\t"                        \
 	".popsection \n\t"                                  \

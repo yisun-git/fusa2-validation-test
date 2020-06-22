@@ -341,7 +341,7 @@ static __unused void sse_rqmid_27799_SSE_instructions_support_003(void)
 	write_cr4(read_cr4() | X86_CR4_OSFXSR);
 	write_cr0(read_cr0() & ~(X86_CR0_EM));
 	cvtps2dq_checking(NULL);
-	if (exception_vector() == INVALID_EXCEPTION) {
+	if (exception_vector() == NO_EXCEPTION) {
 		cnt++;
 	}
 	write_cr4(read_cr4() & ~X86_CR4_OSFXSR);

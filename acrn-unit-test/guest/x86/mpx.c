@@ -76,7 +76,7 @@ static void mpx_rqmid_23626_write_xcr0_bit_3_4(void)
 	write_cr4_checking(cr4 | X86_CR4_OSXSAVE);
 
 	test_bits = STATE_X87 | STATE_SSE | STATE_AVX;
-	if (xsetbv_checking(XCR0_MASK, test_bits) != INVALID_EXCEPTION) {
+	if (xsetbv_checking(XCR0_MASK, test_bits) != NO_EXCEPTION) {
 		report("%s", 0, __FUNCTION__);
 		return;
 	}

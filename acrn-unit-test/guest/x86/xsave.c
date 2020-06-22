@@ -1242,7 +1242,7 @@ static __unused void xsave_rqmid_22867_expose_avx_support()
 	write_cr4_osxsave(1);
 
 	xcr0 = STATE_X87 | STATE_SSE;
-	if (xsetbv_checking(XCR0_MASK, xcr0) == INVALID_EXCEPTION) {
+	if (xsetbv_checking(XCR0_MASK, xcr0) == NO_EXCEPTION) {
 		i++;
 	}
 
@@ -1251,7 +1251,7 @@ static __unused void xsave_rqmid_22867_expose_avx_support()
 	}
 
 	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
-	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE | STATE_AVX) == INVALID_EXCEPTION) {
+	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE | STATE_AVX) == NO_EXCEPTION) {
 		i++;
 	}
 
@@ -1267,16 +1267,16 @@ static __unused void xsave_rqmid_22867_expose_avx_support()
 	}
 
 	xcr0 = STATE_X87 | STATE_SSE | STATE_AVX;
-	if (xsetbv_checking(XCR0_MASK, xcr0) == INVALID_EXCEPTION) {
+	if (xsetbv_checking(XCR0_MASK, xcr0) == NO_EXCEPTION) {
 		i++;
 	}
 
-	if (execute_avx_test() == INVALID_EXCEPTION) {
+	if (execute_avx_test() == NO_EXCEPTION) {
 		i++;
 	}
 
 	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
-	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE | STATE_AVX) == INVALID_EXCEPTION) {
+	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE | STATE_AVX) == NO_EXCEPTION) {
 		i++;
 	}
 
@@ -1315,12 +1315,12 @@ static __unused void xsave_rqmid_22844_xsetbv_at_ring3(void)
 	write_cr4_osxsave(1);
 
 	test_bits = STATE_X87 | STATE_SSE;
-	if (xsetbv_checking(XCR0_MASK, test_bits) == INVALID_EXCEPTION) {
+	if (xsetbv_checking(XCR0_MASK, test_bits) == NO_EXCEPTION) {
 		i++;
 	}
 
 	u64 xcr0;
-	if (xgetbv_checking(XCR0_MASK, &xcr0) == INVALID_EXCEPTION) {
+	if (xgetbv_checking(XCR0_MASK, &xcr0) == NO_EXCEPTION) {
 		if (test_bits == xcr0) {
 			i++;
 		}
@@ -1350,14 +1350,14 @@ static __unused void xsave_rqmid_22866_expose_sse_support()
 	write_cr4_osxsave(1);
 
 	xcr0 = STATE_X87;
-	if (xsetbv_checking(XCR0_MASK, xcr0) == INVALID_EXCEPTION) {
+	if (xsetbv_checking(XCR0_MASK, xcr0) == NO_EXCEPTION) {
 		i++;
 	}
 
 	execute_sse_test(1);
 
 	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
-	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE) == INVALID_EXCEPTION) {
+	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE) == NO_EXCEPTION) {
 		i++;
 	}
 
@@ -1373,14 +1373,14 @@ static __unused void xsave_rqmid_22866_expose_sse_support()
 	}
 
 	xcr0 = STATE_X87 | STATE_SSE;
-	if (xsetbv_checking(XCR0_MASK, xcr0) == INVALID_EXCEPTION) {
+	if (xsetbv_checking(XCR0_MASK, xcr0) == NO_EXCEPTION) {
 		i++;
 	}
 
 	execute_sse_test(1);
 
 	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
-	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE) == INVALID_EXCEPTION) {
+	if (xsave_checking(&st_xsave_area, STATE_X87 | STATE_SSE) == NO_EXCEPTION) {
 		i++;
 	}
 
@@ -1459,7 +1459,7 @@ static __unused void xsave_rqmid_22911_check_xsave_head_size()
 
 	test_bits = STATE_X87 | STATE_SSE;
 	ret = xsetbv_checking(XCR0_MASK, test_bits);
-	if (ret == INVALID_EXCEPTION) {
+	if (ret == NO_EXCEPTION) {
 		i++;
 	} else {
 		debug_print("Step2: xsetbv_checking failed, ret=0x%lx\n", ret);
@@ -1477,7 +1477,7 @@ static __unused void xsave_rqmid_22911_check_xsave_head_size()
 	int ret1 = 0;
 	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
 	ret1 = xsave_checking(&st_xsave_area, (STATE_X87 | STATE_SSE));
-	if (ret1 == INVALID_EXCEPTION) {
+	if (ret1 == NO_EXCEPTION) {
 		i++;
 	} else {
 		debug_print("xsave_checking STATE_X87 | STATE_SSE failed.ret1=0x%x \n", ret1);
@@ -1533,7 +1533,7 @@ static __unused void xsave_rqmid_22830_check_xsave_area_offset()
 	}
 
 	test_bits = SUPPORT_XCR0;
-	if (xsetbv_checking(XCR0_MASK, test_bits) == INVALID_EXCEPTION) {
+	if (xsetbv_checking(XCR0_MASK, test_bits) == NO_EXCEPTION) {
 		i++;
 	}
 

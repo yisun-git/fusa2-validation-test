@@ -373,7 +373,7 @@ void avx_rqmid_30000_64bit_mode_vcmppd_normal_execution_001()
 	asm volatile("ldmxcsr %0" : : "m"(mxcsr));
 
 	ret = excute_vcmppd_instruction();
-	report("%s", (ret == INVALID_EXCEPTION), __FUNCTION__);
+	report("%s", (ret == NO_EXCEPTION), __FUNCTION__);
 }
 /**
  * @brief excute_vcvtsd2si_instruction
@@ -407,7 +407,7 @@ static void test_vcvtsd2si_normal_execution_sub_step(const char *msg)
 	u16 level;
 
 	level = read_cs() & 0x3;
-	report("%s", (excute_vcvtsd2si_instruction() == INVALID_EXCEPTION) && (level == 3), msg);
+	report("%s", (excute_vcvtsd2si_instruction() == NO_EXCEPTION) && (level == 3), msg);
 }
 /**
  * @brief case name: AVX expose execution environment_64 bit Mode_VCVTSD2SI_normal_execution_006
@@ -504,7 +504,7 @@ static void test_vpbroadcastd_normal_execution(const char *msg)
 	u16 level;
 
 	level = read_cs() & 0x3;
-	report("%s", (excute_vpbroadcastd_instruction() == INVALID_EXCEPTION) && (level == 1), msg);
+	report("%s", (excute_vpbroadcastd_instruction() == NO_EXCEPTION) && (level == 1), msg);
 }
 
 /**
@@ -612,7 +612,7 @@ static void avx_rqmid_30441_protected_mode_vsqrtpd_normal_execution_001()
 
 	asm volatile("ldmxcsr %0" : : "m"(mxcsr));
 
-	report("%s", excute_vsqrtpd_instruction() == INVALID_EXCEPTION, __FUNCTION__);
+	report("%s", excute_vsqrtpd_instruction() == NO_EXCEPTION, __FUNCTION__);
 }
 /**
  * @brief case name: AVX exposure execution environment protected Mode_VSQRTPD_#PF_001
