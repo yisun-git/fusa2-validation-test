@@ -1239,7 +1239,7 @@ void call_gate_ent3(void);
  *
  * Summary: In 64-bit mode, call to a function(name is call_gate_ent) by call gate,
  * if you modify the return code segment selector to NULL,
- * execute IRET will generate #GP(0)
+ * execute RET will generate #GP(0)
  */
 static void segmentation_rqmid_35329_cs_ret_gp_table14_03()
 {
@@ -1321,7 +1321,7 @@ void call_gate_ent4(void);
  *
  * Summary: In 64-bit mode, call to a function(name is call_gate_ent) by call gate,
  * if you modify the return code segment selector addresses descriptor beyond
- * descriptor table limit, execute IRET will generate #GP(return code segment selector)
+ * descriptor table limit, execute RET will generate #GP(return code segment selector)
  */
 static void segmentation_rqmid_35330_cs_ret_gp_table14_04()
 {
@@ -1424,7 +1424,7 @@ void call_gate_ent15_1(void);
  * Summary: In 64-bit ring 0 mode, call to a function(name is call_gate_ent)
  * by call gate, if you modify the RPL of the return code segment selector
  * to 3 and modify code segment descriptor L-bit to 1, D-bit to 1,
- * execute IRET will generate #GP(return code segment selector)
+ * execute RET will generate #GP(return code segment selector)
  */
 static void segmentation_rqmid_35332_rpl_ret_gp_table15_01()
 {
@@ -1524,7 +1524,7 @@ void call_gate_ent15_2(void);
  * Summary: In 64-bit ring 0 mode, call to a function(name is call_gate_ent)
  * by call gate, if you modify the RPL of the return code segment selector
  * to 2 and modify return code segment descriptor DPL to 3,
- * execute IRET will generate #GP(return code segment selector)
+ * execute RET will generate #GP(return code segment selector)
  */
 static void segmentation_rqmid_35334_rpl_ret_gp_table15_02()
 {
