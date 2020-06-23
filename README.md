@@ -110,8 +110,15 @@
     Compile hypervisor (see ### 4). Add compile option QEMU=1.
     Compile unit-test (see ### 5).
 
+    1) Run acrn-unit-test on hypervisor
     Under path: <path of acrn-validation-test>/github/acrn-unit-test/guest/, 
     $ ./qemu.sh <safety_raw_file> <non_safety_bzimage_file>
     e.g.
     $ ./qemu.sh xsave_64 xsave
+
+    2) Run acrn-unit-test on native
+    Under path: <path of acrn-validation-test>/github/acrn-unit-test/guest/,
+    $ ./qemu_native.sh <native_elf_file>
+    e.g.
+    $ ./qemu_native.sh xsave_native_64
 

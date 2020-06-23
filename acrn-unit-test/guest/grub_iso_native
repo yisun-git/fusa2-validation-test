@@ -36,21 +36,13 @@ fi
 (
 	echo    set default=$default
 	echo    set timeout=$timeout
-	echo    menuentry 'ACRN hypervisor' {
-	echo    echo 'Load hypervisor ...'
+	echo    menuentry 'acrn unit test elf file' {
+	echo    echo 'Load unit test ...'
 	for f in $*; do
 		if test -f $f; then
 			cp $f $isodir/boot/grub/
 			fname=`basename $f`
-			if [ "${fname##*.}" = "out" ]; then
-				echo    multiboot --quirk-modules-after-kernel /boot/grub/`basename $f`
-			else
-				if [ "${fname##*.}" = "raw" ]; then
-					echo    module /boot/grub/`basename $f` zephyr
-				else
-					echo    module /boot/grub/`basename $f` linux
-				fi
-			fi
+			echo    multiboot /boot/grub/`basename $f`
 		fi
 	done
 	echo    }
