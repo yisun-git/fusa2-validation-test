@@ -194,7 +194,8 @@ static void segmentation_rqmid_35237_lfs_gp_table3_01()
 	fun1 = lfs_index_1024;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 void lfs_non_canonical(void *data)
@@ -204,10 +205,10 @@ void lfs_non_canonical(void *data)
 
 	lfs.offset = 0xFFFFFFFF;
 	/* index =0x2 */
-	lfs.selector = 0x10;
+	lfs.selector = SELECTOR_INDEX_10H;
 
-	address = creat_non_canon_add(lfs.offset);
-	//printf("%s %d 0x%lx\n", __FUNCTION__, __LINE__, (u64)lfs.offset);
+	address = creat_non_canon_add((u64)&lfs);
+	//printf("%s %d %p 0x%lx\n", __FUNCTION__, __LINE__, &lfs, (u64)address);
 
 	asm volatile(
 		"REX\n\t" "lfs  %0, %%rax\t\n"
@@ -229,7 +230,12 @@ static void segmentation_rqmid_35238_fs_gp_table3_02()
 	fun1 = lfs_non_canonical;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	/*non_safety:error_code = 0x5670
+	 *safety:error_code = 0x56f0
+	 */
+	printf("error_code = 0x%x\n", exception_error_code());
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_10H)), __FUNCTION__);
 }
 
 /**
@@ -256,7 +262,8 @@ static void segmentation_rqmid_35239_lfs_gp_table3_03()
 	fun1 = lfs_index_80;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /**
@@ -273,7 +280,8 @@ static void test_lfs_gp_table3_04(const char *fun)
 	fun1 = lfs_rpl_3_index_80;
 	ret = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret == true), fun);
+	report("\t\t %s", ((ret == true)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), fun);
 }
 
 static void segmentation_rqmid_35240_lfs_gp_table3_04()
@@ -312,7 +320,8 @@ static void segmentation_rqmid_35241_lfs_np_table3_05()
 	fun1 = lfs_index_80;
 	ret1 = test_for_exception(NP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /* Table 4 */
@@ -330,7 +339,8 @@ static void test_ss_gp_table4_01(const char *fun)
 	fun1 = lss_index_0;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), fun);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == 0)), fun);
 }
 
 static void segmentation_rqmid_35266_ss_gp_table4_01()
@@ -353,7 +363,8 @@ static void segmentation_rqmid_35267_ss_gp_table4_02()
 	fun1 = lss_rpl_2_index_0;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /**
@@ -370,7 +381,8 @@ static void segmentation_rqmid_35269_ss_gp_table4_03()
 	fun1 = lss_index_1024;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 void lss_non_canonical(void *data)
@@ -380,7 +392,7 @@ void lss_non_canonical(void *data)
 
 	lss.offset = 0xffffffff;
 	/* index =0x2 */
-	lss.selector = 0x10;
+	lss.selector = SELECTOR_INDEX_10H;
 
 	address = creat_non_canon_add((u64)&lss);
 
@@ -404,7 +416,12 @@ static void segmentation_rqmid_35270_ss_gp_table4_04()
 	fun1 = lss_non_canonical;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	/*non_safety:error_code = 0x5670
+	 *safety:error_code = 0x56f0
+	 */
+	printf("error_code = 0x%x\n", exception_error_code());
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_10H)), __FUNCTION__);
 }
 
 /**
@@ -430,7 +447,8 @@ static void segmentation_rqmid_35271_ss_gp_table4_05()
 	fun1 = lss_index_rpl_1_80;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /**
@@ -457,7 +475,8 @@ static void segmentation_rqmid_35272_ss_gp_table4_06()
 	fun1 = lss_index_80;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /**
@@ -483,7 +502,8 @@ static void segmentation_rqmid_35273_ss_gp_table4_07()
 	fun1 = lss_index_80;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /**
@@ -510,7 +530,8 @@ static void segmentation_rqmid_35274_ss_ss_table4_08()
 	fun1 = lss_index_80;
 	ret1 = test_for_exception(SS_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /* Table 5 */
@@ -593,7 +614,8 @@ static void segmentation_rqmid_35276_cs_jmp_GP_table6_01()
 		::"m"(fun_p));
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /**
@@ -626,7 +648,8 @@ static void segmentation_rqmid_35277_cs_jmp_GP_table6_02()
 		::"m"(lcs));
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /*Table 7*/
@@ -649,7 +672,8 @@ static void segmentation_rqmid_35279_cs_call_GP_table7_01()
 		::"m"(fun_p));
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /**
@@ -689,7 +713,8 @@ static void segmentation_rqmid_35280_cs_call_GP_table7_02()
 	//lgdt(&old_gdt_desc);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 /*Table 8*/
@@ -725,7 +750,8 @@ static void segmentation_rqmid_35283_call_GP_table8_01()
 		::"m"(lcs));
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /**
@@ -758,7 +784,8 @@ static void segmentation_rqmid_35284_call_NP_table8_02()
 		::"m"(lcs));
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == NP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == NP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /* Table 9*/
@@ -795,7 +822,8 @@ static void segmentation_rqmid_35286_call_GP_table9_01()
 		::"m"(lcs));
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /**
@@ -829,7 +857,8 @@ static void segmentation_rqmid_35288_call_GP_table9_02()
 		::"m"(lcs));
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_280H)), __FUNCTION__);
 }
 
 /* Table 10*/
@@ -863,7 +892,8 @@ static void segmentation_rqmid_35322_call_gate_call_gp_table10_01()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_200H)), __FUNCTION__);
 
 }
 
@@ -895,7 +925,8 @@ static void segmentation_rqmid_35323_call_gate_call_np_table10_02()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == NP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == NP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_200H)), __FUNCTION__);
 
 }
 
@@ -908,13 +939,14 @@ static void segmentation_rqmid_35323_call_gate_call_np_table10_02()
  */
 static void segmentation_rqmid_35324_call_gate_call_gp_table11_03()
 {
-	int target_sel, ret;
+	int ret;
+	struct lseg_st64 call_st;
 	struct descriptor_table_ptr old_gdt_desc;
 
 	sgdt(&old_gdt_desc);
 
 	 /*non-canonical address*/
-	init_call_gate_64(seg_selector, code_selector, 0xC, 0, 1, 1, call_gate_ent);
+	init_call_gate_64(seg_selector, code_selector, 0xC, 0, 1, 0, call_gate_ent);
 
 	/* DPL of the nonconforming destination code segment
 	 * pointed by call gate is less than the CPL.
@@ -925,16 +957,18 @@ static void segmentation_rqmid_35324_call_gate_call_gp_table11_03()
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
 
-	target_sel = seg_selector << 16;
+	call_st.selector = seg_selector;
+	call_st.offset = (u64)creat_non_canon_add(0);
 
 	asm volatile(ASM_TRY("1f")
-		"lcallw *%0\n\t"
+		"REX\n\t" "lcallw *%0\n\t"
 		"1:"
-		::"m"(target_sel));
+		::"m"(call_st));
 
 	ret = exception_vector();
 
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /* Table 12 */
@@ -971,7 +1005,8 @@ static void segmentation_rqmid_35325_call_gate_call_gp_table12_02()
 
 	ret = exception_vector();
 
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 
@@ -1006,7 +1041,8 @@ static void segmentation_rqmid_35326_call_gate_jmp_gp_table13_01()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_200H)), __FUNCTION__);
 
 }
 
@@ -1038,7 +1074,8 @@ static void segmentation_rqmid_35328_call_gate_jmp_np_table13_02()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == NP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == NP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_200H)), __FUNCTION__);
 }
 
 /* Table 14 */
@@ -1262,7 +1299,8 @@ static void segmentation_rqmid_35329_cs_ret_gp_table14_03()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 void call_gate_function4(void)
@@ -1344,7 +1382,8 @@ static void segmentation_rqmid_35330_cs_ret_gp_table14_04()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 /*Table 15*/
@@ -1417,7 +1456,6 @@ asm("call_gate_ent15_1:\n"
 
 void call_gate_ent15_1(void);
 
-/*can't catch execption*/
 /**
  * @brief case name:segmentation_exception_check_rpl_ret_GP_table15_001
  *
@@ -1444,7 +1482,8 @@ static void segmentation_rqmid_35332_rpl_ret_gp_table15_01()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_8H)), __FUNCTION__);
 }
 
 void call_gate_function15_2(void)
@@ -1517,7 +1556,6 @@ asm("call_gate_ent15_2:\n"
 
 void call_gate_ent15_2(void);
 
-/*can't catch execption*/
 /**
  * @brief case name:segmentation_exception_check_rpl_ret_GP_table15_002
  *
@@ -1544,7 +1582,8 @@ static void segmentation_rqmid_35334_rpl_ret_gp_table15_02()
 		::"m"(target_sel));
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_8H)), __FUNCTION__);
 }
 
 /**
@@ -1576,7 +1615,8 @@ void segmentation_rqmid_35335_rpl_ret_gp_table15_20(void)
 	asm volatile("pop %0\n\t"
 		::"m"(esp_val));
 
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 static void print_case_list_64(void)

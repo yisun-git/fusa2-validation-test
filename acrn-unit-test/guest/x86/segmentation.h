@@ -68,6 +68,49 @@
 #define UNUSED                          0
 #define IST_TABLE_INDEX                 0
 
+/*index:0, RPL:0 GDT*/
+#define SELECTOR_INDEX_0H				0x0
+
+/*index:0, RPL:2 GDT*/
+#define SELECTOR_INDEX_2H				0x2
+
+/*index:0x1, RPL:0 GDT*/
+#define SELECTOR_INDEX_8H				0x8
+
+/*index:0x2, RPL:0 GDT*/
+#define SELECTOR_INDEX_10H				0x10
+
+/*index:0x7, RPL:0 GDT*/
+#define SELECTOR_INDEX_38H				0x38
+
+/*index:0x30, RPL:0 GDT*/
+#define SELECTOR_INDEX_180H				0x180
+
+/*index:0x30, RPL:3 GDT*/
+#define SELECTOR_INDEX_183H				0x183
+
+/*index:0x31, RPL:0 GDT*/
+#define SELECTOR_INDEX_188H				0x188
+
+/*index:0x33, RPL:0 GDT*/
+#define SELECTOR_INDEX_198H				0x198
+
+/*index:0x40, RPL:0 GDT*/
+#define SELECTOR_INDEX_200H				0x200
+
+/*index:0x50, RPL:0 GDT*/
+#define SELECTOR_INDEX_280H				0x280
+
+/*index:0x50, RPL:1 GDT*/
+#define SELECTOR_INDEX_281H				0x281
+
+/*index:0x50, RPL:3 GDT*/
+#define SELECTOR_INDEX_283H				0x283
+
+/*index:0x400, RPL:0 GDT*/
+#define SELECTOR_INDEX_2000H			0x2000
+
+
 #ifndef __x86_64__
 struct gate_descriptor {
 	unsigned gd_looffset:16;	/* gate offset (lsb) */

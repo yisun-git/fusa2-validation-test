@@ -395,10 +395,17 @@ static void exception_handler_longjmp(void)
 
 static void exception_handler(struct ex_regs *regs)
 {
+	unsigned ex_val;
+
+	ex_val = regs->vector | (regs->error_code << 16) |
+		(((regs->rflags >> 16) & 1) << 8);
+	asm("mov %0, %%gs:4" : : "r"(ex_val));
+
 	/* longjmp must happen after iret, so do not do it now.  */
 	exception = true;
 	regs->rip = (unsigned long)&exception_handler_longjmp;
-	regs->cs = read_cs();
+	/*read_cs() get Ring0's CS, but the return EIP could be Ring3, so can't modify it.*/
+	//regs->cs = read_cs();
 }
 
 bool test_for_exception(unsigned int ex, void (*trigger_func)(void *data),
@@ -411,6 +418,8 @@ bool test_for_exception(unsigned int ex, void (*trigger_func)(void *data),
 	old = handle_exception(ex, exception_handler);
 	ret = set_exception_jmpbuf(jmpbuf);
 	if (ret == 0) {
+		/* set vector to no exception*/
+		asm("movl $"xstr(NO_EXCEPTION)", %gs:4");
 		trigger_func(data);
 	}
 	handle_exception(ex, old);

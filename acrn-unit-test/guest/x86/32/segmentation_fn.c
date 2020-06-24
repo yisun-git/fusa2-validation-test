@@ -83,7 +83,8 @@ static void segmentation_rqmid_35339_lfs_gp_table16_02()
 	fun1 = lfs_index_1024;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 /* Table 17 */
@@ -109,7 +110,8 @@ static void segmentation_rqmid_35340_lss_gp_table17_01()
 	fun1 = lfs_rpl_3_index_48;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_180H)), __FUNCTION__);
 }
 
 /**
@@ -136,7 +138,8 @@ static void segmentation_rqmid_35341_lss_gp_table17_02()
 	fun1 = lss_index_48;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == SELECTOR_INDEX_180H)), __FUNCTION__);
 }
 
 /* Table 18 */
@@ -170,7 +173,8 @@ static void segmentation_rqmid_35342_mov_gp_table18_01()
 	fun1 = mov_to_lfs_offset;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /**
@@ -198,7 +202,8 @@ static void segmentation_rqmid_35343_mov_gp_table18_02()
 	fun1 = mov_to_lfs_offset;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /* Table 20 */
@@ -237,7 +242,8 @@ static void segmentation_rqmid_35348_cs_mov_gp_table20_01()
 
 	asm volatile("lcall $" xstr(CALL_GATE_SEL) ", $0x0\n\t");
 
-	report("\t\t %s", (test_ret_20 == true), __FUNCTION__);
+	report("\t\t %s", ((test_ret_20 == true)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 void mov_to_cs_16M(void *data)
@@ -258,7 +264,8 @@ static void segmentation_rqmid_35349_cs_mov_gp_table20_02()
 	fun1 = mov_to_cs_16M;
 	ret1 = test_for_exception(GP_VECTOR, fun1, NULL);
 
-	report("\t\t %s", (ret1 == true), __FUNCTION__);
+	report("\t\t %s", ((ret1 == true)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /* Table 21 */
@@ -285,7 +292,8 @@ static void segmentation_rqmid_35350_cs_jmp_gp_table21_01()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /**
@@ -304,7 +312,8 @@ static void segmentation_rqmid_35351_cs_jmp_gp_table21_02()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /* Table 22 */
@@ -332,7 +341,8 @@ static void segmentation_rqmid_35353_conforming_jmp_gp_table22_01()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_180H)), __FUNCTION__);
 }
 
 /**
@@ -359,7 +369,8 @@ static void segmentation_rqmid_35354_conforming_jmp_np_table22_02()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == NP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == NP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_180H)), __FUNCTION__);
 }
 
 /* Table 23 */
@@ -386,7 +397,8 @@ static void segmentation_rqmid_35362_cs_call_gp_table23_01()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /**
@@ -405,7 +417,8 @@ static void segmentation_rqmid_35363_cs_call_gp_table23_02()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /* Table 24 */
@@ -434,7 +447,8 @@ static void segmentation_rqmid_35364_call_gate_call_gp_table24_01()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_188H)), __FUNCTION__);
 }
 
 /**
@@ -462,7 +476,8 @@ static void segmentation_rqmid_35365_call_gate_call_np_table24_02()
 		"1:"::);
 
 	ret1 = exception_vector();
-	report("\t\t %s", (ret1 == NP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret1 == NP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_188H)), __FUNCTION__);
 }
 
 /* Table 25 */
@@ -519,7 +534,8 @@ static void segmentation_rqmid_35395_call_gate_call_ts_table25_01()
 	/* CPL = 3 */
 	do_at_ring3(call_ring3_function25_1, "");
 
-	report("\t\t %s", (test_ret_25 == TS_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_25 == TS_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 void call_ring3_function25_2(const char *data)
@@ -569,7 +585,8 @@ static void segmentation_rqmid_35396_call_gate_call_ts_table25_02()
 	/* CPL = 3 */
 	do_at_ring3(call_ring3_function25_2, "");
 
-	report("\t\t %s", (test_ret_25 == TS_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_25 == TS_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_0H)), __FUNCTION__);
 }
 
 /* Table 26 */
@@ -620,7 +637,8 @@ static void segmentation_rqmid_35399_call_gate_call_ss_table26_01()
 	/* CPL = 3 */
 	do_at_ring3(call_ring3_function26_1_2, "");
 
-	report("\t\t %s", (test_ret_26 == SS_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_26 == SS_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_198H)), __FUNCTION__);
 }
 
 /*#GP(0)*/
@@ -658,7 +676,8 @@ static void segmentation_rqmid_35400_call_gate_call_gp_table26_02()
 	/* CPL = 3 */
 	do_at_ring3(call_ring3_function26_1_2, "");
 
-	report("\t\t %s", (test_ret_26 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_26 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /* Table 27 */
@@ -713,7 +732,8 @@ static void segmentation_rqmid_35401_call_gate_call_ss_table27_01()
 
 	do_at_ring3(call_ring3_function27_1, "");
 
-	report("\t\t %s", (test_ret_27 == SS_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_27 == SS_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 void call_ring3_function27_2(const char *data)
@@ -759,7 +779,8 @@ static void segmentation_rqmid_35402_call_gate_call_gp_table27_02()
 	gdt32[7] = ring3_code_bak;
 	lgdt(&old_gdt_desc);
 
-	report("\t\t %s", (test_ret_27 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_27 == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 /* Table 28 */
@@ -798,7 +819,8 @@ static void segmentation_rqmid_35403_call_gate_jmp_gp_table28_01()
 
 	do_at_ring3(jmp_ring3_function28_1, "");
 
-	report("\t\t %s", (test_ret_28 == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_28 == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_188H)), __FUNCTION__);
 }
 
 /*#NP(error_code=0x0188)*/
@@ -828,7 +850,8 @@ static void segmentation_rqmid_35539_call_gate_jmp_np_table28_02()
 		"1:"::);
 
 	test_ret_28 = exception_vector();
-	report("\t\t %s", (test_ret_28 == NP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((test_ret_28 == NP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_188H)), __FUNCTION__);
 }
 
 u32 esp_32;
@@ -916,7 +939,8 @@ static void segmentation_rqmid_35540_cs_ret_gp_table29_02()
 	asm volatile("lcall $" xstr(CALL_GATE_SEL) ", $0x0\n\t");
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 void call_gate_function29_3(void)
@@ -992,7 +1016,8 @@ static void segmentation_rqmid_35541_cs_ret_gp_table29_03()
 	asm volatile("lcall $" xstr(CALL_GATE_SEL) ", $0x0\n\t");
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 /* Table 30*/
@@ -1079,7 +1104,8 @@ static void segmentation_rqmid_35542_cs_ret_gp_table30_01()
 	do_at_ring3(call_ring3_function30_1, "");
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_38H)), __FUNCTION__);
 }
 
 void call_gate_function30_2(void)
@@ -1164,7 +1190,7 @@ static void segmentation_rqmid_35543_cs_ret_gp_table30_02()
 	/* The return code segment is ring3 code segment(index = 7)
 	 * set this segment to conforming(DPL default is 3)
 	 */
-	set_gdt_entry(0x38, 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
+	set_gdt_entry(SELECTOR_INDEX_38H, 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 
@@ -1173,7 +1199,8 @@ static void segmentation_rqmid_35543_cs_ret_gp_table30_02()
 	do_at_ring3(call_ring3_function30_2, "");
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_38H)), __FUNCTION__);
 }
 
 /* Table 31*/
@@ -1272,7 +1299,8 @@ static void segmentation_rqmid_35544_rpl_ret_gp_table31_02()
 	do_at_ring3(call_ring3_function31_2, "");
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == 0)), __FUNCTION__);
 }
 
 void call_gate_function31_3(void)
@@ -1370,7 +1398,8 @@ static void segmentation_rqmid_35546_rpl_ret_gp_table31_03()
 	do_at_ring3(call_ring3_function31_3, "");
 
 	ret = exception_vector();
-	report("\t\t %s", (ret == GP_VECTOR), __FUNCTION__);
+	report("\t\t %s", ((ret == GP_VECTOR)
+		&& (exception_error_code() == SELECTOR_INDEX_2000H)), __FUNCTION__);
 }
 
 static void print_case_list_32(void)

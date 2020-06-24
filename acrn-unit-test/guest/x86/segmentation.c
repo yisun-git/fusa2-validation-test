@@ -42,7 +42,7 @@ void lss_index_0(void *data)
 
 	lss.offset = 0xffffffff;
 	/*index =0 RPL =0 */
-	lss.selector = 0x0;
+	lss.selector = SELECTOR_INDEX_0H;
 
 	asm volatile(
 		"lss  %0, %%eax\t\n"
@@ -56,7 +56,7 @@ void lss_rpl_2_index_0(void *data)
 
 	lss.offset = 0xffffffff;
 	/*index =0 RPL =2 */
-	lss.selector = 0x2;
+	lss.selector = SELECTOR_INDEX_2H;
 
 	asm volatile(
 		"lss  %0, %%eax\t\n"
@@ -70,7 +70,7 @@ void lss_index_48(void *data)
 
 	lss.offset = 0xffffffff;
 	/* index =0x30 RPL=0 */
-	lss.selector = 0x180;
+	lss.selector = SELECTOR_INDEX_180H;
 
 	asm volatile(
 		"lss  %0, %%eax\t\n"
@@ -84,7 +84,7 @@ void lss_index_80(void *data)
 
 	lss.offset = 0xffffffff;
 	/* index =0x50 RPL=0*/
-	lss.selector = 0x280;
+	lss.selector = SELECTOR_INDEX_280H;
 
 	asm volatile(
 		"lss  %0, %%eax\t\n"
@@ -98,7 +98,7 @@ void lss_index_rpl_1_80(void *data)
 
 	lss.offset = 0xffffffff;
 	/*index =0x50 RPL =1 */
-	lss.selector = 0x281;
+	lss.selector = SELECTOR_INDEX_281H;
 
 	asm volatile(
 		"lss  %0, %%eax\t\n"
@@ -112,7 +112,7 @@ void lss_index_1024(void *data)
 
 	lss.offset = 0xffffffff;
 	/*index =50 RPL =0 */
-	lss.selector = 0x2000;
+	lss.selector = SELECTOR_INDEX_2000H;
 
 	asm volatile(
 		"lss  %0, %%eax\t\n"
@@ -126,7 +126,7 @@ void lfs_index_48(void *data)
 
 	lfs.offset = 0xffffffff;
 	/*index =0x30 RPL =0 */
-	lfs.selector = 0x180;
+	lfs.selector = SELECTOR_INDEX_180H;
 
 	asm volatile(
 		"lfs  %0, %%eax\t\n"
@@ -140,7 +140,7 @@ void lfs_index_80(void *data)
 
 	lfs.offset = 0xffffffff;
 	/*index =0x50 RPL =0 */
-	lfs.selector = 0x280;
+	lfs.selector = SELECTOR_INDEX_280H;
 
 	asm volatile(
 		"lfs  %0, %%eax\t\n"
@@ -154,7 +154,7 @@ void lfs_rpl_3_index_48(void *data)
 
 	lfs.offset = 0xffffffff;
 	/* index = 0x30 RPL =3 */
-	lfs.selector = 0x183;
+	lfs.selector = SELECTOR_INDEX_183H;
 
 	asm volatile(
 		"lfs  %0, %%eax\t\n"
@@ -168,7 +168,7 @@ void lfs_rpl_3_index_80(void *data)
 
 	lfs.offset = 0xffffffff;
 	/* index = 0x50 RPL =3 */
-	lfs.selector = 0x283;
+	lfs.selector = SELECTOR_INDEX_283H;
 
 	asm volatile(
 		"lfs  %0, %%eax\t\n"
@@ -182,7 +182,7 @@ void lfs_index_1024(void *data)
 
 	lfs.offset = 0xffffffff;
 	/*index =1K RPL =0 */
-	lfs.selector = 0x2000;
+	lfs.selector = SELECTOR_INDEX_2000H;
 
 	asm volatile(
 		"lfs  %0, %%eax\t\n"
