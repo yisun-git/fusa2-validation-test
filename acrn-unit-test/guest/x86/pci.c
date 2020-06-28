@@ -4148,7 +4148,7 @@ static __unused void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 27790u,
 	"PCIe config space and host_2-Byte Config Address Port Write_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27791u,
-	"PCIe config space and host_2-Byte Config Address Port Write_001");
+	"PCIe config space and host_1-Byte Config Address Port Write_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 31161u,
 	"PCIe config space and host_Normal Config Address Port Read_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27792u,
