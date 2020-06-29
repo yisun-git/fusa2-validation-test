@@ -245,7 +245,7 @@ bool  test_Write_with_Disabled_Config_Address(uint8_t msi_offset, uint32_t bytes
 	case PCI_MSI_ADDRESS_LO:
 		size = 4;
 		break;
-	case PCI_MSI_DATA_32:
+	case PCI_MSI_DATA_64:
 		size = 2;
 		break;
 	default:
@@ -2935,7 +2935,7 @@ static __unused
 void pci_rqmid_27747_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Write_with_Disabled_Config_Address_001(void)
 {
 	bool is_pass = false;
-	is_pass = test_Write_with_Disabled_Config_Address(PCI_MSI_DATA_32, 1, 0x01, 0xCFC);
+	is_pass = test_Write_with_Disabled_Config_Address(PCI_MSI_DATA_64, 1, 0x01, 0xCFC);
 	report("%s", is_pass, __FUNCTION__);
 
 }
@@ -3000,7 +3000,7 @@ static __unused
 void pci_rqmid_27739_PCIe_config_space_and_host_2_Byte_Config_Data_Port_Write_with_Disabled_Config_Address_001(void)
 {
 	bool is_pass = false;
-	is_pass = test_Write_with_Disabled_Config_Address(PCI_MSI_DATA_32, 2, 0x1001, 0xCFC);
+	is_pass = test_Write_with_Disabled_Config_Address(PCI_MSI_DATA_64, 2, 0x1001, 0xCFC);
 	report("%s", is_pass, __FUNCTION__);
 }
 
@@ -3144,7 +3144,7 @@ static __unused
 void pci_rqmid_27766_PCIe_config_space_and_host_2_Byte_Config_Data_Port_Write_with_Enabled_Config_Address_001(void)
 {
 	bool is_pass = false;
-	is_pass = test_Write_with_enabled_Config_Address(PCI_MSI_DATA_32, 2, 0x1234, 0xCFC);
+	is_pass = test_Write_with_enabled_Config_Address(PCI_MSI_DATA_64, 2, 0x1234, 0xCFC);
 	report("%s", is_pass, __FUNCTION__);
 }
 
@@ -3174,7 +3174,7 @@ static __unused
 void pci_rqmid_27770_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Write_with_Enabled_Config_Address_001(void)
 {
 	bool is_pass = false;
-	is_pass = test_Write_with_enabled_Config_Address(PCI_MSI_DATA_32, 1, 0x01, 0xCFC);
+	is_pass = test_Write_with_enabled_Config_Address(PCI_MSI_DATA_64, 1, 0x01, 0xCFC);
 	report("%s", is_pass, __FUNCTION__);
 }
 
@@ -3253,8 +3253,8 @@ void pci_rqmid_27774_PCIe_config_space_and_host_2_Byte_Config_Data_Port_Read_wit
 	if (is_pass) {
 		ret = pci_probe_msi_capability(bdf, &msi_addr);
 		if (ret == OK) {
-			msi_addr = msi_addr + PCI_MSI_DATA_32;
-			reg_val = pci_pdev_read_cfg_test(bdf, PCI_MSI_DATA_32, 2, 0xCFC, false);
+			msi_addr = msi_addr + PCI_MSI_DATA_64;
+			reg_val = pci_pdev_read_cfg_test(bdf, PCI_MSI_DATA_64, 2, 0xCFC, false);
 			if (0xFFFF == reg_val) {
 				count++;
 			}
@@ -3264,8 +3264,8 @@ void pci_rqmid_27774_PCIe_config_space_and_host_2_Byte_Config_Data_Port_Read_wit
 	if (is_pass) {
 		ret = pci_probe_msi_capability(bdf, &msi_addr);
 		if (ret == OK) {
-			msi_addr = msi_addr + PCI_MSI_DATA_32;
-			reg_val = pci_pdev_read_cfg_test(bdf, PCI_MSI_DATA_32, 2, 0xCFC, false);
+			msi_addr = msi_addr + PCI_MSI_DATA_64;
+			reg_val = pci_pdev_read_cfg_test(bdf, PCI_MSI_DATA_64, 2, 0xCFC, false);
 			if (0xFFFF == reg_val) {
 				count++;
 			}
@@ -3438,7 +3438,7 @@ void pci_rqmid_27779_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Read_wit
 	if (is_pass) {
 		ret = pci_probe_msi_capability(bdf, &msi_addr);
 		if (ret == OK) {
-			msi_addr = msi_addr + PCI_MSI_DATA_32;
+			msi_addr = msi_addr + PCI_MSI_DATA_64;
 			reg_val = pci_pdev_read_cfg_test(bdf, msi_addr, 1, 0xCFC, false);
 			if (reg_val ==	0xFF) {
 				count++;
@@ -3449,7 +3449,7 @@ void pci_rqmid_27779_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Read_wit
 	if (is_pass) {
 		ret = pci_probe_msi_capability(bdf, &msi_addr);
 		if (ret == OK) {
-			msi_addr = msi_addr + PCI_MSI_DATA_32;
+			msi_addr = msi_addr + PCI_MSI_DATA_64;
 			reg_val = pci_pdev_read_cfg_test(bdf, msi_addr, 1, 0xCFC, false);
 			if (reg_val ==	0xFF) {
 				count++;
@@ -3625,7 +3625,7 @@ static __unused
 void pci_rqmid_27788_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Read_with_Enabled_Config_Address_001(void)
 {
 	bool is_pass = false;
-	is_pass = test_Read_with_Enabled_Config_Address(PCI_MSI_DATA_32, 1, 0x11, 0xCFC);
+	is_pass = test_Read_with_Enabled_Config_Address(PCI_MSI_DATA_64, 1, 0x11, 0xCFC);
 	report("%s", is_pass, __FUNCTION__);
 }
 
@@ -3640,7 +3640,7 @@ static __unused
 void pci_rqmid_27784_PCIe_config_space_and_host_2_Byte_Config_Data_Port_Read_with_Enabled_Config_Address_001(void)
 {
 	bool is_pass = false;
-	is_pass = test_Read_with_Enabled_Config_Address(PCI_MSI_DATA_32, 2, 0x0110, 0xCFC);
+	is_pass = test_Read_with_Enabled_Config_Address(PCI_MSI_DATA_64, 2, 0x0110, 0xCFC);
 	report("%s", is_pass, __FUNCTION__);
 }
 
