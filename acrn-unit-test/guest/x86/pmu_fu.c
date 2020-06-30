@@ -3,6 +3,7 @@
 #include "processor.h"
 
 #include "pmu_fu.h"
+#include "host_register.h"
 
 void pmu_test_rdmsr(u32 msr, u32 vector, u32 error_code, const char *func)
 {
@@ -1333,11 +1334,23 @@ static void pmu_rqmid_29221_wt_MSR_UNC_CBO_CONFIG_002(void)
 }
 
 /**
- * @brief case name: MSR_PLATFORM_INFO_002
+ * @brief case name: Read guest MSR_PLATFORM_INFO_001
+ *
+ * Summary: Read register MSR_PLATFORM_INFO, the value of the MSR_PLATFORM_INFO shall be 0x804043DF1011500.
+ */
+static void pmu_rqmid_37371_rd_MSR_PLATFORM_INFO_001(void)
+{
+	u64 plat_info = rdmsr(MSR_PLATFORM_INFO);
+
+	report("%s", (plat_info == HOST_PLATFORM_INFO_VAL), __FUNCTION__);
+}
+
+/**
+ * @brief case name: Write guest MSR_PLATFORM_INFO_001
  *
  * Summary: Execute WRMSR instruction to write MSR_PLATFORM_INFO with 1H shall generate #GP(0).
  */
-static void pmu_rqmid_37355_wt_MSR_PLATFORM_INFO_002(void)
+static void pmu_rqmid_37355_wt_MSR_PLATFORM_INFO_001(void)
 {
 	pmu_test_wrmsr(MSR_PLATFORM_INFO, GP_VECTOR, 0, __FUNCTION__);
 }
@@ -1390,7 +1403,36 @@ static void pmu_rqmid_29689_CR4_write_001(void)
 	report("%s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
 }
 
+/**
+ * @brief case name: Initialize guest MSR_PLATFORM_INFO following start-up_001
+ *
+ * Summary:Get MSR_PLATFORM_INFO at BP start-up, the value shall be 0x804043DF1011500.
+ *
+ */
+
+static void pmu_rqmid_37369_MSR_PLATFORM_INFO_startup_001(void)
+{
+	u64 plat_info = *(u64 *)BP_PLATFORM_INFO_ADDR;
+
+	report("%s", (plat_info == HOST_PLATFORM_INFO_VAL), __FUNCTION__);
+}
+
 #ifdef IN_NON_SAFETY_VM
+
+/**
+ * @brief case name: Initialize guest MSR_PLATFORM_INFO following INIT_001
+ *
+ * Summary: After AP receives first INIT, dump MSR_PLATFORM_INFO, the value should be 0x804043DF1011500.
+ *
+ */
+
+static void pmu_rqmid_37370_MSR_PLATFORM_INFO_init_001(void)
+{
+	u64 plat_info = *(u64 *)AP_PLATFORM_INFO_ADDR;
+
+	report("%s", (plat_info == HOST_PLATFORM_INFO_VAL), __FUNCTION__);
+}
+
 /**
  * @brief case name: cr4 pce init_001
  *
@@ -1535,11 +1577,14 @@ static void print_case_list(void)
 	printf("\t Case ID:%d case name:%s\n\r", 29092, "MSR_UNC_PERF_GLOBAL_STATUS_002");
 	printf("\t Case ID:%d case name:%s\n\r", 29220, "MSR_UNC_CBO_CONFIG_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29221, "MSR_UNC_CBO_CONFIG_002");
-	printf("\t Case ID:%d case name:%s\n\r", 37355, "MSR_PLATFORM_INFO_002");
+	printf("\t Case ID:%d case name:%s\n\r", 37371, "read MSR_PLATFORM_INFO_001");
+	printf("\t Case ID:%d case name:%s\n\r", 37355, "write MSR_PLATFORM_INFO_001");
 	printf("\t Case ID:%d case name:%s\n\r", 27843, "CPUID.01H_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29690, "cr4[8] read_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29689, "cr4[8] write_001");
+	printf("\t Case ID:%d case name:%s\n\r", 37369, "MSR_PLATFORM_INFO_startup_001");
 #ifdef IN_NON_SAFETY_VM
+	printf("\t Case ID:%d case name:%s\n\r", 37370, "MSR_PLATFORM_INFO_init_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29694, "cr4 pce init_001");
 #endif
 #endif
@@ -1680,11 +1725,14 @@ int main(void)
 	pmu_rqmid_29092_wt_MSR_UNC_PERF_GLOBAL_STATUS_002();
 	pmu_rqmid_29220_rd_MSR_UNC_CBO_CONFIG_001();
 	pmu_rqmid_29221_wt_MSR_UNC_CBO_CONFIG_002();
-	pmu_rqmid_37355_wt_MSR_PLATFORM_INFO_002();
+	pmu_rqmid_37371_rd_MSR_PLATFORM_INFO_001();
+	pmu_rqmid_37355_wt_MSR_PLATFORM_INFO_001();
 	pmu_rqmid_27843_CPUID_01H_001();
 	pmu_rqmid_29690_CR4_read_001();
 	pmu_rqmid_29689_CR4_write_001();
+	pmu_rqmid_37369_MSR_PLATFORM_INFO_startup_001();
 #ifdef IN_NON_SAFETY_VM
+	pmu_rqmid_37370_MSR_PLATFORM_INFO_init_001();
 	pmu_rqmid_29694_cr4_pce_init_001();
 #endif
 #endif
