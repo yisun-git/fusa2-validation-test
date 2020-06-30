@@ -889,7 +889,7 @@ asm("call_gate_ent29_2:\n"
 	"call call_gate_function29_2\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".long 1111f,  1f \n"
 	".popsection \n"
@@ -934,7 +934,7 @@ static void segmentation_rqmid_35540_cs_ret_gp_table29_02()
 	lgdt(&old_gdt_desc);
 
 	/* remove exception vector */
-	asm volatile("movl $0, %gs:4 \n");
+	asm volatile("movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n");
 
 	asm volatile("lcall $" xstr(CALL_GATE_SEL) ", $0x0\n\t");
 
@@ -966,7 +966,7 @@ asm("call_gate_ent29_3:\n"
 	"call call_gate_function29_3\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".long 1111f,  1f \n"
 	".popsection \n"
@@ -1011,7 +1011,7 @@ static void segmentation_rqmid_35541_cs_ret_gp_table29_03()
 	lgdt(&old_gdt_desc);
 
 	/* remove exception vector */
-	asm volatile("movl $0, %gs:4 \n");
+	asm volatile("movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n");
 
 	asm volatile("lcall $" xstr(CALL_GATE_SEL) ", $0x0\n\t");
 
@@ -1051,7 +1051,7 @@ asm("call_gate_ent30_1:\n"
 	"call call_gate_function30_1\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".long 1111f,  1f \n"
 	".popsection \n"
@@ -1138,7 +1138,7 @@ asm("call_gate_ent30_2:\n"
 	"call call_gate_function30_2\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".long 1111f,  1f \n"
 	".popsection \n"
@@ -1235,7 +1235,7 @@ asm("call_gate_ent31_2:\n"
 	"call call_gate_function31_2\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".long 1111f,  1f \n"
 	".popsection \n"
@@ -1334,7 +1334,7 @@ asm("call_gate_ent31_3:\n"
 	"call call_gate_function31_3\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".long 1111f,  1f \n"
 	".popsection \n"

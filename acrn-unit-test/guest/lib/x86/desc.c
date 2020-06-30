@@ -126,7 +126,7 @@ static void check_exception_table(struct ex_regs *regs)
 
 	ex_val = regs->vector | (regs->error_code << 16) |
 		(((regs->rflags >> 16) & 1) << 8);
-	asm("mov %0, %%gs:4" : : "r"(ex_val));
+	asm("mov %0, %%gs:"xstr(EXCEPTION_ADDR)"" : : "r"(ex_val));
 
 	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
 		if (ex->rip == regs->rip) {
@@ -265,7 +265,7 @@ unsigned exception_vector(void)
 {
 	unsigned char vector;
 
-	asm("movb %%gs:4, %0" : "=q"(vector));
+	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
 	return vector;
 }
 
@@ -273,7 +273,7 @@ unsigned exception_error_code(void)
 {
 	unsigned short error_code;
 
-	asm("mov %%gs:6, %0" : "=rm"(error_code));
+	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=rm"(error_code));
 	return error_code;
 }
 
@@ -281,7 +281,7 @@ bool exception_rflags_rf(void)
 {
 	unsigned char rf_flag;
 
-	asm("movb %%gs:5, %b0" : "=q"(rf_flag));
+	asm("movb %%gs:"xstr(EXCEPTION_RFLAGS_ADDR)", %b0" : "=q"(rf_flag));
 	return rf_flag & 1;
 }
 
@@ -399,7 +399,7 @@ static void exception_handler(struct ex_regs *regs)
 
 	ex_val = regs->vector | (regs->error_code << 16) |
 		(((regs->rflags >> 16) & 1) << 8);
-	asm("mov %0, %%gs:4" : : "r"(ex_val));
+	asm("mov %0, %%gs:"xstr(EXCEPTION_ADDR)"" : : "r"(ex_val));
 
 	/* longjmp must happen after iret, so do not do it now.  */
 	exception = true;
@@ -419,7 +419,7 @@ bool test_for_exception(unsigned int ex, void (*trigger_func)(void *data),
 	ret = set_exception_jmpbuf(jmpbuf);
 	if (ret == 0) {
 		/* set vector to no exception*/
-		asm("movl $"xstr(NO_EXCEPTION)", %gs:4");
+		asm("movl $"xstr(NO_EXCEPTION)", %gs:"xstr(EXCEPTION_ADDR)"");
 		trigger_func(data);
 	}
 	handle_exception(ex, old);

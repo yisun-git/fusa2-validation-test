@@ -77,6 +77,14 @@ typedef struct  __attribute__((packed))
 }
 tss64_t;
 
+/* Because the first page is used for AP startup,
+ * save the exception vector rflags error code to the second page
+ */
+#define EXCEPTION_ADDR	0x1004
+#define EXCEPTION_VECTOR_ADDR	EXCEPTION_ADDR
+#define EXCEPTION_RFLAGS_ADDR	0x1005
+#define EXCEPTION_ECODE_ADDR	0x1006
+
 #define NO_EXCEPTION	0xFF
 #define PASS		NO_EXCEPTION
 #ifdef __x86_64__
@@ -85,14 +93,14 @@ tss64_t;
  *so modify the default value to 255.
  */
 #define ASM_TRY(catch)                                  \
-	"movl $"xstr(NO_EXCEPTION)", %%gs:4 \n\t"      \
+	"movl $"xstr(NO_EXCEPTION)", %%gs:"xstr(EXCEPTION_ADDR)" \n\t"      \
 	".pushsection .data.ex \n\t"                        \
 	".quad 1111f, " catch "\n\t"                        \
 	".popsection \n\t"                                  \
 	"1111:"
 #else
 #define ASM_TRY(catch)                                  \
-	"movl $"xstr(NO_EXCEPTION)", %%gs:4 \n\t"      \
+	"movl $"xstr(NO_EXCEPTION)", %%gs:"xstr(EXCEPTION_ADDR)" \n\t"      \
 	".pushsection .data.ex \n\t"                        \
 	".long 1111f, " catch "\n\t"                        \
 	".popsection \n\t"                                  \

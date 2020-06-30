@@ -179,8 +179,8 @@ void handle_rmode_excp(struct excp_regs *regs)
 
 	vector = regs->vector;
 	rflags = regs->rflags;
-	asm volatile("mov %0, %%gs:4" : : "r"(vector));
-	asm volatile("mov %0, %%gs:6" : : "r"(rflags));
+	asm volatile("mov %0, %%gs:"xstr(EXCEPTION_VECTOR_ADDR)"" : : "r"(vector));
+	asm volatile("mov %0, %%gs:"xstr(EXCEPTION_ECODE_ADDR)"" : : "r"(rflags));
 
 	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
 		if (ex->ip == regs->ip) {
@@ -218,7 +218,7 @@ void handle_rmode_excp(struct excp_regs *regs)
 u16 exception_vector(void)
 {
 	u16 vector;
-	asm("mov %%gs:4, %0" : "=q"(vector));
+	asm("mov %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
 	return vector;
 }
 

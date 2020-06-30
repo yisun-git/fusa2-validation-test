@@ -439,7 +439,7 @@ static void fpu_64bit_ss_handler(struct ex_regs *regs)
 	extern unsigned char fsave_ss_ret;
 	ex_val = regs->vector | (regs->error_code << 16) |
 			 (((regs->rflags >> 16) & 1) << 8);
-	asm("mov %0, %%gs:4" : : "r"(ex_val));
+	asm("mov %0, %%gs:"xstr(EXCEPTION_ADDR)"" : : "r"(ex_val));
 
 	regs->rip = (unsigned long)&fsave_ss_ret;
 }

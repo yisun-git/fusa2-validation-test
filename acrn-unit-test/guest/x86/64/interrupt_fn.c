@@ -13,7 +13,7 @@ void handled_exception(struct ex_regs *regs)
 	save_rflags2 = read_rflags();
 	ex_val = regs->vector | (regs->error_code << 16) |
 		(((regs->rflags >> 16) & 1) << 8);
-	asm("mov %0, %%gs:4" : : "r"(ex_val));
+	asm("mov %0, %%gs:"xstr(EXCEPTION_ADDR)"" : : "r"(ex_val));
 
 	irqcounter_incre(regs->vector);
 

@@ -1243,7 +1243,7 @@ asm("call_gate_ent3:\n"
 	"call call_gate_function3\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".quad 1111f,  1f \n"
 	".popsection \n"
@@ -1293,7 +1293,7 @@ static void segmentation_rqmid_35329_cs_ret_gp_table14_03()
 	target_sel = (seg_selector << 16);
 
 	/* remove exception vector */
-	asm volatile("movl $0, %gs:4 \n");
+	asm volatile("movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n");
 
 	asm volatile("lcallw *%0\n\t"
 		::"m"(target_sel));
@@ -1326,7 +1326,7 @@ asm("call_gate_ent4:\n"
 	"call call_gate_function4\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".quad 1111f,  1f \n"
 	".popsection \n"
@@ -1376,7 +1376,7 @@ static void segmentation_rqmid_35330_cs_ret_gp_table14_04()
 	target_sel = (seg_selector << 16);
 
 	/* remove exception vector */
-	asm volatile("movl $0, %gs:4 \n");
+	asm volatile("movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n");
 
 	asm volatile("lcallw *%0\n\t"
 		::"m"(target_sel));
@@ -1428,7 +1428,7 @@ asm("call_gate_ent15_1:\n"
 	"call call_gate_function15_1\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".quad 1111f,  1f \n"
 	".popsection \n"
@@ -1528,7 +1528,7 @@ asm("call_gate_ent15_2:\n"
 	"call call_gate_function15_2\n"
 #ifdef USE_HAND_EXECEPTION
 	/*ASM_TRY("1f") macro expansion*/
-	"movl $0, %gs:4 \n"
+	"movl $0, %gs:"xstr(EXCEPTION_ADDR)" \n"
 	".pushsection .data.ex \n"
 	".quad 1111f,  1f \n"
 	".popsection \n"

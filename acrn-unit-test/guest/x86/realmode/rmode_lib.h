@@ -6,8 +6,8 @@ typedef unsigned short u16;
 typedef unsigned u32;
 
 #define ASM_TRY(catch)				\
-	"movw $0, %gs:4 \n\t"			\
-	"movw $0, %gs:6 \n\t"			\
+	"movw $0, %gs:"xstr(EXCEPTION_VECTOR_ADDR)" \n\t"			\
+	"movw $0, %gs:"xstr(EXCEPTION_ECODE_ADDR)" \n\t"			\
 	".pushsection .data.ex \n\t"		\
 	".word 1111f," catch "\n\t"		\
 	".popsection \n\t"			\
