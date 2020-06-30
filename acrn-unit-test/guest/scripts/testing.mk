@@ -31,7 +31,7 @@ codescan: $(C_CODESCAN)
                 if [ $$next -gt 0 ]; then \
                         echo "$$line" >> $(TMP_SCAN_FINAL); \
                         next=$$((next-1)); \
-                elif [[ $$rst -eq 1 && "$$line" =~ "warning:" && ! "$$line" = lib/* && ! "$$line" =~ "guest/lib/" ]]; then \
+                elif [[ $$rst -eq 1 && "$$line" =~ "warning:" && ! "$$line" = lib/* && ! "$$line" =~ "guest/lib/" && ! "$$line" =~ "guest/lib/x86/" ]]; then \
                         echo $$line >> $(TMP_SCAN_FINAL); \
                         next=2; \
                 fi \
