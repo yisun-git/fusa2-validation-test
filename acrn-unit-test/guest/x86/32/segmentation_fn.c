@@ -222,6 +222,12 @@ void call_gate_function20(void)
 	test_ret_20 = test_for_exception(GP_VECTOR, fun1, NULL);
 }
 
+asm("call_gate_ent20_01:\n"
+	"call call_gate_function20\n"
+	"lret\n"
+	);
+void call_gate_ent20_01(void);
+
 /**
  * @brief case name:segmentation_exception_check_cs_mov_GP_table20_001
  *
@@ -233,7 +239,7 @@ static void segmentation_rqmid_35348_cs_mov_gp_table20_01()
 	struct descriptor_table_ptr old_gdt_desc;
 
 	sgdt(&old_gdt_desc);
-	init_call_gate(CALL_GATE_SEL, CODE_SEL, 0xC, 0, 1, 0, call_gate_function20);
+	init_call_gate(CALL_GATE_SEL, CODE_SEL, 0xC, 0, 1, 0, call_gate_ent20_01);
 	/*limit set to 32M*/
 	set_gdt_entry(CODE_SEL, 0, 0x1FFF, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
