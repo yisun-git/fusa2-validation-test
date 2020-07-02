@@ -257,16 +257,18 @@ static void mov_gp_012(void)
 		: "m"(*(creat_non_canon_add())));
 }
 
+int ret_gp_12 = false;
 static void  ring3_mov_gp_012(const char *fun_name)
 {
 	gp_trigger_func fun;
-	bool ret;
+	//bool ret;
 
 	fun = (gp_trigger_func)mov_gp_012;
-	ret = test_for_exception(GP_VECTOR, fun, NULL);
+	ret_gp_12 = test_for_exception(GP_VECTOR, fun, NULL);
 
-	report("%s Execute Instruction:  MOV, to generate #GP",
-		ret == true, fun_name);
+	/*Because this case set cr0.am[bit 18], report in ring3 will generate AC*/
+	//report("%s Execute Instruction:  MOV, to generate #GP",
+	//	ret == true, fun_name);
 }
 
 static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
@@ -275,6 +277,8 @@ static void  gp_rqmid_31330_data_transfer_mov_gp_012(void)
 	eflags_ac_to_1();
 
 	do_at_ring3(ring3_mov_gp_012, __FUNCTION__);
+	report("%s Execute Instruction:  MOV, to generate #GP",
+		ret_gp_12 == true, __FUNCTION__);
 }
 
 void gp_data_transfer_mov_ud(const char *fun_name)
