@@ -8,6 +8,7 @@ void main()
 	unsigned char size_u32, size_u16;
 	u16 sp;
 	unsigned char vector;
+	unsigned short error_code;
 
 	tmp1 = tmp;
 
@@ -21,22 +22,34 @@ void main()
 	);
 	print_serial("sp:");
 	print_serial_u32(sp);
-	print_serial("\n\r");
+	print_serial("\r\n");
+
 	print_serial("u32 len:");
 	print_serial_u32(size_u32);
+	print_serial("\r\n");
+
 	print_serial("u16 len:");
 	print_serial_u32(size_u16);
+	print_serial("\r\n");
+
 	asm volatile("mov $0x3456, %dx");
 	print_serial_u32(tmp1);
-	print_serial("\n");
+	print_serial("\r\n");
+
 	asm volatile("mov $0x2345, %dx");
 	asm volatile(ASM_TRY("1f")
 		"lock;""pause\n"
 		"1:");
 	vector = exception_vector();
-	print_serial("\n\r vector:");
+	print_serial("vector:");
 	print_serial_u32(vector);
-	print_serial("\n\r");
+	print_serial("\r\n");
+
+	error_code = exception_error_code();
+	print_serial("error_code:");
+	print_serial_u32(error_code);
+	print_serial("\r\n");
+
 	report("first", 1);
 	report_summary();
 }

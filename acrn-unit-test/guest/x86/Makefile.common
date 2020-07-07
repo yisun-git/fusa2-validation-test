@@ -139,8 +139,8 @@ $(TEST_DIR)/vmx_prelink.o: $(TEST_DIR)/vmx.o
 
 $(TEST_DIR)/realmode/%.raw: ENTRY_OFFSET = 0x4000
 $(TEST_DIR)/realmode/%.bzimage: ENTRY_OFFSET = 0x4000
-$(TEST_DIR)/realmode/%.elf: $(TEST_DIR)/realmode/rmode_cstart.o $(TEST_DIR)/realmode/rmode_entry.o $(TEST_DIR)/realmode/%.o \
-	$(TEST_DIR)/realmode/rmode_flat.lds
+$(TEST_DIR)/realmode/%.elf: $(TEST_DIR)/realmode/rmode_cstart.o $(TEST_DIR)/realmode/rmode_entry.o $(TEST_DIR)/realmode/apic.o \
+	$(TEST_DIR)/realmode/%.o $(TEST_DIR)/realmode/rmode_flat.lds
 	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/realmode/rmode_flat.lds \
 		 $(filter %.o, $^)
 	@chmod a-x $@

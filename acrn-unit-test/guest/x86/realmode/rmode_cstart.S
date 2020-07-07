@@ -134,16 +134,9 @@ start32:
 	mov %ax, %fs
 	mov %ax, %gs
 	mov %ax, %ss
+	call enable_apic
 	call load_tss
-	/*enable pic*/
-	mov $0xff, %al
-	out %al, $0x21
-	out %al, $0xa1
-	/*enable apic*/
-	mov  $0x1ff,%eax
-	mov  $0x0,%edx
-	mov  $(APIC_BASE_MSR + APIC_SPIV/16),%ecx
-	wrmsr
+	call mask_pic_interrupts
 	call smp_init
 /*
 *
@@ -186,7 +179,7 @@ load_tss:
 	lea tss_descr-gdt32(%ebx), %eax
 	ltr %ax
 	ret
-
+.global smp_init
 smp_init:
 	cld
 	lea sipi_entry, %esi
@@ -197,9 +190,16 @@ smp_init:
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
 
+#ifdef IN_SAFETY_VM
+	movl $1, %eax
+#else
 	movl $2, %eax
+#endif
+
 	movl %eax, %edx
-	//shll $1, %edx //native need
+#ifdef IN_NATIVE
+	shll $1, %edx
+#endif
 	subl $1, %edx
 1:
 	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), %eax
@@ -248,41 +248,49 @@ rmode_end:
 */
 .align 16
 excp_divide_error:
-	push  $0x00
+	push $0x0
+	push $0x0
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_debug:
+	push  $0x0
 	push  $0x01
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_nmi:
+	push $0x0
 	push $0x02
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_breakpoint:
+	push  $0x0
 	push  $0x03
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_overflow:
+	push  $0x0
 	push  $0x04
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_bounds_check:
+	push  $0x0
 	push  $0x05
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_illegal_opcode:
+	push  $0x0
 	push  $0x06
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_device_not_available:
+	push  $0x0
 	push  $0x07
 	jmp    __do_handle_rmode_excp
 
@@ -293,6 +301,7 @@ excp_double_fault:
 
 .align 8
 excp_coprocessor_seg_overrun:
+	push $0x0
 	push $0x09
 	jmp   __do_handle_rmode_excp
 
@@ -323,6 +332,7 @@ excp_page_fault:
 
 .align 8
 excp_float_error:
+	push  $0x0
 	push  $0x10
 	jmp    __do_handle_rmode_excp
 
@@ -333,16 +343,19 @@ excp_alignment_check:
 
 .align 8
 expt_machine_check:
+	push  $0x0
 	push  $0x12
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_simd_fp_error:
+	push  $0x0
 	push  $0x13
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_virtualization:
+	push  $0x0
 	push  $0x14
 	jmp    __do_handle_rmode_excp
 /*

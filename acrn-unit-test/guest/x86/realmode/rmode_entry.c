@@ -175,12 +175,12 @@ void handle_rmode_excp(struct excp_regs *regs)
 {
 	struct excp_record *ex;
 	u16 vector;
-	u16 rflags;
+	u16 error_code;
 
 	vector = regs->vector;
-	rflags = regs->rflags;
+	error_code = regs->error_code;
 	asm volatile("mov %0, %%gs:"xstr(EXCEPTION_VECTOR_ADDR)"" : : "r"(vector));
-	asm volatile("mov %0, %%gs:"xstr(EXCEPTION_ECODE_ADDR)"" : : "r"(rflags));
+	asm volatile("mov %0, %%gs:"xstr(EXCEPTION_ECODE_ADDR)"" : : "r"(error_code));
 
 	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
 		if (ex->ip == regs->ip) {
@@ -215,10 +215,17 @@ void handle_rmode_excp(struct excp_regs *regs)
 	print_serial("\n\r");
 	rmode_exit(0);
 }
-u16 exception_vector(void)
+u8 exception_vector(void)
+{
+	u8 vector;
+	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
+	return vector;
+}
+
+u16 exception_error_code(void)
 {
 	u16 vector;
-	asm("mov %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
+	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=q"(vector));
 	return vector;
 }
 
@@ -231,6 +238,7 @@ asm (
 	"call handle_rmode_excp \n\t"
 	"pop %ax; pop %cx; pop %dx; pop %bx\n\t"
 	"pop %bp; pop %si; pop %di\n\t"
+	"add $0x2, %sp\n\t"
 	"add $0x2, %sp\n\t"
 	".byte 0xcf\n\t"
 );
