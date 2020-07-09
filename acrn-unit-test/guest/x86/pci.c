@@ -4187,6 +4187,17 @@ static __unused void print_case_list(void)
 #endif
 }
 
+void test_delay(int time)
+{
+	__unused int count = 0;
+	u64 tsc;
+	tsc = rdtsc() + ((u64)time * 1000000000);
+
+	while (rdtsc() < tsc) {
+		;
+	}
+}
+
 int main(void)
 {
 	setup_idt();
@@ -4242,6 +4253,14 @@ int main(void)
 	pci_rqmid_28863_PCIe_config_space_and_host_PCI_hole_range_002();
 	pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_001();
 //514: PCIe_BAR memory access end
+
+	/*only head 25 cases run here delay,
+	 *because the previous print info includes case list and
+	 *case report existing in uart buffer,
+	 *add this delay to make "vm_console 1/0" clear uart buffer.
+	 *then the following cases' print info can store into uart buffer.
+	 */
+	test_delay(50);
 
 //516: PCIe_ACRN shall expose PCI configuration register start
 	pci_rqmid_26245_PCIe_config_space_and_host_Device_Identification_Registers_004();
