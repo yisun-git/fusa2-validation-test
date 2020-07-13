@@ -4202,6 +4202,10 @@ int main(void)
 {
 	setup_idt();
 	set_log_level(PCI_DEBUG_LEVEL);
+	/* Run here delay 50s to wait for CI inputting "vm_console 0/1" cammand,
+	 * then the following print log info can be outputted immediately.
+	 */
+	test_delay(50);
 	print_case_list();
 #ifdef __x86_64__
 	/*Enumerate PCI devices to pci_devs*/
