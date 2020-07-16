@@ -17,9 +17,227 @@
 #include "alloc.h"
 #include "misc.h"
 #include "info_leakage.h"
+#include "host_register.h"
 #include "instruction_common.h"
 #include "memory_type.h"
 #include "debug_print.h"
+
+bool check_cpuid(u32 basic, u32 leaf, u32 bit)
+{
+	unsigned long check_bit = 0;
+	bool result = false;
+
+	check_bit = cpuid_indexed(basic, leaf).d;
+	check_bit &= FEATURE_INFORMATION_BIT(bit);
+
+	if (check_bit == 0)
+	{
+		result = false;
+	}
+	else
+	{
+		result = true;
+	}
+
+	return result;
+}
+
+void L1D_FLUSH(const char *func)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(28);
+
+	if (check_bit != 0)
+	{
+		wrmsr(IA32_FLUSH_CMD_MSR, 0x01);
+		report("\t\t %s", 1, func);
+	}
+	else
+	{
+		report("\t\t %s", 0, func);
+	}
+}
+
+
+void IBRS(const char *func)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(26);
+
+	if (check_bit == 0)
+	{
+		report("\t\t %s", 0, func);
+		return;
+	}
+
+	u64 val = rdmsr(IA32_SPEC_CTRL_MSR);
+	wrmsr(IA32_SPEC_CTRL_MSR, val & ~0x1);
+
+	val = rdmsr(IA32_SPEC_CTRL_MSR);
+	if ((val & 0x1) != 0)
+	{
+		report("\t\t %s", 0, func);
+		return;
+	}
+
+	wrmsr(IA32_SPEC_CTRL_MSR, val | 0x1);
+	val = rdmsr(IA32_SPEC_CTRL_MSR);
+	if ((val & 0x1) == 0)
+	{
+		report("\t\t %s", 0, func);
+	}
+	else
+	{
+		report("\t\t %s", 1, func);
+	}
+}
+
+
+void SSBD(const char *func)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(31);
+
+	if (check_bit == 0)
+	{
+		report("\t\t %s", 0, func);
+		return;
+	}
+
+	u64 val = rdmsr(IA32_SPEC_CTRL_MSR);
+	wrmsr(IA32_SPEC_CTRL_MSR, val | 0x4);
+
+	val = rdmsr(IA32_SPEC_CTRL_MSR);
+	if ((val & 0x4) == 0)
+	{
+		report("\t\t %s", 0, func);
+		return;
+	}
+
+	wrmsr(IA32_SPEC_CTRL_MSR, val & ~0x4);
+	val = rdmsr(IA32_SPEC_CTRL_MSR);
+	if ((val & 0x4) == 0)
+	{
+		report("\t\t %s", 1, func);
+	}
+	else
+	{
+		report("\t\t %s", 0, func);
+	}
+}
+
+void IBPB(const char *func)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(26);
+
+	if (check_bit == 0)
+	{
+		report("\t\t %s", 0, func);
+		return;
+	}
+
+	wrmsr(IA32_PRED_CMD_MSR, 0x1);
+	wrmsr(IA32_PRED_CMD_MSR, 0x0);
+
+	report("\t\t %s", 1, func);
+}
+
+void MDS_mitigation_mechnism(const char *func)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(10);
+
+	if (check_bit == 0)
+	{
+		report("\t\t %s", 0, func);
+		return;
+	}
+
+	/*0x8 is code segment selector*/
+	asm("mov $0x8, %ax\n\t"
+		"verw %ax\n\t");
+
+	report("\t\t %s", 1, func);
+}
+
+#ifdef IN_NATIVE
+
+/**
+ * @brief Case name: information leakage of L1D_Flush support_AC_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[28] is set to 1,Execute
+ * WRMSR instruction to write 1H to IA32_FLUSH_CMD[0] no exception
+ */
+void infoleak_rqmid_36497_L1D_FLUSH_support_AC_001(void)
+{
+	L1D_FLUSH(__FUNCTION__);
+}
+
+
+/**
+ * @brief Case name: Information_leakage_IBRS_support_AC_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[26] is set to 1,IA32_SPEC_CTRL.bit[0]  can be set and clear under VM.
+ *
+ */
+void infoleak_rqmid_36498_IBRS_support_AC_001(void)
+{
+	IBRS(__FUNCTION__);
+}
+
+/**
+ * @brief Case name: information leakage of SSBD support_AC_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[31] is set to 1,Execute
+ * WRMSR and RDMSR instruction to check IA32_SPEC_CTRL.bit[2].
+ *
+ */
+void infoleak_rqmid_36499_SSBD_support_AC_001(void)
+{
+	SSBD(__FUNCTION__);
+}
+
+/**
+ * @brief Case name: information leakage of IBPB support_AC_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[26] is set to 1,Execute WRMSR instruction and no exception.
+ *
+ */
+void infoleak_rqmid_36503_IBPB_support_AC_001(void)
+{
+	IBPB(__FUNCTION__);
+}
+
+/**
+ * @brief Case name: information leakage of MDS mitigation mechnism support_AC_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[10] is set to 1,call VERW instruction has no exception.
+ *
+ */
+void infoleak_rqmid_37015_MDS_mitigation_mechnism_support_AC_001(void)
+{
+	MDS_mitigation_mechnism(__FUNCTION__);
+}
+
+#else /*end native vm*/
+
+#ifdef	USE_DEBUG
+#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#else
+#define debug_print(fmt, args...)
+#endif
+#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 
 static u64 *cache_test_array = NULL;
 static u64 cache_l1_size = 0x800;	/* 16K/8 */
@@ -160,14 +378,14 @@ void infoleak_rqmid_33619_mitigate_L1TF_variant_affecting_VMM_benchmark_001(void
 }
 
 /**
- * @brief Case name: SFR-08 ACRN hypervisor shall mitigate the L1TF variant affecting VMM_002
+ * @brief Case name: SFR-08 ACRN hypervisor shall mitigate the L1TF variant affecting VMM_benchmark_002
  *
  * Summary: In 64bit mode, L1D FLUSH should support; Enable cache and paging, configure
  * the memory type to WB, the read with L1D FLUSH should slower than without L1D FLUSH read.
  * Compare delta average with benchmark data, should in (average-3 *stdev, average+3*stdev).
  *
  */
-void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_002(void)
+void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_benchmark_002(void)
 {
 	int64_t tsc_average1 = 0;
 	int64_t tsc_average2 = 0;
@@ -205,44 +423,6 @@ void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_002(void)
 	return;
 }
 
-bool infoleak_L1D_FLUSH_to_1(void)
-{
-	unsigned long check_bit = 0;
-	bool result = false;
-
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
-	check_bit &= FEATURE_INFORMATION_BIT(28);
-
-	if (check_bit == 0) {
-		result = false;
-	} else {
-		result = true;
-	}
-
-	return result;
-}
-
-/**
- * @brief Case name: information leakage of L1D_Flush expose_001
- *
- * Summary: CPUID.(EAX=7H,ECX=0):EDX[28] is set to 1,Execute
- * WRMSR instruction to write 1H to IA32_FLUSH_CMD[0] no exception
- */
-void infoleak_rqmid_33873_L1D_FLUSH_expose_001(void)
-{
-	if (infoleak_L1D_FLUSH_to_1() == true)
-	{
-		wrmsr(IA32_FLUSH_CMD_MSR, 0x01);
-		report("\t\t %s", 1, __FUNCTION__);
-	}
-	else
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-	}
-
-	return;
-}
-
 static u32 bp_eax_ia32_spec_ctrl = 0xff;
 void read_bp_startup(void)
 {
@@ -276,6 +456,17 @@ void infoleak_rqmid_33869_IA32_SPEC_CTRL_startup_001(void)
 	return;
 }
 
+/**
+ * @brief Case name: information leakage of L1D_Flush expose_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[28] is set to 1,Execute
+ * WRMSR instruction to write 1H to IA32_FLUSH_CMD[0] no exception
+ */
+void infoleak_rqmid_33873_L1D_FLUSH_expose_001(void)
+{
+	L1D_FLUSH(__FUNCTION__);
+}
+
 
 /**
  * @brief Case name: information leakage of IBRS expose_001
@@ -285,37 +476,7 @@ void infoleak_rqmid_33869_IA32_SPEC_CTRL_startup_001(void)
  */
 void infoleak_rqmid_33872_IBRS_expose_001(void)
 {
-	unsigned long check_bit = 0;
-
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
-	check_bit &= FEATURE_INFORMATION_BIT(26);
-
-	if (check_bit == 0)
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-		return;
-	}
-
-	u64 val = rdmsr(IA32_SPEC_CTRL_MSR);
-	wrmsr(IA32_SPEC_CTRL_MSR, val & ~0x1);
-
-	val = rdmsr(IA32_SPEC_CTRL_MSR);
-	if ((val & 0x1) != 0)
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-		return;
-	}
-
-	wrmsr(IA32_SPEC_CTRL_MSR, val | 0x1);
-	val = rdmsr(IA32_SPEC_CTRL_MSR);
-	if ((val & 0x1) == 0)
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-	}
-	else
-	{
-		report("\t\t %s", 1, __FUNCTION__);
-	}
+	IBRS(__FUNCTION__);
 }
 
 /**
@@ -327,62 +488,7 @@ void infoleak_rqmid_33872_IBRS_expose_001(void)
  */
 void infoleak_rqmid_33875_SSBD_expose_001(void)
 {
-	unsigned long check_bit = 0;
-
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
-	check_bit &= FEATURE_INFORMATION_BIT(31);
-
-	if (check_bit == 0)
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-		return;
-	}
-
-	u64 val = rdmsr(IA32_SPEC_CTRL_MSR);
-	wrmsr(IA32_SPEC_CTRL_MSR, val | 0x4);
-
-	val = rdmsr(IA32_SPEC_CTRL_MSR);
-	if ((val & 0x4) == 0)
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-		return;
-	}
-
-	wrmsr(IA32_SPEC_CTRL_MSR, val & ~0x4);
-	val = rdmsr(IA32_SPEC_CTRL_MSR);
-	if ((val & 0x4) == 0)
-	{
-		report("\t\t %s", 1, __FUNCTION__);
-	}
-	else
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-	}
-}
-
-/**
- * @brief Case name: information leakage of MDS mitigation mechnism expose_001
- *
- * Summary: CPUID.(EAX=7H,ECX=0):EDX[10] is set to 1,call VERW instruction has no exception.
- *
- */
-void infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001(void)
-{
-	unsigned long check_bit = 0;
-
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
-	check_bit &= FEATURE_INFORMATION_BIT(10);
-
-	if (check_bit == 0)
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-		return;
-	}
-
-	asm("mov $8, %ax\n\t"
-		"verw %ax\n\t");
-
-	report("\t\t %s", 1, __FUNCTION__);
+	SSBD(__FUNCTION__);
 }
 
 /**
@@ -393,21 +499,19 @@ void infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001(void)
  */
 void infoleak_rqmid_33874_IBPB_expose_001(void)
 {
-	unsigned long check_bit = 0;
+	IBPB(__FUNCTION__);
+}
 
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
-	check_bit &= FEATURE_INFORMATION_BIT(31);
 
-	if (check_bit == 0)
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-		return;
-	}
-
-	wrmsr(IA32_PRED_CMD_MSR, 0x1);
-	wrmsr(IA32_PRED_CMD_MSR, 0x0);
-
-	report("\t\t %s", 1, __FUNCTION__);
+/**
+ * @brief Case name: information leakage of MDS mitigation mechnism expose_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[10] is set to 1,call VERW instruction has no exception.
+ *
+ */
+void infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001(void)
+{
+	MDS_mitigation_mechnism(__FUNCTION__);
 }
 
 static u32 ap_eax_ia32_spec_ctrl = 0xff;
@@ -415,7 +519,7 @@ void read_ap_init(void)
 {
 	//ia32_spec_ctrl
 
-	uint32_t *ap_spec_ctrl_addr = (uint32_t *)AP_IA32_SPEC_CTRL_ADDR;
+	uint32_t *ap_spec_ctrl_addr = (uint32_t *)AP_IA32_SPEC_CTRL_SIPI_ADDR;
 	asm ("mov %1, %%eax\n\t"
 		"mov %%eax, %0\n\t"
 		"mov $0xff, %%eax\n\t"
@@ -440,21 +544,14 @@ void infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001(void)
 	read_ap_init();
 	spec_ctrl_1 = ap_eax_ia32_spec_ctrl;
 
-	u64 val = rdmsr(IA32_SPEC_CTRL_MSR);
-	if ((spec_ctrl_1 & 0x1) == 0)
-	{
-		val |= 0x1;
-	}
-	else
-	{
-		val &= ~0x1;
-	}
-
-	wrmsr(IA32_SPEC_CTRL_MSR, val);
 	send_sipi();
 
 	read_ap_init();
-	spec_ctrl_2 = ap_eax_ia32_spec_ctrl;
+
+	do
+	{
+		spec_ctrl_2 = ap_eax_ia32_spec_ctrl;
+	} while (spec_ctrl_2 == 0xff);
 
 	if (spec_ctrl_1 == spec_ctrl_2)
 	{
@@ -465,11 +562,138 @@ void infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001(void)
 		report("\t\t %s", 0, __FUNCTION__);
 	}
 }
+
+/**
+ * @brief Case name: IA32_SPEC_CTRL INIT_002
+ *
+ * Summary: After AP receives first INIT, Dump IA32_SPEC_CTRL value,
+ * the value should be samed with the IA32_SPEC_CTRL value dumped from BP
+ * when it start.
+ *
+ */
+void infoleak_rqmid_37018_IA32_SPEC_CTRL_INIT_002(void)
+{
+	uint32_t *ap_spec_ctrl = (uint32_t *)AP_IA32_SPEC_CTRL_INIT_ADDR;
+
+	if (*ap_spec_ctrl == HOST_IA32_SPEC_CTRL_VAL)
+	{
+		report("\t\t %s", 1, __FUNCTION__);
+	}
+	else
+	{
+		report("\t\t %s", 0, __FUNCTION__);
+	}
+}
 #endif
+
+/**
+ * @brief Case name: Information_Leakage_Check_additional_features_hidden_to_vm_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[29] is set to 0.
+ *
+ */
+void infoleak_rqmid_27879_Check_additional_features_hidden_to_vm_001(void)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(29);
+
+	if (check_bit != 0)
+	{
+		report("\t\t %s", 0, __FUNCTION__);
+		return;
+	}
+
+	report("\t\t %s", 1, __FUNCTION__);
+}
+
+void check_additional_features_hidden_to_vm(const char *func)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(29);
+
+	if (check_bit != 0)
+	{
+		report("\t\t %s", 0, __FUNCTION__);
+		return;
+	}
+
+	u32 index = IA32_ARCH_CAPABILITIES_MSR;
+	u32 a = 0;
+	u32 d = 0;
+
+	asm volatile(ASM_TRY("1f")
+		"rdmsr\n\t"
+		"1:"
+		: "=a"(a), "=d"(d) : "c"(index) : "memory");
+
+	report("\t\t %s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), func);
+}
+
+/**
+ * @brief Case name: Information_Leakage_Check_additional_features_hidden_to_vm_002
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[29] is set to 0,
+ * try to rdmsr IA32_ARCH_CAPABILITIES_MSR[4], and GP exception expected.
+ *
+ */
+void infoleak_rqmid_27883_Check_additional_features_hidden_to_vm_002(void)
+{
+	check_additional_features_hidden_to_vm(__FUNCTION__);
+}
+
+/**
+ * @brief Case name: Information_Leakage_Check_STIBP_hided_to_Vm_001
+ *
+ * Summary: CPUID.(EAX=7H,ECX=0):EDX[27] is set to 0.
+ *
+ */
+void infoleak_rqmid_27873_Information_Leakage_Check_STIBP_hided_to_Vm_001(void)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).d;
+	check_bit &= FEATURE_INFORMATION_BIT(27);
+
+	if (check_bit != 0)
+	{
+		report("\t\t %s", 0, __FUNCTION__);
+		return;
+	}
+
+	report("\t\t %s", 1, __FUNCTION__);
+}
+
+/**
+ * @brief Case name: Information_Leakage_Check_STIBP_hided_to_Vm_002
+ *
+ * Summary: Execute WRMSR instruction to write 1H to IA32_SPEC_CTRL_MSR[1] no exception
+ *
+ */
+void infoleak_rqmid_27874_Information_Leakage_Check_STIBP_hided_to_Vm_002(void)
+{
+	u64 val = rdmsr(IA32_SPEC_CTRL_MSR);
+
+	wrmsr(IA32_SPEC_CTRL_MSR, val | 0x2);
+	wrmsr(IA32_SPEC_CTRL_MSR, val & ~0x2);
+
+	report("\t\t %s", 1, __FUNCTION__);
+}
+#endif /*end no-saftey and safety vm*/
 
 static void print_case_list(void)
 {
 	printf("info_leak feature case list:\n\r");
+#ifdef IN_NATIVE
+	printf("\t\t Case ID:%d case name:%s\n\r", 36497u, "L1D_Flush support_AC_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 36498u, "IBRS support_AC_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 36499u, "SSBD support_AC_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 36503u, "IBPB support_AC_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 37015u, "MDS mitigation mechnism support_AC_001");
+#else
 	printf("\t\t Case ID:%d case name:%s\n\r", 33869u, "IA32_SPEC_CTRL start-up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33873u, "L1D_Flush expose_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33872u, "IBRS expose_001");
@@ -478,9 +702,15 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 33874u, "IBPB expose_001");
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 33870u, "IA32_SPEC_CTRL INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 37018u, "IA32_SPEC_CTRL INIT_002");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 33619u, "mitigate the L1TF variant affecting VMM_benchmark_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 33617u, "mitigate the L1TF variant affecting VMM_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 33617u, "mitigate the L1TF variant affecting VMM_benchmark_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27879u, "Check_additional_features_hidden_to_vm_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27883u, "Check_additional_features_hidden_to_vm_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27873u, "Information_Leakage_Check_STIBP_hided_to_Vm_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27874u, "Information_Leakage_Check_STIBP_hided_to_Vm_002");
+#endif
 }
 
 int main(int ac, char **av)
@@ -488,6 +718,13 @@ int main(int ac, char **av)
 	setup_idt();
 	print_case_list();
 
+#ifdef IN_NATIVE
+	infoleak_rqmid_36497_L1D_FLUSH_support_AC_001();
+	infoleak_rqmid_36498_IBRS_support_AC_001();
+	infoleak_rqmid_36499_SSBD_support_AC_001();
+	infoleak_rqmid_36503_IBPB_support_AC_001();
+	infoleak_rqmid_37015_MDS_mitigation_mechnism_support_AC_001();
+#else
 	infoleak_rqmid_33869_IA32_SPEC_CTRL_startup_001();
 	infoleak_rqmid_33873_L1D_FLUSH_expose_001();
 	infoleak_rqmid_33872_IBRS_expose_001();
@@ -496,9 +733,14 @@ int main(int ac, char **av)
 	infoleak_rqmid_33874_IBPB_expose_001();
 #ifdef IN_NON_SAFETY_VM
 	infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001();
+	infoleak_rqmid_37018_IA32_SPEC_CTRL_INIT_002();
 #endif
 	infoleak_rqmid_33619_mitigate_L1TF_variant_affecting_VMM_benchmark_001();
-	infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_002();
-
+	infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_benchmark_002();
+	infoleak_rqmid_27879_Check_additional_features_hidden_to_vm_001();
+	infoleak_rqmid_27883_Check_additional_features_hidden_to_vm_002();
+	infoleak_rqmid_27873_Information_Leakage_Check_STIBP_hided_to_Vm_001();
+	infoleak_rqmid_27874_Information_Leakage_Check_STIBP_hided_to_Vm_002();
+#endif
 	return report_summary();
 }
