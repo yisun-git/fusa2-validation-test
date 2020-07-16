@@ -1,5 +1,6 @@
 #include "processor.h"
 #include "instruction_common.h"
+#include "xsave.h"
 #include "libcflat.h"
 #include "desc.h"
 #include "desc.c"
@@ -20,7 +21,6 @@
 
 #define BIT_SHIFT(n)	(1 << (n))
 #define CR4_OSFXSR_BIT_MASK	BIT_SHIFT(9)
-#define DECLARE_UNUSED_EXCETION_HANDLER(e) static __unused void e##_exception_hander(struct ex_regs *regs)
 
 enum sse_instuction_e {
 	SSE_INS = 0,
@@ -30,25 +30,6 @@ enum sse_instuction_e {
 	SSE4_1_INS,
 	SSE4_2_INS,
 };
-
-DECLARE_UNUSED_EXCETION_HANDLER(de);
-DECLARE_UNUSED_EXCETION_HANDLER(db);
-DECLARE_UNUSED_EXCETION_HANDLER(nmi);
-DECLARE_UNUSED_EXCETION_HANDLER(bp);
-DECLARE_UNUSED_EXCETION_HANDLER(of);
-DECLARE_UNUSED_EXCETION_HANDLER(br);
-DECLARE_UNUSED_EXCETION_HANDLER(ud);
-DECLARE_UNUSED_EXCETION_HANDLER(nm);
-DECLARE_UNUSED_EXCETION_HANDLER(df);
-DECLARE_UNUSED_EXCETION_HANDLER(ts);
-DECLARE_UNUSED_EXCETION_HANDLER(np);
-DECLARE_UNUSED_EXCETION_HANDLER(ss);
-DECLARE_UNUSED_EXCETION_HANDLER(gp);
-DECLARE_UNUSED_EXCETION_HANDLER(pf);
-DECLARE_UNUSED_EXCETION_HANDLER(mf);
-DECLARE_UNUSED_EXCETION_HANDLER(mc);
-DECLARE_UNUSED_EXCETION_HANDLER(xm);
-#include "instruction_common.c"
 
 static volatile uint32_t bp_cr4 = 0x0U;
 static volatile uint32_t ap_cr4 = 0x0U;
@@ -121,17 +102,6 @@ REPORT_END:
 }
 
 #ifdef __x86_64__
-static inline unsigned long _read_rflag(void)
-{
-	unsigned long f = 0UL;
-	asm volatile ("pushfq; popq %0\n\t" : "=rm"(f));
-	return f;
-}
-
-static inline void _write_rflags(unsigned long f)
-{
-	asm volatile ("pushq %0; popfq\n\t" : : "rm"(f));
-}
 
 #ifdef IN_NATIVE
 /*
@@ -250,7 +220,7 @@ static __unused void sse_rqmid_27813_SSE2_instructions_support_004(void)
 	unsigned long check_bit = 0UL;
 	int cnt = 0;
 	/*Get RFLAG.ID to check it.*/
-	check_bit = _read_rflag();
+	check_bit = read_rflags();
 	if (check_bit & (1UL << FEATURE_INFORMATION_21)) {
 		cnt++;
 	} else {

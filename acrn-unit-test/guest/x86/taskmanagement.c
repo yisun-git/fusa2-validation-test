@@ -13,6 +13,9 @@
 #include "misc.h"
 #include "taskmanagement.h"
 #include "alloc_page.c"
+#include "instruction_common.h"
+#include "xsave.h"
+#include "register_op.h"
 
 #ifdef __x86_64__
 #include "./64/taskmanagement_fn.c"

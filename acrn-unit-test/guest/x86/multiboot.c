@@ -12,21 +12,11 @@
 #include "alloc_page.h"
 #include "asm/io.h"
 #include "asm/spinlock.h"
+#include "debug_print.h"
 
 #define MULTIBOOT_COMMAND_MAX       1024
 #define RSDP_ADDRESS                0xF2400
 #define ZERO_PAGE_BASE_ADDRESS      0xFFF000
-
-//#define USE_DEBUG
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...) printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-//#define DEBUG_ERR(fmt, args...) printf("\033[47;31m[%s:%d]\033[0m   "fmt" \r\n", __func__, __LINE__,  ##args)
-//#define DEBUG_INFO(fmt, args...) printf("\033[33m[%s:%d]\033[0m  "fmt"  \r\n", __func__, __LINE__, ##args)
-#else
-#define debug_print(fmt, args...)
-//#define DEBUG_ERR(fmt, ...)
-//#define DEBUG_INFO(fmt, ...)
-#endif
 
 #define __packed        __attribute__((packed))
 

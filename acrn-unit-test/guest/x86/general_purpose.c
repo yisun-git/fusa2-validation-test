@@ -1,13 +1,11 @@
 #include "processor.h"
 #include "instruction_common.h"
-#include "instruction_common.c"
+#include "xsave.h"
 #include "libcflat.h"
 #include "desc.h"
-#include "desc.c"
-#include "alloc.h"
-#include "alloc.c"
 #include "misc.h"
-#include "misc.c"
+#include "register_op.h"
+#include "types.h"
 
 #ifdef __x86_64__
 
@@ -21,7 +19,7 @@ static u16 *creat_non_aligned_add(void)
 }
 
 u64 non_canon_addr = 0;
-static u64 *creat_non_canon_add(void)
+static u64 *get_non_canon_addr(void)
 {
 	u64 address = (unsigned long)&non_canon_addr;
 
@@ -31,56 +29,6 @@ static u64 *creat_non_canon_add(void)
 		address = (address|(1UL<<63));
 	}
 	return (u64 *)address;
-}
-
-static u64 *non_canon_add(u64 addr)
-{
-	u64 address = addr;
-
-	if ((address >> 63) & 1) {
-		address = (address & (~(1ull << 63)));
-	} else {
-		address = (address|(1UL<<63));
-	}
-	return (u64 *)address;
-}
-
-/** GDT **/
-extern gdt_entry_t gdt64[];
-void set_gdt64_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran)
-{
-	int num = sel >> 3;
-
-	/* Setup the descriptor base address */
-	gdt64[num].base_low = (base & 0xFFFF);
-	gdt64[num].base_middle = (base >> 16) & 0xFF;
-	gdt64[num].base_high = (base >> 24) & 0xFF;
-
-	/* Setup the descriptor limits */
-	gdt64[num].limit_low = (limit & 0xFFFF);
-	gdt64[num].granularity = ((limit >> 16) & 0x0F);
-
-	/* Finally, set up the granularity and access flags */
-	gdt64[num].granularity |= (gran & 0xF0);
-	gdt64[num].access = access;
-}
-
-void set_gdt64_entry_null(int sel, u32 base,  u32 limit, u8 access, u8 gran)
-{
-	int num = sel >> 3;
-
-	/* Setup the descriptor base address */
-	gdt64[num].base_low = (base & 0xFFFF);
-	gdt64[num].base_middle = (base >> 16) & 0xFF;
-	gdt64[num].base_high = (base >> 24) & 0xFF;
-
-	/* Setup the descriptor limits */
-	gdt64[num].limit_low = (limit & 0xFFFF);
-	gdt64[num].granularity = ((limit >> 16) & 0x0F);
-
-	/* Finally, set up the granularity and access flags */
-	gdt64[num].granularity |= (gran & 0x70);
-	gdt64[num].access = access;
 }
 
 /* load the GDT to*/
@@ -112,7 +60,7 @@ static void mov_gp_007(void)
 	asm volatile(
 		"mov %1, %0\n"
 		: "=r" (r_a)
-		: "m" (*(creat_non_canon_add())));
+		: "m" (*(get_non_canon_addr())));
 }
 
 static void  gp_rqmid_31315_data_transfer_mov_gp_007(void)
@@ -137,7 +85,7 @@ static void mov_gp_008(void)
 {
 	u64 r_a = 1;
 	asm volatile("mov %1, %0\n"
-		: "=m"(*(creat_non_canon_add()))
+		: "=m"(*(get_non_canon_addr()))
 		: "r"(r_a));
 }
 
@@ -164,7 +112,7 @@ static void mov_gp_009(void)
 {
 	u32 r_a = 1;
 	asm volatile("mov %1, %0\n"
-		: "=m"(*(creat_non_canon_add()))
+		: "=m"(*(get_non_canon_addr()))
 		: "r"(r_a));
 }
 
@@ -194,7 +142,7 @@ static void mov_gp_010(void)
 	eflags_ac_to_0();
 	asm volatile("mov %1, %0 \n"
 		: "=r"(r_a)
-		: "m"(*(creat_non_canon_add())));
+		: "m"(*(get_non_canon_addr())));
 }
 
 static void  gp_rqmid_31324_data_transfer_mov_gp_010(const char *msg)
@@ -220,7 +168,7 @@ static void mov_gp_011(void)
 {
 	u32 r_a = 1;
 	asm volatile("mov %1, %0 \n"
-		: "=m"(*(creat_non_canon_add()))
+		: "=m"(*(get_non_canon_addr()))
 		: "r"(r_a));
 }
 
@@ -254,7 +202,7 @@ static void mov_gp_012(void)
 	u32 r_a = 1;
 	asm volatile("mov %1, %0 \n"
 		: "=r"(r_a)
-		: "m"(*(creat_non_canon_add())));
+		: "m"(*(get_non_canon_addr())));
 }
 
 int ret_gp_12 = false;
@@ -572,7 +520,7 @@ static void  gp_rqmid_32288_data_transfer_pop_ud_066(void)
 {
 	gp_trigger_func fun;
 	bool ret;
-	set_gdt64_entry(DS_SEL, 0, 0xc000f, 0x93, 0);
+	set_gdt_entry(DS_SEL, 0, 0xc000f, 0x93, 0);
 
 	load_gdt_and_set_segment_rigster();
 	//asm volatile("pop %fs \n");
@@ -736,18 +684,18 @@ __unused static void int_gp_115(void)
 
 static __unused void  gp_rqmid_31652_control_transfer_int_gp_115(void)
 {
-	struct descriptor_table old_idt;
-	struct descriptor_table new_idt;
+	struct descriptor_table_ptr old_idt;
+	struct descriptor_table_ptr new_idt;
 	gp_trigger_func fun;
 	bool ret;
 
-	old_idt = stor_idt();
+	sidt(&old_idt);
 	printf("idt limit: %#x \n", old_idt.limit);
 
 	new_idt.limit = (16*14) - 1;
 	new_idt.base = old_idt.base;
 
-	set_idt(new_idt);
+	lidt(&new_idt);
 	printf("modify idt limit to: %#x \n", new_idt.limit);
 
 	fun = (gp_trigger_func)int_gp_115;
@@ -756,7 +704,7 @@ static __unused void  gp_rqmid_31652_control_transfer_int_gp_115(void)
 	report("%s Execute Instruction: CALL", ret == true, __FUNCTION__);
 
 	/* resume environment */
-	set_idt(old_idt);
+	lidt(&old_idt);
 }
 
 /*
@@ -770,10 +718,10 @@ static void lfs_gp_125(void)
 {
 	u64 *address;
 	struct lseg_st lfss;
-	lfss.a = 0xffffffff;
-	lfss.b = 0x280;
+	lfss.offset = 0xffffffff;
+	lfss.selector = 0x280;
 
-	address = non_canon_add((u64)&lfss);
+	address = creat_non_canon_add((u64)&lfss);
 	asm volatile("REX\n\t"
 		"lfs %0, %%rax\n\t"
 		: : "m"(address));
@@ -785,7 +733,7 @@ static void  gp_rqmid_31901_segment_instruction_lfs_gp_125(void)
 	bool ret;
 
 	//printf(" Set gdt64 segment not present\n ");
-	set_gdt64_entry(0x50, 0, 0xc000f, 0x93, 0);
+	set_gdt_entry(0x50, 0, 0xc000f, 0x93, 0);
 
 	//printf(" Load gdt to lgdtr\n ");
 	asm volatile("lgdt gdt64_desc\n");
@@ -807,7 +755,7 @@ __unused static void lss_gp_132(void)
 {
 	eflags_ac_to_1();
 	asm volatile("lss (%0), %%eax  \n"
-		: : "r"(creat_non_canon_add()));
+		: : "r"(get_non_canon_addr()));
 }
 
 static void  ring3_lss_gp_132(const char *msg)
@@ -1090,17 +1038,8 @@ int main(void)
 
 	setup_vm();
 	setup_idt();
-
-	extern unsigned char kernel_entry1;
-	set_idt_entry(0x21, &kernel_entry1, 1);
-	extern unsigned char kernel_entry2;
-	set_idt_entry(0x22, &kernel_entry2, 2);
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x23, &kernel_entry, 3);
-
+	setup_ring_env();
 #ifdef __x86_64__
-	init_gdt_description();
-
 	/*--------------------------64 bit--------------------------*/
 	gp_rqmid_31522_binary_arithmetic_div_normal_059();
 	gp_rqmid_31315_data_transfer_mov_gp_007();

@@ -8,7 +8,7 @@
 #include "libcflat.h"
 #include "processor.h"
 #include "apic.h"
-
+#include "misc.h"
 #include "desc.h"
 #include "isr.h"
 #include "msr.h"
@@ -120,7 +120,6 @@ void read_bp_startup(void)
 		: "=q"(bp_cr4_greg_long));
 }
 
-extern void send_sipi();
 void save_unchanged_reg(void)
 {
 	asm ("mov (0x8008) ,%%eax\n\t"

@@ -12,24 +12,9 @@
 #include "regdump.h"
 #include "misc.h"
 #include "instruction_common.h"
-void write_cr4_checking(unsigned long val)
-{
-	asm volatile(ASM_TRY("1f")
-				 "mov %0, %%cr4\n\t"
-				 "1:" : : "r" (val));
+#include "xsave.h"
+#include "register_op.h"
 
-}
-int xsetbv_checking(u32 index, u64 value)
-{
-	u32 eax = value;
-	u32 edx = value >> 32;
-
-	asm volatile(ASM_TRY("1f")
-				 ".byte 0x0f,0x01,0xd1\n\t" /* xsetbv */
-				 "1:"
-				 : : "a" (eax), "d" (edx), "c" (index));
-	return exception_vector();
-}
 /*
  * Software can use the XSAVE feature set to manage MPX state only if XCR0[4:3] = 11b.
  * In addition, software can execute MPX instructions only if  CR4.OSXSAVE = 1 and XCR0[4:3] = 11b.

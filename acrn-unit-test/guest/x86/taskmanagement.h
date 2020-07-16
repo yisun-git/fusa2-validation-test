@@ -1,60 +1,10 @@
 #ifndef __TASK_MANAGEMENT_H
 #define __TASK_MANAGEMENT_H
 
-#define XCR0_MASK       0x00000000
+#define GDT_NEWTSS_INDEX		0x21
+
 #define XCR_XFEATURE_ENABLED_MASK       0x00000000
 #define XCR_XFEATURE_ILLEGAL_MASK       0x00000010
-
-#define CPUID_1_ECX_FMA					(1<<12)
-#define CPUID_1_ECX_XSAVE			(1 << 26)
-#define CPUID_1_ECX_OSXSAVE			(1 << 27)
-#define CPUID_1_ECX_AVX	    (1 << 28)
-
-#define X86_CR4_OSXSAVE					(1<<18)
-
-#define XSTATE_FP       0x1
-#define XSTATE_SSE      0x2
-#define XSTATE_YMM      0x4
-
-#define STATE_X87_BIT			0
-#define STATE_SSE_BIT			1
-#define STATE_AVX_BIT			2
-#define STATE_MPX_BNDREGS_BIT		3
-#define STATE_MPX_BNDCSR_BIT		4
-#define STATE_AVX_512_OPMASK		5
-#define STATE_AVX_512_Hi16_ZMM_BIT	7
-#define STATE_PT_BIT			8
-#define STATE_PKRU_BIT			9
-#define STATE_HDC_BIT			13
-
-#define STATE_X87		(1 << STATE_X87_BIT)
-#define STATE_SSE		(1 << STATE_SSE_BIT)
-#define STATE_AVX		(1 << STATE_AVX_BIT)
-#define STATE_MPX_BNDREGS	(1 << STATE_MPX_BNDREGS_BIT)
-#define STATE_MPX_BNDCSR	(1 << STATE_MPX_BNDCSR_BIT)
-#define STATE_AVX_512		(0x7 << STATE_AVX_512_OPMASK)
-#define STATE_PT		(1 << STATE_PT_BIT)
-#define STATE_PKRU		(1 << STATE_PKRU_BIT)
-#define STATE_HDC		(1 << STATE_HDC_BIT)
-#define KBL_NUC_SUPPORTED_XCR0	0x1F
-#define XCR0_BIT10_BIT63	0xFFFFFFFFFFFFFC00
-
-#define ALIGNED(x) __attribute__((aligned(x)))
-typedef unsigned __attribute__((vector_size(16))) sse128;
-typedef float __attribute__((vector_size(16))) avx128;
-typedef unsigned __attribute__((vector_size(32))) sse256;
-
-
-typedef union {
-	sse128 sse;
-	unsigned u[4];
-} sse_union;
-
-typedef union {
-	sse256 sse;
-	unsigned long u[4];
-} avx_union;
-
 
 int test_cs;
 
@@ -102,18 +52,6 @@ struct tss_desc {
 struct tss_desc desc_intr_backup, desc_cur_backup;
 
 #ifndef __x86_64__
-static int xsetbv_checking(u32 index, u64 value)
-{
-	u32 eax = value;
-	u32 edx = value >> 32;
-
-	asm volatile(ASM_TRY("1f")
-		".byte 0x0f,0x01,0xd1\n\t" /* xsetbv */
-		"1:"
-		: : "a" (eax), "d" (edx), "c" (index));
-	return exception_vector();
-}
-
 static void write_cr0_ts(u32 bitvalue)
 {
 	u32 cr0 = read_cr0();
@@ -124,24 +62,6 @@ static void write_cr0_ts(u32 bitvalue)
 	}
 }
 
-static int write_cr4_checking(unsigned long val)
-{
-	asm volatile(ASM_TRY("1f")
-		"mov %0, %%cr4\n\t"
-		"1:" : : "r" (val));
-	return exception_vector();
-}
-static int write_cr4_osxsave(u32 bitvalue)
-{
-	u32 cr4;
-
-	cr4 = read_cr4();
-	if (bitvalue) {
-		return write_cr4_checking(cr4 | X86_CR4_OSXSAVE);
-	} else {
-		return write_cr4_checking(cr4 & ~X86_CR4_OSXSAVE);
-	}
-}
 #endif
 typedef struct ap_init_regs_struct
 {

@@ -10,6 +10,7 @@
 #include "fwcfg.h"
 #include "asm/io.h"
 #include "pci_check.h"
+#include "delay.h"
 
 //#define PCI_DEBUG
 #ifdef PCI_DEBUG
@@ -4185,17 +4186,6 @@ static __unused void print_case_list(void)
 //511:PCIe_start-up and init end
 /*****************************<The scaling part end>********************************/
 #endif
-}
-
-void test_delay(int time)
-{
-	__unused int count = 0;
-	u64 tsc;
-	tsc = rdtsc() + ((u64)time * 1000000000);
-
-	while (rdtsc() < tsc) {
-		;
-	}
 }
 
 int main(void)

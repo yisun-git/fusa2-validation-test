@@ -1,12 +1,8 @@
+#include "segmentation.h"
 #include "interrupt.h"
-
-//#define USE_DEBUG
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
-#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#include "instruction_common.h"
+#include "delay.h"
+#include "debug_print.h"
 
 static volatile unsigned int g_irqcounter[256] = { 0 };
 
@@ -97,8 +93,7 @@ void ap_main(void)
 int main(void)
 {
 	setup_vm();
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x23, &kernel_entry, 3);
+	setup_ring_env();
 	setup_idt();
 
 	print_case_list();

@@ -8,6 +8,7 @@
 #include "alloc_phys.h"
 #include "alloc.h"
 #include "misc.h"
+#include "register_op.h"
 
 u32 get_startup_cr0()
 {
@@ -58,61 +59,6 @@ bool check_value_is_exist(u32 reg, u8 value)
 	return false;
 }
 
-int page_test_at_ring3(void (*fn)(void), const char *arg)
-{
-	static unsigned char user_stack[4096];
-	int ret;
-
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-		"mov %%dx, %%ds\n\t"
-		"mov %%dx, %%es\n\t"
-		"mov %%dx, %%fs\n\t"
-		"mov %%dx, %%gs\n\t"
-		"mov %%" R "sp, %%" R "cx\n\t"
-		"push" W " %%" R "dx \n\t"
-		"lea %[user_stack_top], %%" R "dx \n\t"
-		"push" W " %%" R "dx \n\t"
-		"pushf" W "\n\t"
-		"push" W " %[user_cs] \n\t"
-		"push" W " $1f \n\t"
-		"iret" W "\n"
-		"1: \n\t"
-		"push %%" R "cx\n\t"   /* save kernel SP */
-
-#ifndef __x86_64__
-		"push %[arg]\n\t"
-#endif
-		"call *%[fn]\n\t"
-#ifndef __x86_64__
-		"pop %%ecx\n\t"
-#endif
-
-		"pop %%" R "cx\n\t"
-		"mov $1f, %%" R "dx\n\t"
-		"int %[kernel_entry_vector]\n\t"
-		".section .text.entry \n\t"
-		"kernel_entry: \n\t"
-		"mov %%" R "cx, %%" R "sp \n\t"
-		"mov %[kernel_ds], %%cx\n\t"
-		"mov %%cx, %%ds\n\t"
-		"mov %%cx, %%es\n\t"
-		"mov %%cx, %%fs\n\t"
-		"mov %%cx, %%gs\n\t"
-		"jmp *%%" R "dx \n\t"
-		".section .text\n\t"
-		"1:\n\t"
-		: [ret] "=&a" (ret)
-		: [user_ds] "i" (USER_DS),
-		[user_cs] "i" (USER_CS),
-		[user_stack_top]"m"(user_stack[sizeof user_stack]),
-		[fn]"r"(fn),
-		[arg]"D"(arg),
-		[kernel_ds]"i"(KERNEL_DS),
-		[kernel_entry_vector]"i"(0x20)
-		: "rcx", "rdx");
-	return ret;
-}
-
 #ifdef __x86_64__
 /**
  * @brief case name:Encoding of CPUID Leaf 2 Descriptors_001
@@ -160,7 +106,7 @@ static void paging_rqmid_23897_hide_processor_context_identifiers()
 	bool is_pass = false;
 
 	if ((cpuid(1).c & (1 << 17)) == 0) {
-		if (write_cr4_exception_checking(cr4 | X86_CR4_PCIDE) == GP_VECTOR) {
+		if (write_cr4_checking(cr4 | X86_CR4_PCIDE) == GP_VECTOR) {
 			is_pass = true;
 		}
 	}
@@ -180,7 +126,7 @@ static void paging_rqmid_23901_global_pages_support()
 	bool is_pass = false;
 
 	if ((cpuid(1).c & (1 << 13)) != 0) {
-		if (write_cr4_exception_checking(cr4 | X86_CR4_PGE) == PASS) {
+		if (write_cr4_checking(cr4 | X86_CR4_PGE) == PASS) {
 			if ((read_cr4() & X86_CR4_PGE) != 0) {
 				is_pass = true;
 			}
@@ -629,10 +575,9 @@ int main(int ac, char *av[])
 	for (int i = 0; i < ac; i++) {
 		printf("av  i:%d value:%s\r\n", i, av[i]);
 	}
-	extern unsigned char kernel_entry;
 	setup_idt();
 	setup_vm();
-	set_idt_entry(0x20, &kernel_entry, 3);
+	setup_ring_env();
 
 	print_case_list();
 	test_paging();

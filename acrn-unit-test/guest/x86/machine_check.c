@@ -11,27 +11,7 @@
 #include "isr.h"
 #include "apic.h"
 #include "machine_check.h"
-
-u64 rdmsr_checking(u32 index, u64 *result)
-{
-	u32 a, d;
-	asm volatile (ASM_TRY("1f")
-				  "rdmsr\n\t" /*rdmsr, 0x0f, 0x32*/
-				  "1:"
-				  : "=a"(a), "=d"(d) : "c"(index) : "memory");
-	*result = a | ((u64)d << 32);
-	return exception_vector();
-}
-
-int wrmsr_checking(u32 index, u64 val)
-{
-	u32 a = val, d = val >> 32;
-	asm volatile (ASM_TRY("1f")
-				  "wrmsr\n\t" /*wrmsr: 0x0f, 0x30*/
-				  "1:"
-				  : : "a"(a), "d"(d), "c"(index) : "memory");
-	return exception_vector();
-}
+#include "register_op.h"
 
 int check_cpuid_1_edx(unsigned int bit)
 {
@@ -41,14 +21,6 @@ int check_cpuid_1_edx(unsigned int bit)
 int check_cpuid_5_ecx(unsigned int bit)
 {
 	return (cpuid(5).c & bit) != 0;
-}
-
-int write_cr4_checking(unsigned long val)
-{
-	asm volatile(ASM_TRY("1f")
-				 "mov %0, %%cr4\n\t"
-				 "1:" : : "r" (val));
-	return exception_vector();
 }
 
 #ifdef IN_SAFETY_VM

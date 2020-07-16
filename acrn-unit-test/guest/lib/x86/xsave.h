@@ -1,13 +1,18 @@
-#ifdef __x86_64__
-#define uint64_t unsigned long
-#else
-#define uint64_t unsigned long long
-#endif
-
-#define CPUID_1_ECX_FMA				(1 << 12)
-#define CPUID_1_ECX_XSAVE			(1 << 26)
-#define CPUID_1_ECX_OSXSAVE			(1 << 27)
-#define CPUID_1_ECX_AVX				(1 << 28)
+#ifndef __XSAVE_H__
+#define __XSAVE_H__
+#include "libcflat.h"
+#include "processor.h"
+#include "desc.h"
+#include "alloc.h"
+#include "apic-defs.h"
+#include "apic.h"
+#include "vm.h"
+#include "vmalloc.h"
+#include "alloc_page.h"
+#include "isr.h"
+#include "atomic.h"
+#include "types.h"
+#include "misc.h"
 
 #define X86_CR0_EM				(1 << 2)
 //#define X86_CR0_TS				(1 << 3)
@@ -16,33 +21,7 @@
 #define X86_CR4_OSFXSR				(1 << 9)
 #define X86_CR4_OSXMMEXCPT			(1 << 10)
 
-
-#define EXTENDED_STATE_SUBLEAF_1		1
 #define CPUID_XSAVE_FUC		0xd
-
-
-#define STATE_X87_BIT			0
-#define STATE_SSE_BIT			1
-#define STATE_AVX_BIT			2
-#define STATE_MPX_BNDREGS_BIT		3
-#define STATE_MPX_BNDCSR_BIT		4
-#define STATE_AVX_512_OPMASK		5
-#define STATE_AVX_512_Hi16_ZMM_BIT	7
-#define STATE_PT_BIT			8
-#define STATE_PKRU_BIT			9
-#define STATE_HDC_BIT			13
-
-#define STATE_X87		    (1 << STATE_X87_BIT)
-#define STATE_SSE		    (1 << STATE_SSE_BIT)
-#define STATE_AVX		    (1 << STATE_AVX_BIT)
-#define STATE_MPX_BNDREGS	    (1 << STATE_MPX_BNDREGS_BIT)
-#define STATE_MPX_BNDCSR	    (1 << STATE_MPX_BNDCSR_BIT)
-#define STATE_AVX_512		    (0x7 << STATE_AVX_512_OPMASK)
-#define STATE_PT		    (1 << STATE_PT_BIT)
-#define STATE_PKRU		    (1 << STATE_PKRU_BIT)
-#define STATE_HDC		    (1 << STATE_HDC_BIT)
-#define KBL_NUC_SUPPORTED_XCR0		0x1F
-#define XCR0_BIT10_BIT63		0xFFFFFFFFFFFFFC00
 
 //Processor Extended State Enumeration Sub-leaf (EAX = 0DH, ECX = 1)
 #define SUPPORT_XSAVEOPT_BIT		0
@@ -70,13 +49,7 @@
 
 
 #define XCR0_MASK       0x00000000
-#define CR0_AM_MASK	(1UL << 18)
 #define X86_EFLAGS_AC	0x00040000    // (1UL << 18)
-
-#define xstr(s...) xxstr(s)
-#define xxstr(s...) #s
-
-
 
 #define ALIGNED(x) __attribute__((aligned(x)))
 
@@ -87,6 +60,7 @@ struct xsave_st {
 
 typedef unsigned __attribute__((vector_size(16))) sse128;
 typedef unsigned __attribute__((vector_size(32))) avx256;
+typedef float __attribute__((vector_size(16))) avx128;
 
 typedef union {
 	sse128 sse;
@@ -96,6 +70,7 @@ typedef union {
 typedef union {
 	avx256 avx;
 	float m[8];
+	u32 avx_u[8];
 } avx_union;
 
 
@@ -178,6 +153,4 @@ typedef struct xsave_dump_struct {
 /***
  *XSAVE structure end!
  */
-
-
-
+#endif

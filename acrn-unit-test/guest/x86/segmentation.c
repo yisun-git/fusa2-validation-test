@@ -1,13 +1,9 @@
 #include "segmentation.h"
+#include "instruction_common.h"
+#include "debug_print.h"
+#include "desc.h"
 
 #define USE_HAND_EXECEPTION
-//#define USE_DEBUG
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
-#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 
 /* bit test */
 #define BIT_IS(NUMBER, N) ((((uint64_t)NUMBER) >> N) & (0x1))

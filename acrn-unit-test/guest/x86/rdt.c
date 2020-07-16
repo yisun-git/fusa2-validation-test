@@ -1,6 +1,7 @@
 #include "libcflat.h"
 #include "processor.h"
 #include "desc.h"
+#include "register_op.h"
 
 #define MSR_IA32_L2_MASK_0 0x00000D10U
 #define MSR_IA32_L3_MASK_0 0x00000C90U
@@ -12,30 +13,6 @@
 #define MSR_IA32_QM_CTR 0x00000C8EU
 #define MSR_IA32_PQR_ASSOC 0x00000C8FU
 
-static unsigned rdmsr_checking(u32 index)
-{
-	asm volatile(ASM_TRY("1f")
-		"rdmsr\n\t" //rdmsr, 0x0f, 0x32
-		"1:"
-		:
-		: "c"(index)
-		: "memory");
-
-	return exception_vector();
-}
-static unsigned wrmsr_checking(u32 index, u64 val)
-{
-	u32 a = val, d = val >> 32;
-
-	asm volatile (ASM_TRY("1f")
-		"wrmsr\n\t" //wrmsr: 0x0f, 0x30
-		"1:"
-		:
-		: "a"(a), "d"(d), "c"(index)
-		: "memory");
-
-	return exception_vector();
-}
 static inline bool check_exception(unsigned vec, unsigned err_code)
 {
 	return (exception_vector() == vec) && (exception_error_code() == err_code);
@@ -64,7 +41,7 @@ static void rdt_rqmid_28394_IA32_l2_mask_x_001()
 	bool result = true;
 
 	for (int i = 0; i < 128; i++) {
-		rdmsr_checking(MSR_IA32_L2_MASK_0 + i);
+		rdmsr_checking(MSR_IA32_L2_MASK_0 + i, NULL);
 		if (!check_exception(GP_VECTOR, 0)) {
 			printf("%d", i);
 			result = false;

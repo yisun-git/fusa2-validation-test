@@ -165,7 +165,7 @@ static void paging_rqmid_23917_protection_keys_hide()
 	bool is_pass = false;
 
 	if ((cpuid(7).c & (1 << 3)) == 0) {
-		if (write_cr4_exception_checking(cr4 | X86_CR4_PKE) == GP_VECTOR) {
+		if (write_cr4_checking(cr4 | X86_CR4_PKE) == GP_VECTOR) {
 			is_pass = true;
 		}
 	}
@@ -236,7 +236,7 @@ static void paging_rqmid_32224_ring3_access_super_address()
 
 	set_page_control_bit((void *)g_gva, PAGE_PTE, PAGE_USER_SUPER_FLAG, 0, true);
 
-	page_test_at_ring3(write_super_pages_at_ring3, "write memory at ring3");
+	do_at_ring3(write_super_pages_at_ring3, "write memory at ring3");
 
 	free_gva((void *)g_gva);
 }
@@ -260,7 +260,7 @@ static void write_user_pages_at_ring3()
  */
 static void paging_rqmid_32227_ring3_access_user_address()
 {
-	page_test_at_ring3(write_user_pages_at_ring3, "write memory at ring3");
+	do_at_ring3(write_user_pages_at_ring3, "write memory at ring3");
 }
 
 /**
@@ -956,7 +956,7 @@ static void paging_rqmid_32266_execute_disable_support_005()
 
 	/* All default paging structure entry have cleared the XD flag */
 
-	page_test_at_ring3(test_instruction_fetch_at_ring3, "test instruction fetch");
+	do_at_ring3(test_instruction_fetch_at_ring3, "test instruction fetch");
 
 	report("%s", g_ring3_is_pass, __FUNCTION__);
 
@@ -976,7 +976,7 @@ static void paging_rqmid_32407_execute_disable_support_004()
 
 	wrmsr(PAGING_IA32_EFER, ia32_efer & ~X86_IA32_EFER_NXE);
 
-	page_test_at_ring3(test_instruction_fetch_at_ring3, "test instruction fetch");
+	do_at_ring3(test_instruction_fetch_at_ring3, "test instruction fetch");
 
 	report("%s", g_ring3_is_pass, __FUNCTION__);
 
@@ -1163,7 +1163,7 @@ static void paging_rqmid_32558_check_error_code_us_bit()
 	/* set only read pages */
 	set_page_control_bit(g_gva, PAGE_PTE, PAGE_WRITE_READ_FLAG, 0, true);
 
-	page_test_at_ring3(test_error_code_us_bit_at_ring3, "test error code us bit");
+	do_at_ring3(test_error_code_us_bit_at_ring3, "test error code us bit");
 	report("%s", g_ring3_is_pass, __FUNCTION__);
 
 	/* resume environment */

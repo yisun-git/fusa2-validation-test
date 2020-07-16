@@ -11,7 +11,7 @@
 #include "libcflat.h"
 #include "desc.h"
 #include "processor.h"
-
+#include "misc.h"
 #include "asm/spinlock.h"
 #include "asm/barrier.h"
 #include "atomic.h"
@@ -27,9 +27,6 @@
 #define CFG_TEST_MEMORY_ORDERING_MFENCE 1
 // #undef CFG_TEST_MEMORY_ORDERING_MFENCE
 #define CFG_TEST_MEMORY_ORDERING_CPU_NR 3
-#ifndef nop
-#define nop()		do { asm volatile ("nop\n\t" :::"memory"); } while (0)
-#endif
 //#define test_debug(fmt...) printf("[%s:%s] line=%d "fmt"",__FILE__, __func__, __LINE__,  ##args)
 #ifdef USE_DEBUG
 #define test_debug(fmt, args...)       printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)

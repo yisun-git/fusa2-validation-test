@@ -2,6 +2,7 @@
 #include "processor.h"
 #include "desc.h"
 #include "smp.h"
+#include "register_op.h"
 
 #define MSR_IA32_DEBUGCTL           0x000001D9U
 
@@ -14,33 +15,6 @@
 #define MSR_LER_FROM_LIP            0x000001DDU
 #define MSR_LER_TO_LIP              0x000001DEU
 
-
-static unsigned rdmsr_checking(u32 index)
-{
-	asm volatile(ASM_TRY("1f")
-		"rdmsr\n\t"
-		"1:"
-		:
-		: "c"(index)
-		: "memory");
-
-	return exception_vector();
-}
-
-static unsigned wrmsr_checking(u32 index, u64 val)
-{
-	u32 a = val, d = val >> 32;
-
-	asm volatile (ASM_TRY("1f")
-		"wrmsr\n\t"
-		"1:"
-		:
-		: "a"(a), "d"(d), "c"(index)
-		: "memory");
-
-	return exception_vector();
-}
-
 /*
  * @brief case name: branch IA32 debugctl 001
  *
@@ -52,7 +26,7 @@ static void branch_rqmid_28251_IA32_debugctl_001()
 	unsigned vector;
 	unsigned err_code;
 
-	vector = rdmsr_checking(MSR_IA32_DEBUGCTL);
+	vector = rdmsr_checking(MSR_IA32_DEBUGCTL, NULL);
 	err_code = exception_error_code();
 
 	report("%s", (vector == GP_VECTOR) && (err_code == 0), __FUNCTION__);

@@ -5,6 +5,7 @@
 #include "vm.h"
 #include "vmalloc.h"
 #include "misc.h"
+#include "register_op.h"
 
 static int getsec_checking()
 {
@@ -44,7 +45,7 @@ static void smx_rqmid_28662_set_cr4_smxe()
 	ulong cr4 = read_cr4();
 	bool flag = false;
 	if ((cpuid(1).c & CPUID_1_SMX_SUPPORTED) == 0) {
-		if (write_cr4_exception_checking(cr4 | X86_CR4_SMX) == GP_VECTOR) {
+		if (write_cr4_checking(cr4 | X86_CR4_SMX) == GP_VECTOR) {
 			flag = true;
 		}
 	}

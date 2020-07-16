@@ -22,6 +22,9 @@ cflatobjs += lib/x86/stack.o
 cflatobjs += lib/x86/fault_test.o
 cflatobjs += lib/x86/delay.o
 cflatobjs += lib/x86/misc.o
+cflatobjs += lib/x86/register_op.o
+cflatobjs += lib/x86/memory_type.o
+cflatobjs += x86/instruction_common.o
 
 OBJDIRS += lib/x86
 

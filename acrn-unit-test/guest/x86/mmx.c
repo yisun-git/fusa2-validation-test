@@ -8,7 +8,7 @@
 #include "vmalloc.h"
 #include "alloc_page.h"
 #include "misc.h"
-#include "instruction_common.h"
+#include "xsave.h"
 
 #define CPUID_1_EDX_MMX_SUPPROT	(1UL << 23)
 

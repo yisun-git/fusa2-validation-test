@@ -1,18 +1,11 @@
 #include "libcflat.h"
 #include "desc.h"
 #include "processor.h"
+#include "misc.h"
 #include "smp.h"
-
-//#define USE_DEBUG
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
-#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#include "debug_print.h"
 
 #define MSR_IA32_EXT_XAPICID			0x00000802U
-#define nop()		do { asm volatile ("nop\n\t" :::"memory"); } while (0)
 #define TEST_TIME 10000
 
 static volatile int start_sem1;
@@ -32,15 +25,6 @@ enum{
 	CASE_ID_1 = 32739,
 	CASE_ID_2 = 32742,
 };
-
-static u32 get_cur_lapic_id(void)
-{
-	u32 lapic_id;
-
-	lapic_id = (u32) rdmsr(MSR_IA32_EXT_XAPICID);
-
-	return lapic_id;
-}
 
 void asm_bts(u32 volatile *addr, int bit, int is_lock)
 {
@@ -166,7 +150,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_32739_ap()
 {
 	u32 vcpu;
 
-	vcpu = get_cur_lapic_id();
+	vcpu = get_lapic_id();
 
 	if (vcpu == 1) {
 		ap1_test(vcpu, 1);
@@ -192,7 +176,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_32739_expose_lock_prefix
 	start_case_id = CASE_ID_1;
 	debug_print("start_case_id=%d\n", start_case_id);
 
-	vcpu = get_cur_lapic_id();
+	vcpu = get_lapic_id();
 
 	ret = bp_test(vcpu, 1);
 	report("%s pass=%d", (ret == TEST_TIME), __FUNCTION__, ret);
@@ -202,7 +186,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_32742_ap()
 {
 	u32 vcpu;
 
-	vcpu = get_cur_lapic_id();
+	vcpu = get_lapic_id();
 
 	if (vcpu == 1) {
 		ap1_test(vcpu, 0);
@@ -228,7 +212,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_32742_expose_unlock_pref
 	start_case_id = CASE_ID_2;
 	debug_print("start_case_id=%d\n", start_case_id);
 
-	vcpu = get_cur_lapic_id();
+	vcpu = get_lapic_id();
 
 	ret = bp_test(vcpu, 0);
 	report("%s pass=%d", (ret < TEST_TIME), __FUNCTION__, ret);
@@ -238,7 +222,7 @@ void ap_main(void)
 {
 /* safety only 1 vcpu, no ap run*/
 #ifdef IN_NON_SAFETY_VM
-	printf("ap %d main test start\n", get_cur_lapic_id());
+	printf("ap %d main test start\n", get_lapic_id());
 	while (start_case_id != CASE_ID_1) {
 		nop();
 	}

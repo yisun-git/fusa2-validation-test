@@ -6,7 +6,9 @@
 #include "asm/barrier.h"
 #include "asm/spinlock.h"
 #include "instruction_common.h"
+#include "xsave.h"
 #include "misc.h"
+#include "register_op.h"
 
 /* ---------------------- CPUID ---------------------- */
 
@@ -2895,21 +2897,6 @@ bool eflags_nt_to_0(void)
 	return result;
 }
 
-/**
- *@Sub-Conditions:
- *      CR4.R.W: 1
- *@test purpose:
- *      Try to Set the reserved bit combinations in CR4
- *@Design Steps:
- *      Set the reserved bit in CR4, such as CR4[12] or [23:31]
- *@Expected Result:
- *      When executing the instruction in next step will generate #GP exception
- */
-void write_cr4_checking(unsigned long val)
-{
-	asm volatile("mov %0, %%cr4\n\t"
-		: : "r"(val));
-}
 void cr4_r_w_to_1(void)
 {
 	gp_trigger_func fun;
@@ -2942,24 +2929,6 @@ void cr4_r_w_to_1(void)
 	}
 }
 
-/**
- *@Sub-Conditions:
- *      CR3.R.W: 1
- *@test purpose:
- *      Try to Set the reserved bit combinations in CR3
- *@Design Steps:
- *      Set the reserved bit in CR3, such as CR3[0:2] or [5:11]
- *@Expected Result:
- *      When executing the instruction in next step will generate #GP exception
- */
-void write_cr3_checking(unsigned long val)
-{
-	asm volatile(
-		"mov %0, %%cr3\n\t"
-		"1:"
-		: : "r"(val));
-}
-
 void cr3_r_w_to_1(const char *fun_name)
 {
 	gp_trigger_func fun;
@@ -2990,21 +2959,6 @@ void cr3_r_w_to_1(const char *fun_name)
 	}
 }
 
-/**
- *@Sub-Conditions:
- *      CR8.R.W: 1
- *@test purpose:
- *      Try to Set the reserved bit combinations in CR8
- *@Design Steps:
- *      Set the reserved bit in CR8[64:4]
- *@Expected Result:
- *      When executing the instruction in next step will generate #GP exception
- */
-void write_cr8_checking(unsigned long val)
-{
-	asm volatile("mov %0, %%cr8\n\t"
-		: : "r"(val));
-}
 inline void cr8_r_w_to_1(const char *fun_name)
 {
 	gp_trigger_func fun;
@@ -3016,7 +2970,7 @@ inline void cr8_r_w_to_1(const char *fun_name)
 	check_bit = read_cr8();
 	check_bit |= (FEATURE_INFORMATION_BIT_RANGE(CR8_RESEVED_BIT_4, FEATURE_INFORMATION_04));
 
-	fun = (gp_trigger_func)write_cr8_checking;
+	fun = (gp_trigger_func)write_cr8;
 	ret = test_for_exception(GP_VECTOR, fun, (void *)check_bit);
 
 	/* Expected write #GP exception */
@@ -3357,70 +3311,6 @@ bool of_flag_to_1(void)
 	return result;
 }
 
-__unused void config_gdt_description(u32 index, u8 dpl, u8 is_code)
-{
-	__unused u32 base;
-	__unused u8 access, gran;
-	__unused short selector;
-	__unused u32 functtion;
-	u8 flag = 0;
-
-	gdt_entry_t   *oldpgdt, *pnewgdt;
-
-	struct descriptor_table_ptr gdt_descriptor_table;
-
-	if ((index == 0) || (index >= 15)) {
-		return;
-	}
-
-	sgdt(&gdt_descriptor_table);
-
-	oldpgdt = (gdt_entry_t *)gdt_descriptor_table.base;
-	pnewgdt = &oldpgdt[index];
-
-	pnewgdt->limit_low = SEGMENT_LIMIT;
-	pnewgdt->base_low = 0x0000;
-
-	if (is_code) {
-		flag = SEGMENT_TYPE_CODE_EXE_RAED_ACCESSED;
-	} else {
-		flag = SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED;
-	}
-	pnewgdt->access =  SEGMENT_PRESENT_SET|(dpl&0x60)|DESCRIPTOR_TYPE_CODE_OR_DATA|(flag&0xF);
-	pnewgdt->base_high = 0x00;
-	pnewgdt->base_middle = 0x00;
-	if (is_code) {
-		pnewgdt->granularity = GRANULARITY_SET|L_64_BIT_CODE_SEGMENT|0xF;
-	} else {
-		pnewgdt->granularity = GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT|0xF;
-	}
-	//printf("*******index=%d, table=%lx\n", index, *(u64 *)pnewgdt);
-	lgdt(&gdt_descriptor_table);
-}
-
-__unused void init_gdt_description(void)
-{
-	u32 index;
-	u8 dpl;
-
-	index = 11; // 32-bit code segment [OS services] ,
-	dpl = DPLEVEL1;
-	config_gdt_description(index, dpl, 1);
-
-	index = 12; // 32-bit data segment [OS services] ,
-	dpl = DPLEVEL1;
-	config_gdt_description(index, dpl, 0);
-
-	index = 13; // 32-bit code segment [OS services] ,
-	dpl = DPLEVEL2;
-	config_gdt_description(index, dpl, 1);
-
-	index = 14; // 32-bit data segment [OS services] ,
-	dpl = DPLEVEL2;
-	config_gdt_description(index, dpl, 0);
-}
-
-
 /**CPUID Function:**/
 uint64_t get_supported_xcr0(void)
 {
@@ -3487,168 +3377,3 @@ uint64_t get_random_value(void)
 }
 #endif
 
-__unused static struct descriptor_table stor_idt(void)
-{
-	struct descriptor_table idtb = {0U, 0UL};
-	asm volatile ("sidt %0":"=m"(idtb)::"memory");
-	return idtb;
-}
-
-__unused static void set_idt(struct descriptor_table idtd)
-{
-	asm volatile ("lidt %[idtd]\n"
-		: : [idtd] "m"(idtd));
-}
-
-__unused static void de_exception_hander(struct ex_regs *regs)
-{
-	de_ocurred = true;
-	printf("#DE exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void db_exception_hander(struct ex_regs *regs)
-{
-	db_ocurred = true;
-	printf("#DB exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void nmi_exception_hander(struct ex_regs *regs)
-{
-	nmi_ocurred = true;
-	printf("#NMI exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void bp_exception_hander(struct ex_regs *regs)
-{
-	bp_ocurred = true;
-	printf("#BP exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void of_exception_hander(struct ex_regs *regs)
-{
-	of_ocurred = true;
-	printf("#OF exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void br_exception_hander(struct ex_regs *regs)
-{
-	br_ocurred = true;
-	printf("#BR exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void ud_exception_hander(struct ex_regs *regs)
-{
-	ud_ocurred = true;
-	printf("#UD exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void nm_exception_hander(struct ex_regs *regs)
-{
-	nm_ocurred = true;
-	printf("#NM exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void df_exception_hander(struct ex_regs *regs)
-{
-	df_ocurred = true;
-	printf("#DF exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void ts_exception_hander(struct ex_regs *regs)
-{
-	ts_ocurred = true;
-	printf("#TS exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void np_exception_hander(struct ex_regs *regs)
-{
-	np_ocurred = true;
-	printf("#NP exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void ss_exception_hander(struct ex_regs *regs)
-{
-	ss_ocurred = true;
-	printf("#SS exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void gp_exception_hander(struct ex_regs *regs)
-{
-	gp_ocurred = true;
-	printf("#GP exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void pf_exception_hander(struct ex_regs *regs)
-{
-	pf_ocurred = true;
-	printf("#PF exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void mf_exception_hander(struct ex_regs *regs)
-{
-	mf_ocurred = true;
-	printf("#MF exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void mc_exception_hander(struct ex_regs *regs)
-{
-	mc_ocurred = true;
-	printf("#MC exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}
-
-__unused static void xm_exception_hander(struct ex_regs *regs)
-{
-	xm_ocurred = true;
-	printf("#XM exception:\n");
-	printf("     rip:  0x%08lx\n", regs->rip);
-	printf("err code:  0x%08lx\n", regs->error_code);
-	regs->rip += instruction_len;
-}

@@ -373,6 +373,65 @@ void print_current_tss_info(void)
 			tr, tr ? "interrupt" : "main", tss.prev, tss_intr.prev);
 }
 #else
+extern gdt_entry_t gdt64[];
+/*under 64bit gdt is 8 bytes*/
+void set_gdt_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran)
+{
+	int num = sel >> 3;
+
+	/* Setup the descriptor base address */
+	gdt64[num].base_low = (base & 0xFFFF);
+	gdt64[num].base_middle = (base >> 16) & 0xFF;
+	gdt64[num].base_high = (base >> 24) & 0xFF;
+
+	/* Setup the descriptor limits */
+	gdt64[num].limit_low = (limit & 0xFFFF);
+	gdt64[num].granularity = ((limit >> 16) & 0x0F);
+
+	/* Finally, set up the granularity and access flags */
+	gdt64[num].granularity |= (gran & 0xF0);
+	gdt64[num].access = access;
+
+	u64 *point = (u64 *)&gdt64[num];
+	printf("%lx\n", (u64)*point);
+}
+
+/*under 64bit gdt is 16 bytes*/
+void set_gdt64_entry(int sel, u64 base,  u32 limit, u8 access, u8 gran)
+{
+	int num = sel >> 3;
+
+	struct segment_desc64 *entry = (struct segment_desc64 *)&gdt64[num];
+
+	/* Setup the descriptor base address */
+	entry->base1 = (base & 0xFFFF);
+	entry->base2 = (base >> 16) & 0xFF;
+	entry->base3 = (base >> 24) & 0xFF;
+	entry->base4 = (base >> 32) & 0xFFFFFFFF;
+
+	/* Setup the descriptor limits */
+	entry->limit1 = (limit & 0xFFFF);
+	entry->limit = ((limit >> 16) & 0x0F);
+
+	/* Finally, set up the granularity and access flags */
+	entry->g = (gran>>7) & 0x1;
+	entry->db = (gran >> 6) & 0x1;
+	entry->l = (gran >> 5) & 0x1;
+	entry->avl = (gran >> 4) & 0x1;
+
+	entry->p = (access >> 7) & 0x1;
+	entry->dpl = (access>>5) & 3;
+	entry->s = (access >> 4) & 0x1;
+
+	entry->type = (access & 0x0F);
+
+	entry->zero = 0;
+
+
+	u64 *point = (u64 *)&gdt64[num];
+	printf("64 gdt %lx %lx\n", (u64)*point, (u64)*(point+1));
+}
+
 void set_intr_alt_stack(int e, void *addr)
 {
 	set_idt_entry(e, addr, 0);

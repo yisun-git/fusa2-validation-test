@@ -7,7 +7,7 @@
 #include "asm/spinlock.h"
 #include "fwcfg.h"
 #include "regdump.h"
-#include "../../x86/instruction_common.h"
+#include "xsave.h"
 #include "alloc.h"
 extern short cpu_online_count;
 static struct spinlock lock;
@@ -120,38 +120,6 @@ void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32
 
 }
 
-int write_cr4_exception_checking(unsigned long val)
-{
-	asm volatile(ASM_TRY("1f")
-				 "mov %0,%%cr4\n\t"
-				 "1:" : : "r" (val));
-	return exception_vector();
-}
-
-int rdmsr_checking(u32 MSR_ADDR, u64 *result)
-{
-	u32 eax;
-	u32 edx;
-
-	asm volatile(ASM_TRY("1f")
-				 "rdmsr \n\t"
-				 "1:"
-				 : "=a"(eax), "=d"(edx) : "c"(MSR_ADDR));
-	*result = eax + ((u64)edx << 32);
-	return exception_vector();
-}
-
-int wrmsr_checking(u32 MSR_ADDR, u64 value)
-{
-	u32 edx = value >> 32;
-	u32 eax = value;
-
-	asm volatile(ASM_TRY("1f")
-				 "wrmsr \n\t"
-				 "1:"
-				 : : "c"(MSR_ADDR), "a"(eax), "d"(edx));
-	return exception_vector();
-}
 /**
  * ------------------------------------------------------------
  *
@@ -551,4 +519,18 @@ bool xsave_reg_dump(void *ptr)
 	xsave_setbv(0, xcr0);
 	return true;
 }
+
+#ifdef __x86_64__
+u64 *creat_non_canon_add(u64 addr)
+{
+	u64 address = addr;
+
+	if ((address >> 63) & 1) {
+		address = (address & (~(1ull << 63)));
+	} else {
+		address = (address|(1UL<<63));
+	}
+	return (u64 *)address;
+}
+#endif
 

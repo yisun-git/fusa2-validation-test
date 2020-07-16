@@ -4,62 +4,6 @@ u32 seg_selector = (0x40<<3);
 u32 code_selector = (0x50<<3);
 u32 data_selector = (0x60<<3);
 
-extern gdt_entry_t gdt64[];
-static void set_gdt32_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran)
-{
-	int num = sel >> 3;
-
-	/* Setup the descriptor base address */
-	gdt64[num].base_low = (base & 0xFFFF);
-	gdt64[num].base_middle = (base >> 16) & 0xFF;
-	gdt64[num].base_high = (base >> 24) & 0xFF;
-
-	/* Setup the descriptor limits */
-	gdt64[num].limit_low = (limit & 0xFFFF);
-	gdt64[num].granularity = ((limit >> 16) & 0x0F);
-
-	/* Finally, set up the granularity and access flags */
-	gdt64[num].granularity |= (gran & 0xF0);
-	gdt64[num].access = access;
-
-	u64 *point = (u64 *)&gdt64[num];
-	printf("%lx\n", (u64)*point);
-}
-
-static void set_gdt64_entry(int sel, u64 base,  u32 limit, u8 access, u8 gran)
-{
-	int num = sel >> 3;
-
-	struct segment_desc64 *entry = (struct segment_desc64 *)&gdt64[num];
-
-	/* Setup the descriptor base address */
-	entry->base1 = (base & 0xFFFF);
-	entry->base2 = (base >> 16) & 0xFF;
-	entry->base3 = (base >> 24) & 0xFF;
-	entry->base4 = (base >> 32) & 0xFFFFFFFF;
-
-	/* Setup the descriptor limits */
-	entry->limit1 = (limit & 0xFFFF);
-	entry->limit = ((limit >> 16) & 0x0F);
-
-	/* Finally, set up the granularity and access flags */
-	entry->g = (gran>>7) & 0x1;
-	entry->db = (gran >> 6) & 0x1;
-	entry->l = (gran >> 5) & 0x1;
-	entry->avl = (gran >> 4) & 0x1;
-
-	entry->p = (access >> 7) & 0x1;
-	entry->dpl = (access>>5) & 3;
-	entry->s = (access >> 4) & 0x1;
-
-	entry->type = (access & 0x0F);
-
-	entry->zero = 0;
-
-
-	u64 *point = (u64 *)&gdt64[num];
-	printf("64 gdt %lx %lx\n", (u64)*point, (u64)*(point+1));
-}
 void call_gate_function(void)
 {
 	printf("call_gate_function ok\n");
@@ -71,6 +15,7 @@ asm("call_gate_ent: \n\t"
 	"lretq");
 void call_gate_ent(void);
 
+extern gdt_entry_t gdt64[];
 static void init_call_gate_64
 	(u32 index, u32 code_selector, u8 type, u8 dpl, u8 p, bool is_canon, call_gate_fun fun)
 {
@@ -106,18 +51,6 @@ static void init_call_gate_64
 
 	u64 *point = (u64 *)&gdt64[num];
 	printf("64 call gate %lx %lx\n", (u64)*point, (u64)*(point+1));
-}
-
-u64 *creat_non_canon_add(u64 addr)
-{
-	u64 address = addr;
-
-	if ((address >> 63) & 1) {
-		address = (address & (~(1ull << 63)));
-	} else {
-		address = (address|(1UL<<63));
-	}
-	return (u64 *)address;
 }
 
 /* Table 1 */
@@ -253,7 +186,7 @@ static void segmentation_rqmid_35239_lfs_gp_table3_03()
 
 	sgdt(&old_gdt_desc);
 	/*the segment is neither a data nor a readable code segment*/
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_ONLY,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 
@@ -290,7 +223,7 @@ static void segmentation_rqmid_35240_lfs_gp_table3_04()
 	struct descriptor_table_ptr old_gdt_desc;
 
 	sgdt(&old_gdt_desc);
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -312,7 +245,7 @@ static void segmentation_rqmid_35241_lfs_np_table3_05()
 	struct descriptor_table_ptr old_gdt_desc;
 
 	sgdt(&old_gdt_desc);
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_CLEAR|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_CLEAR|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -439,7 +372,7 @@ static void segmentation_rqmid_35271_ss_gp_table4_05()
 
 	sgdt(&old_gdt_desc);
 
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -467,7 +400,7 @@ static void segmentation_rqmid_35272_ss_gp_table4_06()
 	sgdt(&old_gdt_desc);
 
 	/*the segment is a nonwritable data segment*/
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_ONLY_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -493,7 +426,7 @@ static void segmentation_rqmid_35273_ss_gp_table4_07()
 	struct descriptor_table_ptr old_gdt_desc;
 
 	sgdt(&old_gdt_desc);
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 
@@ -522,7 +455,7 @@ static void segmentation_rqmid_35274_ss_ss_table4_08()
 	sgdt(&old_gdt_desc);
 
 	/*not present*/
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_CLEAR|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_CLEAR|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -550,7 +483,7 @@ static void segmentation_rqmid_64_ss_call_ss_table5_01()
 	sgdt(&old_gdt_desc);
 
 #if USE_GDT_FUN
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 #else
@@ -633,7 +566,7 @@ static void segmentation_rqmid_35277_cs_jmp_GP_table6_02()
 
 	sgdt(&old_gdt_desc);
 	/*not for a conforming-code segment, nonconforming-code segment, 64-bit call gate */
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -692,7 +625,7 @@ static void segmentation_rqmid_35280_cs_call_GP_table7_02()
 
 	sgdt(&old_gdt_desc);
 	//oldlimit = old_gdt_desc.limit;
-	//set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	//set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 	//	DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 	//	GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	//old_gdt_desc.limit = 0x50*8;
@@ -736,7 +669,7 @@ static void segmentation_rqmid_35283_call_GP_table8_01()
 	/*conforming-code segment DPL =3 CPL=0
 	 * The DPL for a conforming-code segment is greater than the CPL)
 	 */
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -770,7 +703,7 @@ static void segmentation_rqmid_35284_call_NP_table8_02()
 	sgdt(&old_gdt_desc);
 
 	/*conforming-code segment is not present*/
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_CLEAR|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_CLEAR|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -805,7 +738,7 @@ static void segmentation_rqmid_35286_call_GP_table9_01()
 	sgdt(&old_gdt_desc);
 
 	/* non_conforming-code segment */
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -843,7 +776,7 @@ static void segmentation_rqmid_35288_call_GP_table9_02()
 	/* non_conforming-code segment DPL=3 CPL=0
 	 * the DPL for a nonconforming-code segment is not equal to the CPL
 	 */
-	set_gdt32_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
+	set_gdt_entry((0x50<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -1400,7 +1333,7 @@ void call_gate_function15_1(void)
 
 	sgdt(&old_gdt_desc);
 	/*Set all D and L bits of the return code segment to 1 */
-	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_32BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -1415,7 +1348,7 @@ void call_gate_function_end_15_1(void)
 
 	sgdt(&old_gdt_desc);
 	/*resume the code segment D bit to 0*/
-	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -1500,7 +1433,7 @@ void call_gate_function15_2(void)
 	rsp_val[1] = 0x8 + 2;
 
 	/*set the code segment DPL to 3 and conforming bit to 1*/
-	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
+	set_gdt_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_3|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
@@ -1515,7 +1448,7 @@ void call_gate_function_end_15_2(void)
 
 	sgdt(&old_gdt_desc);
 	/*resume code segment*/
-	set_gdt32_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
+	set_gdt_entry((0x8<<3), 0, SEGMENT_LIMIT_ALL, SEGMENT_PRESENT_SET|DESCRIPTOR_PRIVILEGE_LEVEL_0|
 		DESCRIPTOR_TYPE_CODE_OR_DATA|SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
 		GRANULARITY_SET|DEFAULT_OPERATION_SIZE_16BIT_SEGMENT|L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);

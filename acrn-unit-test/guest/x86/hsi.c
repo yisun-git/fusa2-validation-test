@@ -20,15 +20,8 @@
 #include "asm/io.h"
 #include "fwcfg.h"
 #include "xsave.h"
-
+#include "debug_print.h"
 #include "hsi.h"
-
-#define USE_DEBUG
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
 
 #define IOAPIC_TEST_VEC             0x024U
 #define PIC_TEST_VEC                0x020U
@@ -54,16 +47,6 @@ static atomic_t wait_ap;
 static volatile int target_ap_startup = 0;
 static atomic_t ap_run_nums;
 static atomic_t ap_chk;
-
-static void test_delay(u32 time)
-{
-	unsigned long long tsc;
-	tsc = rdtsc() + ((u64)time * 2100000);
-
-	while (rdtsc() < tsc) {
-		;
-	}
-}
 
 static __unused void ap_sync(void)
 {

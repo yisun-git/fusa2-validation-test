@@ -64,76 +64,14 @@ typedef void (*gp_trigger_func)(void *data);
 
 #define FEATURE_INFORMATION_BIT(SAL)                    ({ (0x1ul << SAL); })
 #define FEATURE_INFORMATION_BIT_RANGE(VAL, SAL)         ({ (((unsigned long)VAL) << SAL); })
-/* -------------------------common instruction(cpuid, cr*) end----------------------------- */
 
-/*----------------------------- ring1 ring2 -----------------------------*/
-#define SEGMENT_LIMIT						0xFFFF
-#define SEGMENT_PRESENT_SET					0x80
-#define SEGMENT_PRESENT_CLEAR					0x00
-#define DESCRIPTOR_PRIVILEGE_LEVEL_0				0x00
-#define DESCRIPTOR_PRIVILEGE_LEVEL_1				0x20
-#define DESCRIPTOR_PRIVILEGE_LEVEL_2				0x40
-#define DESCRIPTOR_PRIVILEGE_LEVEL_3				0x60
-#define DESCRIPTOR_TYPE_SYS					0x00
-#define DESCRIPTOR_TYPE_CODE_OR_DATA				0x10
-
-#define SEGMENT_TYPE_DATE_READ_ONLY				0x0
-#define SEGMENT_TYPE_DATE_READ_ONLY_ACCESSED			0x1
-#define SEGMENT_TYPE_DATE_READ_WRITE                            0x2
-#define SEGMENT_TYPE_DATE_READ_WRITE_ACCESSED                   0x3
-#define SEGMENT_TYPE_DATE_READ_ONLY_EXP_DOWN                    0x4
-#define SEGMENT_TYPE_DATE_READ_ONLY_EXP_DOWN_ACCESSED           0x5
-#define SEGMENT_TYPE_DATE_READ_WRITE_EXP_DOWN                   0x6
-#define SEGMENT_TYPE_DATE_READ_WRITE_EXP_DOWN_ACCESSED          0x7
-
-#define SEGMENT_TYPE_CODE_EXE_ONLY                              0x8
-#define SEGMENT_TYPE_CODE_EXE_ONLY_ACCESSED                     0x9
-#define SEGMENT_TYPE_CODE_EXE_RAED                              0xA
-#define SEGMENT_TYPE_CODE_EXE_RAED_ACCESSED                     0xB
-#define SEGMENT_TYPE_CODE_EXE_ONLY_CONFORMING                   0xC
-#define SEGMENT_TYPE_CODE_EXE_ONLY_CONFORMING_ACCESSED          0xD
-#define SEGMENT_TYPE_CODE_EXE_READ_CONFORMING                   0xE
-#define SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED     0xF
-
-#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_LDT               0x2
-#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TASKGATE          0x5
-#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_CALLGATE          0x0C
-#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TSSG              0xB
-
-#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_INTERGATE         0xE
-#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TRAPGATE          0xF
-
-#define GRANULARITY_SET						0x80
-#define GRANULARITY_clear                                       0x00
-#define DEFAULT_OPERATION_SIZE_16BIT_SEGMENT                    0x00
-#define DEFAULT_OPERATION_SIZE_32BIT_SEGMENT                    0x40
-#define L_64_BIT_CODE_SEGMENT                                   0x20
-#define AVL0                                                    0x0
-
-#define DPLEVEL1                                                0x20
-#define DPLEVEL2                                                0x40
-
-#define SELECTOR_TI                                             0x4
-
-
-/*----------------------------- avx_steven.h -------------------------*/
-#ifdef __x86_64__
-#define uint64_t unsigned long
-#else
-#define uint64_t unsigned long long
-#endif
+#define CR0_AM_MASK	(1UL << 18)
 
 #define CPUID_1_ECX_FMA				(1 << 12)
 #define CPUID_1_ECX_XSAVE			(1 << 26)
 #define CPUID_1_ECX_OSXSAVE			(1 << 27)
 #define CPUID_1_ECX_AVX				(1 << 28)
 #define CPUID_1_ECX_F16C			(1 << 29)
-
-#define X86_CR0_EM				(1 << 2)
-
-#define X86_CR4_OSXSAVE				(1 << 18)
-#define X86_CR4_OSFXSR				(1 << 9)
-#define X86_CR4_OSXMMEXCPT			(1 << 10)
 
 /*CPUID.EAX */
 #define CPUID_XSAVE_FUC			0xd
@@ -175,21 +113,6 @@ typedef void (*gp_trigger_func)(void *data);
 #define XCR0_BIT10_BIT63		0xFFFFFFFFFFFFFC00
 
 /*
- * CPUID.(DH:1):EAX
- * Processor Extended State Enumeration Sub-leaf (EAX = 0DH, ECX = 1)
- */
-#define SUPPORT_XSAVEOPT_BIT		0
-#define SUPPORT_XSAVEC_BIT		1
-#define SUPPORT_XGETBV_BIT		2
-#define SUPPORT_XSAVES_XRTORS_BIT	3
-#define SUPPORT_XSAVEOPT		(1 << SUPPORT_XSAVEOPT_BIT)
-#define SUPPORT_XSAVEC			(1 << SUPPORT_XSAVEC_BIT)
-#define SUPPORT_XGETBV			(1 << SUPPORT_XGETBV_BIT)
-#define SUPPORT_XSAVES_XRTORS		(1 << SUPPORT_XSAVES_XRTORS_BIT)
-
-#define SUPPORT_XCR0			0x7
-
-/*
  * CPUID.(1:0):ECX
  * Basic CPUID Information.
  */
@@ -210,166 +133,22 @@ typedef void (*gp_trigger_func)(void *data);
 #define SUPPORT_AVX512ER		(1 << SUPPORT_AVX512ER_BIT)
 #define SUPPORT_AVX512CD		(1 << SUPPORT_AVX512CD_BIT)
 #define SUPPORT_AVX512VL		(1 << SUPPORT_AVX512VL_BIT)
-
-#define XSAVE_AREA_MIN_SIZE (512+64)
-#define XSAVE_AREA_MAX_SIZE 0x440
-#define XSAVE_AREA_SIZE 200
-#define SUPPORT_INIT_OPTIMIZATION 1
-#define IA32_XSS_ADDR	0xDA0
-#define XMM_REGISTER_SIZE	16*16
-#define XSAVE_BV_LOCATION 512
-#define YMM0_LOCATION 576
-
-#define XCR0_MASK       0x00000000
-#define CR0_AM_MASK	(1UL << 18)
-#define X86_EFLAGS_AC	0x00040000    // (1UL << 18)
-
-#define xstr(s...) xxstr(s)
-#define xxstr(s...) #s
-
-#define ALIGNED(x) __attribute__((aligned(x)))
-
-struct xsave_st {
-	u64 num_xsave __attribute__((aligned(8)));
-} xsave_st;
-
-typedef unsigned __attribute__((vector_size(16))) sse128;
-typedef unsigned __attribute__((vector_size(32))) avx256;
-typedef float __attribute__((vector_size(16))) avx128;
-
-typedef union {
-	sse128 sse __attribute__((aligned(16)));
-	unsigned u[4] __attribute__((aligned(16)));
-} sse_union;
-
-typedef union {
-	avx256 avx;
-	float m[8];
-	u32 avx_u[8];
-} avx_union;
-
-/*
- *****************************************************
- *XSAVE structure in below:
- *fpu_sse_struct:	416 bytes;
- *xsave_header_struct:	64 bytes;
- *xsave_avx_struct:	256 bytes;
- *xsave_bndreg_struct:	64 bytes;
- *xsave_bndcsr_struct:	16 bytes;
-
- *Total: Only support: X87/SSE/AVX/MPX;
- *xsave_area_struct:	1040 bytes;
- ***/
-typedef unsigned __attribute__((vector_size(16))) fpu_st;
-typedef unsigned __attribute__((vector_size(16))) sse_xmm;
-typedef unsigned __attribute__((vector_size(16))) avx_ymm;
-typedef unsigned __attribute__((vector_size(16))) bnd_reg;
-
-/*legacy area for fpu&sse.416 bytes totally*/
-typedef struct fpu_sse_struct {
-	u16 fcw;
-	u16 fsw;
-	u8  ftw;
-	u8  reserved;
-	u16 fpop;
-	u64 fpip;
-	u64 fpdp;
-	u32 mxcsr;
-	u32 mxcsr_mask;
-	fpu_st fpregs[8];
-	sse_xmm xmm_regs[16];
-} __attribute__((packed)) fpu_sse_t;
-
-/*64bytes xsave header*/
-typedef struct xsave_header_struct {
-	u64 xstate_bv;
-	u64 xcomp_bv;
-	u64 reserved[6];
-} xsave_header_t;
-
-/* Ext. save area 2: AVX State 256bytes*/
-typedef struct xsave_avx_struct {
-	avx_ymm avx_ymm[16];
-} xsave_avx_t;
-
-/* Ext. save area 3: BNDREG 64bytes*/
-typedef struct xsave_bndreg_struct {
-	bnd_reg bnd_regs[4];
-} xsave_bndreg_t;
-
-/* Ext. save area 4: BNDCSR 16bytes*/
-typedef struct xsave_bndcsr_struct {
-	u64 cfg_reg_u;
-	u64 status_reg;
-} xsave_bndcsr_t;
-
-/* we only support x87&sse&avx&mpx for XSAVE feature set now!!
- *  1040 bytes totally
- */
-typedef struct xsave_area_struct {
-	u8 fpu_sse[512];
-	struct xsave_header_struct xsave_hdr;//64
-	/*extended area*/
-	u8 ymm[256];
-	u8 lwp[128];/*this is a gap,i don't know what it should be until now....*/
-	struct xsave_bndreg_struct bndregs;//64 bytes
-	struct xsave_bndcsr_struct bndcsr;//16 bytes/*by cpuid.0d.04 return eax--0x40 this is 64 bytes */
-} __attribute__((packed)) xsave_area_t;
-
-/* xsave_dump_struct:752 bytes totally*/
-typedef struct xsave_dump_struct {
-	struct fpu_sse_struct fpu_sse;// 416 bytes
-	struct xsave_avx_struct ymm;// 256 bytes
-	struct xsave_bndreg_struct bndregs;//64 bytes
-	struct xsave_bndcsr_struct bndcsr;//16 bytes
-} xsave_dump_t;
 /***
  *XSAVE structure end!
  ******************************************************
  */
-/*----------------------------- avx_steven.h end----------------------*/
-
-/*----------------------------- gp_steven.h ----------------------*/
 #define DS_SEL		0xffff
 #define NULL_SEL	0x0000
 
-struct descriptor_table {
-	u16 limit;
-	uint64_t base;
-} __attribute__((packed));
-
 struct lseg_st {
-	long  a;
-	int16_t b;
+	u32  offset;
+	int16_t selector;
 };
 
-/*----------------------------- gp_steven.h end----------------------*/
-
-/*----------------------------- sse_steven.h ----------------------*/
-
-/* Exception */
-#define DE_VECTOR 0
-#define DB_VECTOR 1
-#define NMI_VECTOR 2
-#define BP_VECTOR 3
-#define OF_VECTOR 4
-#define BR_VECTOR 5
-#define UD_VECTOR 6
-#define NM_VECTOR 7
-#define DF_VECTOR 8
-#define TS_VECTOR 10
-#define NP_VECTOR 11
-#define SS_VECTOR 12
-#define GP_VECTOR 13
-#define PF_VECTOR 14
-#define MF_VECTOR 16
-#define AC_VECTOR 17
-#define MC_VECTOR 18
-#define XM_VECTOR 19
-
-/*----------------------------- sse_steven.h end----------------------*/
-
-/*----------------------------- gp_steven.c ----------------------*/
+struct lseg_st64 {
+	u64  offset;
+	int16_t selector;
+};
 
 /**CPUID Function:**/
 uint64_t get_supported_xcr0(void);
@@ -381,7 +160,6 @@ void set_eflag_ac(int ac);
 
 /**Some common function **/
 uint64_t get_random_value(void);
-
 #define SETNG_LEN    3
 #define BTS_LEN      4
 #define LOCK_XOR_LEN 4
@@ -390,26 +168,6 @@ uint64_t get_random_value(void);
 #define LSS_LEN 4
 #define LGS_LEN 4
 #define CMPXCHG8B_LEN 3
-
-__unused static ulong instruction_len = 0;
-static volatile bool de_ocurred = false;
-static volatile bool db_ocurred = false;
-static volatile bool nmi_ocurred = false;
-static volatile bool bp_ocurred = false;
-static volatile bool of_ocurred = false;
-static volatile bool br_ocurred = false;
-static volatile bool ud_ocurred = false;
-static volatile bool nm_ocurred = false;
-static volatile bool df_ocurred = false;
-static volatile bool ts_ocurred = false;
-static volatile bool np_ocurred = false;
-static volatile bool ss_ocurred = false;
-static volatile bool gp_ocurred = false;
-static volatile bool pf_ocurred = false;
-static volatile bool mf_ocurred = false;
-static volatile bool mc_ocurred = false;
-static volatile bool xm_ocurred = false;
-/*----------------------------- gp_steven.c end----------------------*/
 
 /* --------------------------common instruction(cpuid, cr*)--------------------------------------*/
 #define CHECK_INSTRUCTION_INFO(str, func)do {		\
@@ -1583,43 +1341,10 @@ bool eflags_nt_to_1(void);
  */
 bool eflags_nt_to_0(void);
 
-/**
- *@Sub-Conditions:
- *      CR4.R.W: 1
- *@test purpose:
- *      Try to Set the reserved bit combinations in CR4
- *@Design Steps:
- *      Set the reserved bit in CR4, such as CR4[12] or [23:31]
- *@Expected Result:
- *      When executing the instruction in next step will generate #GP exception
- */
-void write_cr4_checking(unsigned long val);
 void cr4_r_w_to_1(void);
 
-/**
- *@Sub-Conditions:
- *      CR3.R.W: 1
- *@test purpose:
- *      Try to Set the reserved bit combinations in CR3
- *@Design Steps:
- *      Set the reserved bit in CR3, such as CR3[0:2] or [5:11]
- *@Expected Result:
- *      When executing the instruction in next step will generate #GP exception
- */
-void write_cr3_checking(unsigned long val);
 void cr3_r_w_to_1(const char *fun_name);
 
-/**
- *@Sub-Conditions:
- *      CR8.R.W: 1
- *@test purpose:
- *      Try to Set the reserved bit combinations in CR8
- *@Design Steps:
- *      Set the reserved bit in CR8[64:4]
- *@Expected Result:
- *      When executing the instruction in next step will generate #GP exception
- */
-void write_cr8_checking(unsigned long val);
 void cr8_r_w_to_1(const char *fun_name);
 
 /**
@@ -1788,13 +1513,6 @@ void ecx_eax_set_reserved_to_true(void);
  *      N/A
  */
 bool of_flag_to_1(void);
-/* ---------------------- GP end-------------------- */
-/* ----------------------- common instruction(cpuid, cr*) end ---------------------------- */
-
-void config_gdt_description(u32 index, u8 dpl, u8 code_data_segmnet);
-
-void init_gdt_description(void);
-
-/*------------ring1 ring2--end----------------*/
 
 #endif /* __INSTRUCTION_COMMON_H */
+

@@ -4,7 +4,6 @@
 #include "processor.h"
 #include "apic.h"
 #include "isr.h"
-extern void send_sipi();
 void save_unchanged_reg()
 {
 	asm volatile (

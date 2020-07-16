@@ -160,11 +160,6 @@ __attribute__((unused)) static void interrupt_rqmid_36132_df_ts(void)
 	interru_df_ts(__FUNCTION__);
 }
 
-struct lseg_st {
-	u32  offset;
-	int16_t selector;
-};
-
 void ring3_ss(const char *arg)
 {
 	struct lseg_st lss;

@@ -1,9 +1,6 @@
 /*segmentation.h*/
-
 #ifndef _SEGMENTATION_H_
-
 #define _SEGMENTATION_H_
-
 #include "libcflat.h"
 #include "processor.h"
 #include "desc.h"
@@ -135,16 +132,5 @@ struct gate_descriptor {
 	uint64_t sd_xx1:32;
 } __attribute__((packed));
 #endif
-
-struct lseg_st {
-	u32  offset;
-	int16_t selector;
-};
-
-
-struct lseg_st64 {
-	u64  offset;
-	int16_t selector;
-};
 
 #endif

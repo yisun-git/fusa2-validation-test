@@ -4,31 +4,15 @@
 #include "desc.h"
 #include "processor.h"
 #include "misc.h"
+#include "delay.h"
+#include "debug_print.h"
 
 #define MP_APIC_ID_BSP	0
 #define MP_APIC_ID_AP	1
-#define USE_DEBUG
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
-#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
 
 #ifdef __x86_64__
 
 u32 bp_bsp_flag = 0, ap_bsp_flag = 0;
-
-void test_delay(int time)
-{
-	__unused int count = 0;
-	u64 tsc;
-	tsc = rdtsc() + time*1000000000;
-
-	while (rdtsc() < tsc) {
-		;
-	}
-}
 
 /*
  * ap_is_running and bsp_is_running are using for sync the status between BSP and AP.

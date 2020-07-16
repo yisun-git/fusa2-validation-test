@@ -8,123 +8,18 @@
 #include "misc.h"
 #include "delay.h"
 #include "fwcfg.h"
-
-//#define USE_DEBUG
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
-
+#include "instruction_common.h"
+#include "register_op.h"
+#include "xsave.h"
+#include "debug_print.h"
 /**CPUID Function:**/
-static __unused uint64_t get_supported_xcr0(void)
-{
-	struct cpuid r;
-	r = cpuid_indexed(0xd, 0);
-	debug_print("eax 0x%x, ebx 0x%x, ecx 0x%x, edx 0x%x\n",
-		r.a, r.b, r.c, r.d);
-	return r.a + ((u64)r.d << 32);
-}
-
-static __unused int check_cpuid_1_ecx(unsigned int bit)
-{
-	return (cpuid(1).c & bit) != 0;
-}
-
-
-/**Function about Control register and EFLAG register**/
-static __unused void set_cr0_AM(int am)
-{
-	unsigned long cr0 = read_cr0();
-	unsigned long old_cr0 = cr0;
-
-	cr0 &= ~CR0_AM_MASK;
-	if (am) {
-		cr0 |= CR0_AM_MASK;
-	}
-	if (old_cr0 != cr0) {
-		write_cr0(cr0);
-	}
-}
-
-__unused static void set_eflag_ac(int ac)
-{
-	/* set EFLAGS.AC */
-	//asm volatile("orl $" xstr(X86_EFLAGS_AC) ", 2*"S"(%"R "sp)\n" );
-	stac();
-}
-
-
-static __unused int write_cr4_checking(unsigned long val)
-{
-	asm volatile(ASM_TRY("1f")
-		"mov %0,%%cr4\n\t"
-		"1:" : : "r" (val));
-	return exception_vector();
-}
-
-static __unused int write_cr4_osxsave(u32 bitvalue)
-{
-	u32 cr4;
-
-	cr4 = read_cr4();
-	if (bitvalue) {
-		return write_cr4_checking(cr4 | X86_CR4_OSXSAVE);
-	} else {
-		return write_cr4_checking(cr4 & ~X86_CR4_OSXSAVE);
-	}
-}
-
-
 /**Some common function **/
-static __unused uint64_t get_random_value(void)
-{
-	uint64_t random = 0UL;
-
-	asm volatile ("1: rdrand %%rax\n"
-		"jnc 1b\n"
-		"mov %%rax, %0\n"
-		: "=r"(random)
-		:
-		: "%rax");
-	return random;
-}
-
-
 u16 *creat_non_aligned_add(void)
 {
 	__attribute__ ((aligned(16))) u64 addr;
 	u64 *aligned_addr = &addr;
 	u16 *non_aligned_addr = (u16 *)((u8 *)aligned_addr + 1);
 	return non_aligned_addr;
-}
-
-
-/**Function about XSAVE feature: **/
-static __unused int xsetbv_checking(u32 index, u64 value)
-{
-	u32 eax = value;
-	u32 edx = value >> 32;
-
-	asm volatile(ASM_TRY("1f")
-		"xsetbv\n\t" /* xsetbv */
-		"1:"
-		: : "a" (eax), "d" (edx), "c" (index));
-	return exception_vector();
-}
-
-
-static __unused int xgetbv_checking(u32 index, u64 *result)
-{
-	u32 eax, edx;
-
-	asm volatile(ASM_TRY("1f")
-		".byte 0x0f,0x01,0xd0\n\t" /* xgetbv */
-		"1:"
-		: "=a" (eax), "=d" (edx)
-		: "c" (index));
-	*result = eax + ((u64)edx << 32);
-	return exception_vector();
 }
 
 int ap_start_count = 0;
@@ -1733,9 +1628,8 @@ static void print_case_list(void)
 
 int main(void)
 {
-	extern unsigned char kernel_entry;
 	setup_idt();
-	set_idt_entry(0x23, &kernel_entry, 3);
+	setup_ring_env();
 	asm volatile("fninit");
 
 	print_case_list();

@@ -1,11 +1,6 @@
 #ifndef SGX_H
 #define SGX_H
 
-#ifdef __x86_64__
-#define uint64_t unsigned long
-#else
-#define uint64_t unsigned long long
-#endif
 #define MSR_UNCORE_PRMRR_PHYS_MASK		0x000002f5
 #define MSR_UNCORE_PRMRR_PHYS_BASE		0x000002f4
 #define MSR_PRMRR_VALID_CONFIG			0x000001fb

@@ -7,6 +7,7 @@
 #include "misc.h"
 #include "alloc_page.h"
 #include "asm/io.h"
+#include "register_op.h"
 
 #define PT_DEBUG
 #ifdef PT_DEBUG
@@ -665,8 +666,7 @@ int main(void)
 {
 	setup_vm();
 	setup_idt();
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x23, &kernel_entry, 3);
+	setup_ring_env();
 	print_case_list();
 #ifdef IN_NATIVE
 

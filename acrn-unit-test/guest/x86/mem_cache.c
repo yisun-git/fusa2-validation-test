@@ -20,98 +20,31 @@
 #include "apic.h"
 #include "isr.h"
 #include "fwcfg.h"
+#include "memory_type.h"
+#include "debug_print.h"
 
 /*#define CACHE_IN_NATIVE*/
 
-/*#define USE_DEBUG*/
-#ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
-#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-
-#define CR0_BIT_NW					29
-#define CR0_BIT_CD					30
-#define CR0_BIT_PG					31
-
-#define CR3_BIT_PWT					3
-#define CR3_BIT_PCD					4
-
-#define CR4_BIT_PAE					5
-#define CR4_BIT_PGE					7
-
-#define IA32_PAT_MSR				0x00000277
-#define IA32_MISC_ENABLE			0x000001A0
-#define IA32_MTRR_DEF_TYPE			0x000002FF
-#define IA32_MTRRCAP_MSR			0x000000FE
-#define IA32_SMRR_PHYSBASE_MSR		0x000001F2
-#define IA32_SMRR_PHYSMASK_MSR		0x000001F3
-
-#define IA32_MTRR_PHYSBASE0			0x00000200
-#define IA32_MTRR_PHYSMASK0			0x00000201
-#define IA32_MTRR_PHYSBASE1			0x00000202
-#define IA32_MTRR_PHYSMASK1			0x00000203
-#define IA32_MTRR_PHYSBASE2			0x00000204
-#define IA32_MTRR_PHYSMASK2			0x00000205
-#define IA32_MTRR_PHYSBASE3			0x00000206
-#define IA32_MTRR_PHYSMASK3			0x00000207
-#define IA32_MTRR_PHYSBASE4			0x00000208
-#define IA32_MTRR_PHYSMASK4			0x00000209
-#define IA32_MTRR_PHYSBASE5			0x0000020A
-#define IA32_MTRR_PHYSMASK5			0x0000020B
-#define IA32_MTRR_PHYSBASE6			0x0000020C
-#define IA32_MTRR_PHYSMASK6			0x0000020D
-#define IA32_MTRR_PHYSBASE7			0x0000020E
-#define IA32_MTRR_PHYSMASK7			0x0000020F
-#define IA32_MTRR_PHYBASE(i)		(IA32_MTRR_PHYSBASE0+i*2)
-#define IA32_MTRR_PHYMASK(i)		(IA32_MTRR_PHYSMASK0+i*2)
-
-#define IA32_MTRR_FIX64K_00000		0x00000250
-#define IA32_MTRR_FIX16K_80000		0x00000258
-#define IA32_MTRR_FIX4K_C0000		0x00000268
-
-#define PT_PWT						3
-#define PT_PCD						4
-#define PT_PAT						7
-#define PT_PAT_LARGE_PAGE			12
-
-#define PT_PWT_MASK					(1ull << (PT_PWT))
-#define PT_PCD_MASK					(1ull << (PT_PCD))
-#define PT_PAT_MASK					(1ull << (PT_PAT))
-
-/* init pat to 0x0000000001040506*/
-#define PT_MEMORY_TYPE_MASK0		0	/* wb */
-#define PT_MEMORY_TYPE_MASK1		(PT_PWT_MASK)	/* wp */
-#define PT_MEMORY_TYPE_MASK2		(PT_PCD_MASK)	/* wt */
-#define PT_MEMORY_TYPE_MASK3		(PT_PWT_MASK|PT_PCD_MASK)	/* wc */
-#define PT_MEMORY_TYPE_MASK4		(PT_PAT_MASK)		/* uc */
-#define PT_MEMORY_TYPE_MASK5		(PT_PAT_MASK|PT_PWT_MASK)	/* uc */
-#define PT_MEMORY_TYPE_MASK6		(PT_PAT_MASK|PT_PCD_MASK)	/* uc */
-#define PT_MEMORY_TYPE_MASK7		(PT_PAT_MASK|PT_PCD_MASK|PT_PWT_MASK)	/* uc */
-
 #define CACHE_TEST_TIME_MAX			40
-
-#define IA32_PAT_STARTUP_VALUE	0x0007040600070406
 
 static volatile int ud;
 static volatile int isize;
 
 /* default PAT entry value 0007040600070406 */
-u64 cache_type_UC = 0x0;
-u64 cache_type_WB = 0x0606060606060600;
-u64 cache_type_WC = 0x0101010101010100;
-u64 cache_type_WT = 0x0404040404040400;
-u64 cache_type_WP = 0x0505050505050500;
+u64 cache_type_UC = CACHE_TYPE_UC;
+u64 cache_type_WB = CACHE_TYPE_WB;
+u64 cache_type_WC = CACHE_TYPE_WC;
+u64 cache_type_WT = CACHE_TYPE_WT;
+u64 cache_type_WP = CACHE_TYPE_WP;
 
-u64 cache_line_size = 64;
+u64 cache_line_size = CACHE_LINE_SIZE;
 
-u64 cache_4k_size = 0x200;			/* 4k/8 */
-u64 cache_l1_size = 0x800;			/* 16K/8 */
-u64 cache_l2_size = 0x4000;			/* 128K/8 */
-u64 cache_l3_size = 0x80000;		/* 4M/8 */
-u64 cache_over_l3_size = 0x200000;	/* 16M/8 */
-u64 cache_malloc_size = 0x200000;	/* 16M/8 */
+u64 cache_4k_size = CACHE_4k_SIZE;			/* 4k/8 */
+u64 cache_l1_size = CACHE_L1_SIZE;			/* 16K/8 */
+u64 cache_l2_size = CACHE_L2_SIZE;			/* 128K/8 */
+u64 cache_l3_size = CACHE_L3_SIZE;			/* 4M/8 */
+u64 cache_over_l3_size = CACHE_OVE_L3_SIZE;	/* 16M/8 */
+u64 cache_malloc_size = CACHE_MALLOC_SIZE;			/* 16M/8 */
 
 u64 *cache_test_array = NULL;
 u64 tsc_delay[CACHE_TEST_TIME_MAX] = {0,};
@@ -262,259 +195,14 @@ struct case_fun_index {
 };
 typedef void (*trigger_func)(void *data);
 
-unsigned long long asm_read_tsc(void)
-{
-	long long r;
-#ifdef __x86_64__
-	unsigned a, d;
-
-	asm volatile("mfence" ::: "memory");
-	asm volatile ("rdtsc" : "=a"(a), "=d"(d));
-	r = a | ((long long)d << 32);
-#else
-	asm volatile ("rdtsc" : "=A"(r));
-#endif
-	asm volatile("mfence" ::: "memory");
-	return r;
-}
-
-void asm_mfence()
-{
-	asm volatile("mfence" ::: "memory");
-}
-
-static inline void asm_read_access_memory(u64 *p)
-{
-#ifdef __x86_64__
-	asm volatile("movq (%0), %%rax\n" : : "c"(p) : "rax");
-#elif __i386__
-	asm volatile("mov (%0), %%eax\n" : : "c"(p) : "eax");
-#endif
-}
-
-void asm_wbinvd()
-{
-	asm volatile ("wbinvd\n" : : : "memory");
-}
-
-void asm_mfence_wbinvd()
-{
-	asm_mfence();
-	asm_wbinvd();
-	asm_mfence();
-}
-
-void asm_invd()
-{
-	asm volatile ("invd\n" : : : "memory");
-}
-
-void write_cr0_bybit(u32 bit, u32 bitvalue)
-{
-	u32 cr0 = read_cr0();
-	if (bitvalue) {
-		write_cr0(cr0 | (1 << bit));
-	} else {
-		write_cr0(cr0 & ~(1 << bit));
-	}
-}
-
-u64 PT_MEMORY_TYPE   = PT_MEMORY_TYPE_MASK0;
-
-/*Modify the PTE/PCD/PWT bit in paging table entry*/
-void set_memory_type_pt(void *address, u64 type, u64 size)
-{
-	unsigned long *ptep;
-	u64 *next_addr;
-	int i;
-	int j = 0;
-	int pat = PT_PAT;
-
-	PT_MEMORY_TYPE = type;
-
-	for (i = 0; i < size; i += PAGE_SIZE) {
-		j++;
-		next_addr = (u64 *)((u8 *)address + i);
-
-		ptep = get_pte_level(current_page_table(), next_addr, 1);
-		if (ptep == NULL) {
-			pat = PT_PAT_LARGE_PAGE;
-		}
-		switch (type) {
-		case PT_MEMORY_TYPE_MASK0:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
-			break;
-		case PT_MEMORY_TYPE_MASK1:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
-			break;
-		case PT_MEMORY_TYPE_MASK2:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
-			break;
-		case PT_MEMORY_TYPE_MASK3:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
-			break;
-		case PT_MEMORY_TYPE_MASK4:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
-			break;
-		case PT_MEMORY_TYPE_MASK5:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
-			break;
-		case PT_MEMORY_TYPE_MASK6:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
-			break;
-		case PT_MEMORY_TYPE_MASK7:
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
-			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
-			break;
-		default:
-			debug_error("error type\n");
-			break;
-		}
-	}
-}
-
-void flush_tlb()
-{
-	u32 cr3;
-	cr3 = read_cr3();
-	write_cr3(cr3);
-}
-
-void mem_cache_reflush_cache()
-{
-	u32 cr4;
-
-	/*Disable interrupts;*/
-	irq_disable();
-
-	/*Save current value of CR4;*/
-	cr4 = read_cr4();
-
-	/*Disable and flush caches;*/
-	write_cr0_bybit(CR0_BIT_CD, 1);
-	write_cr0_bybit(CR0_BIT_NW, 0);
-	asm_wbinvd();
-
-	/*Flush TLBs;*/
-	flush_tlb();
-
-	/*Disable MTRRs;*/
-	//disable_MTRR();
-
-	/*Flush caches and TLBs;*/
-	asm_wbinvd();
-	flush_tlb();
-
-	/*Enable MTRRs;*/
-	//enable_MTRR();
-
-	/*enable caches;*/
-	write_cr0_bybit(CR0_BIT_CD, 0);
-	write_cr0_bybit(CR0_BIT_NW, 0);
-
-	/*Restore value of CR4;*/
-	write_cr4(cr4);
-
-	/*Enable interrupts;*/
-	irq_enable();
-}
-
 void set_mem_cache_type(u64 cache_type)
 {
-#if 0
-	u64 ia32_pat_test;
-
-	ia32_pat_test = rdmsr(IA32_PAT_MSR);
-	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
-
-	//wrmsr(IA32_PAT_MSR,(ia32_pat_test&(~0xFF0000))|(cache_type<<16));
-	wrmsr(IA32_PAT_MSR, cache_type);
-
-	ia32_pat_test = rdmsr(IA32_PAT_MSR);
-	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
-
-	if (ia32_pat_test != cache_type) {
-		debug_print("set pat type error set=0x%lx, get=0x%lx\n", cache_type, ia32_pat_test);
-	} else {
-		debug_print("set pat type sucess type=0x%lx get=0x%lx\n", cache_type, ia32_pat_test);
-	}
-
-	asm_mfence_wbinvd()
-	mem_cache_reflush_cache();
-#else
-
-	set_memory_type_pt(cache_test_array, cache_type, cache_over_l3_size*8);
-	//debug_print("cache_test_array=%p\n", cache_test_array);
-
-	/* Flush caches and TLBs;*/
-	asm_wbinvd();
-	flush_tlb();
-#endif
+	set_mem_cache_type_addr(cache_test_array, cache_type, CACHE_OVE_L3_SIZE*8);
 }
-
-void set_mem_cache_type_all(u64 cache_type)
-{
-	u64 ia32_pat_test;
-
-	wrmsr(IA32_PAT_MSR, cache_type);
-
-	ia32_pat_test = rdmsr(IA32_PAT_MSR);
-
-#ifdef __x86_64__
-	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
-	if (ia32_pat_test != cache_type) {
-		debug_print("set pat type all error set=0x%lx, get=0x%lx\n", cache_type, ia32_pat_test);
-	} else {
-		debug_print("set pat type all sucess type=0x%lx\n", cache_type);
-	}
-#elif __i386__
-	debug_print("ia32_pat_test 0x%llx \n", ia32_pat_test);
-	if (ia32_pat_test != cache_type) {
-		debug_print("set pat type all error set=0x%llx, get=0x%llx\n", cache_type, ia32_pat_test);
-	} else {
-		debug_print("set pat type all sucess type=0x%llx\n", cache_type);
-	}
-#endif
-	asm_mfence_wbinvd();
-
-	mem_cache_reflush_cache();
-}
-
 
 __attribute__((aligned(64))) u64 read_mem_cache_test(u64 size)
 {
-	u64 index;
-	u64 t[2] = {0};
-
-	cli();
-	t[0] = asm_read_tsc();
-	for (index = 0; index < size; index++) {
-		asm_read_access_memory(&cache_test_array[index]);
-	}
-	t[1] = asm_read_tsc();
-	sti();
-#ifdef __x86_64__
-	//printf("%ld\n", (t[1] - t[0]));
-#elif __i386__
-	//printf("%lld\n", (t[1] - t[0]));
-#endif
-	asm_mfence();
-	return t[1] - t[0];
+	return read_mem_cache_test_addr(cache_test_array, size);
 }
 
 void read_mem_cache_test_time_invd(u64 size, int time)
@@ -597,11 +285,6 @@ int get_bit_range(u32 r, int start, int end)
 	return t_r&mask;
 }
 
-void asm_clflush(long unsigned int addr)
-{
-	asm volatile("clflush (%0)" : : "b" (addr));
-}
-
 void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 {
 	int i;
@@ -628,7 +311,6 @@ void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 #endif
 
 #ifdef __x86_64__
-extern void send_sipi();
 int ap_start_count = 0;
 volatile u64 init_pat = 0;
 volatile u64 set_pat = 0;

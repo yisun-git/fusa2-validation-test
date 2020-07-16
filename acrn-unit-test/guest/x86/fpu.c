@@ -12,7 +12,7 @@
 #include "misc.h"
 #include "fwcfg.h"
 #include "smp.h"
-#include "instruction_common.h"
+#include "xsave.h"
 
 typedef struct fxsave_struct {
 	u16 fcw;

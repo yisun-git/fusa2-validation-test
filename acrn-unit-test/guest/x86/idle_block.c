@@ -13,6 +13,7 @@
 #include "isr.h"
 #include "apic.h"
 #include "misc.h"
+#include "register_op.h"
 
 #define CPUID_1_ECX_MONITOR		(1U << 3)
 #define CPUID_5_ECX_MONITOR_EXTEN	(1U << 0)
@@ -300,10 +301,8 @@ static void test_idbl(void)
 
 int main(void)
 {
-	extern unsigned char kernel_entry;
-
 	setup_idt();
-	set_idt_entry(0x23, &kernel_entry, 3);
+	setup_ring_env();
 
 	print_case_list();
 	test_idbl();

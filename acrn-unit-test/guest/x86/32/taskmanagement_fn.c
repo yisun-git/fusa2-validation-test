@@ -4,8 +4,7 @@ struct descriptor_table_ptr new_gdt_desc;
 
 void init_do_less_privilege(void)
 {
-	extern unsigned char kernel_entry;
-	set_idt_entry(0x23, &kernel_entry, 3);
+	setup_ring_env();
 }
 
 static void irq_tss(void)
@@ -40,7 +39,7 @@ static void test_tr_init(void)
 	tss_ap1 = &tss;
 	tss_ap1 += get_lapic_id();
 
-	tss_ap1->ss0 = 0x58;
+	tss_ap1->ss0 = (GDT_NEWTSS_INDEX << 3);
 
 	desc_size = sizeof(tss32_t);
 	memset((void *)0, 0, desc_size);
@@ -380,10 +379,10 @@ static void task_management_rqmid_24026_tr_start_up(void)
 	u16 ss_val = 0;
 	u16 ss_val_old = 0;
 
-	tss.ss0 = 0x58;
+	tss.ss0 = (GDT_NEWTSS_INDEX << 3);
 
 	sgdt(&gdt_ptr);
-	memcpy(&(gdt32[11]), &(gdt32[2]), sizeof(gdt_entry_t));
+	memcpy(&(gdt32[GDT_NEWTSS_INDEX]), &(gdt32[2]), sizeof(gdt_entry_t));
 	lgdt(&gdt_ptr);
 
 	ss_val_old = read_ss();
@@ -397,7 +396,7 @@ static void task_management_rqmid_24026_tr_start_up(void)
 	ss_val = read_ss();
 
 
-	report("%s", ((ss_val == tss.ss0) && (ss_val == 0x58) && (ss_val_old == 0x10)),
+	report("%s", ((ss_val == tss.ss0) && (ss_val == (GDT_NEWTSS_INDEX << 3)) && (ss_val_old == 0x10)),
 		__FUNCTION__);
 
 	//resume environment
@@ -417,7 +416,7 @@ static __unused void task_management_rqmid_24027_tr_init(void)
 
 	sgdt(&gdt_ptr);
 
-	memcpy(&(gdt32[11]), &(gdt32[2]), sizeof(gdt_entry_t));
+	memcpy(&(gdt32[GDT_NEWTSS_INDEX]), &(gdt32[2]), sizeof(gdt_entry_t));
 
 	lgdt(&gdt_ptr);
 

@@ -1,5 +1,6 @@
 #include "processor.h"
 #include "instruction_common.h"
+#include "xsave.h"
 #include "libcflat.h"
 #include "desc.h"
 #include "alloc.h"
@@ -7,35 +8,11 @@
 #include "avx.h"
 #include "smp.h"
 #include "fwcfg.h"
+#include "register_op.h"
+
 static void avx_save_ymm_register(void *data);
 static void avx_set_ymm_register(void *data);
 
-
-/**Function about XSAVE feature: **/
-__unused static int xsetbv_checking(u32 index, u64 value)
-{
-	u32 eax = value;
-	u32 edx = value >> 32;
-
-	asm volatile(ASM_TRY("1f")
-				 "xsetbv\n\t" /* xsetbv */
-				 "1:"
-				 : : "a" (eax), "d" (edx), "c" (index));
-	return exception_vector();
-}
-
-__unused static int xgetbv_checking(u32 index, u64 *result)
-{
-	u32 eax, edx;
-
-	asm volatile(ASM_TRY("1f")
-				 ".byte 0x0f,0x01,0xd0\n\t" /* xgetbv */
-				 "1:"
-				 : "=a" (eax), "=d" (edx)
-				 : "c" (index));
-	*result = eax + ((u64)edx << 32);
-	return exception_vector();
-}
 __unused static void avx_save_ymm_register(void *data)
 {
 	avx_union *avx;

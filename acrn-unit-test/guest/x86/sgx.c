@@ -7,6 +7,7 @@
 #include "misc.h"
 #include "apic.h"
 #include "isr.h"
+#include "register_op.h"
 
 /**
  * @brief case name: Guestee that MSR UNCORE PRMRR PHYS BASE_002

@@ -17,62 +17,17 @@
 #include "alloc.h"
 #include "misc.h"
 #include "info_leakage.h"
+#include "instruction_common.h"
+#include "memory_type.h"
+#include "debug_print.h"
 
-
-#ifdef	USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-#else
-#define debug_print(fmt, args...)
-#endif
-#define debug_error(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
-
-
-u64 *cache_test_array = NULL;
-u64 cache_l1_size = 0x800;	/* 16K/8 */
-u64 cache_malloc_size = 0x1000;	/* 32K/8 */
-
-unsigned long long asm_read_tsc(void)
-{
-	long long r;
-	unsigned a, d;
-
-	asm volatile("mfence" ::: "memory");
-	asm volatile ("rdtsc" : "=a"(a), "=d"(d));
-	r = a | ((long long)d << 32);
-	asm volatile("mfence" ::: "memory");
-	return r;
-}
-
-static inline void asm_read_access_memory(u64 *p)
-{
-	asm volatile("movq (%0), %%rax\n" : : "c"(p) : "rax");
-}
-
-void asm_mfence()
-{
-	asm volatile("mfence" ::: "memory");
-}
+static u64 *cache_test_array = NULL;
+static u64 cache_l1_size = 0x800;	/* 16K/8 */
+static u64 cache_malloc_size = 0x1000;	/* 32K/8 */
 
 u64 read_mem_cache_test(u64 size)
 {
-	u64 index;
-	u64 t[2] = {0};
-
-	t[0] = asm_read_tsc();
-	for (index = 0; index < size; index++)
-	{
-		asm_read_access_memory(&cache_test_array[index]);
-	}
-
-	t[1] = asm_read_tsc();
-	asm_mfence();
-
-	return t[1] - t[0];
-}
-
-void asm_wbinvd()
-{
-	asm volatile ("wbinvd\n" : : : "memory");
+	return read_mem_cache_test_addr(cache_test_array, size);
 }
 
 struct case_fun_index
