@@ -1,81 +1,168 @@
+
+MSR_BASE = 10
+GDTR_BASE = 40
+GDT_BASE = 50
+ACCESS_BASE = 80
+
+DUMP_MAGIC = 0xDEADBEAF
+dump_sect_ap = 0x7000
+
+mov $DUMP_MAGIC, %eax
+mov %eax, dump_sect_ap
+
 mov %cs,  %eax
-mov %eax, (0x8000)
+mov %eax, (dump_sect_ap + 1 * 4)
 mov %ds,  %eax
-mov %eax, (0x8000 + 0x4)
+mov %eax, (dump_sect_ap + 2 * 4)
 mov %es,  %eax
-mov %eax, (0x8000 + 0x8)
+mov %eax, (dump_sect_ap + 3 * 4)
 mov %fs,  %eax
-mov %eax, (0x8000 + 0xc)
+mov %eax, (dump_sect_ap + 4 * 4)
 mov %gs,  %eax
-mov %eax, (0x8000 + 0x10)
+mov %eax, (dump_sect_ap + 5 * 4)
 mov %ss,  %eax
-mov %eax, (0x8000 + 0x14)
+mov %eax, (dump_sect_ap + 6 * 4)
 
 xor %eax,%eax
 mov %cr4,%eax
-mov %eax,(0x8000 + 0x18)
+mov %eax,(dump_sect_ap + 7 * 4)
 
-/*save gdt*/
-sgdt (0x8000 + 0x20)
+xor %eax,%eax
+mov %cr0,%eax
+mov %eax, (dump_sect_ap + 8 * 4)
+
+/* for MSR dump */
+
+/*save MSR_IA32_SYSENTER_CS*/
+xor %ecx,%ecx
+mov $0x00000174,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + MSR_BASE * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 1) * 4)
+
+/*save MSR_IA32_SYSENTER_ESP*/
+xor %ecx,%ecx
+mov $0x00000175,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + (MSR_BASE + 2) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 3) * 4)
+
+/*save MSR_IA32_SYSENTER_EIP*/
+xor %ecx,%ecx
+mov $0x00000176,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + (MSR_BASE + 4) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 5) * 4)
+
+/*save MSR_IA32_EFER*/
+xor %ecx,%ecx
+mov $0xC0000080,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + (MSR_BASE + 6) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 7) * 4)
+
+/*save MSR_IA32_STAR*/
+xor %ecx,%ecx
+mov $0xC0000081,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + (MSR_BASE + 8) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 9) * 4)
+
+/*save MSR_IA32_LSTAR*/
+xor %ecx,%ecx
+mov $0xC0000082,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + (MSR_BASE + 10) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 11) * 4)
+
+/*save MSR_IA32_CSTAR*/
+xor %ecx,%ecx
+mov $0xC0000083,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + (MSR_BASE + 12) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 13) * 4)
+
+/*save MSR_IA32_FMASK*/
+xor %ecx,%ecx
+mov $0xC0000084,%ecx
+rdmsr
+mov %edx,(dump_sect_ap + (MSR_BASE + 14) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 15) * 4)
 
 /*save MSR_IA32_FS_BASE*/
 xor %ecx,%ecx
 mov $0xC0000100,%ecx
 rdmsr
-mov %edx,(0x8000 + 0x28)
-mov %eax,(0x8000 + 0x30)
+mov %edx,(dump_sect_ap + (MSR_BASE + 16) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 17) * 4)
 
 /*save MSR_IA32_GS_BASE*/
 xor %ecx,%ecx
 mov $0xC0000101,%ecx
 rdmsr
-mov %edx,(0x8000 + 0x34)
-mov %eax,(0x8000 + 0x38)
+mov %edx,(dump_sect_ap + (MSR_BASE + 18) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 19) * 4)
 
 /*save IA32_KERNEL_GS_BASE*/
 xor %ecx,%ecx
 mov $0xC0000102,%ecx
 rdmsr
-mov %edx,(0x8000 + 0x3c)
-mov %eax,(0x8000 + 0x40)
+mov %edx,(dump_sect_ap + (MSR_BASE + 20) * 4)
+mov %eax,(dump_sect_ap + (MSR_BASE + 21) * 4)
 
-/*access check
- *check ds write*/
-mov $0xdeadbeef,%eax
+/* for GDT/LDT and the tables */
+/*save gdtr, PE mode: 32bit + 16 bit = 6 bytes*/
+sgdt (dump_sect_ap + (GDTR_BASE * 4))
+
+#if 0
+
+/*access check: check ds write*/
+mov $DUMP_MAGIC,%eax
 mov %eax,%ds:0x100
 /*check ds read*/
 mov %ds:0x100 ,%eax
-mov %eax,(0x9000)
+mov %eax,(dump_sect_ap + (ACCESS_BASE + 0) * 4)
 
 /*check es write*/
-mov $0xdeadbeef,%eax
-mov %eax,%es:0x100
+mov $DUMP_MAGIC,%eax
+mov %eax,%es:0x110
 /*check es read*/
-mov %es:0x100 ,%eax
-mov %eax,(0x9000 + 0x4)
+mov %es:0x110 ,%eax
+mov %eax,(dump_sect_ap + (ACCESS_BASE + 1) * 4)
 
 /*check fs write*/
-mov $0xdeadbeef,%eax
-mov %eax,%fs:0x100
+mov $DUMP_MAGIC,%eax
+mov %eax,%fs:0x120
 /*check fs read*/
-mov %fs:0x100 ,%eax
-mov %eax,(0x9000 + 0x8)
+mov %fs:0x120 ,%eax
+mov %eax,(dump_sect_ap + (ACCESS_BASE + 2) * 4)
 
 /*check gs write*/
-mov $0xdeadbeef,%eax
-mov %eax,%gs:0x100
+mov $DUMP_MAGIC,%eax
+mov %eax,%gs:0x130
 /*check gs read*/
-mov %gs:0x100 ,%eax
-mov %eax,(0x9000 + 0xc)
+mov %gs:0x130 ,%eax
+mov %eax,(dump_sect_ap + (ACCESS_BASE + 3) * 4)
 
 /*check ss write*/
-mov $0xdeadbeef,%eax
-mov %eax,%ss:0x100
+mov $DUMP_MAGIC,%eax
+mov %eax,%ss:0x140
 /*check ss read*/
-mov %ss:0x100 ,%eax
-mov %eax,(0x9000 + 0x10)
+mov %ss:0x140 ,%eax
+mov %eax,(dump_sect_ap + (ACCESS_BASE + 4) * 4)
 
 /*check cs read*/
 mov %cs:0x100 ,%eax
-mov %eax,(0x9000 + 0x14)
+mov %eax,(dump_sect_ap + (ACCESS_BASE + 5) * 4)
+#endif
 
+#if 0
+/*check limit*/
+mov %cs:0xFFFFFFFF,%eax
+mov %ds:0xFFFFFFFF,%eax
+mov %es:0xFFFFFFFF,%eax
+mov %fs:0xFFFFFFFF,%eax
+mov %gs:0xFFFFFFFF,%eax
+mov %ss:0xFFFFFFFF,%eax
+
+#endif

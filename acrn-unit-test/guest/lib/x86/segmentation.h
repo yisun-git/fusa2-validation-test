@@ -108,6 +108,39 @@
 #define SELECTOR_INDEX_2000H			0x2000
 
 
+#define CR4_FSGSBASE (1UL << 16U)
+
+typedef enum {
+	REG_CS = 0,
+	REG_DS,
+	REG_ES,
+	REG_FS,
+	REG_GS,
+	REG_SS,
+	REG_CR4,
+} DUMPED_REG;
+
+typedef enum {
+	E_IA32_SYSENTER_CS,
+	E_IA32_SYSENTER_ESP,
+	E_IA32_SYSENTER_EIP,
+
+	E_IA32_EFER,
+	E_IA32_STAR,
+	E_IA32_LSTAR,
+	E_IA32_CSTAR,
+	E_IA32_FMASK,
+	E_IA32_FS_BASE,
+	E_IA32_GS_BASE,
+	E_IA32_KERNEL_GS_BASE,
+} DUMPED_MSR;
+
+/* for GDTR in protect mode */
+struct gdtr32_t {
+	uint16_t limit;
+	uint32_t base;
+} __attribute__((packed));
+
 #ifndef __x86_64__
 struct gate_descriptor {
 	unsigned gd_looffset:16;	/* gate offset (lsb) */
