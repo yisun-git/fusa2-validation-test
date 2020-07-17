@@ -633,7 +633,7 @@ static __unused void pci_rqmid_28936_PCIe_config_space_and_host_2_byte_BAR_read_
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 2);
 		reg_val &= 0xFFFFU;
 		/*Dump  the #BAR0 register*/
-		printf("\nDump the #BAR0 register, #BAR0 = 0x%x \n", reg_val);
+		DBG_INFO("\nDump the #BAR0 register, #BAR0 = 0x%x \n", reg_val);
 		ret |= pci_data_check(bdf, PCIR_BAR(0), 2, 0xFFFF, reg_val, false);
 		/*Verify that the #BAR0 register value is 0xFFFF*/
 		is_pass = (ret == OK) ? true : false;
@@ -665,7 +665,7 @@ static __unused void pci_rqmid_28887_PCIe_config_space_host_MSI_message_data_vec
 			reg_addr = reg_addr + 0xC;
 			pci_pdev_write_cfg(bdf, reg_addr, 2, 0x30);
 			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
-			printf("\nDump #Message register = 0x%x \n", reg_val);
+			DBG_INFO("\nDump #Message register = 0x%x \n", reg_val);
 			ret |= pci_data_check(bdf, reg_addr, 2, 0x30, reg_val, false);
 		}
 		is_pass = (ret == OK) ? true : false;
@@ -691,13 +691,13 @@ static __unused void pci_rqmid_28861_PCIe_config_space_and_host_Unmapping_upon_B
 		/*Dump the #BAR0 register*/
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
 		bar_base = reg_val;
-		printf("\nDump origin bar_base=%x \n", reg_val);
+		DBG_INFO("\nDump origin bar_base=%x \n", reg_val);
 
 		/*Set the BAR0 register*/
 		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, BAR_REMAP_BASE);
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
 
-		printf("Dump new bar_base=%x \n", reg_val);
+		DBG_INFO("Dump new bar_base=%x \n", reg_val);
 
 		/*Read the data from the address of the #BAR0 original value*/
 		asm volatile(ASM_TRY("1f")
@@ -735,7 +735,7 @@ static __unused void pci_rqmid_28792_PCIe_config_space_and_host_write_Reserved_r
 		pci_pdev_write_cfg(bdf, PCI_CONFIG_RESERVE, 2, reg_val);
 		reg_val = pci_pdev_read_cfg(bdf, PCI_CONFIG_RESERVE, 2);
 		/*	Dump the #reserved register*/
-		printf("\nDump #PCIR_REV(0x36) = 0x%x \n", reg_val);
+		DBG_INFO("\nDump #PCIR_REV(0x36) = 0x%x \n", reg_val);
 		/*Verify that the data from #reserved register is default value*/
 		ret |= pci_data_check(bdf, PCI_CONFIG_RESERVE, 2, 0, reg_val, false);
 		is_pass = (ret == OK) ? true : false;
@@ -759,7 +759,7 @@ static __unused void pci_rqmid_28829_PCIe_config_space_and_host_Status_Register_
 	if (is_pass) {
 		/*Dump the #status Register value for the NET devices in the hypervisor environment*/
 		reg_val = pci_pdev_read_cfg(bdf, PCI_STATUS, 2);
-		printf("\nDump the status Register value [%xH] = [%xH]\n", PCI_STATUS, reg_val);
+		DBG_INFO("\nDump the status Register value [%xH] = [%xH]\n", PCI_STATUS, reg_val);
 		is_pass = (PCI_NET_STATUS_VAL_NATIVE == reg_val) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -838,7 +838,7 @@ static uint64_t g_get_msi_int = 0;
 static __unused int msi_int_handler(void *p_arg)
 {
 	uint32_t lapic_id = apic_id();
-	printf("\n[ int ]Run %s(%p), lapic_id=%d \r\n", __func__, p_arg, lapic_id);
+	DBG_INFO("\n[ int ]Run %s(%p), lapic_id=%d \r\n", __func__, p_arg, lapic_id);
 	g_get_msi_int |= SHIFT_LEFT(1UL, lapic_id);
 	return 0;
 }
@@ -922,7 +922,7 @@ static __unused void pci_rqmid_33822_PCIe_config_space_and_host_MSI_message_addr
 		unsigned nr_cpu = fwcfg_get_nb_cpus();
 		nr_cpu = (nr_cpu > 2) ? 2 : nr_cpu;
 		ap_lapic_id = find_first_apic_id();
-		printf("\nnr_cpu=%d ap_lapic_id=%d\n", nr_cpu, ap_lapic_id);
+		DBG_INFO("\nnr_cpu=%d ap_lapic_id=%d\n", nr_cpu, ap_lapic_id);
 		/*pci probe and check MSI capability register*/
 		ret = pci_probe_msi_capability(bdf, &reg_addr);
 		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
@@ -931,7 +931,7 @@ static __unused void pci_rqmid_33822_PCIe_config_space_and_host_MSI_message_addr
 			for (i = 0; i < nr_cpu; i++) {
 				e1000e_msi_reset();
 				lapic_id = (i == 0) ? apic_id() : ap_lapic_id;
-				printf("\nDump APIC id lapic_id = %x, ap_lapic_id=%x\n", lapic_id, ap_lapic_id);
+				DBG_INFO("\nDump APIC id lapic_id = %x, ap_lapic_id=%x\n", lapic_id, ap_lapic_id);
 				uint32_t msi_msg_addr_lo = MAKE_NET_MSI_MESSAGE_ADDR(0xFEE00000, lapic_id);
 				uint32_t msi_msg_addr_hi = 0U;
 				uint32_t msi_msg_data = MAKE_NET_MSI_MESSAGE_DATA(MSI_NET_IRQ_VECTOR);
@@ -983,7 +983,7 @@ static __unused void pci_rqmid_33823_PCIe_config_space_and_host_invalid_destinat
 			/*message address L register address = pointer + 0x4*/
 			e1000e_msi_reset();
 			lapic_id = apic_id();
-			printf("\nDump APIC id lapic_id = %x\n", lapic_id);
+			DBG_INFO("\nDump APIC id lapic_id = %x\n", lapic_id);
 			/*write a invalid destination ID 111 to a guest message address register [bit 19:12]*/
 			uint32_t msi_msg_addr_lo = MAKE_NET_MSI_MESSAGE_ADDR(0xFEE00000, INVALID_APIC_ID_A);
 			uint32_t msi_msg_addr_hi = 0U;
@@ -1044,7 +1044,7 @@ static __unused void pci_rqmid_25298_PCIe_config_space_and_host_Write_Reserved_r
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val |= SHIFT_MASK(18, 11);
-		printf("\n reg_val = 0x%08x \n", reg_val);
+		DBG_INFO("\n reg_val = 0x%08x \n", reg_val);
 		pci_pdev_write_cfg(bdf, PCI_COMMAND, 4, reg_val);
 		reg_val_new = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val &= SHIFT_MASK(18, 11);
@@ -1070,7 +1070,7 @@ static __unused void pci_rqmid_28791_PCIe_config_space_and_host_Write_Reserved_r
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val |= SHIFT_MASK(18, 11);
-		printf("\n reg_val = 0x%08x \n", reg_val);
+		DBG_INFO("\n reg_val = 0x%08x \n", reg_val);
 		pci_pdev_write_cfg(bdf, PCI_COMMAND, 4, reg_val);
 		reg_val_new = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val &= SHIFT_MASK(18, 11);
@@ -1466,10 +1466,10 @@ void pci_rqmid_28862_PCIe_config_space_and_host_Mapping_upon_BAR_writes_002(void
 		bar_base_old = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
 		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, virt_to_phys((void *)BAR_REMAP_BASE));
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
-		printf("\nR reg[%xH] = [%xH]", PCIR_BAR(0), reg_val);
+		DBG_INFO("\nR reg[%xH] = [%xH]", PCIR_BAR(0), reg_val);
 		bar_base = SHIFT_MASK(31, 8) & reg_val;
 		reg_val = pci_pdev_read_mem(bdf, bar_base + GBECSR_00, 4);
-		printf("\n reg_val = 0x%x \n", reg_val);
+		DBG_INFO("\n reg_val = 0x%x \n", reg_val);
 		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar_base_old);
 		is_pass = (GBECSR_00_VALUE == reg_val) ? true : false;
 	}
@@ -1968,7 +1968,7 @@ static __unused void pci_rqmid_29069_PCIe_config_space_and_host_Address_register
 	/*Read the BP start-up PCI address register 0xCF8*/
 	uint32_t reg_val = 0U;
 	reg_val = *(volatile uint32_t *)(0x7000);
-	printf("\nThe BP start-up PCI address value = %x \n", reg_val);
+	DBG_INFO("\nThe BP start-up PCI address value = %x \n", reg_val);
 	/*The read value should be 00FFFF00H.*/
 	is_pass = (reg_val == 0x00FFFF00U);
 	report("%s", is_pass, __FUNCTION__);
@@ -1985,7 +1985,7 @@ static __unused void pci_rqmid_37250_PCIe_config_space_and_host_Address_register
 	/*Read the AP init PCI address register 0xCF8*/
 	uint32_t reg_val = 0U;
 	reg_val = *(volatile uint32_t *)(0x7004);
-	printf("\nThe AP init PCI address value = %x \n", reg_val);
+	DBG_INFO("\nThe AP init PCI address value = %x \n", reg_val);
 	/*The read value should be 00FFFF00H.*/
 	is_pass = (reg_val == 0x00FFFF00U);
 	report("%s", is_pass, __FUNCTION__);
@@ -2284,7 +2284,7 @@ void pci_rqmid_28928_PCIe_config_space_and_host_Hostbridge_Interrupt_Line_001(vo
 	is_pass = is_dev_exist_by_bdf(pci_devs, nr_pci_devs, bdf);
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_INTERRUPT_LINE, 1);
-		printf("\nhostbridge Interrupt Line reg_val=%x\n", reg_val);
+		DBG_INFO("\nhostbridge Interrupt Line reg_val=%x\n", reg_val);
 		is_pass = (reg_val == 0xFF) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2845,7 +2845,7 @@ void pci_rqmid_26806_PCIe_config_space_and_host_Interrupt_Pin_Register_001(void)
 	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_INTERRUPT_PIN, 1);
-		printf("\n USB Interrupt Pin reg_val=%x \n", reg_val);
+		DBG_INFO("\n USB Interrupt Pin reg_val=%x \n", reg_val);
 		is_pass = (reg_val == 0x00) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2866,7 +2866,7 @@ void pci_rqmid_28796_PCIe_config_space_and_host_Interrupt_Pin_Register_002(void)
 	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_INTERRUPT_PIN, 1);
-		printf("\n NET Interrupt Pin reg_val=%x \n", reg_val);
+		DBG_INFO("\n NET Interrupt Pin reg_val=%x \n", reg_val);
 		is_pass = (reg_val == 0x00) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -4192,10 +4192,7 @@ int main(void)
 {
 	setup_idt();
 	set_log_level(PCI_DEBUG_LEVEL);
-	/* Run here delay 50s to wait for CI inputting "vm_console 0/1" cammand,
-	 * then the following print log info can be outputted immediately.
-	 */
-	test_delay(50);
+
 	print_case_list();
 #ifdef __x86_64__
 	/*Enumerate PCI devices to pci_devs*/
@@ -4247,14 +4244,6 @@ int main(void)
 	pci_rqmid_28863_PCIe_config_space_and_host_PCI_hole_range_002();
 	pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_001();
 //514: PCIe_BAR memory access end
-
-	/*only head 25 cases run here delay,
-	 *because the previous print info includes case list and
-	 *case report existing in uart buffer,
-	 *add this delay to make "vm_console 1/0" clear uart buffer.
-	 *then the following cases' print info can store into uart buffer.
-	 */
-	test_delay(50);
 
 //516: PCIe_ACRN shall expose PCI configuration register start
 	pci_rqmid_26245_PCIe_config_space_and_host_Device_Identification_Registers_004();
