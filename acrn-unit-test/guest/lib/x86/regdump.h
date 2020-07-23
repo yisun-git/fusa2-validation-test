@@ -567,6 +567,10 @@ typedef struct gen_reg_struct {
 #ifdef __x86_64__
 	u64 cr8;
 #endif
+	u64 dr0, dr1, dr2, dr3, dr6, dr7;
+	struct descriptor_table_ptr gdtr, idtr;
+	u16 tr, ldtr;
+	u64 xcr0;
 } gen_reg_t;
 
 u32 supported_msr_list[] = {
@@ -676,7 +680,6 @@ u32 supported_msr_list[] = {
 };
 
 
-bool xsave_reg_dump(void *ptr);
 
 /*-------------------------------------------------*
  *Genaral register dump
@@ -724,8 +727,147 @@ static inline __attribute__((always_inline)) void gen_reg_dump(void *ptr)
 				  "mov %%" R "ax," "%0"
 				  : "=m"(reg_dump->cr8)::"memory");
 #endif
-	/*restore eax/rax value*/
+	asm volatile ("mov %%dr0,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr0)::"memory");
+	asm volatile ("mov %%dr1,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr1)::"memory");
+	asm volatile ("mov %%dr2,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr2)::"memory");
+	asm volatile ("mov %%dr3,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr3)::"memory");
+	asm volatile ("mov %%dr6,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr0)::"memory");
+	asm volatile ("mov %%dr7,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr0)::"memory");
+
+	asm volatile ("sgdt %0" : "=m"(reg_dump->gdtr));
+	asm volatile ("sidt %0" : "=m"(reg_dump->idtr));
+	asm volatile ("sldt %0" : "=m"(reg_dump->ldtr));
+	asm volatile ("str %0"  : "=m"(reg_dump->tr));
+
+	u32 __eax, __edx;
+	asm volatile("xgetbv\n" /* xgetbv */
+				 : "=a" (__eax), "=d" (__edx)
+				 : "c" (0));
+	reg_dump->xcr0 = __eax + ((u64)__edx << 32);
+	/*restore eax/rax and edx/rdx value*/
 	asm volatile ("mov %0, %%" R "ax"::"m"(reg_dump->rax):"memory");
+	asm volatile ("mov %0, %%" R "dx"::"m"(reg_dump->rdx):"memory");
 
 }
+
+
+
+/*-------------------------------------------------*
+ *Genaral register dump
+ *
+ *
+ */
+static inline __attribute__((always_inline)) void gen_reg_dump_not_at_ring0(void *ptr)
+{
+	struct gen_reg_struct *reg_dump;
+
+	reg_dump = (struct gen_reg_struct *)ptr;
+	asm volatile ("mov %%" R "ax," "%0" : "=m"(reg_dump->rax)::"memory");
+	asm volatile ("mov %%" R "bx," "%0" : "=m"(reg_dump->rbx)::"memory");
+	asm volatile ("mov %%" R "cx," "%0" : "=m"(reg_dump->rcx)::"memory");
+	asm volatile ("mov %%" R "dx," "%0" : "=m"(reg_dump->rdx)::"memory");
+	asm volatile ("mov %%" R "si," "%0" : "=m"(reg_dump->rsi)::"memory");
+	asm volatile ("mov %%" R "di," "%0" : "=m"(reg_dump->rdi)::"memory");
+	asm volatile ("mov %%" R "sp," "%0" : "=m"(reg_dump->rsp)::"memory");
+	asm volatile ("mov %%" R "bp," "%0" : "=m"(reg_dump->rbp)::"memory");
+	asm volatile ("pushf; pop %0" : "=m"(reg_dump->rflags)::"memory");
+#ifdef __x86_64__
+	asm volatile ("mov %%r8, %0" : "=m"(reg_dump->r8)::"memory");
+	asm volatile ("mov %%r9, %0" : "=m"(reg_dump->r9)::"memory");
+	asm volatile ("mov %%r10," "%0" : "=m"(reg_dump->r10)::"memory");
+	asm volatile ("mov %%r11," "%0" : "=m"(reg_dump->r11)::"memory");
+	asm volatile ("mov %%r12," "%0" : "=m"(reg_dump->r12)::"memory");
+	asm volatile ("mov %%r13," "%0" : "=m"(reg_dump->r13)::"memory");
+	asm volatile ("mov %%r14," "%0" : "=m"(reg_dump->r14)::"memory");
+	asm volatile ("mov %%r15," "%0" : "=m"(reg_dump->r15)::"memory");
+#endif
+	asm volatile ("mov %%dr0,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr0)::"memory");
+	asm volatile ("mov %%dr1,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr1)::"memory");
+	asm volatile ("mov %%dr2,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr2)::"memory");
+	asm volatile ("mov %%dr3,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr3)::"memory");
+	asm volatile ("mov %%dr6,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr0)::"memory");
+	asm volatile ("mov %%dr7,%%" R "ax \n"
+				  "mov %%" R "ax," "%0"
+				  : "=m"(reg_dump->dr0)::"memory");
+
+	asm volatile ("mov %0, %%" R "ax"::"m"(reg_dump->rax):"memory");
+}
+
+extern void *msr_reg_dump(u32 *size);
+extern bool xsave_reg_dump(void *ptr);
+/*
+ *
+ *	before use this maro,pls call u64 enable_xsave() function firstly,bcz it will use xsave feature;
+ *
+ */
+#define CHECK_INSTRUCTION_REGS(instruction)				\
+	({													\
+		u32 __size;										\
+		bool __result = true;							\
+														\
+		void *__ptr1, *__ptr2;							\
+		struct gen_reg_struct __gen_reg1, __gen_reg2;	\
+		struct xsave_dump_struct *__xsave1, *__xsave2;	\
+		memset(&__gen_reg1, 0, sizeof(__gen_reg1));		\
+		memset(&__gen_reg2, 0, sizeof(__gen_reg2));		\
+														\
+		if (read_cs() & 0x3) {							\
+			gen_reg_dump_not_at_ring0(&__gen_reg1);		\
+			instruction;								\
+			gen_reg_dump_not_at_ring0(&__gen_reg2);		\
+		} else {										\
+			gen_reg_dump(&__gen_reg1);					\
+			instruction;								\
+			gen_reg_dump(&__gen_reg2);					\
+		}												\
+														\
+		if (memcmp(&__gen_reg1, &__gen_reg2, sizeof(struct gen_reg_struct))) { \
+			__result = false;							\
+		}												\
+														\
+		__xsave1 = malloc(sizeof(struct xsave_dump_struct));	\
+		__xsave2 = malloc(sizeof(struct xsave_dump_struct));	\
+		assert(__xsave1);								\
+		assert(__xsave2);								\
+														\
+		__ptr1 = msr_reg_dump(&__size);					\
+		xsave_reg_dump(__xsave1);						\
+		instruction;									\
+		__ptr2 = msr_reg_dump(&__size);					\
+		xsave_reg_dump(__xsave2);						\
+														\
+		if (memcmp(__ptr1, __ptr1, __size)) {			\
+			__result = false;							\
+		}												\
+		if (memcmp(__xsave1, __xsave2, sizeof(struct xsave_dump_struct))) {	\
+			__result = false;							\
+		}												\
+		free(__ptr1);									\
+		free(__ptr2);									\
+		free(__xsave1);									\
+		free(__xsave2);									\
+		__result;										\
+	})
 #endif

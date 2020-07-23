@@ -9,6 +9,8 @@
 #include "regdump.h"
 #include "xsave.h"
 #include "alloc.h"
+#include "../../x86/instruction_common.h"
+#include "register_op.h"
 extern short cpu_online_count;
 static struct spinlock lock;
 
@@ -423,7 +425,7 @@ void *msr_reg_dump(u32 *size)
 	memset(msr_value, 0, *size);
 
 	for (u32 i = 0; i < SUPPORTED_MSR_NUM; i++) {
-		*(msr_value + i) = rdmsr(supported_msr_list[i]);
+		rdmsr_checking((supported_msr_list[i]), (msr_value + i));
 	}
 
 	return msr_value;
@@ -464,7 +466,22 @@ u64 get_xcr0(void)
 	r = cpuid_indexed(0xd, 0);
 	return r.a + ((u64)r.d << 32);
 }
+u64 enable_xsave()
+{
+	u64 xcr0;
+	u64 supported_xcr0;
 
+	/*enable xsave feature set by set cr4.18*/
+	write_cr4(read_cr4() | (1 << 18)); /* osxsave */
+	supported_xcr0 = get_xcr0();
+	/*enable all xsave bitmap 0x3--we support until now!!
+	 *MPX component is hidden,so we add it ?
+	 */
+	xsave_getbv(0, &xcr0);
+	xsave_setbv(0, supported_xcr0);
+
+	return xcr0;
+}
 /*------------------------------------------------------*
  *   dump xsave reg to ptr
  *   TURE:sucess
@@ -478,19 +495,10 @@ bool xsave_reg_dump(void *ptr)
 	xsave_dump_t *xsave_reg;
 	xsave_area_t *xsave;
 	size_t alignment;
-	u64 supported_xcr0;
-	u64 xcr0;
 
 	assert(ptr);
 	memset(ptr, 0x0, sizeof(xsave_dump_t));
-	/*enable xsave feature set by set cr4.18*/
-	write_cr4(read_cr4() | (1 << 18)); /* osxsave */
-	supported_xcr0 = get_xcr0();
-	/*enable all xsave bitmap 0x3--we support until now!!
-	 *MPX component is hidden,so we add it ?
-	 */
-	xsave_getbv(0, &xcr0);
-	xsave_setbv(0, supported_xcr0);
+
 
 	/*allocate 2K memory to save xsave feature*/
 	mem = malloc(1 << 11);
@@ -500,7 +508,7 @@ bool xsave_reg_dump(void *ptr)
 	alignment = 64;
 	p_align = (uintptr_t) mem;
 	p_align = ALIGN(p_align, alignment);
-	if (xsave_instruction((void *)p_align, supported_xcr0) != 0) {
+	if (xsave_instruction((void *)p_align, STATE_X87 | STATE_SSE | STATE_AVX) != 0) {
 		free(mem);
 		return false;
 	}
@@ -508,15 +516,13 @@ bool xsave_reg_dump(void *ptr)
 	xsave_reg = (xsave_dump_t *)ptr;
 	xsave = (xsave_area_t *)p_align;
 	fpu_sse = (void *)xsave;
-	memcpy((void *)&(xsave_reg->fpu_sse), fpu_sse, sizeof(fpu_sse_t));
+	memcpy((void *) &(xsave_reg->fpu_sse), fpu_sse, sizeof(fpu_sse_t));
 	ymm_ptr = (void *)&xsave->ymm[0];
-	memcpy((void *)&(xsave_reg->ymm), ymm_ptr, sizeof(xsave_avx_t));
+	memcpy((void *) &(xsave_reg->ymm), ymm_ptr, sizeof(xsave_avx_t));
 	bnd_ptr = (void *)&xsave->bndregs;
-	memcpy((void *)&(xsave_reg->bndregs), bnd_ptr, \
+	memcpy((void *) &(xsave_reg->bndregs), bnd_ptr, \
 		   sizeof(xsave_bndreg_t) + sizeof(xsave_bndcsr_t));
 	free(mem);
-	/*set origin xcr0 back*/
-	xsave_setbv(0, xcr0);
 	return true;
 }
 
