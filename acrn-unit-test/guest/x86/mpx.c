@@ -79,45 +79,11 @@ static void mpx_rqmid_23626_write_xcr0_bit_3_4(void)
  */
 static void mpx_rqmid_25251_bndldx_exception(void)
 {
-	u32 size;
 	int a = 0xffff;
-	bool result = true;
-	void *ptr1, *ptr2;
-	struct gen_reg_struct gen_reg1, gen_reg2;
-	struct xsave_dump_struct *xsave1, *xsave2;
+	bool result = false;
 
-	memset(&gen_reg1, 0, sizeof(gen_reg1));
-	memset(&gen_reg2, 0, sizeof(gen_reg2));
-
-	gen_reg_dump(&gen_reg1);
-	asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a));
-	gen_reg_dump(&gen_reg2);
-	if (memcmp(&gen_reg1, &gen_reg2, sizeof(struct gen_reg_struct))) {
-		result = false;
-	}
-
-	ptr1 = msr_reg_dump(&size);
-	asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a));
-	ptr2 = msr_reg_dump(&size);
-	if (memcmp(ptr1, ptr1, size)) {
-		result = false;
-	}
-	free(ptr1);
-	free(ptr2);
-
-	xsave1 = malloc(sizeof(struct xsave_dump_struct));
-	xsave2 = malloc(sizeof(struct xsave_dump_struct));
-	assert(xsave1);
-	assert(xsave2);
-	xsave_reg_dump(xsave1);
-	asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a));
-	xsave_reg_dump(xsave2);
-	if (memcmp(xsave1, xsave2, sizeof(struct xsave_dump_struct))) {
-		result = false;
-	}
-	free(xsave1);
-	free(xsave2);
-
+	enable_xsave();
+	result = CHECK_INSTRUCTION_REGS(asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a)));
 	report("%s", result, __FUNCTION__);
 }
 /**
@@ -148,48 +114,10 @@ static void mpx_rqmid_23894_lock_prefix_test(void)
  */
 static void mpx_rqmid_23623_bndldx_normal(void)
 {
-	u32 size;
 	int a = 0xffff;
 	bool result = true;
-	void *ptr1, *ptr2;
-	struct gen_reg_struct gen_reg1, gen_reg2;
-	struct xsave_dump_struct *xsave1, *xsave2;
-
-	memset(&gen_reg1, 0, sizeof(gen_reg1));
-	memset(&gen_reg2, 0, sizeof(gen_reg2));
-
-	gen_reg_dump(&gen_reg1);
-	asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a));
-	gen_reg_dump(&gen_reg2);
-
-	if (memcmp(&gen_reg1, &gen_reg2, sizeof(struct gen_reg_struct))) {
-		result = false;
-	}
-
-	ptr1 = msr_reg_dump(&size);
-	asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a));
-	ptr2 = msr_reg_dump(&size);
-
-	if (memcmp(ptr1, ptr1, size)) {
-		result = false;
-	}
-	free(ptr1);
-	free(ptr2);
-
-	xsave1 = malloc(sizeof(struct xsave_dump_struct));
-	xsave2 = malloc(sizeof(struct xsave_dump_struct));
-	assert(xsave1);
-	assert(xsave2);
-	xsave_reg_dump(xsave1);
-	asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a));
-	xsave_reg_dump(xsave2);
-
-	if (memcmp(xsave1, xsave2, sizeof(struct xsave_dump_struct))) {
-		result = false;
-	}
-	free(xsave1);
-	free(xsave2);
-
+	enable_xsave();
+	result = CHECK_INSTRUCTION_REGS(asm volatile("bndldx %0, %%bnd0\n\t" : : "m"(a)));
 	report("%s", result, __FUNCTION__);
 }
 #endif

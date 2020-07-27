@@ -1,6 +1,8 @@
 #ifndef _REG_DUMP_H_
 #define _REG_DUMP_H_
 #include "msr.h"
+#include "../alloc.h"
+#include "xsave.h"
 
 #define	IA32_P5_MC_ADDR                       0x0
 #define	IA32_P5_MC_TYPE                       0x1
@@ -570,7 +572,7 @@ typedef struct gen_reg_struct {
 	u64 dr0, dr1, dr2, dr3, dr6, dr7;
 	struct descriptor_table_ptr gdtr, idtr;
 	u16 tr, ldtr;
-	u64 xcr0;
+	u32 xcr0, xcr0_1;/*xc0 lower 32bit,xcr0 higher 32bit*/
 } gen_reg_t;
 
 u32 supported_msr_list[] = {
@@ -683,7 +685,8 @@ u32 supported_msr_list[] = {
 
 /*-------------------------------------------------*
  *Genaral register dump
- *
+ *pls do not use C language, the compiler will use some general registers
+ *so,it will change them,we can not check the register correctly.
  *
  */
 static inline __attribute__((always_inline)) void gen_reg_dump(void *ptr)
@@ -741,32 +744,32 @@ static inline __attribute__((always_inline)) void gen_reg_dump(void *ptr)
 				  : "=m"(reg_dump->dr3)::"memory");
 	asm volatile ("mov %%dr6,%%" R "ax \n"
 				  "mov %%" R "ax," "%0"
-				  : "=m"(reg_dump->dr0)::"memory");
+				  : "=m"(reg_dump->dr6)::"memory");
 	asm volatile ("mov %%dr7,%%" R "ax \n"
 				  "mov %%" R "ax," "%0"
-				  : "=m"(reg_dump->dr0)::"memory");
+				  : "=m"(reg_dump->dr7)::"memory");
 
 	asm volatile ("sgdt %0" : "=m"(reg_dump->gdtr));
 	asm volatile ("sidt %0" : "=m"(reg_dump->idtr));
 	asm volatile ("sldt %0" : "=m"(reg_dump->ldtr));
 	asm volatile ("str %0"  : "=m"(reg_dump->tr));
-
 	u32 __eax, __edx;
-	asm volatile("xgetbv\n" /* xgetbv */
-				 : "=a" (__eax), "=d" (__edx)
-				 : "c" (0));
-	reg_dump->xcr0 = __eax + ((u64)__edx << 32);
-	/*restore eax/rax and edx/rdx value*/
-	asm volatile ("mov %0, %%" R "ax"::"m"(reg_dump->rax):"memory");
-	asm volatile ("mov %0, %%" R "dx"::"m"(reg_dump->rdx):"memory");
+	asm volatile("mov $0,%%ecx;xgetbv\n" /* xgetbv */
+				 : "=a" (__eax), "=d" (__edx));
+	asm volatile ("mov %%eax,%0;mov %%edx,%1" : "=m"(reg_dump->xcr0), "=m"(reg_dump->xcr0_1));
 
+	/*restore eax/rax and edx/rdx value*/
+	asm volatile ("mov %0, %%" R "cx"::"m"(reg_dump->rcx):"memory");
+	asm volatile ("mov %0, %%" R "dx"::"m"(reg_dump->rdx):"memory");
+	asm volatile ("mov %0, %%" R "ax"::"m"(reg_dump->rax):"memory");
 }
 
 
 
 /*-------------------------------------------------*
  *Genaral register dump
- *
+ *pls do not use C language, the compiler will use some general registers
+ *so,it will change them,we can not check the register correctly.
  *
  */
 static inline __attribute__((always_inline)) void gen_reg_dump_not_at_ring0(void *ptr)
@@ -807,10 +810,10 @@ static inline __attribute__((always_inline)) void gen_reg_dump_not_at_ring0(void
 				  : "=m"(reg_dump->dr3)::"memory");
 	asm volatile ("mov %%dr6,%%" R "ax \n"
 				  "mov %%" R "ax," "%0"
-				  : "=m"(reg_dump->dr0)::"memory");
+				  : "=m"(reg_dump->dr6)::"memory");
 	asm volatile ("mov %%dr7,%%" R "ax \n"
 				  "mov %%" R "ax," "%0"
-				  : "=m"(reg_dump->dr0)::"memory");
+				  : "=m"(reg_dump->dr7)::"memory");
 
 	asm volatile ("mov %0, %%" R "ax"::"m"(reg_dump->rax):"memory");
 }
