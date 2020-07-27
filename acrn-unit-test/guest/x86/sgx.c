@@ -9,6 +9,35 @@
 #include "isr.h"
 #include "register_op.h"
 
+void save_unchanged_reg()
+{
+	asm volatile (
+		"mov $0x0000003a, %ecx\n"
+		"rdmsr\n"
+		"mov %eax, (0x7000)\n"
+		"mov %edx, (0x7004)"
+	);
+}
+#ifdef IN_NATIVE
+/**
+ * @brief case name:Physical SGX1 support_001
+ *
+ * Summary: read the value of CPUID.(EAX=7H, ECX=0H):EBX[bit 2] and
+ * CPUID.(EAX=12H, ECX=0H):EAX.SGX1 [bit 0]from guest shall be 0
+ *
+ */
+static void sgx_rqmid_36504_check_sgx_physical_support()
+{
+	if ((((cpuid(7).b) & CPUID_07_SGX) == 0) && (((cpuid(0x12).a) & 0x1) == 0)) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+#else
+extern void send_sipi();
+bool g_is_init_ap = false;
+
 /**
  * @brief case name: Guestee that MSR UNCORE PRMRR PHYS BASE_002
  *
@@ -76,11 +105,11 @@ static void sgx_rqmid_27400_guest_cpuid_leaf_12h()
 }
 
 /**
- * @brief case name: Guesthat MSR PRMRR VALID CONFIG_001
+ * @brief case name: Guestee that MSR UNCORE PRMRR PHYS MASK_001
  *
  * Summary: Read from guest MSR register msr_uncore_prmrr_phys_mask shall generate #GP
  */
-static void sgx_rqmid_27372_read_msr_uncore_prmrr_phys_mask()
+static void sgx_rqmid_32530_read_msr_uncore_prmrr_phys_mask()
 {
 	u64 msr_uncore_prmrr_phys_mask;
 	report("\t\t %s",
@@ -93,7 +122,7 @@ static void sgx_rqmid_27372_read_msr_uncore_prmrr_phys_mask()
  *
  * Summary: write from guest MSR register msr_uncore_prmrr_phys_mask shall generate #GP
  */
-static void sgx_rqmid_27373_write_msr_uncore_prmrr_phys_mask()
+static void sgx_rqmid_32529_write_msr_uncore_prmrr_phys_mask()
 {
 	u64 msr_uncore_prmrr_phys_mask = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -106,7 +135,7 @@ static void sgx_rqmid_27373_write_msr_uncore_prmrr_phys_mask()
  *
  * Summary: Read from guest MSR register msr_uncore_prmrr_phys_base shall generate #GP
  */
-static void sgx_rqmid_27374_read_msr_uncore_prmrr_phys_base()
+static void sgx_rqmid_32531_read_msr_uncore_prmrr_phys_base()
 {
 	u64 msr_uncore_prmrr_phys_base;
 	report("\t\t %s",
@@ -119,7 +148,7 @@ static void sgx_rqmid_27374_read_msr_uncore_prmrr_phys_base()
  *
  * Summary: write from guest MSR register msr_sgxownerepoch1 shall generate #GP
  */
-static void sgx_rqmid_27384_write_msr_sgxownerepoch1()
+static void sgx_rqmid_32532_write_msr_sgxownerepoch1()
 {
 	u64 msr_sgxownerepoch1 = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -132,7 +161,7 @@ static void sgx_rqmid_27384_write_msr_sgxownerepoch1()
  *
  * Summary: read from guest MSR register msr_sgxownerepoch1 shall generate #GP
  */
-static void sgx_rqmid_27382_read_msr_sgxownerepoch1()
+static void sgx_rqmid_32533_read_msr_sgxownerepoch1()
 {
 	u64 msr_sgxownerepoch1;
 	report("\t\t %s",
@@ -146,7 +175,7 @@ static void sgx_rqmid_27382_read_msr_sgxownerepoch1()
  *
  * Summary: write from guest MSR register msr_sgxownerepoch0 shall generate #GP
  */
-static void sgx_rqmid_27387_write_msr_sgxownerepoch0()
+static void sgx_rqmid_32534_write_msr_sgxownerepoch0()
 {
 	u64 msr_sgxownerepoch0 = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -159,7 +188,7 @@ static void sgx_rqmid_27387_write_msr_sgxownerepoch0()
  *
  * Summary: read from guest MSR register msr_sgxownerepoch0 shall generate #GP
  */
-static void sgx_rqmid_27386_read_msr_sgxownerepoch0()
+static void sgx_rqmid_32535_read_msr_sgxownerepoch0()
 {
 	u64 msr_sgxownerepoch0;
 	report("\t\t %s",
@@ -172,7 +201,7 @@ static void sgx_rqmid_27386_read_msr_sgxownerepoch0()
  *
  * Summary: write from guest MSR register msr_prmrr_phys_mask shall generate #GP
  */
-static void sgx_rqmid_27379_write_msr_prmrr_phys_mask()
+static void sgx_rqmid_32536_write_msr_prmrr_phys_mask()
 {
 	u64 msr_prmrr_phys_mask = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -185,7 +214,7 @@ static void sgx_rqmid_27379_write_msr_prmrr_phys_mask()
  *
  * Summary: read from guest MSR register msr_prmrr_phys_mask shall generate #GP
  */
-static void sgx_rqmid_27378_read_msr_prmrr_phys_mask()
+static void sgx_rqmid_32537_read_msr_prmrr_phys_mask()
 {
 	u64 msr_prmrr_phys_mask;
 	report("\t\t %s",
@@ -198,7 +227,7 @@ static void sgx_rqmid_27378_read_msr_prmrr_phys_mask()
  *
  * Summary: write from guest MSR register msr_prmrr_phys_base shall generate #GP
  */
-static void sgx_rqmid_27381_write_msr_prmrr_phys_base()
+static void sgx_rqmid_32538_write_msr_prmrr_phys_base()
 {
 	u64 msr_prmrr_phys_base = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -211,7 +240,7 @@ static void sgx_rqmid_27381_write_msr_prmrr_phys_base()
  *
  * Summary: read from guest MSR register msr_prmrr_phys_base shall generate #GP
  */
-static void sgx_rqmid_27380_read_msr_prmrr_phys_base()
+static void sgx_rqmid_32539_read_msr_prmrr_phys_base()
 {
 	u64 msr_prmrr_phys_base;
 	report("\t\t %s",
@@ -224,7 +253,7 @@ static void sgx_rqmid_27380_read_msr_prmrr_phys_base()
  *
  * Summary: write from guest MSR register ia32_sgxlepubkeyhash3 shall generate #GP
  */
-static void sgx_rqmid_27393_write_ia32_sgxlepubkeyhash3()
+static void sgx_rqmid_32540_write_ia32_sgxlepubkeyhash3()
 {
 	u64 ia32_sgxlepubkeyhash3 = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -237,7 +266,7 @@ static void sgx_rqmid_27393_write_ia32_sgxlepubkeyhash3()
  *
  * Summary: read from guest MSR register ia32_sgxlepubkeyhash3 shall generate #GP
  */
-static void sgx_rqmid_27392_read_ia32_sgxlepubkeyhash3()
+static void sgx_rqmid_32541_read_ia32_sgxlepubkeyhash3()
 {
 	u64 ia32_sgxlepubkeyhash3;
 	report("\t\t %s",
@@ -250,7 +279,7 @@ static void sgx_rqmid_27392_read_ia32_sgxlepubkeyhash3()
  *
  * Summary: write from guest MSR register ia32_sgxlepubkeyhash2 shall generate #GP
  */
-static void sgx_rqmid_27395_write_ia32_sgxlepubkeyhash2()
+static void sgx_rqmid_32542_write_ia32_sgxlepubkeyhash2()
 {
 	u64 ia32_sgxlepubkeyhash2 = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -263,7 +292,7 @@ static void sgx_rqmid_27395_write_ia32_sgxlepubkeyhash2()
  *
  * Summary: read from guest MSR register ia32_sgxlepubkeyhash2 shall generate #GP
  */
-static void sgx_rqmid_27394_read_ia32_sgxlepubkeyhash2()
+static void sgx_rqmid_32543_read_ia32_sgxlepubkeyhash2()
 {
 	u64 ia32_sgxlepubkeyhash2;
 	report("\t\t %s",
@@ -276,7 +305,7 @@ static void sgx_rqmid_27394_read_ia32_sgxlepubkeyhash2()
  *
  * Summary: write from guest MSR register ia32_sgxlepubkeyhash1 shall generate #GP
  */
-static void sgx_rqmid_27397_write_ia32_sgxlepubkeyhash1()
+static void sgx_rqmid_32544_write_ia32_sgxlepubkeyhash1()
 {
 	u64 ia32_sgxlepubkeyhash1 = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -289,7 +318,7 @@ static void sgx_rqmid_27397_write_ia32_sgxlepubkeyhash1()
  *
  * Summary: read from guest MSR register ia32_sgxlepubkeyhash1 shall generate #GP
  */
-static void sgx_rqmid_27396_read_ia32_sgxlepubkeyhash1()
+static void sgx_rqmid_32545_read_ia32_sgxlepubkeyhash1()
 {
 	u64 ia32_sgxlepubkeyhash1;
 	report("\t\t %s",
@@ -302,7 +331,7 @@ static void sgx_rqmid_27396_read_ia32_sgxlepubkeyhash1()
  *
  * Summary: write from guest MSR register ia32_sgxlepubkeyhash0 shall generate #GP
  */
-static void sgx_rqmid_27399_write_ia32_sgxlepubkeyhash0()
+static void sgx_rqmid_32546_write_ia32_sgxlepubkeyhash0()
 {
 	u64 ia32_sgxlepubkeyhash0 = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -315,7 +344,7 @@ static void sgx_rqmid_27399_write_ia32_sgxlepubkeyhash0()
  *
  * Summary: read from guest MSR register ia32_sgxlepubkeyhash0 shall generate #GP
  */
-static void sgx_rqmid_27398_read_ia32_sgxlepubkeyhash0()
+static void sgx_rqmid_32547_read_ia32_sgxlepubkeyhash0()
 {
 	u64 ia32_sgxlepubkeyhash0;
 	report("\t\t %s",
@@ -328,7 +357,7 @@ static void sgx_rqmid_27398_read_ia32_sgxlepubkeyhash0()
  *
  * Summary: write from guest MSR register ia32_sgx_svn_status shall generate #GP
  */
-static void sgx_rqmid_27391_write_ia32_sgx_svn_status()
+static void sgx_rqmid_32548_write_ia32_sgx_svn_status()
 {
 	u64 ia32_sgx_svn_status = VALUE_TO_WRITE_MSR;
 	report("\t\t %s",
@@ -341,7 +370,7 @@ static void sgx_rqmid_27391_write_ia32_sgx_svn_status()
  *
  * Summary: read from guest MSR register ia32_sgx_svn_status shall generate #GP
  */
-static void sgx_rqmid_27390_read_ia32_sgx_svn_status()
+static void sgx_rqmid_32549_read_ia32_sgx_svn_status()
 {
 	u64 ia32_sgx_svn_status;
 	report("\t\t %s",
@@ -405,6 +434,564 @@ static void sgx_rqmid_29563_sgx_lauch_bit_startup()
 }
 
 /**
+ * @brief case name: Write IA32_FEATURE_CONTROL[bit 18:17]_001
+ *
+ * Summary: Write IA32_FEATURE_CONTROL[bit 18:17] shall generate #GP
+ */
+static void sgx_rqmid_38170_write_ia32_feature_control()
+{
+	report("\t\t %s",
+		wrmsr_checking(IA32_FEATURE_CONTROL, rdmsr(IA32_FEATURE_CONTROL) | (0x3 << 17))
+		== GP_VECTOR, __FUNCTION__);
+}
+
+/**
+ * @brief case name: Read IA32_FEATURE_CONTROL[bit 18:17]_001
+ *
+ * Summary: Read IA32_FEATURE_CONTROL[bit 18:17], The value shall be 0H.
+ */
+static void sgx_rqmid_38171_read_ia32_feature_control()
+{
+	report("\t\t %s", (rdmsr(IA32_FEATURE_CONTROL) & (0x3 << 17)) == 0, __FUNCTION__);
+}
+
+static unsigned encls_checking(int value)
+{
+	asm volatile("mov %0, %%eax\n\t"
+		ASM_TRY("1f")
+		"encls\n\t"
+		"1:"
+		:
+		: "r"(value)
+		: );
+	return exception_vector();
+}
+
+static unsigned enclu_checking(int value)
+{
+	asm volatile("mov %0, %%eax\n\t"
+		ASM_TRY("1f")
+		"enclu\n\t"
+		"1:"
+		:
+		: "r"(value)
+		: );
+	return exception_vector();
+}
+
+static unsigned enclv_checking(int value)
+{
+	asm volatile("mov %0, %%eax\n\t"
+		ASM_TRY("1f")
+		".byte 0x0F, 0x01, 0xC0\n\t"
+		"1:"
+		:
+		: "r"(value)
+		: );
+	return exception_vector();
+}
+
+
+/**
+ * @brief case name: Execute ENCLS_eax_00h_001
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38009_encls_eax_00h_001()
+{
+	if (encls_checking(0x00) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_01h_002
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38010_encls_eax_01h_002()
+{
+	if (encls_checking(0x01) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_02h_003
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38011_encls_eax_02h_003()
+{
+	if (encls_checking(0x02) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_03h_004
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38012_encls_eax_03h_004()
+{
+	if (encls_checking(0x03) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_04h_005
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38013_encls_eax_04h_005()
+{
+	if (encls_checking(0x04) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_05h_006
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38029_encls_eax_05h_006()
+{
+	if (encls_checking(0x05) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_06h_007
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38030_encls_eax_06h_007()
+{
+	if (encls_checking(0x06) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_07h_008
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38031_encls_eax_07h_008()
+{
+	if (encls_checking(0x07) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_08h_009
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38032_encls_eax_08h_009()
+{
+	if (encls_checking(0x08) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_09h_010
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38033_encls_eax_09h_010()
+{
+	if (encls_checking(0x09) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_0Ah_011
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38034_encls_eax_0Ah_011()
+{
+	if (encls_checking(0x0A) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_0Bh_012
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38035_encls_eax_0Bh_012()
+{
+	if (encls_checking(0x0B) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_0Ch_013
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38037_encls_eax_0Ch_013()
+{
+	if (encls_checking(0x0C) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_0Dh_014
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38039_encls_eax_0Dh_014()
+{
+	if (encls_checking(0x0D) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_0Eh_015
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38040_encls_eax_0Eh_015()
+{
+	if (encls_checking(0x0E) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_0Fh_014
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38041_encls_eax_0Fh_016()
+{
+	if (encls_checking(0x0F) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_10h_017
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38042_encls_eax_10h_017()
+{
+	if (encls_checking(0x10) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_0Bh_018
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38043_encls_eax_11h_018()
+{
+	if (encls_checking(0x11) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_12h_019
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38044_encls_eax_12h_019()
+{
+	if (encls_checking(0x12) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLS_eax_13h_019
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38045_encls_eax_13h_020()
+{
+	if (encls_checking(0x13) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLV_eax_00h_001
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38050_enclv_eax_00h_001()
+{
+	if (enclv_checking(0x00) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLV_eax_01h_002
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38052_enclv_eax_01h_002()
+{
+	if (enclv_checking(0x01) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLV_eax_02h_003
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38054_enclv_eax_02h_003()
+{
+	if (enclv_checking(0x02) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_00h_001
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38056_enclu_eax_00h_001(const char *msg)
+{
+	if (enclu_checking(0x00) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_01h_002
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38057_enclu_eax_01h_002(const char *msg)
+{
+	if (enclu_checking(0x01) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_02h_003
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38058_enclu_eax_02h_003(const char *msg)
+{
+	if (enclu_checking(0x02) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_03h_004
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38059_enclu_eax_03h_004(const char *msg)
+{
+	if (enclu_checking(0x03) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_04h_005
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38060_enclu_eax_04h_005(const char *msg)
+{
+	if (enclu_checking(0x04) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_05h_005
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38061_enclu_eax_05h_006(const char *msg)
+{
+	if (enclu_checking(0x05) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_06h_007
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38062_enclu_eax_06h_007(const char *msg)
+{
+	if (enclu_checking(0x06) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+/**
+ * @brief case name: Execute ENCLU_eax_07h_008
+ *
+ * Summary: verifies if the SGX instructions has been disabled
+ *
+ */
+
+static void sgx_rqmid_38063_enclu_eax_07h_008(const char *msg)
+{
+	if (enclu_checking(0x07) == UD_VECTOR) {
+		report("\t\t %s", true, __FUNCTION__);
+	} else {
+		report("\t\t %s", false, __FUNCTION__);
+	}
+}
+
+
+
+#ifdef IN_NON_SAFETY_VM
+/**
  * @brief case name: Guest IA32_FEATURE_CONTROL.Launch Control Enable following INIT_001
  *
  * Summary: After AP receives first INIT, set the value of IA32_FEATURE_CONTROL.SGX_LAUCH [bit 17];
@@ -420,81 +1007,183 @@ static __unused void sgx_rqmid_29562_sgx_lauch_bit_init()
 	report("\t\t %s", (ia32_init_first & SGX_LAUCH_BIT) == 0, __FUNCTION__);
 }
 
+/**
+ * @brief case name: Guest IA32 FEATURE CONTROL.SGX ENABLE following INIT_001
+ *
+ * Summary:ACRN hypervisor shall set initial guest IA32_FEATURE_CONTROL.SGX_ENABLE [bit 18] to 0H following INIT.
+ *
+ */
+static __unused void sgx_rqmid_27404_sgx_enable_init()
+{
+	volatile u32 *ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT1_ADDR;
+	u64 ia32_init_first;
+
+	ia32_init_first = *ptr + ((u64)(*(ptr + 1)) << 32);
+
+	report("\t\t %s", (ia32_init_first & SGX_ENABLE_BIT) == 0, __FUNCTION__);
+}
+
+
+
+#endif
+#endif
 static void print_case_list()
 {
 	printf("SGX feature case list:\n\r");
+#ifdef IN_NATIVE
+	printf("\t\t Case ID:%d case name:%s\n\r", 36504u, "Physical SGX1 support_001");
+#else
 	printf("\t\t Case ID:%d case name:%s\n\r", 27375u, "Guestee that MSR UNCORE PRMRR PHYS BASE_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27376u, "Guesthat MSR PRMRR VALID CONFIG_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27377u, "Guesthat MSR PRMRR VALID CONFIG_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27401u, "Guest CPUID.SGX LC_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27400u, "Guest CPUID leaf 12H_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27372u, "Guesthat MSR PRMRR VALID CONFIG_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27373u, "Guestee that MSR UNCORE PRMRR PHYS MASK_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27374u, "Guestee that MSR UNCORE PRMRR PHYS BASE_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27384u, "Guest MSR SGXOWNEREPOCH1_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27382u, "Guest MSR SGXOWNEREPOCH1_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32530u, "Guestee that MSR UNCORE PRMRR PHYS MASK_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32529u, "Guestee that MSR UNCORE PRMRR PHYS MASK_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32531u, "Guestee that MSR UNCORE PRMRR PHYS BASE_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32532u, "Guest MSR SGXOWNEREPOCH1_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32533u, "Guest MSR SGXOWNEREPOCH1_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27387u, "Guest MSR SGXOWNEREPOCH0_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27386u, "Guest MSR SGXOWNEREPOCH0_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27379u, "Guest MSR PRMRR PHYS MASK_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27381u, "Guest MSR PRMRR PHYS BASE_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27380u, "Guest MSR PRMRR PHYS BASE_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27393u, "Guest IA32 SGXLEPUBKEYHASH3_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27392u, "Guest IA32 SGXLEPUBKEYHASH3_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27395u, "Guest IA32 SGXLEPUBKEYHASH2_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27394u, "Guest IA32 SGXLEPUBKEYHASH2_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27397u, "Guest IA32 SGXLEPUBKEYHASH1_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27396u, "Guest IA32 SGXLEPUBKEYHASH1_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27399u, "Guest IA32 SGXLEPUBKEYHASH0_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27398u, "Guest IA32 SGXLEPUBKEYHASH0_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27391u, "Guest IA32 SGX SVN STATUS_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27390u, "Guest IA32 SGX SVN STATUS_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27402u, "Guest CPUID.SGX_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32535u, "Guest MSR SGXOWNEREPOCH0_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32536u, "Guest MSR PRMRR PHYS MASK_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32537u, "Guest MSR PRMRR PHYS MASK_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32538u, "Guest MSR PRMRR PHYS BASE_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32539u, "Guest MSR PRMRR PHYS BASE_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32540u, "Guest IA32 SGXLEPUBKEYHASH3_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32541u, "Guest IA32 SGXLEPUBKEYHASH3_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32542u, "Guest IA32 SGXLEPUBKEYHASH2_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32543u, "Guest IA32 SGXLEPUBKEYHASH2_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32544u, "Guest IA32 SGXLEPUBKEYHASH1_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32545u, "Guest IA32 SGXLEPUBKEYHASH1_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32546u, "Guest IA32 SGXLEPUBKEYHASH0_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32547u, "Guest IA32 SGXLEPUBKEYHASH0_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32548u, "Guest IA32 SGX SVN STATUS_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32549u, "Guest IA32 SGX SVN STATUS_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 32550u, "Guest CPUID.SGX_001");
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 27403u, "Guest IA32 \
-		FEATURE CONTROL.SGX ENABLE following start-up_001");
+	FEATURE CONTROL.SGX ENABLE following start-up_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38170u, "Write IA32_FEATURE_CONTROL[bit 18:17]_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38171u, "Read IA32_FEATURE_CONTROL[bit 18:17]_001");
+
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27404u, "Guest IA32 \
-		FEATURE CONTROL.SGX ENABLE following INIT_001");
+	FEATURE CONTROL.SGX ENABLE following INIT_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 29562u, "Guest \
-		IA32_FEATURE_CONTROL.Launch Control Enable following INIT_001");
+	IA32_FEATURE_CONTROL.Launch Control Enable following INIT_001");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 29563u, "Guest \
 		IA32_FEATURE_CONTROL.SGX_lauch Control following start-up_001");
+
+	printf("\t\t Case ID:%d case name:%s\n\r", 38009u, "Execute ENCLS_eax_00h_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38010u, "Execute ENCLS_eax_01h_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38011u, "Execute ENCLS_eax_02h_003");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38012u, "Execute ENCLS_eax_03h_004");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38013u, "Execute ENCLS_eax_04h_005");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38029u, "Execute ENCLS_eax_05h_006");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38030u, "Execute ENCLS_eax_06h_007");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38031u, "Execute ENCLS_eax_07h_008");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38032u, "Execute ENCLS_eax_08h_009");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38033u, "Execute ENCLS_eax_09h_010");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38034u, "Execute ENCLS_eax_0Ah_011");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38035u, "Execute ENCLS_eax_0Bh_012");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38037u, "Execute ENCLS_eax_0Ch_013");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38039u, "Execute ENCLS_eax_0Dh_014");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38040u, "Execute ENCLS_eax_0Eh_015");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38041u, "Execute ENCLS_eax_0Fh_016");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38042u, "Execute ENCLS_eax_10h_017");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38043u, "Execute ENCLS_eax_11h_018");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38044u, "Execute ENCLS_eax_12h_019");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38045u, "Execute ENCLS_eax_13h_020");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38050u, "Execute ENCLV_eax_00h_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38052u, "Execute ENCLV_eax_01h_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38054u, "Execute ENCLV_eax_02h_003");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38056u, "Execute ENCLU_eax_00h_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38057u, "Execute ENCLU_eax_01h_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38058u, "Execute ENCLU_eax_02h_003");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38059u, "Execute ENCLU_eax_03h_004");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38060u, "Execute ENCLU_eax_04h_005");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38061u, "Execute ENCLU_eax_05h_006");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38062u, "Execute ENCLU_eax_06h_007");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38063u, "Execute ENCLU_eax_07h_008");
+#endif
 }
 
 static void test_sgx()
 {
+	setup_ring_env();
+#ifdef IN_NATIVE
+	sgx_rqmid_36504_check_sgx_physical_support();
+#else
 	sgx_rqmid_27375_write_msr_uncore_prmrr_phys_base();
 	sgx_rqmid_27376_read_msr_prmrr_valid_config();
 	sgx_rqmid_27377_write_msr_prmrr_valid_config();
 	sgx_rqmid_27401_check_sgx_support();
 	sgx_rqmid_27400_guest_cpuid_leaf_12h();
-	sgx_rqmid_27372_read_msr_uncore_prmrr_phys_mask();
-	sgx_rqmid_27373_write_msr_uncore_prmrr_phys_mask();
-	sgx_rqmid_27374_read_msr_uncore_prmrr_phys_base();
-	sgx_rqmid_27384_write_msr_sgxownerepoch1();
-	sgx_rqmid_27382_read_msr_sgxownerepoch1();
-	sgx_rqmid_27387_write_msr_sgxownerepoch0();
-	sgx_rqmid_27386_read_msr_sgxownerepoch0();
-	sgx_rqmid_27379_write_msr_prmrr_phys_mask();
-	sgx_rqmid_27378_read_msr_prmrr_phys_mask();
-	sgx_rqmid_27381_write_msr_prmrr_phys_base();
-	sgx_rqmid_27380_read_msr_prmrr_phys_base();
-	sgx_rqmid_27393_write_ia32_sgxlepubkeyhash3();
-	sgx_rqmid_27392_read_ia32_sgxlepubkeyhash3();
-	sgx_rqmid_27395_write_ia32_sgxlepubkeyhash2();
-	sgx_rqmid_27394_read_ia32_sgxlepubkeyhash2();
-	sgx_rqmid_27397_write_ia32_sgxlepubkeyhash1();
-	sgx_rqmid_27396_read_ia32_sgxlepubkeyhash1();
-	sgx_rqmid_27399_write_ia32_sgxlepubkeyhash0();
-	sgx_rqmid_27398_read_ia32_sgxlepubkeyhash0();
-	sgx_rqmid_27391_write_ia32_sgx_svn_status();
-	sgx_rqmid_27390_read_ia32_sgx_svn_status();
+	sgx_rqmid_32530_read_msr_uncore_prmrr_phys_mask();
+	sgx_rqmid_32529_write_msr_uncore_prmrr_phys_mask();
+	sgx_rqmid_32531_read_msr_uncore_prmrr_phys_base();
+	sgx_rqmid_32532_write_msr_sgxownerepoch1();
+	sgx_rqmid_32533_read_msr_sgxownerepoch1();
+	sgx_rqmid_32534_write_msr_sgxownerepoch0();
+	sgx_rqmid_32535_read_msr_sgxownerepoch0();
+	sgx_rqmid_32536_write_msr_prmrr_phys_mask();
+	sgx_rqmid_32537_read_msr_prmrr_phys_mask();
+	sgx_rqmid_32538_write_msr_prmrr_phys_base();
+	sgx_rqmid_32539_read_msr_prmrr_phys_base();
+	sgx_rqmid_32540_write_ia32_sgxlepubkeyhash3();
+	sgx_rqmid_32541_read_ia32_sgxlepubkeyhash3();
+	sgx_rqmid_32542_write_ia32_sgxlepubkeyhash2();
+	sgx_rqmid_32543_read_ia32_sgxlepubkeyhash2();
+	sgx_rqmid_32544_write_ia32_sgxlepubkeyhash1();
+	sgx_rqmid_32545_read_ia32_sgxlepubkeyhash1();
+	sgx_rqmid_32546_write_ia32_sgxlepubkeyhash0();
+	sgx_rqmid_32547_read_ia32_sgxlepubkeyhash0();
+	sgx_rqmid_32548_write_ia32_sgx_svn_status();
+	sgx_rqmid_32549_read_ia32_sgx_svn_status();
 	sgx_rqmid_32550_check_supported_sgx();
 	sgx_rqmid_27403_ia32_feature_control_startup();
+	sgx_rqmid_38170_write_ia32_feature_control();
+	sgx_rqmid_38171_read_ia32_feature_control();
 #ifdef IN_NON_SAFETY_VM
 	sgx_rqmid_29562_sgx_lauch_bit_init();
+	sgx_rqmid_27404_sgx_enable_init();
 #endif
 	sgx_rqmid_29563_sgx_lauch_bit_startup();
+	sgx_rqmid_38009_encls_eax_00h_001();
+	sgx_rqmid_38010_encls_eax_01h_002();
+	sgx_rqmid_38011_encls_eax_02h_003();
+	sgx_rqmid_38012_encls_eax_03h_004();
+	sgx_rqmid_38013_encls_eax_04h_005();
+	sgx_rqmid_38029_encls_eax_05h_006();
+	sgx_rqmid_38030_encls_eax_06h_007();
+	sgx_rqmid_38031_encls_eax_07h_008();
+	sgx_rqmid_38032_encls_eax_08h_009();
+	sgx_rqmid_38033_encls_eax_09h_010();
+	sgx_rqmid_38034_encls_eax_0Ah_011();
+	sgx_rqmid_38035_encls_eax_0Bh_012();
+	sgx_rqmid_38037_encls_eax_0Ch_013();
+	sgx_rqmid_38039_encls_eax_0Dh_014();
+	sgx_rqmid_38040_encls_eax_0Eh_015();
+	sgx_rqmid_38041_encls_eax_0Fh_016();
+	sgx_rqmid_38042_encls_eax_10h_017();
+	sgx_rqmid_38043_encls_eax_11h_018();
+	sgx_rqmid_38044_encls_eax_12h_019();
+	sgx_rqmid_38045_encls_eax_13h_020();
+
+	sgx_rqmid_38050_enclv_eax_00h_001();
+	sgx_rqmid_38052_enclv_eax_01h_002();
+	sgx_rqmid_38054_enclv_eax_02h_003();
+
+	do_at_ring3(sgx_rqmid_38056_enclu_eax_00h_001, "");
+	do_at_ring3(sgx_rqmid_38057_enclu_eax_01h_002, "");
+	do_at_ring3(sgx_rqmid_38058_enclu_eax_02h_003, "");
+	do_at_ring3(sgx_rqmid_38059_enclu_eax_03h_004, "");
+	do_at_ring3(sgx_rqmid_38060_enclu_eax_04h_005, "");
+	do_at_ring3(sgx_rqmid_38061_enclu_eax_05h_006, "");
+	do_at_ring3(sgx_rqmid_38062_enclu_eax_06h_007, "");
+	do_at_ring3(sgx_rqmid_38063_enclu_eax_07h_008, "");
+#endif
 }
 
 int main(void)
