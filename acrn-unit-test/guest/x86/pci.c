@@ -10,7 +10,8 @@
 #include "fwcfg.h"
 #include "asm/io.h"
 #include "pci_check.h"
-#include "delay.h"
+
+#define GBECSR_5B54      (0x5B54U)
 
 //#define PCI_DEBUG
 #ifdef PCI_DEBUG
@@ -18,10 +19,6 @@
 #else
 #define PCI_DEBUG_LEVEL		DBG_LVL_ERROR
 #endif
-
-#define MAX_PCI_DEV_NUM	(256)
-#define NET_DEV_VENDOR	DEV_VEN(PCI_NET_DEVICE_ID, PCI_NET_VENDOR_ID)
-#define USB_DEV_VENDOR	DEV_VEN(PCI_USB_DEVICE_ID, PCI_USB_VENDOR_ID)
 
 typedef struct pci_capability_node_s {
 	uint8_t cap_id;
@@ -160,6 +157,8 @@ static pci_cfg_reg_t hostbridge_pci_cfg[] =
 };
 
 static __unused int pci_probe_msi_capability(union pci_bdf bdf, uint32_t *msi_addr);
+static __unused int pci_data_check(union pci_bdf bdf, uint32_t offset,
+uint32_t bytes, uint32_t val1, uint32_t val2, bool sw_flag);
 
 static __unused bool is_cap_ptr_exist(pci_capability_node_t *caplist, uint32_t size, uint8_t next_ptr)
 {
@@ -170,6 +169,412 @@ static __unused bool is_cap_ptr_exist(pci_capability_node_t *caplist, uint32_t s
 		}
 	}
 	return false;
+}
+
+static __unused
+bool test_host_MSI_Next_PTR(uint32_t dev_ven)
+{
+	int ret = OK;
+	bool is_pass = false;
+	union pci_bdf bdf = {0};
+	uint32_t reg_addr = 0U;
+	uint32_t reg_addr1 = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		if (ret == OK) {
+			/*Read The Next pointer*/
+			reg_addr1 = reg_addr + 1;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 1);
+			ret |= pci_data_check(bdf, reg_addr1, 1, 0x00U, reg_val, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+
+static __unused
+bool test_host_MSI_message_control_write(uint32_t dev_ven)
+{
+	int ret = OK;
+	bool is_pass = false;
+	union pci_bdf bdf = {0};
+	uint32_t reg_addr = 0U;
+	uint32_t reg_addr1 = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	uint32_t reg_val_ori = INVALID_REG_VALUE_U;
+	uint32_t value = 0U;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		if (ret == OK) {
+			reg_addr1 = reg_addr + PCI_MSI_FLAGS;
+			reg_val_ori = pci_pdev_read_cfg(bdf, reg_addr1, 2);
+			reg_val = reg_val_ori;
+			reg_val &= SHIFT_UMASK(6, 4);
+			reg_val |= SHIFT_LEFT(1, 5);
+			/*write 0x10<<1 to bit[15:1]*/
+			pci_pdev_write_cfg(bdf, reg_addr1, 2, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 2);
+			value |= SHIFT_LEFT(1, 5);
+			/*The reg_val should not be equal to 0x10<<1*/
+			ret |= pci_data_check(bdf, reg_addr1, 2, (reg_val & SHIFT_MASK(6, 4)),\
+								(value & SHIFT_MASK(6, 4)), true);
+			/*The reg_val should be equal to reg_val_ori*/
+			ret |= pci_data_check(bdf, reg_addr1, 2, reg_val, reg_val_ori, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+static __unused
+bool test_host_MSI_message_control_read(uint32_t dev_ven)
+{
+	int ret = OK;
+	bool is_pass = false;
+	union pci_bdf bdf = {0};
+	uint32_t reg_addr = 0U;
+	uint32_t reg_addr1 = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		if (ret == OK) {
+			reg_addr1 = reg_addr + PCI_MSI_FLAGS;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 2);
+			reg_val &= 0xFFFE;
+			ret |= pci_data_check(bdf, reg_addr1, 2, SHIFT_LEFT(0x40U, 1), reg_val, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+static __unused
+bool test_host_MSI_message_address_redirection_hint_write(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_addr1 = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	uint32_t reg_val_ori = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr1 = reg_addr + PCI_MSI_ADDRESS_LO;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			reg_val_ori = reg_val;
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			reg_val = reg_val & SHIFT_UMASK(3, 0);
+			reg_val |= 0x04U;
+			pci_pdev_write_cfg(bdf, reg_addr1, 4, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			/*The read value should not be equal to the write value*/
+			ret |= pci_data_check(bdf, reg_addr1, 4, 0x04U, (reg_val & SHIFT_MASK(3, 0)), true);
+			/*The read value should be equal to the original value*/
+			ret |= pci_data_check(bdf, reg_addr1, 4, (reg_val_ori & SHIFT_MASK(3, 0)),\
+								(reg_val & SHIFT_MASK(3, 0)), false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+
+static __unused
+bool test_host_MSI_message_address_redirection_hint_read(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_addr1 = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr1 = reg_addr + PCI_MSI_ADDRESS_LO;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			reg_val = reg_val & 0xFU;
+			ret |= pci_data_check(bdf, reg_addr1, 4, 0U, reg_val, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+static __unused
+bool test_host_MSI_message_address_int_msg_addr_write(uint32_t dev_ven)
+{
+	uint32_t reg_val_ori = INVALID_REG_VALUE_U;
+	uint32_t reg_addr = 0U;
+	uint32_t reg_addr1 = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		if (ret == OK) {
+			/*message address L register address = pointer + 0x4*/
+			reg_addr1 = reg_addr + PCI_MSI_ADDRESS_LO;
+
+			reg_val_ori = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr1, reg_val_ori);
+
+			uint32_t lapic_id = apic_id();
+			uint32_t msg_addr = MAKE_NET_MSI_MESSAGE_ADDR(0xA5500000, lapic_id);
+			/*write 0xA5500000 to Message address[20:64]*/
+			pci_pdev_write_cfg(bdf, reg_addr1, 4, msg_addr);
+			DBG_INFO("msg_addr = %x", msg_addr);
+
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			reg_val = reg_val & SHIFT_MASK(31, 20);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr1, reg_val);
+			/*The Message address should not be equal to 0xA5500000*/
+			ret |= pci_data_check(bdf, reg_addr1, 4, msg_addr, reg_val, true);
+
+			/*The Message address should be equal to original val*/
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			ret |= pci_data_check(bdf, reg_addr1, 4, reg_val_ori, reg_val, false);
+
+			/*Message address H register address = pointer + 0x8*/
+			reg_addr1 = reg_addr + PCI_MSI_ADDRESS_HI;
+
+			reg_val_ori = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr1, reg_val_ori);
+
+			pci_pdev_write_cfg(bdf, reg_addr1, 4, 0x0000000A);
+
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr1, reg_val);
+			/*The Message address should not be equal to 0xA5500000*/
+			ret |= pci_data_check(bdf, reg_addr1, 4, 0x0000000A, reg_val, true);
+
+			/*The Message address should be equal to original val*/
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			ret |= pci_data_check(bdf, reg_addr1, 4, reg_val_ori, reg_val, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+
+static __unused
+bool test_host_MSI_message_data_delivery_mode_write(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	uint32_t reg_val_ori = INVALID_REG_VALUE_U;
+	uint32_t value = 0U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr = reg_addr + PCI_MSI_DATA_64;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			reg_val_ori = reg_val;
+			reg_val &= SHIFT_UMASK(10, 8);
+			reg_val |= SHIFT_LEFT(0x1, 8);
+			pci_pdev_write_cfg(bdf, reg_addr, 2, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			value |= SHIFT_LEFT(0x1, 8);
+			/*The read value should not be equal to the write value*/
+			ret |= pci_data_check(bdf, reg_addr, 2, (value & SHIFT_MASK(10, 8)),\
+								(reg_val & SHIFT_MASK(10, 8)), true);
+			/*The read value should be equal to the original value*/
+			ret |= pci_data_check(bdf, reg_addr, 2, (reg_val_ori & SHIFT_MASK(10, 8)),\
+								(reg_val & SHIFT_MASK(10, 8)), false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+static __unused
+bool test_host_MSI_message_address_interrupt_message_address_read(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_addr1 = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr1 = reg_addr + PCI_MSI_ADDRESS_LO;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			ret |= pci_data_check(bdf, reg_addr1, 4, 0x0FEE0000U,\
+								(reg_val & SHIFT_MASK(31, 20)), false);
+			reg_addr1 = reg_addr + PCI_MSI_ADDRESS_HI;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 4);
+			ret |= pci_data_check(bdf, reg_addr1, 4, 0x00000000U,\
+								(reg_val), false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+static __unused
+bool test_host_MSI_message_data_delivery_mode_read(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr = reg_addr + PCI_MSI_DATA_64;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			ret |= pci_data_check(bdf, reg_addr, 2, 0, (reg_val & SHIFT_MASK(10, 8)), false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+
+static __unused
+bool test_host_MSI_message_data_trigger_mode_read(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	uint32_t value = 0U;
+	value |= SHIFT_LEFT(1, 14);
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr = reg_addr + PCI_MSI_DATA_64;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			ret |= pci_data_check(bdf, reg_addr, 2, (value & SHIFT_MASK(15, 14)),\
+								(reg_val & SHIFT_MASK(15, 14)), false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+static __unused
+bool test_host_MSI_message_data_trigger_mode_write(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	uint32_t reg_val_ori = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr = reg_addr + PCI_MSI_DATA_64;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			reg_val_ori = reg_val;
+			reg_val |= SHIFT_LEFT(0x3, 14);
+			pci_pdev_write_cfg(bdf, reg_addr, 2, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			/*The read value should not be equal to the write value*/
+			ret |= pci_data_check(bdf, reg_addr, 2, SHIFT_LEFT(0x3, 14),\
+									(reg_val & SHIFT_LEFT(0x3, 14)), true);
+			/*The read value should be equal to the original value*/
+			ret |= pci_data_check(bdf, reg_addr, 2, (reg_val_ori & SHIFT_LEFT(0x3, 14)),\
+								(reg_val & SHIFT_LEFT(0x3, 14)), false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
+}
+
+static __unused
+bool test_MSI_message_address_destination_field_rw(uint32_t dev_ven)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	uint32_t apic_id1 = 0;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			reg_addr = reg_addr + PCI_MSI_ADDRESS_LO;
+			/*read the original MSI address lo value*/
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			/*Write APIC ID to Destination ID field*/
+			apic_id1 = apic_id();
+			apic_id1 &= 0xFFU;
+			reg_val &= SHIFT_UMASK(19, 12);
+			reg_val |= SHIFT_LEFT(apic_id1, 12);
+			/*write the MSI address value*/
+			pci_pdev_write_cfg(bdf, reg_addr, 4, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			/*Extract APIC ID from Destination ID field*/
+			reg_val &= SHIFT_MASK(19, 12);
+			reg_val = SHIFT_RIGHT(reg_val, 12);
+			reg_val &= 0xFF;
+			ret |= pci_data_check(bdf, reg_addr, 1, reg_val, apic_id1, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	return is_pass;
 }
 
 static __unused
@@ -633,7 +1038,7 @@ static __unused void pci_rqmid_28936_PCIe_config_space_and_host_2_byte_BAR_read_
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 2);
 		reg_val &= 0xFFFFU;
 		/*Dump  the #BAR0 register*/
-		DBG_INFO("\nDump the #BAR0 register, #BAR0 = 0x%x \n", reg_val);
+		DBG_INFO("Dump the #BAR0 register, #BAR0 = 0x%x ", reg_val);
 		ret |= pci_data_check(bdf, PCIR_BAR(0), 2, 0xFFFF, reg_val, false);
 		/*Verify that the #BAR0 register value is 0xFFFF*/
 		is_pass = (ret == OK) ? true : false;
@@ -662,11 +1067,14 @@ static __unused void pci_rqmid_28887_PCIe_config_space_host_MSI_message_data_vec
 		/*Check if probe to MSI CAP register*/
 		if (ret == OK) {
 			/*Set 1byte  to the #Message Data register*/
-			reg_addr = reg_addr + 0xC;
-			pci_pdev_write_cfg(bdf, reg_addr, 2, 0x30);
+			reg_addr = reg_addr + PCI_MSI_DATA_64;
 			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
-			DBG_INFO("\nDump #Message register = 0x%x \n", reg_val);
-			ret |= pci_data_check(bdf, reg_addr, 2, 0x30, reg_val, false);
+			reg_val &= 0xFF00;
+			reg_val |= 0x30;
+			pci_pdev_write_cfg(bdf, reg_addr, 2, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			DBG_INFO("Dump #Message register = 0x%x ", reg_val);
+			ret |= pci_data_check(bdf, reg_addr, 2, 0x30, (reg_val & 0xFFU), false);
 		}
 		is_pass = (ret == OK) ? true : false;
 	}
@@ -691,13 +1099,13 @@ static __unused void pci_rqmid_28861_PCIe_config_space_and_host_Unmapping_upon_B
 		/*Dump the #BAR0 register*/
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
 		bar_base = reg_val;
-		DBG_INFO("\nDump origin bar_base=%x \n", reg_val);
+		DBG_INFO("Dump origin bar_base=%x", reg_val);
 
 		/*Set the BAR0 register*/
 		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, BAR_REMAP_BASE);
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
 
-		DBG_INFO("Dump new bar_base=%x \n", reg_val);
+		DBG_INFO("Dump new bar_base=%x", reg_val);
 
 		/*Read the data from the address of the #BAR0 original value*/
 		asm volatile(ASM_TRY("1f")
@@ -735,7 +1143,7 @@ static __unused void pci_rqmid_28792_PCIe_config_space_and_host_write_Reserved_r
 		pci_pdev_write_cfg(bdf, PCI_CONFIG_RESERVE, 2, reg_val);
 		reg_val = pci_pdev_read_cfg(bdf, PCI_CONFIG_RESERVE, 2);
 		/*	Dump the #reserved register*/
-		DBG_INFO("\nDump #PCIR_REV(0x36) = 0x%x \n", reg_val);
+		DBG_INFO("Dump #PCIR_REV(0x36) = 0x%x", reg_val);
 		/*Verify that the data from #reserved register is default value*/
 		ret |= pci_data_check(bdf, PCI_CONFIG_RESERVE, 2, 0, reg_val, false);
 		is_pass = (ret == OK) ? true : false;
@@ -759,7 +1167,7 @@ static __unused void pci_rqmid_28829_PCIe_config_space_and_host_Status_Register_
 	if (is_pass) {
 		/*Dump the #status Register value for the NET devices in the hypervisor environment*/
 		reg_val = pci_pdev_read_cfg(bdf, PCI_STATUS, 2);
-		DBG_INFO("\nDump the status Register value [%xH] = [%xH]\n", PCI_STATUS, reg_val);
+		DBG_INFO("Dump the status Register value [%xH] = [%xH]", PCI_STATUS, reg_val);
 		is_pass = (PCI_NET_STATUS_VAL_NATIVE == reg_val) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -777,59 +1185,8 @@ static __unused void pci_rqmid_28829_PCIe_config_space_and_host_Status_Register_
  */
 static __unused void pci_rqmid_28893_PCIe_config_space_and_host_MSI_message_address_int_msg_addr_write_002(void)
 {
-	uint32_t reg_val_ori = INVALID_REG_VALUE_U;
-	uint32_t reg_addr = 0U;
-	uint32_t reg_val = INVALID_REG_VALUE_U;
 	bool is_pass = false;
-	int ret = OK;
-	union pci_bdf bdf = {0};
-	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
-	if (is_pass) {
-		/*pci probe and check MSI capability register*/
-		ret = pci_probe_msi_capability(bdf, &reg_addr);
-		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
-		if (ret == OK) {
-			/*message address L register address = pointer + 0x4*/
-			reg_addr = reg_addr + 4;
-
-			reg_val_ori = pci_pdev_read_cfg(bdf, reg_addr, 4);
-			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val_ori);
-
-			uint32_t lapic_id = apic_id();
-			uint32_t msg_addr = MAKE_NET_MSI_MESSAGE_ADDR(0xA5500000, lapic_id);
-			/*write 0xA5500000 to Message address[20:64]*/
-			pci_pdev_write_cfg(bdf, reg_addr, 4, msg_addr);
-			DBG_INFO("msg_addr = %x", msg_addr);
-
-			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
-			reg_val = reg_val & SHIFT_MASK(31, 20);
-			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
-			/*The Message address should not be equal to 0xA5500000*/
-			ret |= pci_data_check(bdf, reg_addr, 4, msg_addr, reg_val, true);
-
-			/*The Message address should be equal to original val*/
-			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
-			ret |= pci_data_check(bdf, reg_addr, 4, reg_val_ori, reg_val, false);
-
-			/*Message address H register address = pointer + 0x8*/
-			reg_addr = reg_addr + 4;
-
-			reg_val_ori = pci_pdev_read_cfg(bdf, reg_addr, 4);
-			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val_ori);
-
-			pci_pdev_write_cfg(bdf, reg_addr, 4, 0x0000000A);
-
-			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
-			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
-			/*The Message address should not be equal to 0xA5500000*/
-			ret |= pci_data_check(bdf, reg_addr, 4, 0x0000000A, reg_val, true);
-
-			/*The Message address should be equal to original val*/
-			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
-			ret |= pci_data_check(bdf, reg_addr, 4, reg_val_ori, reg_val, false);
-		}
-		is_pass = (ret == OK) ? true : false;
-	}
+	is_pass = test_host_MSI_message_address_int_msg_addr_write(NET_DEV_VENDOR);
 	report("%s", is_pass, __FUNCTION__);
 	return;
 }
@@ -838,7 +1195,7 @@ static uint64_t g_get_msi_int = 0;
 static __unused int msi_int_handler(void *p_arg)
 {
 	uint32_t lapic_id = apic_id();
-	DBG_INFO("\n[ int ]Run %s(%p), lapic_id=%d \r\n", __func__, p_arg, lapic_id);
+	DBG_INFO("[ int ]Run %s(%p), lapic_id=%d", __func__, p_arg, lapic_id);
 	g_get_msi_int |= SHIFT_LEFT(1UL, lapic_id);
 	return 0;
 }
@@ -922,7 +1279,7 @@ static __unused void pci_rqmid_33822_PCIe_config_space_and_host_MSI_message_addr
 		unsigned nr_cpu = fwcfg_get_nb_cpus();
 		nr_cpu = (nr_cpu > 2) ? 2 : nr_cpu;
 		ap_lapic_id = find_first_apic_id();
-		DBG_INFO("\nnr_cpu=%d ap_lapic_id=%d\n", nr_cpu, ap_lapic_id);
+		DBG_INFO("nr_cpu=%d ap_lapic_id=%d", nr_cpu, ap_lapic_id);
 		/*pci probe and check MSI capability register*/
 		ret = pci_probe_msi_capability(bdf, &reg_addr);
 		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
@@ -931,7 +1288,7 @@ static __unused void pci_rqmid_33822_PCIe_config_space_and_host_MSI_message_addr
 			for (i = 0; i < nr_cpu; i++) {
 				e1000e_msi_reset();
 				lapic_id = (i == 0) ? apic_id() : ap_lapic_id;
-				DBG_INFO("\nDump APIC id lapic_id = %x, ap_lapic_id=%x\n", lapic_id, ap_lapic_id);
+				DBG_INFO("Dump APIC id lapic_id = %x, ap_lapic_id=%x", lapic_id, ap_lapic_id);
 				uint32_t msi_msg_addr_lo = MAKE_NET_MSI_MESSAGE_ADDR(0xFEE00000, lapic_id);
 				uint32_t msi_msg_addr_hi = 0U;
 				uint32_t msi_msg_data = MAKE_NET_MSI_MESSAGE_DATA(MSI_NET_IRQ_VECTOR);
@@ -983,7 +1340,7 @@ static __unused void pci_rqmid_33823_PCIe_config_space_and_host_invalid_destinat
 			/*message address L register address = pointer + 0x4*/
 			e1000e_msi_reset();
 			lapic_id = apic_id();
-			DBG_INFO("\nDump APIC id lapic_id = %x\n", lapic_id);
+			DBG_INFO("Dump APIC id lapic_id = %x", lapic_id);
 			/*write a invalid destination ID 111 to a guest message address register [bit 19:12]*/
 			uint32_t msi_msg_addr_lo = MAKE_NET_MSI_MESSAGE_ADDR(0xFEE00000, INVALID_APIC_ID_A);
 			uint32_t msi_msg_addr_hi = 0U;
@@ -1044,7 +1401,7 @@ static __unused void pci_rqmid_25298_PCIe_config_space_and_host_Write_Reserved_r
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val |= SHIFT_MASK(18, 11);
-		DBG_INFO("\n reg_val = 0x%08x \n", reg_val);
+		DBG_INFO("reg_val = 0x%08x", reg_val);
 		pci_pdev_write_cfg(bdf, PCI_COMMAND, 4, reg_val);
 		reg_val_new = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val &= SHIFT_MASK(18, 11);
@@ -1070,7 +1427,7 @@ static __unused void pci_rqmid_28791_PCIe_config_space_and_host_Write_Reserved_r
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val |= SHIFT_MASK(18, 11);
-		DBG_INFO("\n reg_val = 0x%08x \n", reg_val);
+		DBG_INFO("reg_val = 0x%08x", reg_val);
 		pci_pdev_write_cfg(bdf, PCI_COMMAND, 4, reg_val);
 		reg_val_new = pci_pdev_read_cfg(bdf, PCI_COMMAND, 4);
 		reg_val &= SHIFT_MASK(18, 11);
@@ -1424,7 +1781,7 @@ static __unused
 void pci_rqmid_28741_PCIe_config_space_and_host_Mapping_upon_BAR_writes_001(void)
 {
 	union pci_bdf bdf = {0};
-	uint32_t bar_base = 0U;
+	mem_size bar_base = 0U;
 	uint32_t bar_base_old = 0U;
 	uint32_t reg_val = 0U;
 	bool is_pass = false;
@@ -1433,11 +1790,12 @@ void pci_rqmid_28741_PCIe_config_space_and_host_Mapping_upon_BAR_writes_001(void
 		bar_base_old = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
 		reg_val = pci_pdev_read_mem(bdf, (mem_size)phys_to_virt(bar_base_old + HCIVERSION), 2);
 		if (reg_val != 0xFFFF) {
-			pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, virt_to_phys((void *)BAR_REMAP_BASE_2));
+			pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, BAR_REMAP_BASE_2);
 			reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
 			DBG_INFO("R reg[%xH] = [%xH]", PCIR_BAR(0), reg_val);
-			bar_base = SHIFT_MASK(31, 8) & reg_val;
-			reg_val = pci_pdev_read_mem(bdf, bar_base + HCIVERSION, 2);
+			bar_base = SHIFT_MASK(31, 4) & reg_val;
+			bar_base = (mem_size)phys_to_virt(bar_base + HCIVERSION);
+			reg_val = pci_pdev_read_mem(bdf, bar_base, 2);
 			pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar_base_old);
 		}
 		is_pass = (HCIVERSION_VALUE == reg_val) ? true : false;
@@ -1457,21 +1815,22 @@ static __unused
 void pci_rqmid_28862_PCIe_config_space_and_host_Mapping_upon_BAR_writes_002(void)
 {
 	union pci_bdf bdf = {0};
-	uint32_t bar_base = 0U;
+	mem_size bar_base = 0U;
 	uint32_t bar_base_old = 0U;
 	uint32_t reg_val = 0U;
 	bool is_pass = false;
 	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
 	if (is_pass) {
 		bar_base_old = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
-		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, virt_to_phys((void *)BAR_REMAP_BASE));
+		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, BAR_REMAP_BASE);
 		reg_val = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
-		DBG_INFO("\nR reg[%xH] = [%xH]", PCIR_BAR(0), reg_val);
-		bar_base = SHIFT_MASK(31, 8) & reg_val;
-		reg_val = pci_pdev_read_mem(bdf, bar_base + GBECSR_00, 4);
-		DBG_INFO("\n reg_val = 0x%x \n", reg_val);
+		DBG_INFO("R reg[%xH] = [%xH]", PCIR_BAR(0), reg_val);
+		bar_base = SHIFT_MASK(31, 4) & reg_val;
+		bar_base = (mem_size)phys_to_virt(bar_base + GBECSR_5B54);
+		reg_val = pci_pdev_read_mem(bdf, bar_base, 4);
 		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar_base_old);
-		is_pass = (GBECSR_00_VALUE == reg_val) ? true : false;
+		reg_val &= SHIFT_LEFT(1, 15);
+		is_pass = (reg_val == SHIFT_LEFT(1, 15)) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
@@ -1486,7 +1845,7 @@ static __unused
 void pci_rqmid_28863_PCIe_config_space_and_host_PCI_hole_range_002(void)
 {
 	union pci_bdf bdf = {0};
-	uint32_t bar_base = 0U;
+	mem_size bar_base = 0U;
 	uint32_t bar_val = 0U;
 	uint32_t reg_val = 0u;
 	bool is_pass = false;
@@ -1501,9 +1860,11 @@ void pci_rqmid_28863_PCIe_config_space_and_host_PCI_hole_range_002(void)
 			for (bar_val = BAR_HOLE_LOW; bar_val < BAR_HOLE_HIGH; bar_val += BAR_ALLIGN_NET) {
 				pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar_val);
 				bar_base = SHIFT_UMASK(31, 0);
-				bar_base = SHIFT_MASK(31, 8) & bar_val;
-				reg_val = pci_pdev_read_mem(bdf, bar_base + GBECSR_00, 4);
-				ret |= pci_data_check(bdf, bar_base, 4, GBECSR_00_VALUE, reg_val, false);
+				bar_base = SHIFT_MASK(31, 4) & bar_val;
+				bar_base = (mem_size)phys_to_virt(bar_base + GBECSR_5B54);
+				reg_val = pci_pdev_read_mem(bdf, bar_base, 4);
+				reg_val &= SHIFT_LEFT(1, 15);
+				ret |= pci_data_check(bdf, bar_base, 4, SHIFT_LEFT(1, 15), reg_val, false);
 			}
 			is_pass = (ret == OK) ? true : false;
 		}
@@ -1522,7 +1883,7 @@ static __unused
 void pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_001(void)
 {
 	union pci_bdf bdf = {0};
-	uint32_t bar_base = 0U;
+	mem_size bar_base = 0U;
 	uint32_t bar_val = 0U;
 	uint32_t reg_val = 0u;
 	bool is_pass = false;
@@ -1537,8 +1898,9 @@ void pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_001(void)
 			for (bar_val = BAR_HOLE_LOW; bar_val < BAR_HOLE_HIGH; bar_val += BAR_ALLIGN_USB) {
 				pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar_val);
 				bar_base = SHIFT_UMASK(31, 0);
-				bar_base = SHIFT_MASK(31, 8) & bar_val;
-				reg_val = pci_pdev_read_mem(bdf, bar_base + HCIVERSION, 2);
+				bar_base = SHIFT_MASK(31, 4) & bar_val;
+				bar_base = (mem_size)phys_to_virt(bar_base + HCIVERSION);
+				reg_val = pci_pdev_read_mem(bdf, bar_base, 2);
 				ret |= pci_data_check(bdf, bar_base, 2, HCIVERSION_VALUE, reg_val, false);
 			}
 			is_pass = (ret == OK) ? true : false;
@@ -1968,7 +2330,7 @@ static __unused void pci_rqmid_29069_PCIe_config_space_and_host_Address_register
 	/*Read the BP start-up PCI address register 0xCF8*/
 	uint32_t reg_val = 0U;
 	reg_val = *(volatile uint32_t *)(0x7000);
-	DBG_INFO("\nThe BP start-up PCI address value = %x \n", reg_val);
+	DBG_INFO("The BP start-up PCI address value = %x", reg_val);
 	/*The read value should be 00FFFF00H.*/
 	is_pass = (reg_val == 0x00FFFF00U);
 	report("%s", is_pass, __FUNCTION__);
@@ -1985,7 +2347,7 @@ static __unused void pci_rqmid_37250_PCIe_config_space_and_host_Address_register
 	/*Read the AP init PCI address register 0xCF8*/
 	uint32_t reg_val = 0U;
 	reg_val = *(volatile uint32_t *)(0x7004);
-	DBG_INFO("\nThe AP init PCI address value = %x \n", reg_val);
+	DBG_INFO("The AP init PCI address value = %x", reg_val);
 	/*The read value should be 00FFFF00H.*/
 	is_pass = (reg_val == 0x00FFFF00U);
 	report("%s", is_pass, __FUNCTION__);
@@ -2284,7 +2646,7 @@ void pci_rqmid_28928_PCIe_config_space_and_host_Hostbridge_Interrupt_Line_001(vo
 	is_pass = is_dev_exist_by_bdf(pci_devs, nr_pci_devs, bdf);
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_INTERRUPT_LINE, 1);
-		DBG_INFO("\nhostbridge Interrupt Line reg_val=%x\n", reg_val);
+		DBG_INFO("hostbridge Interrupt Line reg_val=%x", reg_val);
 		is_pass = (reg_val == 0xFF) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2845,7 +3207,7 @@ void pci_rqmid_26806_PCIe_config_space_and_host_Interrupt_Pin_Register_001(void)
 	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_INTERRUPT_PIN, 1);
-		DBG_INFO("\n USB Interrupt Pin reg_val=%x \n", reg_val);
+		DBG_INFO("USB Interrupt Pin reg_val=%x", reg_val);
 		is_pass = (reg_val == 0x00) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2866,7 +3228,7 @@ void pci_rqmid_28796_PCIe_config_space_and_host_Interrupt_Pin_Register_002(void)
 	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_INTERRUPT_PIN, 1);
-		DBG_INFO("\n NET Interrupt Pin reg_val=%x \n", reg_val);
+		DBG_INFO("NET Interrupt Pin reg_val=%x", reg_val);
 		is_pass = (reg_val == 0x00) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2952,6 +3314,20 @@ void pci_rqmid_27742_PCIe_config_space_and_host_1_Byte_CFEH_Write_with_Disabled_
 {
 	bool is_pass = false;
 	is_pass = test_Write_with_Disabled_Config_Address(PCI_MSI_FLAGS, 1, 0x01, 0xCFE);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_1-Byte CFDH Write with Disabled Config Address_001
+ *
+ * Summary: When a vCPU attempts to write 1 byte to guest I/O port address CFDH and
+ * current guest PCI address register value [bit 31] is 0H,ACRN hypervisor shall ignore the write.
+ */
+static __unused
+void pci_rqmid_27744_PCIe_config_space_and_host_1_Byte_CFDH_Write_with_Disabled_Config_Address_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_Write_with_Disabled_Config_Address(PCI_MSI_ADDRESS_LO, 1, 0x01, 0xCFD);
 	report("%s", is_pass, __FUNCTION__);
 }
 
@@ -3915,10 +4291,626 @@ void pci_rqmid_25292_PCIe_config_space_and_host_Config_Address_Port_001(void)
 	report("%s", is_pass, __FUNCTION__);
 }
 
+/*
+ * @brief case name:PCIe config space and host_MSI message-address destination ID read-write_002
+ *
+ * Summary:Message address register [bit 19:12] of guest PCI configuration MSI capability
+ * structure shall be a read-write bits field.
+ */
+static __unused
+void pci_rqmid_28884_PCIe_config_space_and_host_MSI_message_address_destination_ID_read_write_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_MSI_message_address_destination_field_rw(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address destination ID read-write_001
+ *
+ * Summary:Message address register [bit 19:12] of guest PCI configuration MSI capability
+ * structure shall be a read-write bits field.
+ */
+static __unused
+void pci_rqmid_28882_PCIe_config_space_and_host_MSI_message_address_destination_ID_read_write_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_MSI_message_address_destination_field_rw(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-data vector read-write_002
+ *
+ * Summary:Message data register [bit 7:0] of guest PCI configuration MSI capability
+ * structure shall be a read-write bits field.
+ */
+static __unused
+void pci_rqmid_28886_PCIe_config_space_and_host_MSI_message_data_vector_read_write_002(void)
+{
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	bool is_pass = false;
+	int ret = OK;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		/*pci probe and check MSI capability register*/
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		DBG_INFO("ret=%x, msi reg_addr=%x", ret, reg_addr);
+		/*Check if probe to MSI CAP register*/
+		if (ret == OK) {
+			/*Set 1byte  to the #Message Data register*/
+			reg_addr = reg_addr + PCI_MSI_DATA_64;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			reg_val &= 0xFF00;
+			reg_val |= 0x30;
+			pci_pdev_write_cfg(bdf, reg_addr, 2, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			DBG_INFO("Dump #Message register = 0x%x", reg_val);
+			ret |= pci_data_check(bdf, reg_addr, 2, 0x30, (reg_val & 0xFFU), false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-data trigger mode read_002
+ *
+ * Summary:When a vCPU attempts to read a guest message data register [bit 15:14] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 1H.
+ */
+static __unused
+void pci_rqmid_28909_PCIe_config_space_and_host_MSI_message_data_trigger_mode_read_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_trigger_mode_read(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-data trigger mode read_001
+ *
+ * Summary:When a vCPU attempts to read a guest message data register [bit 15:14] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 1H.
+ */
+static __unused
+void pci_rqmid_28908_PCIe_config_space_and_host_MSI_message_data_trigger_mode_read_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_trigger_mode_read(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe_config_space_and_host_MSI message-data trigger mode write_002
+ *
+ * Summary:When a vCPU attempts to write a guest message data register [bit 15:14]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor
+ * shall guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28889_PCIe_config_space_and_host_MSI_message_data_trigger_mode_write_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_trigger_mode_write(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+
+/*
+ * @brief case name:PCIe_config_space_and_host_MSI message-data trigger mode write_001
+ *
+ * Summary:When a vCPU attempts to write a guest message data register [bit 15:14]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor
+ * shall guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28888_PCIe_config_space_and_host_MSI_message_data_trigger_mode_write_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_trigger_mode_write(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-data delivery mode read_001
+ *
+ * Summary:When a vCPU attempts to read a guest message data register [bit 10:8] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 0H.
+ */
+static __unused
+void pci_rqmid_28911_PCIe_config_space_and_host_MSI_message_data_delivery_mode_read_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_delivery_mode_read(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-data delivery mode read_002
+ *
+ * Summary:When a vCPU attempts to read a guest message data register [bit 10:8] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 0H.
+ */
+static __unused
+void pci_rqmid_28910_PCIe_config_space_and_host_MSI_message_data_delivery_mode_read_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_delivery_mode_read(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-data delivery mode write_001
+ *
+ * Summary:When a vCPU attempts to write a guest message data register [bit 10:8]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor
+ * shall guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28892_PCIe_config_space_and_host_MSI_message_data_delivery_mode_write_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_delivery_mode_write(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-data delivery mode write_002
+ *
+ * Summary:When a vCPU attempts to write a guest message data register [bit 10:8]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor
+ * shall guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28891_PCIe_config_space_and_host_MSI_message_data_delivery_mode_write_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_data_delivery_mode_write(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address interrupt message address read_001
+ *
+ * Summary:When a vCPU attempts to read a guest message address register [bit 64:20]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 0FEEH.
+ */
+static __unused
+void pci_rqmid_28914_PCIe_config_space_and_host_MSI_message_address_interrupt_message_address_read_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_address_interrupt_message_address_read(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address interrupt message address read_002
+ *
+ * Summary:When a vCPU attempts to read a guest message address register [bit 64:20]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 0FEEH.
+ */
+static __unused
+void pci_rqmid_28915_PCIe_config_space_and_host_MSI_message_address_interrupt_message_address_read_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_address_interrupt_message_address_read(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address interrupt message address write_001
+ *
+ * Summary:When a vCPU attempts to write a guest message address register [bit 64:20] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28894_PCIe_config_space_and_host_MSI_message_address_interrupt_message_address_write_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_address_int_msg_addr_write(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+	return;
+}
+
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address redirection hint read_002
+ *
+ * Summary:When a vCPU attempts to read a guest message address register [bit 3:0] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 0H.
+ */
+static __unused
+void pci_rqmid_28916_PCIe_config_space_and_host_MSI_message_address_redirection_hint_read_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_address_redirection_hint_read(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address redirection hint read_001
+ *
+ * Summary:When a vCPU attempts to read a guest message address register [bit 3:0] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the vCPU gets 0H.
+ */
+static __unused
+void pci_rqmid_28917_PCIe_config_space_and_host_MSI_message_address_redirection_hint_read_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_address_redirection_hint_read(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address redirection hint write_001
+ *
+ * Summary:When a vCPU attempts to write a guest message address register [bit 3:0] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28896_PCIe_config_space_and_host_MSI_message_address_redirection_hint_write_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_address_redirection_hint_write(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-address redirection hint write_002
+ *
+ * Summary:When a vCPU attempts to write a guest message address register [bit 3:0] of
+ * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
+ * guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28895_PCIe_config_space_and_host_MSI_message_address_redirection_hint_write_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_address_redirection_hint_write(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-control read_001
+ *
+ * Summary:When a vCPU attempts to read a guest message control register [bit 15:1]
+ * of the PCI MSI capability structure of an assigned PCIe device,
+ * ACRN hypervisor shall guarantee that the vCPU gets 40H.
+ */
+static __unused
+void pci_rqmid_28918_PCIe_config_space_and_host_MSI_message_control_read_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_control_read(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-control read_002
+ *
+ * Summary:When a vCPU attempts to read a guest message control register [bit 15:1]
+ * of the PCI MSI capability structure of an assigned PCIe device,
+ * ACRN hypervisor shall guarantee that the vCPU gets 40H.
+ */
+static __unused
+void pci_rqmid_28920_PCIe_config_space_and_host_MSI_message_control_read_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_control_read(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-control write_001
+ *
+ * Summary:When a vCPU attempts to write a guest message control register [bit 15:1]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor
+ * shall guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28899_PCIe_config_space_and_host_MSI_message_control_write_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_control_write(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI message-control write_002
+ *
+ * Summary:When a vCPU attempts to write a guest message control register [bit 15:1]
+ * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor
+ * shall guarantee that the write to the bits is ignored.
+ */
+static __unused
+void pci_rqmid_28897_PCIe_config_space_and_host_MSI_message_control_write_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_message_control_write(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI Next-PTR_001
+ *
+ * Summary:When a vCPU attempts to read a guest next pointer of the PCI MSI capability
+ * structure of an assigned PCIe device, ACRN hypervisor shall guarantee that the vCPU gets 00H.
+ */
+static __unused
+void pci_rqmid_28923_PCIe_config_space_and_host_MSI_Next_PTR_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_Next_PTR(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI Next-PTR_002
+ *
+ * Summary:When a vCPU attempts to read a guest next pointer of the PCI MSI capability
+ * structure of an assigned PCIe device, ACRN hypervisor shall guarantee that the vCPU gets 00H.
+ */
+static __unused
+void pci_rqmid_28921_PCIe_config_space_and_host_MSI_Next_PTR_002(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_MSI_Next_PTR(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI capability structure_001
+ *
+ * Summary:ACRN hypervisor shall expose PCIe MSI capability structure of any PCIe device
+ * to the VM which the PCIe device is assigned to, in compliance with Chapter 7.7, PCIe BS and Chapter 6.8, PCI LBS.
+ */
+static __unused
+void pci_rqmid_26821_PCIe_config_space_and_host_MSI_capability_structure_001(void)
+{
+	int ret = OK;
+	bool is_pass = false;
+	union pci_bdf bdf = {0};
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		if (ret == OK) {
+			/*for MSI base*/
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			/*msi-controller=0x40<<1,next-pointer=0x00,msi id=0x05*/
+			ret |= pci_data_check(bdf, reg_addr, 4,\
+			(SHIFT_LEFT(SHIFT_LEFT(0x40, 1), 16) | 0x05), reg_val, false);
+			/*for message-address*/
+			reg_addr += 4;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
+			reg_val = reg_val & (SHIFT_MASK(31, 20) | SHIFT_MASK(3, 0));
+			ret |= pci_data_check(bdf, reg_addr, 4, 0xFEE00000, reg_val, false);
+			/*for message-addres-upper*/
+			reg_addr += 4;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			ret |= pci_data_check(bdf, reg_addr, 4, 0x00000000, reg_val, false);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
+			/*for message-data*/
+			reg_addr += 4;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			reg_val = reg_val & (SHIFT_MASK(15, 14) | SHIFT_MASK(10, 8));
+			ret |= pci_data_check(bdf, reg_addr, 2, 0x0000, reg_val, false);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI capability structure_002
+ *
+ * Summary:ACRN hypervisor shall expose PCIe MSI capability structure of any PCIe device
+ * to the VM which the PCIe device is assigned to, in compliance with Chapter 7.7, PCIe BS and Chapter 6.8, PCI LBS.
+ */
+static __unused
+void pci_rqmid_26823_PCIe_config_space_and_host_MSI_capability_structure_002(void)
+{
+	int ret = OK;
+	bool is_pass = false;
+	union pci_bdf bdf = {0};
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		if (ret == OK) {
+			/*for message-address*/
+			reg_addr += 4;
+			reg_val = SHIFT_LEFT(0x01, 12);
+			pci_pdev_write_cfg(bdf, reg_addr, 4, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			reg_val = reg_val & SHIFT_MASK(19, 12);
+			ret |= pci_data_check(bdf, reg_addr,\
+				4, SHIFT_LEFT(0x01, 12), reg_val, false);
+
+			/*for message-data*/
+			reg_addr += 8;
+			pci_pdev_write_cfg(bdf, reg_addr, 2, 0x30);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			reg_val = reg_val & SHIFT_MASK(7, 0);
+			ret |= pci_data_check(bdf, reg_addr,\
+								2, 0x30, reg_val, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI capability structure_003
+ *
+ * Summary:ACRN hypervisor shall expose PCIe MSI capability structure of any PCIe device
+ * to the VM which the PCIe device is assigned to, in compliance with Chapter 7.7, PCIe BS and Chapter 6.8, PCI LBS.
+ */
+static __unused
+void pci_rqmid_28836_PCIe_config_space_and_host_MSI_capability_structure_003(void)
+{
+	int ret = OK;
+	bool is_pass = false;
+	union pci_bdf bdf = {0};
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		if (ret == OK) {
+			/*for MSI base*/
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			/*msi-controller=0x40<<1,next-pointer=0x00,msi id=0x05*/
+			ret |= pci_data_check(bdf, reg_addr, 4,\
+			(SHIFT_LEFT(SHIFT_LEFT(0x40, 1), 16) | 0x05), reg_val, false);
+			/*for message-address*/
+			reg_addr += 4;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
+			reg_val = reg_val & (SHIFT_MASK(31, 20) | SHIFT_MASK(3, 0));
+			ret |= pci_data_check(bdf, reg_addr, 4, 0xFEE00000, reg_val, false);
+			/*for message-addres-upper*/
+			reg_addr += 4;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			ret |= pci_data_check(bdf, reg_addr, 4, 0x00000000, reg_val, false);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
+			/*for message-data*/
+			reg_addr += 4;
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			reg_val = reg_val & (SHIFT_MASK(15, 14) | SHIFT_MASK(10, 8));
+			ret |= pci_data_check(bdf, reg_addr, 2, 0x0000, reg_val, false);
+			DBG_INFO("R reg[%xH] = [%xH]", reg_addr, reg_val);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_MSI capability structure_004
+ *
+ * Summary:ACRN hypervisor shall expose PCIe MSI capability structure of any PCIe device
+ * to the VM which the PCIe device is assigned to, in compliance with Chapter 7.7, PCIe BS and Chapter 6.8, PCI LBS.
+ */
+static __unused
+void pci_rqmid_28835_PCIe_config_space_and_host_MSI_capability_structure_004(void)
+{
+	int ret = OK;
+	bool is_pass = false;
+	union pci_bdf bdf = {0};
+	uint32_t reg_addr = 0U;
+	uint32_t reg_val = INVALID_REG_VALUE_U;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		ret = pci_probe_msi_capability(bdf, &reg_addr);
+		if (ret == OK) {
+			/*for message-address*/
+			reg_addr += 4;
+			reg_val = SHIFT_LEFT(0x01, 12);
+			pci_pdev_write_cfg(bdf, reg_addr, 4, reg_val);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			reg_val = reg_val & SHIFT_MASK(19, 12);
+			ret |= pci_data_check(bdf, reg_addr,\
+				4, SHIFT_LEFT(0x01, 12), reg_val, false);
+
+			/*for message-data*/
+			reg_addr += 8;
+			pci_pdev_write_cfg(bdf, reg_addr, 2, 0x30);
+			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 2);
+			reg_val = reg_val & SHIFT_MASK(7, 0);
+			ret |= pci_data_check(bdf, reg_addr,\
+								2, 0x30, reg_val, false);
+		}
+		is_pass = (ret == OK) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
 static __unused void print_case_list(void)
 {
 	printf("\t\t PCI feature case list:\n\r");
 #ifdef __x86_64__
+
+//513:PCIe_MSI register start
+	printf("\t\t Case ID:%d case name:%s\n\r", 26821u,
+	"PCIe config space and host_MSI capability structure_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28884u,
+	"PCIe config space and host_MSI message-address destination ID read-write_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28882u,
+	"PCIe config space and host_MSI message-address destination ID read-write_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28886u,
+	"PCIe config space and host_MSI message-data vector read-write_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28909u,
+	"PCIe config space and host_MSI message-data trigger mode read_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28908u,
+	"PCIe config space and host_MSI message-data trigger mode read_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28889u,
+	"PCIe_config_space_and_host_MSI message-data trigger mode write_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28888u,
+	"PCIe_config_space_and_host_MSI message-data trigger mode write_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28911u,
+	"PCIe config space and host_MSI message-data delivery mode read_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28910u,
+	"PCIe config space and host_MSI message-data delivery mode read_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28892u,
+	"PCIe config space and host_MSI message-data delivery mode write_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28891u,
+	"PCIe config space and host_MSI message-data delivery mode write_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28914u,
+	"PCIe config space and host_MSI message-address interrupt message address read_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28915u,
+	"PCIe config space and host_MSI message-address interrupt message address read_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28894u,
+	"PCIe config space and host_MSI message-address interrupt message address write_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28916u,
+	"PCIe config space and host_MSI message-address redirection hint read_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28917u,
+	"PCIe config space and host_MSI message-address redirection hint read_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28896u,
+	"PCIe config space and host_MSI message-address redirection hint write_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28895u,
+	"PCIe config space and host_MSI message-address redirection hint write_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28918u,
+	"PCIe config space and host_MSI message-control read_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28920u,
+	"PCIe config space and host_MSI message-control read_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28899u,
+	"PCIe config space and host_MSI message-control write_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28897u,
+	"PCIe config space and host_MSI message-control write_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28923u,
+	"PCIe config space and host_MSI Next-PTR_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28921u,
+	"PCIe config space and host_MSI Next-PTR_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 26821u,
+	"PCIe config space and host_MSI capability structure_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 26823u,
+	"PCIe config space and host_MSI capability structure_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28836u,
+	"PCIe config space and host_MSI capability structure_003");
+	printf("\t\t Case ID:%d case name:%s\n\r", 28835u,
+	"PCIe config space and host_MSI capability structure_004");
+//513:PCIe_MSI register end
+
+
 /*****************************<The sample case part start>********************************/
 	printf("\t\t Case ID:%d case name:%s\n\r", 28936u,
 	"PCIe config space and host_2-byte BAR read_001");
@@ -4094,6 +5086,8 @@ static __unused void print_case_list(void)
 	"PCIe config space and host_1-Byte Config Data Port Write with Disabled Config Address_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27742u,
 	"PCIe config space and host_1-Byte CFEH Write with Disabled Config Address_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27744u,
+	"PCIe config space and host_1-Byte CFDH Write with Disabled Config Address_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27741u,
 	"PCIe config space and host_1-Byte CFFH Write with Disabled Config Address_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27739u,
@@ -4203,11 +5197,46 @@ int main(void)
 	}
 	printf("\nFind PCI devs nr_pci_devs = %d \n", nr_pci_devs);
 
+	//513:PCIe_MSI register start
+	pci_rqmid_26821_PCIe_config_space_and_host_MSI_capability_structure_001();
+	pci_rqmid_26823_PCIe_config_space_and_host_MSI_capability_structure_002();
+	pci_rqmid_28836_PCIe_config_space_and_host_MSI_capability_structure_003();
+	pci_rqmid_28835_PCIe_config_space_and_host_MSI_capability_structure_004();
+
+	pci_rqmid_28884_PCIe_config_space_and_host_MSI_message_address_destination_ID_read_write_002();
+	pci_rqmid_28882_PCIe_config_space_and_host_MSI_message_address_destination_ID_read_write_001();
+	pci_rqmid_28886_PCIe_config_space_and_host_MSI_message_data_vector_read_write_002();
+	pci_rqmid_28909_PCIe_config_space_and_host_MSI_message_data_trigger_mode_read_002();
+	pci_rqmid_28908_PCIe_config_space_and_host_MSI_message_data_trigger_mode_read_001();
+	pci_rqmid_28889_PCIe_config_space_and_host_MSI_message_data_trigger_mode_write_002();
+	pci_rqmid_28888_PCIe_config_space_and_host_MSI_message_data_trigger_mode_write_001();
+	pci_rqmid_28911_PCIe_config_space_and_host_MSI_message_data_delivery_mode_read_001();
+	pci_rqmid_28910_PCIe_config_space_and_host_MSI_message_data_delivery_mode_read_002();
+	pci_rqmid_28892_PCIe_config_space_and_host_MSI_message_data_delivery_mode_write_001();
+
+	pci_rqmid_28891_PCIe_config_space_and_host_MSI_message_data_delivery_mode_write_002();
+	pci_rqmid_28914_PCIe_config_space_and_host_MSI_message_address_interrupt_message_address_read_001();
+	pci_rqmid_28915_PCIe_config_space_and_host_MSI_message_address_interrupt_message_address_read_002();
+	pci_rqmid_28894_PCIe_config_space_and_host_MSI_message_address_interrupt_message_address_write_001();
+	pci_rqmid_28916_PCIe_config_space_and_host_MSI_message_address_redirection_hint_read_002();
+	pci_rqmid_28917_PCIe_config_space_and_host_MSI_message_address_redirection_hint_read_001();
+	pci_rqmid_28896_PCIe_config_space_and_host_MSI_message_address_redirection_hint_write_001();
+	pci_rqmid_28895_PCIe_config_space_and_host_MSI_message_address_redirection_hint_write_002();
+	pci_rqmid_28918_PCIe_config_space_and_host_MSI_message_control_read_001();
+	pci_rqmid_28920_PCIe_config_space_and_host_MSI_message_control_read_002();
+
+	pci_rqmid_28899_PCIe_config_space_and_host_MSI_message_control_write_001();
+	pci_rqmid_28897_PCIe_config_space_and_host_MSI_message_control_write_002();
+	pci_rqmid_28923_PCIe_config_space_and_host_MSI_Next_PTR_001();
+	pci_rqmid_28921_PCIe_config_space_and_host_MSI_Next_PTR_002();
+	//513:PCIe_MSI register end
+
 	union pci_bdf bdf = {0};
 	bool is = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
 	if (is) {
 		e1000e_init(bdf);
 	}
+
 /*****************************<The sample part start>********************************/
 	pci_rqmid_28936_PCIe_config_space_and_host_2_byte_BAR_read_001();
 	pci_rqmid_28887_PCIe_config_space_host_MSI_message_data_vector_read_write_001();
@@ -4220,9 +5249,7 @@ int main(void)
 	pci_rqmid_28861_PCIe_config_space_and_host_Unmapping_upon_BAR_writes_002();
 /*****************************<The sample part end>**********************************/
 
-
 /*****************************<The scaling part start>********************************/
-
 //515: PCIe_Reserved register start
 	pci_rqmid_25295_PCIe_config_space_and_host_Write_Reserved_register_001();
 	pci_rqmid_25298_PCIe_config_space_and_host_Write_Reserved_register_002();
@@ -4256,6 +5283,7 @@ int main(void)
 	pci_rqmid_26244_PCIe_config_space_and_host_Device_Identification_Registers_003();
 	pci_rqmid_28816_PCIe_config_space_and_host_Capabilities_Pointer_Register_002();
 	pci_rqmid_26803_PCIe_config_space_and_host_Capabilities_Pointer_Register_001();
+
 	pci_rqmid_26817_PCIe_config_space_and_host_Interrupt_Line_Register_001();
 	pci_rqmid_28818_PCIe_config_space_and_host_Interrupt_Line_Register_002();
 	pci_rqmid_28820_PCIe_config_space_and_host_Cache_Line_Size_Register_002();
@@ -4276,6 +5304,7 @@ int main(void)
 	pci_rqmid_28930_PCIe_config_space_and_host_Hostbridge_command_001();
 	pci_rqmid_28929_PCIe_config_space_and_host_Hostbridge_status_001();
 	pci_rqmid_28932_PCIe_config_space_and_host_2_byte_BAR_write_001();
+
 	pci_rqmid_28933_PCIe_config_space_and_host_2_byte_BAR_write_002();
 	pci_rqmid_28935_PCIe_config_space_and_host_1_byte_BAR_write_002();
 	pci_rqmid_28934_PCIe_config_space_and_host_1_byte_BAR_write_001();
@@ -4286,6 +5315,7 @@ int main(void)
 	pci_rqmid_27486_PCIe_config_space_and_host_Hostbridge_readonly_001();
 	pci_rqmid_27469_PCIe_config_space_and_host_Hostbridge_BAR_Size_001();
 	pci_rqmid_27470_PCIe_config_space_and_host_Hostbridge_Interrupt_Pin_001();
+
 	pci_rqmid_27471_PCIe_config_space_and_host_Hostbridge_Capabilities_Pointer_001();
 	pci_rqmid_27474_PCIe_config_space_and_host_Hostbridge_Header_Type_001();
 	pci_rqmid_27475_PCIe_config_space_and_host_Hostbridge_Class_Code_001();
@@ -4296,6 +5326,7 @@ int main(void)
 	pci_rqmid_28794_PCIe_config_space_and_host_Write_to_RO_bit_in_a_RW_register_002();
 	pci_rqmid_28795_PCIe_config_space_and_host_Write_to_RO_register_002();
 	pci_rqmid_26142_PCIe_config_space_and_host_Write_to_RO_register_001();
+
 	pci_rqmid_26806_PCIe_config_space_and_host_Interrupt_Pin_Register_001();
 	pci_rqmid_28796_PCIe_config_space_and_host_Interrupt_Pin_Register_002();
 	pci_rqmid_25232_PCIe_config_space_and_host_Control_of_INTx_interrupt_001();
@@ -4306,12 +5337,14 @@ int main(void)
 	pci_rqmid_27735_PCIe_config_space_and_host_2_Byte_CFEH_Write_with_Disabled_Config_Address_001();
 	pci_rqmid_27747_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Write_with_Disabled_Config_Address_001();
 	pci_rqmid_27742_PCIe_config_space_and_host_1_Byte_CFEH_Write_with_Disabled_Config_Address_001();
+	pci_rqmid_27744_PCIe_config_space_and_host_1_Byte_CFDH_Write_with_Disabled_Config_Address_001();
 	pci_rqmid_27741_PCIe_config_space_and_host_1_Byte_CFFH_Write_with_Disabled_Config_Address_001();
 	pci_rqmid_27739_PCIe_config_space_and_host_2_Byte_Config_Data_Port_Write_with_Disabled_Config_Address_001();
 	pci_rqmid_27759_PCIe_config_space_and_host_Normal_Write_with_Disabled_Config_Address_001();
 	pci_rqmid_27769_PCIe_config_space_and_host_1_Byte_CFDH_Write_with_Enabled_Config_Address_001();
 	pci_rqmid_27767_PCIe_config_space_and_host_1_Byte_CFFH_Write_with_Enabled_Config_Address_001();
 	pci_rqmid_27766_PCIe_config_space_and_host_2_Byte_Config_Data_Port_Write_with_Enabled_Config_Address_001();
+
 	pci_rqmid_27765_PCIe_config_space_and_host_2_Byte_CFEH_Write_with_Enabled_Config_Address_001();
 	pci_rqmid_27770_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Write_with_Enabled_Config_Address_001();
 	pci_rqmid_27768_PCIe_config_space_and_host_1_Byte_CFEH_Write_with_Enabled_Config_Address_001();
@@ -4322,6 +5355,7 @@ int main(void)
 	pci_rqmid_27778_PCIe_config_space_and_host_1_Byte_CFDH_Read_with_Disabled_Config_Address_001();
 	pci_rqmid_27773_PCIe_config_space_and_host_2_Byte_CFEH_Read_with_Disabled_Config_Address_001();
 	pci_rqmid_27779_PCIe_config_space_and_host_1_Byte_Config_Data_Port_Read_with_Disabled_Config_Address_001();
+
 	pci_rqmid_27776_PCIe_config_space_and_host_1_Byte_CFEH_Read_with_Disabled_Config_Address_001();
 	pci_rqmid_27785_PCIe_config_space_and_host_1_Byte_CFFH_Read_with_Enabled_Config_Address_001();
 	pci_rqmid_27786_PCIe_config_space_and_host_1_Byte_CFEH_Read_with_Enabled_Config_Address_001();
@@ -4332,6 +5366,7 @@ int main(void)
 	pci_rqmid_27787_PCIe_config_space_and_host_1_Byte_CFDH_Read_with_Enabled_Config_Address_001();
 	pci_rqmid_30962_PCIe_config_space_and_host_Normal_Config_Address_Port_Write_002();
 	pci_rqmid_30960_PCIe_config_space_and_host_Normal_Config_Address_Port_Write_001();
+
 	pci_rqmid_27790_PCIe_config_space_and_host_2_Byte_Config_Address_Port_Write_001();
 	pci_rqmid_27791_PCIe_config_space_and_host_1_Byte_Config_Address_Port_Write_001();
 	pci_rqmid_31161_PCIe_config_space_and_host_Normal_Config_Address_Port_Read_001();
