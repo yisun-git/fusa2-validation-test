@@ -23,6 +23,11 @@
 #include "./32/taskmanagement_fn.c"
 #endif
 
+void save_unchanged_reg(void)
+{
+
+}
+
 int main(void)
 {
 	setup_vm();

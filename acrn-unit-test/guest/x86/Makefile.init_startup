@@ -124,3 +124,11 @@ $(TEST_DIR)/avx.o: $(TEST_DIR)/avx.c $(TEST_DIR)/avx.h
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DAP_INIT_CHECK=\"taskmanagement_init.S\"
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DBP_STARTUP_CHECK=\"taskmanagement_startup.S\"
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/taskmanagement.o: $(TEST_DIR)/taskmanagement.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

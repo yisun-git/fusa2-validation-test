@@ -1,6 +1,8 @@
 #ifndef __TASK_MANAGEMENT_H
 #define __TASK_MANAGEMENT_H
 
+#include "taskmanagement_boot_logbuf.h"
+
 #define GDT_NEWTSS_INDEX		0x21
 
 #define XCR_XFEATURE_ENABLED_MASK       0x00000000
