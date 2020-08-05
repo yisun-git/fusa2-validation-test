@@ -2,6 +2,7 @@
 #include "desc.h"
 #include "processor.h"
 #include "pci_util.h"
+#include "e1000_regs.h"
 #include "e1000e.h"
 #include "delay.h"
 #include "apic.h"
@@ -12,6 +13,16 @@
 #include "pci_check.h"
 
 #define GBECSR_5B54      (0x5B54U)
+#define USB_MSI_REG_OFFSET	(0x80U)
+#define ETH_MSI_REG_OFFSET	(0xd0U)
+#define MSI_CAPABILITY_ID	(0x05U)
+#define A_NEW_VALUE_UNCHANGE	(0xFFF000U)
+#define A_NEW_USB_BAR0_VALUE	(0xDF240000U)
+#define A_NEW_NET_BAR0_VALUE	(0xDF260000U)
+#define USB_ORIGINAL_BAR0_VALUE	(0xdf230004U)
+#define NET_ORIGINAL_BAR0_VALUE	(0xdf200000U)
+#define USB_MSI_REG_OFFSET	(0x80U)
+#define NET_MSI_REG_OFFSET	(0xd0U)
 
 //#define PCI_DEBUG
 #ifdef PCI_DEBUG
@@ -156,6 +167,43 @@ static pci_cfg_reg_t hostbridge_pci_cfg[] =
 	{"ext reg", 0x100, 4, 0x00000000, 1},
 };
 
+/*For BAR0 init test case*/
+static PCI_MAKE_BDF(usb, 0x00, 0x14, 0x00);
+static PCI_MAKE_BDF(ethernet, 0x00, 0x1f, 0x06);
+static uint32_t first_net_bar0_value = 0U;
+static uint32_t first_usb_bar0_value = 0U;
+static uint32_t first_net_new_bar0_value = 0U;
+static uint32_t first_usb_new_bar0_value = 0U;
+static uint32_t second_net_bar0_value = 0U;
+static uint32_t second_usb_bar0_value = 0U;
+/*For 0xCF8 port init test case*/
+static uint32_t unchange_reg_value_0 = 0U;
+static uint32_t unchange_reg_value_1 = 0U;
+static uint32_t unchange_resume_value = 0U;
+/*For MSI control flag init test case*/
+static uint32_t first_net_msi_ctrl = 0U;
+static uint32_t first_usb_msi_ctrl = 0U;
+static uint32_t first_net_new_msi_ctrl = 0U;
+static uint32_t first_usb_new_msi_ctrl = 0U;
+static uint32_t second_net_msi_ctrl = 0U;
+static uint32_t second_usb_msi_ctrl = 0U;
+/*For Command register init test case*/
+static uint32_t first_net_command = 0U;
+static uint32_t first_usb_command = 0U;
+static uint32_t first_net_new_command = 0U;
+static uint32_t first_usb_new_command = 0U;
+static uint32_t second_net_command = 0U;
+static uint32_t second_usb_command = 0U;
+/*For BAR0 function status init test case*/
+static uint32_t first_net_status = 0U;
+static uint32_t	first_net_rctl = 0U;
+static uint32_t	second_net_rctl = 0U;
+static uint32_t first_usb_hci_version = 0U;
+static uint32_t first_usb_dn_ctrl = 0U;
+static uint32_t second_usb_dn_ctrl = 0U;
+
+
+
 static __unused int pci_probe_msi_capability(union pci_bdf bdf, uint32_t *msi_addr);
 static __unused int pci_data_check(union pci_bdf bdf, uint32_t offset,
 uint32_t bytes, uint32_t val1, uint32_t val2, bool sw_flag);
@@ -170,6 +218,106 @@ static __unused bool is_cap_ptr_exist(pci_capability_node_t *caplist, uint32_t s
 	}
 	return false;
 }
+
+static __unused
+bool test_host_PCI_configuration_header_register_read_only(uint32_t dev_ven)
+{
+	static pci_cfg_reg_t read_only_regs [] = {
+			{"vendor_ID", 0x00, 2, 0U, 0},
+			{"device_ID", 0x02, 2, 0U, 0},
+			{"revison_ID_class_Code", 0x08, 4, 0U, 0},
+			{"cache_Line_Size_Latency_Header_BIST", 0x0C, 4, 0U, 0},
+			{"CardBus_CIS_Pointer", 0x28, 4, 0U, 0},
+			{"subsystem_ID_subsystem_vendor_ID", 0x2C, 4, 0U, 0},
+			{"expansion_ROM_base_address_register", 0x30, 4, 0U, 0},
+			{"capabilities_pointer_register", 0x34, 1, 0U, 0},
+			{"intPin_intLine_min_gnt_max_lat", 0x3C, 4, 0U, 0},
+	};
+	int size = ELEMENT_NUM(read_only_regs);
+	int i = 0;
+	union pci_bdf bdf = {0};
+	bool is_pass = false;
+	uint32_t value = 0U;
+	int count = 0;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		for (i = 0; i < size; i++) {
+			//1.read the original value of these read-only registers
+			read_only_regs[i].reg_val = pci_pdev_read_cfg(bdf,\
+			read_only_regs[i].reg_addr, read_only_regs[i].reg_width);
+			//2.write FFH to these read-only registers
+			pci_pdev_write_cfg(bdf, read_only_regs[i].reg_addr,\
+			read_only_regs[i].reg_width, 0xFFFFFFFF);
+			//3.read the new value from these read-only registers
+			value = pci_pdev_read_cfg(bdf,\
+			read_only_regs[i].reg_addr, read_only_regs[i].reg_width);
+			//4.compare the new value with the original value
+			if (value == read_only_regs[i].reg_val) {
+				count++;
+			}
+		}
+	}
+	is_pass = (count == size) ? true : false;
+	return is_pass;
+}
+
+static __unused void test_PCI_read_bar_memory_PF(void *arg)
+{
+	uint32_t *add = (uint32_t *)arg;
+	uint32_t *add2 = (uint32_t *)phys_to_virt(*add);
+	uint32_t temp = 0;
+	asm volatile(ASM_TRY("1f")
+							"mov (%%eax), %%ebx\n\t"
+							"1:"
+							: "=b" (temp)
+							: "a" (add2));
+}
+
+static __unused void test_PCI_write_bar_memory_PF(void *arg)
+{
+	uint32_t *add = (uint32_t *)arg;
+	uint32_t *add2 = (uint32_t *)phys_to_virt(*add);
+	uint32_t temp = 0;
+	asm volatile(ASM_TRY("1f")
+							"mov %%ebx, (%%eax)\n\t"
+							"1:"
+							: "=b" (temp)
+							: "a" (add2));
+}
+
+static __unused
+bool test_BAR_memory_map_to_none_PF(uint32_t dev_ven)
+{
+	int count = 0;
+	union pci_bdf bdf = {0};
+	uint32_t bar_base = 0U;
+	uint32_t bar_base_new = BAR_REMAP_BASE_3;
+	bool is_pass = false;
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
+	if (is_pass) {
+		bar_base = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
+		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar_base_new);
+		bar_base_new = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
+		bar_base_new &= 0xFFFFFFF0;
+		DBG_INFO("W reg[%xH] = [%xH]", PCIR_BAR(0), bar_base_new);
+		/*Read the BAR memory should generate #PF*/
+		is_pass = test_for_exception(PF_VECTOR, test_PCI_read_bar_memory_PF, (void *)&bar_base_new);
+		if (is_pass) {
+			count++;
+		}
+		/*Write the BAR memory should generate #PF*/
+		is_pass = test_for_exception(PF_VECTOR, test_PCI_write_bar_memory_PF, (void *)&bar_base_new);
+		if (is_pass) {
+			count++;
+		}
+		/*Resume the original BAR address*/
+		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar_base);
+	}
+	/*Write the BAR memory should generate #PF*/
+	is_pass = (count == 2) ? true : false;
+	return is_pass;
+}
+
 
 static __unused
 bool test_host_MSI_Next_PTR(uint32_t dev_ven)
@@ -763,11 +911,99 @@ bool test_Read_with_Enabled_Config_Address(uint8_t msi_offset, uint32_t bytes, u
 }
 
 
+static __unused void check_bar_map_function_on_first_AP(void)
+{
+	first_net_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), PCIR_BAR(0), 4);
+	first_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
 
-#define A_NEW_VALUE_UNCHANGE	(0xFFF000U)
-uint32_t unchange_reg_value_0 = 0U;
-uint32_t unchange_reg_value_1 = 0U;
-uint32_t unchange_resume_value = 0U;
+	void *status_addr = phys_to_virt((first_net_bar0_value & 0xFFFFFFF0) + E1000_STATUS);
+	first_net_status = pci_pdev_read_mem(PCI_GET_BDF(ethernet), (mem_size)status_addr, 4);
+
+	void *rctl_addr = phys_to_virt((first_net_bar0_value & 0xFFFFFFF0) + E1000_RCTL);
+	pci_pdev_write_mem(PCI_GET_BDF(ethernet), (mem_size)rctl_addr, 4, 0x0U);
+	first_net_rctl = pci_pdev_read_mem(PCI_GET_BDF(ethernet), (mem_size)rctl_addr, 4);
+
+	void *hci_version_addr = phys_to_virt((first_usb_bar0_value & 0xFFFFFFF0) + 0x02U);
+	first_usb_hci_version = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)hci_version_addr, 2);
+
+	void *dn_ctrl_addr = phys_to_virt((first_usb_bar0_value & 0xFFFFFFF0) + 0x94U);
+	pci_pdev_write_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4, 0x1U);
+	first_usb_dn_ctrl = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4);
+
+}
+
+static __unused void check_bar_map_function_on_second_AP(void)
+{
+	void *rctl_addr = phys_to_virt((first_net_bar0_value & 0xFFFFFFF0) + E1000_RCTL);
+	second_net_rctl = pci_pdev_read_mem(PCI_GET_BDF(ethernet), (mem_size)rctl_addr, 4);
+
+	void *dn_ctrl_addr = phys_to_virt((first_usb_bar0_value & 0xFFFFFFF0) + 0x94U);
+	second_usb_dn_ctrl = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4);
+}
+
+
+static __unused void check_command_register_on_first_AP(void)
+{
+	uint32_t new_value = 0U;
+	first_net_command = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), PCI_COMMAND, 2);
+	first_usb_command = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
+	new_value = first_net_command | SHIFT_LEFT(0x1, 1);
+	pci_pdev_write_cfg(PCI_GET_BDF(ethernet), PCI_COMMAND, 2, new_value);
+	new_value = first_usb_command | SHIFT_LEFT(0x1, 1);
+	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2, new_value);
+	first_net_new_command = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), PCI_COMMAND, 2);
+	first_usb_new_command = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
+}
+
+static __unused void check_command_register_on_second_AP(void)
+{
+	second_net_command = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), PCI_COMMAND, 2);
+	second_usb_command = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
+	pci_pdev_write_cfg(PCI_GET_BDF(ethernet), PCI_COMMAND, 2, first_net_command);
+	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2, first_usb_command);
+}
+
+static __unused
+void check_bar0_on_first_AP(void)
+{
+	first_net_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), PCIR_BAR(0), 4);
+	first_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
+	pci_pdev_write_cfg(PCI_GET_BDF(ethernet), PCIR_BAR(0), 4, A_NEW_NET_BAR0_VALUE);
+	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4, A_NEW_USB_BAR0_VALUE);
+	first_net_new_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), PCIR_BAR(0), 4);
+	first_usb_new_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
+}
+
+static __unused
+void check_bar0_on_second_AP(void)
+{
+	second_net_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), PCIR_BAR(0), 4);
+	second_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
+	pci_pdev_write_cfg(PCI_GET_BDF(ethernet), PCIR_BAR(0), 4, first_net_bar0_value);
+	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4, first_usb_bar0_value);
+}
+
+static __unused
+void check_msi_control_flag_on_first_AP(void)
+{
+	uint32_t new_value = 0U;
+	first_usb_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
+	first_net_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), NET_MSI_REG_OFFSET + 2, 2);
+	new_value = first_usb_msi_ctrl | SHIFT_LEFT(0x01, 0);
+	pci_pdev_write_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2, new_value);
+	new_value = first_net_msi_ctrl | SHIFT_LEFT(0x01, 0);
+	pci_pdev_write_cfg(PCI_GET_BDF(ethernet), NET_MSI_REG_OFFSET + 2, 2, new_value);
+	first_net_new_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), NET_MSI_REG_OFFSET + 2, 2);
+	first_usb_new_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
+}
+
+static __unused
+void check_msi_control_flag_on_second_AP(void)
+{
+	second_usb_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
+	second_net_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(ethernet), NET_MSI_REG_OFFSET + 2, 2);
+}
+
 static __unused void check_PCI_address_port_on_first_AP(void)
 {
 	uint32_t new_value = A_NEW_VALUE_UNCHANGE;
@@ -786,7 +1022,7 @@ static __unused void check_PCI_address_port_on_first_AP(void)
 				: "=m" (unchange_reg_value_0), "=m" (unchange_resume_value)
 				: "m" (new_value)
 				: "memory");
-	*((uint32_t *)0x7004) = unchange_resume_value;
+	*((uint32_t *)AP_IO_PORT_ADDR) = unchange_resume_value;
 }
 
 static __unused void check_PCI_address_port_on_second_AP(void)
@@ -862,7 +1098,7 @@ static __unused void check_NET_interrupt_line_on_first_AP(void)
 	/*read the NET interrupt line register on first AP and write a new value 0xEE to it.*/
 	asm volatile("push" W " %%" R "dx\n\t"\
 			"push" W " %%" R "ax\n\t"\
-			"mov $0x8000FC3C, %%eax\n\t"\
+			"mov $0x8000FE3C, %%eax\n\t"\
 			"mov $0xCF8, %%edx\n\t"\
 			"outl %%eax, (%%dx)\n\t"\
 			"mov $0xCFC, %%edx\n\t"\
@@ -882,7 +1118,7 @@ static __unused void check_NET_interrupt_line_on_second_AP(void)
 	/*read USB interrupt line on second AP, and save it to 0x8008*/
 	asm volatile("push" W " %%" R "dx\n\t"\
 			"push" W " %%" R "ax\n\t"\
-			"mov $0x8000FC3C, %%eax\n\t"\
+			"mov $0x8000FE3C, %%eax\n\t"\
 			"mov $0xCF8, %%edx\n\t"\
 			"outl %%eax, (%%dx)\n\t"\
 			"mov $0xCFC, %%edx\n\t"\
@@ -904,13 +1140,21 @@ void save_unchanged_reg(void)
 
 	spin_lock(&lock);
 	if (ap_count == 0) {
+		check_bar_map_function_on_first_AP();
 		check_USB_interrupt_line_on_first_AP();
 		check_NET_interrupt_line_on_first_AP();
+		check_bar0_on_first_AP();
+		check_msi_control_flag_on_first_AP();
+		check_command_register_on_first_AP();
 		check_PCI_address_port_on_first_AP();
 	} else if (ap_count == 1) {
 		check_PCI_address_port_on_second_AP();
 		check_USB_interrupt_line_on_second_AP();
 		check_NET_interrupt_line_on_second_AP();
+		check_bar0_on_second_AP();
+		check_msi_control_flag_on_second_AP();
+		check_command_register_on_second_AP();
+		check_bar_map_function_on_second_AP();
 	} else if (ap_count == 2) {
 		check_PCI_address_port_on_third_AP();
 	}
@@ -1681,18 +1925,6 @@ void pci_rqmid_26109_PCIe_config_space_and_host_Read_register_from_no_exist_devi
  * ACRN hypervisor shall guarantee that the control function corresponding to
  * the guest BAR is not mapped to any guest physical address.
  */
-static __unused void test_PCI_read_bar_memory_PF(void *arg)
-{
-	uint32_t *add = (uint32_t *)arg;
-	uint32_t *add2 = (uint32_t *)phys_to_virt(*add);
-	uint32_t temp = 0;
-	asm volatile(ASM_TRY("1f")
-							"mov (%%eax), %%ebx\n\t"
-							"1:"
-							: "=b" (temp)
-							: "a" (add2));
-}
-
 static __unused void pci_rqmid_28858_PCIe_config_space_and_host_BAR_range_limitation_002(void)
 {
 	union pci_bdf bdf = {0};
@@ -2329,7 +2561,7 @@ static __unused void pci_rqmid_29069_PCIe_config_space_and_host_Address_register
 	bool is_pass = false;
 	/*Read the BP start-up PCI address register 0xCF8*/
 	uint32_t reg_val = 0U;
-	reg_val = *(volatile uint32_t *)(0x7000);
+	reg_val = *(volatile uint32_t *)(BP_IO_PORT_ADDR);
 	DBG_INFO("The BP start-up PCI address value = %x", reg_val);
 	/*The read value should be 00FFFF00H.*/
 	is_pass = (reg_val == 0x00FFFF00U);
@@ -2346,7 +2578,7 @@ static __unused void pci_rqmid_37250_PCIe_config_space_and_host_Address_register
 	bool is_pass = false;
 	/*Read the AP init PCI address register 0xCF8*/
 	uint32_t reg_val = 0U;
-	reg_val = *(volatile uint32_t *)(0x7004);
+	reg_val = *(volatile uint32_t *)(AP_IO_PORT_ADDR);
 	DBG_INFO("The AP init PCI address value = %x", reg_val);
 	/*The read value should be 00FFFF00H.*/
 	is_pass = (reg_val == 0x00FFFF00U);
@@ -2378,7 +2610,7 @@ void pci_rqmid_29084_PCIe_config_space_and_host_device_interrupt_line_register_v
 	uint32_t reg_val = 0U;
 	is_pass = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
 	if (is_pass) {
-		reg_val = *(volatile uint32_t *)(0x8000);
+		reg_val = *(volatile uint32_t *)(BP_NET_INTERRUP_LINE_ADDR);
 		is_pass = ((reg_val & 0xFFU) == 0xFFU) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2397,7 +2629,7 @@ void pci_rqmid_29083_PCIe_config_space_and_host_device_interrupt_line_register_v
 	uint32_t reg_val = 0U;
 	is_pass = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_pass) {
-		reg_val = *(volatile uint32_t *)(0x9000);
+		reg_val = *(volatile uint32_t *)(BP_USB_INTERRUP_LINE_ADDR);
 		is_pass = ((reg_val & 0xFFU) == 0xFFU) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2417,7 +2649,7 @@ void pci_rqmid_37255_PCIe_config_space_and_host_device_interrupt_line_register_v
 	uint32_t reg_val = 0U;
 	is_pass = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_pass) {
-		reg_val = *(volatile uint32_t *)(0x9004);
+		reg_val = *(volatile uint32_t *)(AP_USB_INTERRUP_LINE_ADDR0);
 		is_pass = ((reg_val & 0xFFU) == 0xFFU) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2437,7 +2669,7 @@ void pci_rqmid_37256_PCIe_config_space_and_host_device_interrupt_line_register_v
 	uint32_t reg_val = 0U;
 	is_pass = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
 	if (is_pass) {
-		reg_val = *(volatile uint32_t *)(0x8004);
+		reg_val = *(volatile uint32_t *)(AP_NET_INTERRUP_LINE_ADDR0);
 		is_pass = ((reg_val & 0xFFU) == 0xFFU) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2456,7 +2688,7 @@ void pci_rqmid_37263_PCIe_config_space_and_host_device_interrupt_line_register_v
 	uint32_t reg_val = 0U;
 	is_pass = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
 	if (is_pass) {
-		reg_val = *(volatile uint32_t *)(0x8008);
+		reg_val = *(volatile uint32_t *)(AP_NET_INTERRUP_LINE_ADDR1);
 		is_pass = ((reg_val & 0xFFU) == 0xFFU) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -2475,7 +2707,7 @@ void pci_rqmid_37264_PCIe_config_space_and_host_device_interrupt_line_register_v
 	uint32_t reg_val = 0U;
 	is_pass = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_pass) {
-		reg_val = *(volatile uint32_t *)(0x9008);
+		reg_val = *(volatile uint32_t *)(AP_USB_INTERRUP_LINE_ADDR1);
 		is_pass = ((reg_val & 0xFFU) == 0xFFU) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -4844,6 +5076,648 @@ void pci_rqmid_28835_PCIe_config_space_and_host_MSI_capability_structure_004(voi
 	report("%s", is_pass, __FUNCTION__);
 }
 
+/*
+ * @brief case name:PCIe config space and host_hostbridge_bdf_001
+ *
+ * Summary:ACRN hypervisor shall guarantee that BDF of the guest hostbridge is 00:0.0.
+ */
+static __unused
+void pci_rqmid_38068_PCIe_config_space_and_host_hostbridge_bdf_001(void)
+{
+	int i = 0;
+	bool is_pass = false;
+	struct pci_dev _pci_devs[MAX_PCI_DEV_NUM];
+	uint32_t _nr_pci_devs = MAX_PCI_DEV_NUM;
+	pci_pdev_enumerate_dev(_pci_devs, &_nr_pci_devs);
+	if (_nr_pci_devs > 0) {
+		for (i = 0; i < _nr_pci_devs; i++) {
+			if (_pci_devs[i].bdf.value == 0) {
+				is_pass = true;
+				break;
+			}
+		}
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_capability ID register of the PCI MSI capability_USB_001
+ *
+ * Summary:When a vCPU attempts to read a guest capability ID register of the PCI MSI capability structure
+ * of an assigned PCIe device, ACRN hypervisor shall guarantee that the vCPU gets 5H.
+ */
+static __unused
+void pci_rqmid_38091_PCIe_config_space_and_host_capability_ID_register_of_the_PCI_MSI_capability_USB_001(void)
+{
+	bool is_pass = false;
+	uint32_t reg_value1 = 0U;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		reg_value1 = pci_pdev_read_cfg(bdf, USB_MSI_REG_OFFSET, 1);
+		is_pass = (reg_value1 == MSI_CAPABILITY_ID) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_capability ID register of the PCI MSI capability_Ethernet_001
+ *
+ * Summary:When a vCPU attempts to read a guest capability ID register of the PCI MSI capability structure
+ * of an assigned PCIe device, ACRN hypervisor shall guarantee that the vCPU gets 5H.
+ */
+static __unused
+void pci_rqmid_38094_PCIe_config_space_and_host_capability_ID_register_of_the_PCI_MSI_capability_Ethernet_001(void)
+{
+	bool is_pass = false;
+	uint32_t reg_value1 = 0U;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		reg_value1 = pci_pdev_read_cfg(bdf, ETH_MSI_REG_OFFSET, 1);
+		is_pass = (reg_value1 == MSI_CAPABILITY_ID) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_Write_PCI_cammand_register_USB_001
+ *
+ * Summary:When a vCPU attempts to write guest PCI command register [bit 10],
+ * ACRN hypervisor shall guarantee that the write is ignored.
+ */
+static __unused
+void pci_rqmid_38097_PCIe_config_space_and_host_Write_PCI_cammand_register_USB_001(void)
+{
+	bool is_pass = false;
+	uint32_t reg_value = 0U;
+	uint32_t reg_value1 = 0U;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		reg_value = pci_pdev_read_cfg(bdf, PCI_COMMAND, 2);
+		reg_value1 = reg_value;
+		reg_value1 |= SHIFT_LEFT(1, 10);
+		pci_pdev_write_cfg(bdf, PCI_COMMAND, 2, reg_value1);
+		reg_value1 = pci_pdev_read_cfg(bdf, PCI_COMMAND, 2);
+		is_pass = (reg_value1 == reg_value) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+
+/*
+ * @brief case name:PCIe config space and host_Write_PCI_cammand_register_Ethernet_001
+ *
+ * Summary:When a vCPU attempts to write guest PCI command register [bit 10],
+ * ACRN hypervisor shall guarantee that the write is ignored.
+ */
+static __unused
+void pci_rqmid_38098_PCIe_config_space_and_host_Write_PCI_cammand_register_Ethernet_001(void)
+{
+	bool is_pass = false;
+	uint32_t reg_value = 0U;
+	uint32_t reg_value1 = 0U;
+	union pci_bdf bdf = {0};
+	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR, &bdf);
+	if (is_pass) {
+		reg_value = pci_pdev_read_cfg(bdf, PCI_COMMAND, 2);
+		reg_value1 = reg_value;
+		reg_value1 |= SHIFT_LEFT(1, 10);
+		pci_pdev_write_cfg(bdf, PCI_COMMAND, 2, reg_value1);
+		reg_value1 = pci_pdev_read_cfg(bdf, PCI_COMMAND, 2);
+		is_pass = (reg_value1 == reg_value) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_BAR memory map to none_USB_001
+ *
+ * Summary:When a vCPU attempts to access a guest physical address that maps to none,
+ * ACRN hypervisor shall guarantee that the vCPU receives #PF(0)
+ */
+static __unused
+void pci_rqmid_38089_PCIe_config_space_and_host_BAR_memory_map_to_none_USB_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_BAR_memory_map_to_none_PF(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_BAR memory map to none_ethernet_001
+ *
+ * Summary:When a vCPU attempts to access a guest physical address that maps to none,
+ * ACRN hypervisor shall guarantee that the vCPU receives #PF(0)
+ */
+static __unused
+void pci_rqmid_38090_PCIe_config_space_and_host_BAR_memory_map_to_none_ethernet_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_BAR_memory_map_to_none_PF(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+
+/*
+ * @brief case name:PCIe config space and host_PCI configuration header register_USB_001
+ *
+ * Summary:Guarantee that any guest register in the PCI configuration header in the following is read-only
+ */
+static __unused
+void pci_rqmid_38095_PCIe_config_space_and_host_PCI_configuration_header_register_USB_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_PCI_configuration_header_register_read_only(USB_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_PCI configuration header register_Ethernet_001
+ *
+ * Summary:Guarantee that any guest register in the PCI configuration header in the following is read-only
+ */
+static __unused
+void pci_rqmid_38096_PCIe_config_space_and_host_PCI_configuration_header_register_Ethernet_001(void)
+{
+	bool is_pass = false;
+	is_pass = test_host_PCI_configuration_header_register_read_only(NET_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and BAR_Address register init_001
+ *
+ * Summary:ACRN hypervisor shall keep the initial guest physical base address
+ * of guest BAR mapping unchanged following INIT
+ */
+static __unused
+void pci_rqmid_37661_PCIe_config_space_and_BAR_Address_register_init_001(void)
+{
+	bool is_pass = false;
+	uint32_t bp_net_bar0_addr = 0U;
+	uint32_t bp_usb_bar0_addr = 0U;
+	bool is_net_exist = false;
+	bool is_usb_exist = false;
+	is_net_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_net_exist && is_usb_exist) {
+		bp_net_bar0_addr = *(uint32_t *)(BP_NET_BAR0_ADDR);
+		bp_usb_bar0_addr = *(uint32_t *)(BP_USB_BAR0_ADDR);
+		is_pass = (bp_net_bar0_addr == first_net_bar0_value)\
+				&& (bp_usb_bar0_addr == first_usb_bar0_value);
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and BAR_Address register init_002
+ *
+ * Summary:ACRN hypervisor shall keep the initial guest physical base address
+ * of guest BAR mapping unchanged following INIT
+ */
+static __unused
+void pci_rqmid_38204_PCIe_config_space_and_BAR_Address_register_init_002(void)
+{
+	bool is_pass = false;
+	uint32_t value0 = 0U;
+	uint32_t value1 = 0U;
+	bool is_net_exist = false;
+	bool is_usb_exist = false;
+	is_net_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_net_exist && is_usb_exist) {
+		value0 = first_net_new_bar0_value & 0xFFFFFFF0;
+		value1 = first_usb_new_bar0_value & 0xFFFFFFF0;
+		is_pass = (A_NEW_NET_BAR0_VALUE == value0)\
+			&& (A_NEW_USB_BAR0_VALUE == value1)\
+			&& (first_net_new_bar0_value == second_net_bar0_value)\
+			&& (first_usb_new_bar0_value == second_usb_bar0_value);
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_msi_control_register_following_init_USB_001
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI MSI control register [bit 0] unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38099_PCIe_config_space_and_host_msi_control_register_following_init_USB_001(void)
+{
+	bool is_pass = false;
+	bool is_usb_exist = false;
+	uint32_t bp_usb_msi_ctrl = 0U;
+	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_usb_exist) {
+		bp_usb_msi_ctrl = *(uint32_t *)(BP_USB_MSI_CTRL_ADDR);
+		bp_usb_msi_ctrl >>= 16;
+		bp_usb_msi_ctrl &= 0xFFFFU;
+		is_pass = (bp_usb_msi_ctrl == first_usb_msi_ctrl) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_msi_control_register_following_init_USB_002
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI MSI control register [bit 0] unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38217_PCIe_config_space_and_host_msi_control_register_following_init_USB_002(void)
+{
+	bool is_pass = false;
+	uint32_t value1 = 0U;
+	uint32_t value3 = 0U;
+	value1 = first_usb_new_msi_ctrl & SHIFT_LEFT(0x1, 0);
+	value3 = second_usb_msi_ctrl & SHIFT_LEFT(0x1, 0);
+	is_pass = (value1 == value3)\
+				&& (value1 == 0x01);
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_msi_control_register_following_init_Ethernet_001
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI MSI control register [bit 0] unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38100_PCIe_config_space_and_host_msi_control_register_following_init_Ethernet_001(void)
+{
+	bool is_pass = false;
+	bool is_net_exist = false;
+	uint32_t bp_net_msi_ctrl = 0U;
+	is_net_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_net_exist) {
+		bp_net_msi_ctrl = *(uint32_t *)(BP_NET_MSI_CTRL_ADDR);
+		bp_net_msi_ctrl >>= 16;
+		bp_net_msi_ctrl &= 0xFFFFU;
+		is_pass = (bp_net_msi_ctrl == first_net_msi_ctrl) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_msi_control_register_following_init_Ethernet_002
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI MSI control register [bit 0] unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38222_PCIe_config_space_and_host_msi_control_register_following_init_Ethernet_002(void)
+{
+	bool is_pass = false;
+	uint32_t value0 = 0U;
+	uint32_t value2 = 0U;
+	bool is_net_exist = false;
+	is_net_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_net_exist) {
+		value0 = first_net_new_msi_ctrl & SHIFT_LEFT(0x1, 0);
+		value2 = second_net_msi_ctrl & SHIFT_LEFT(0x1, 0);
+		is_pass = (value0 == value2)\
+					&& (value0 == 0x01);
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_msi_control_register_following_start_up_USB_001
+ *
+ * Summary:ACRN hypervisor shall set initial guest PCI MSI control register [bit 0] to 0H following start-up.
+ */
+static __unused
+void pci_rqmid_38101_PCIe_config_space_and_host_msi_control_register_following_start_up_USB_001(void)
+{
+	bool is_pass = false;
+	uint32_t bp_usb_msi_ctrl = 0U;
+	bool is_usb_exist = false;
+	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_usb_exist) {
+		bp_usb_msi_ctrl = *(uint32_t *)(BP_USB_MSI_CTRL_ADDR);
+		bp_usb_msi_ctrl >>= 16;
+		bp_usb_msi_ctrl &= SHIFT_LEFT(0x1, 0);
+		is_pass = (bp_usb_msi_ctrl == 0U) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_msi_control_register_following_start_up_Ethernet_001
+ *
+ * Summary:ACRN hypervisor shall set initial guest PCI MSI control register [bit 0] to 0H following start-up.
+ */
+static __unused
+void pci_rqmid_38102_PCIe_config_space_and_host_msi_control_register_following_start_up_Ethernet_001(void)
+{
+	bool is_pass = false;
+	uint32_t bp_net_msi_ctrl = 0U;
+	bool is_net_exist = false;
+	is_net_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_net_exist) {
+		bp_net_msi_ctrl = *(uint32_t *)(BP_NET_MSI_CTRL_ADDR);
+		bp_net_msi_ctrl >>= 16;
+		bp_net_msi_ctrl &= SHIFT_LEFT(0x1, 0);
+		is_pass = (bp_net_msi_ctrl == 0U) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_PCI command register_following_init_USB_001
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI command register unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38103_PCIe_config_space_and_host_PCI_command_register_following_init_USB_001(void)
+{
+	bool is_pass = false;
+	bool is_usb_exist = false;
+	uint32_t bp_command = 0U;
+	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_usb_exist) {
+		bp_command =  *(uint32_t *)(BP_USB_STATUS_COMMAND_ADDR);
+		bp_command &= SHIFT_MASK(15, 0);
+		is_pass = (bp_command == first_usb_command) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_PCI command register_following_init_USB_002
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI command register unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38246_PCIe_config_space_and_host_PCI_command_register_following_init_USB_002(void)
+{
+	bool is_pass = false;
+	bool is_usb_exist = false;
+	uint32_t command1 = 0U;
+	uint32_t command2 = 0U;
+	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_usb_exist) {
+		command1 = first_usb_new_command & SHIFT_LEFT(0x01, 1);
+		command2 = second_usb_command & SHIFT_LEFT(0x01, 1);
+		is_pass = ((command1 == command2) && (command1 == 0x2)) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_PCI command register_following_init_Ethernet_001
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI command register unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38104_PCIe_config_space_and_host_PCI_command_register_following_init_Ethernet_001(void)
+{
+	bool is_pass = false;
+	bool is_net_exist = false;
+	uint32_t bp_command = 0U;
+	is_net_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_net_exist) {
+		bp_command =  *(uint32_t *)(BP_NET_STATUS_COMMAND_ADDR);
+		bp_command &= SHIFT_MASK(15, 0);
+		is_pass = (bp_command == first_net_command) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_PCI command register_following_init_Ethernet_002
+ *
+ * Summary:ACRN hypervisor shall keep guest PCI command register unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38249_PCIe_config_space_and_host_PCI_command_register_following_init_Ethernet_002(void)
+{
+	bool is_pass = false;
+	bool is_net_exist = false;
+	uint32_t command1 = 0U;
+	uint32_t command2 = 0U;
+	is_net_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_net_exist) {
+		command1 = first_net_new_command & SHIFT_LEFT(0x01, 1);
+		command2 = second_net_command & SHIFT_LEFT(0x01, 1);
+		is_pass = ((command1 == command2) && (command1 == 0x2)) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_PCI command register_following_start_up_USB_001
+ *
+ * Summary:ACRN hypervisor shall set initial guest PCI command register to 0406H following start-up.
+ */
+static __unused
+void pci_rqmid_38105_PCIe_config_space_and_host_PCI_command_register_following_start_up_USB_001(void)
+{
+	bool is_pass = false;
+	bool is_usb_exist = false;
+	uint32_t bp_command = 0U;
+	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_usb_exist) {
+		bp_command = *(uint32_t *)(BP_USB_STATUS_COMMAND_ADDR);
+		bp_command &= SHIFT_MASK(15, 0);
+		is_pass = (bp_command == BP_START_UP_COMMAND_VALUE) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_PCI command register_following_start_up_Ethernet_001
+ *
+ * Summary:ACRN hypervisor shall set initial guest PCI command register to 0406H following start-up.
+ */
+static __unused
+void pci_rqmid_38106_PCIe_config_space_and_host_PCI_command_register_following_start_up_Ethernet_001(void)
+{
+	bool is_pass = false;
+	bool is_exist = false;
+	uint32_t bp_command = 0U;
+	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_exist) {
+		bp_command = *(uint32_t *)(BP_NET_STATUS_COMMAND_ADDR);
+		bp_command &= SHIFT_MASK(15, 0);
+		is_pass = (bp_command == BP_START_UP_COMMAND_VALUE) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_bar_control_function_net_01_following_startup_001
+ *
+ * Summary:ACRN hypervisor shall map the initial guest PCI configuration base address
+ * to the control function corresponding to the guest BAR following start-up.
+ */
+static __unused
+void pci_rqmid_38074_PCIe_config_space_and_host_bar_control_function_net_01_following_startup_001(void)
+{
+	bool is_pass = false;
+	bool is_exist = false;
+	uint32_t dev_status = 0U;
+	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_exist) {
+		dev_status = *(uint32_t *)(BP_NET_DEVICE_STATUS_ADDR);
+		dev_status &= SHIFT_LEFT(0x1, 19);
+		is_pass = (dev_status == SHIFT_LEFT(0x1, 19)) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+
+/*
+ * @brief case name:PCIe config space and host_bar_control_function_usb_01_following_startup_001
+ *
+ * Summary:ACRN hypervisor shall map the initial guest PCI configuration base address to
+ * the control function corresponding to the guest BAR following start-up.
+ */
+static __unused
+void pci_rqmid_38076_PCIe_config_space_and_host_bar_control_function_usb_01_following_startup_001(void)
+{
+	bool is_pass = false;
+	bool is_exist = false;
+	uint32_t hci_version = 0U;
+	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_exist) {
+		hci_version = *(uint32_t *)(BP_USB_DEVICE_HCIVERSION_ADDR);
+		hci_version &= SHIFT_MASK(15, 0);
+		is_pass = (hci_version == 0x100) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_bar_control_function_net_02_following_init_001
+ *
+ * Summary:ACRN hypervisor shall keep the initial guest physical base address
+ * of guest BAR mapping unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38075_PCIe_config_space_and_host_bar_control_function_net_02_following_init_001(void)
+{
+	bool is_pass = false;
+	bool is_exist = false;
+	uint32_t bp_dev_status = 0U;
+	uint32_t ap_dev_status = 0U;
+	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_exist) {
+		bp_dev_status = *(uint32_t *)(BP_NET_DEVICE_STATUS_ADDR);
+		bp_dev_status &= SHIFT_LEFT(0x1, 19);
+		ap_dev_status = (first_net_status & SHIFT_LEFT(0x1, 19));
+		is_pass = (bp_dev_status == ap_dev_status) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_bar_control_function_net_02_following_init_002
+ *
+ * Summary:ACRN hypervisor shall keep the initial guest physical base address
+ * of guest BAR mapping unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38266_PCIe_config_space_and_host_bar_control_function_net_02_following_init_002(void)
+{
+	bool is_pass = false;
+	bool is_exist = false;
+	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, NET_DEV_VENDOR);
+	if (is_exist) {
+		is_pass = (first_net_rctl == second_net_rctl) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_bar_control_function_usb_02_following_init_001
+ *
+ * Summary:ACRN hypervisor shall keep the initial guest physical base address
+ * of guest BAR mapping unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38080_PCIe_config_space_and_host_bar_control_function_usb_02_following_init_001(void)
+{
+	bool is_pass = false;
+	bool is_exist = false;
+	uint32_t bp_ver = 0U;
+	uint32_t ap_ver = 0U;
+	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_exist) {
+		bp_ver = *(uint32_t *)(BP_USB_DEVICE_HCIVERSION_ADDR);
+		bp_ver &= SHIFT_MASK(15, 0);
+		ap_ver = (first_usb_hci_version & SHIFT_MASK(15, 0));
+		is_pass = (bp_ver == ap_ver) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config space and host_bar_control_function_usb_02_following_init_002
+ *
+ * Summary:ACRN hypervisor shall keep the initial guest physical base address
+ * of guest BAR mapping unchanged following INIT.
+ */
+static __unused
+void pci_rqmid_38265_PCIe_config_space_and_host_bar_control_function_usb_02_following_init_002(void)
+{
+	bool is_pass = false;
+	bool is_exist = false;
+	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
+	if (is_exist) {
+		is_pass = (first_usb_dn_ctrl == second_usb_dn_ctrl) ? true : false;
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config_space_and_host PCI Configuration Space Header_001
+ *
+ * Summary:ACRN hypervisor shall expose PCI type 00H configuration space header layout
+ * of any PCIe device to the VM which the PCIe device or hostbridge is assigned to,
+ * in compliance with Chapter 6.1, PCI LBS and Chapter 7.2, PCIe BS.
+ */
+static __unused
+void pci_rqmid_38288_PCIe_config_space_and_host_PCI_Configuration_Space_Header_001(void)
+{
+	int count = 0;
+	bool is_exist = false;
+	bool is_pass = false;
+	struct pci_dev _pci_devs[MAX_PCI_DEV_NUM];
+	uint32_t _nr_pci_devs = MAX_PCI_DEV_NUM;
+	pci_pdev_enumerate_dev(_pci_devs, &_nr_pci_devs);
+	is_exist = is_dev_exist_by_dev_vendor(_pci_devs, _nr_pci_devs, HOSTBRIDGE_DEV_VENDOR);
+	if (is_exist) {
+		count++;
+	}
+	is_exist = is_dev_exist_by_dev_vendor(_pci_devs, _nr_pci_devs, USB_DEV_VENDOR);
+	if (is_exist) {
+		count++;
+	}
+	is_exist = is_dev_exist_by_dev_vendor(_pci_devs, _nr_pci_devs, NET_DEV_VENDOR);
+	if (is_exist) {
+		count++;
+	}
+	is_pass = (count == 3) ? true : false;
+	report("%s", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:PCIe config_space_and_host Assumption of PCI devices assigned_001
+ *
+ * Summary:ACRN hypervisor shall guarantee that PCIe devices
+ * under one sub-bridge or switch are assigned to the same VM.
+ */
+static __unused
+void pci_rqmid_38297_PCIe_config_space_and_host_Assumption_of_PCI_devices_assigned_001(void)
+{
+	bool is_pass = false;
+	struct pci_dev _pci_devs[MAX_PCI_DEV_NUM];
+	uint32_t _nr_pci_devs = MAX_PCI_DEV_NUM;
+	pci_pdev_enumerate_dev(_pci_devs, &_nr_pci_devs);
+	is_pass = is_dev_exist_by_dev_vendor(_pci_devs, _nr_pci_devs, HOSTBRIDGE_DEV_VENDOR);
+	report("%s", is_pass, __FUNCTION__);
+}
+
 static __unused void print_case_list(void)
 {
 	printf("\t\t PCI feature case list:\n\r");
@@ -4908,6 +5782,10 @@ static __unused void print_case_list(void)
 	"PCIe config space and host_MSI capability structure_003");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28835u,
 	"PCIe config space and host_MSI capability structure_004");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38091u,
+	"PCIe config space and host_capability ID register of the PCI MSI capability_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38094u,
+	"PCIe config space and host_capability ID register of the PCI MSI capability_Ethernet_001");
 //513:PCIe_MSI register end
 
 
@@ -4952,6 +5830,10 @@ static __unused void print_case_list(void)
 	"PCIe config space and host_Write register to no-exist device_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26109u,
 	"PCIe config space and host_Read register from no-exist device_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38097u,
+	"PCIe config space and host_Write_PCI_cammand_register_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38098u,
+	"PCIe config space and host_Write_PCI_cammand_register_Ethernet_001");
 //515: PCIe_Reserved register end
 
 //514: PCIe_BAR memory access start
@@ -4969,6 +5851,14 @@ static __unused void print_case_list(void)
 	"PCIe config space and host_PCI hole range_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28743u,
 	"PCIe config space and host_PCI hole range_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38089u,
+	"PCIe config space and host_BAR memory map to none_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38090u,
+	"PCIe config space and host_BAR memory map to none_ethernet_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38095u,
+	"PCIe config space and host_PCI configuration header register_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38096u,
+	"PCIe config space and host_PCI configuration header register_Ethernet_001");
 //514: PCIe_BAR memory access end
 
 //516: PCIe_ACRN shall expose PCI configuration register start
@@ -5006,6 +5896,10 @@ static __unused void print_case_list(void)
 	"PCIe_config_space_and_host_Command_Register_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26794u,
 	"PCIe_config_space_and_host_Command_Register_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38288u,
+	"PCIe config_space_and_host PCI Configuration Space Header_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38297u,
+	"PCIe config_space_and_host Assumption of PCI devices assigned_001");
 //516: PCIe_ACRN shall expose PCI configuration register end
 
 //512: PCIe_ACRN shall guarantee that the vCPU gets fixed value start
@@ -5077,6 +5971,23 @@ static __unused void print_case_list(void)
 	"PCIe_config_space_and_host_Control_of_INTx_interrupt_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28797u,
 	"PCIe_config_space_and_host_Control_of_INTx_interrupt_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38068u,
+	"PCIe config space and host_hostbridge_bdf_001");
+
+	printf("\t\t Case ID:%d case name:%s\n\r", 38074u,
+	"PCIe config space and host_bar_control_function_net_01_following_startup_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38076u,
+	"PCIe config space and host_bar_control_function_usb_01_following_startup_001");
+#ifdef IN_NON_SAFETY_VM
+	printf("\t\t Case ID:%d case name:%s\n\r", 38075u,
+	"PCIe config space and host_bar_control_function_net_02_following_init_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38266u,
+	"PCIe config space and host_bar_control_function_net_02_following_init_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38080u,
+	"PCIe config space and host_bar_control_function_usb_02_following_init_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38265u,
+	"PCIe config space and host_bar_control_function_usb_02_following_init_002");
+#endif
 //512: PCIe_ACRN shall guarantee that the vCPU gets fixed value end
 
 //517: PCIe_IO port access start
@@ -5163,6 +6074,12 @@ static __unused void print_case_list(void)
 	"PCIe config space and host_device interrupt line register value start-up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 29083u,
 	"PCIe config space and host_device interrupt line register value start-up_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38101u,
+	"PCIe config space and host_msi_control_register_following_start_up_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38105u,
+	"PCIe config space and host_PCI command register_following_start_up_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38106u,
+	"PCIe config space and host_PCI command register_following_start_up_Ethernet_001");
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 37250u,
 	"PCIe config space and host_Address register init_001");
@@ -5176,6 +6093,30 @@ static __unused void print_case_list(void)
 	"PCIe config space and host_device interrupt line register value init_003");
 	printf("\t\t Case ID:%d case name:%s\n\r", 37264u,
 	"PCIe config space and host_device interrupt line register value init_004");
+	printf("\t\t Case ID:%d case name:%s\n\r", 37264u,
+	"PCIe config space and BAR_Address register init_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 37264u,
+	"PCIe config space and BAR_Address register init_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 37661u,
+	"PCIe config space and BAR_Address register init_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38204u,
+	"PCIe config space and BAR_Address register init_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38099u,
+	"PCIe config space and host_msi_control_register_following_init_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38217u,
+	"PCIe config space and host_msi_control_register_following_init_USB_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38100u,
+	"PCIe config space and host_msi_control_register_following_init_Ethernet_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38222u,
+	"PCIe config space and host_msi_control_register_following_init_Ethernet_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38103u,
+	"PCIe config space and host_PCI command register_following_init_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38246u,
+	"PCIe config space and host_PCI command register_following_init_USB_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38104u,
+	"PCIe config space and host_PCI command register_following_init_Ethernet_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38249u,
+	"PCIe config space and host_PCI command register_following_init_Ethernet_002");
 #endif
 //511:PCIe_start-up and init end
 /*****************************<The scaling part end>********************************/
@@ -5229,6 +6170,8 @@ int main(void)
 	pci_rqmid_28897_PCIe_config_space_and_host_MSI_message_control_write_002();
 	pci_rqmid_28923_PCIe_config_space_and_host_MSI_Next_PTR_001();
 	pci_rqmid_28921_PCIe_config_space_and_host_MSI_Next_PTR_002();
+	pci_rqmid_38091_PCIe_config_space_and_host_capability_ID_register_of_the_PCI_MSI_capability_USB_001();
+	pci_rqmid_38094_PCIe_config_space_and_host_capability_ID_register_of_the_PCI_MSI_capability_Ethernet_001();
 	//513:PCIe_MSI register end
 
 	union pci_bdf bdf = {0};
@@ -5260,6 +6203,8 @@ int main(void)
 	pci_rqmid_26105_PCIe_config_space_and_host_Write_register_to_no_exist_device_002();
 	pci_rqmid_26095_PCIe_config_space_and_host_Write_register_to_no_exist_device_001();
 	pci_rqmid_26109_PCIe_config_space_and_host_Read_register_from_no_exist_device_001();
+	pci_rqmid_38097_PCIe_config_space_and_host_Write_PCI_cammand_register_USB_001();
+	pci_rqmid_38098_PCIe_config_space_and_host_Write_PCI_cammand_register_Ethernet_001();
 //515: PCIe_Reserved register end
 
 //514: PCIe_BAR memory access start
@@ -5270,6 +6215,10 @@ int main(void)
 	pci_rqmid_28862_PCIe_config_space_and_host_Mapping_upon_BAR_writes_002();
 	pci_rqmid_28863_PCIe_config_space_and_host_PCI_hole_range_002();
 	pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_001();
+	pci_rqmid_38089_PCIe_config_space_and_host_BAR_memory_map_to_none_USB_001();
+	pci_rqmid_38090_PCIe_config_space_and_host_BAR_memory_map_to_none_ethernet_001();
+	pci_rqmid_38095_PCIe_config_space_and_host_PCI_configuration_header_register_USB_001();
+	pci_rqmid_38096_PCIe_config_space_and_host_PCI_configuration_header_register_Ethernet_001();
 //514: PCIe_BAR memory access end
 
 //516: PCIe_ACRN shall expose PCI configuration register start
@@ -5291,6 +6240,8 @@ int main(void)
 	pci_rqmid_26793_PCIe_config_space_and_host_Status_Register_001();
 	pci_rqmid_28830_PCIe_config_space_and_host_Command_Register_002();
 	pci_rqmid_26794_PCIe_config_space_and_host_Command_Register_001();
+	pci_rqmid_38288_PCIe_config_space_and_host_PCI_Configuration_Space_Header_001();
+	pci_rqmid_38297_PCIe_config_space_and_host_Assumption_of_PCI_devices_assigned_001();
 //516: PCIe_ACRN shall expose PCI configuration register end
 
 //512: PCIe_ACRN shall guarantee that the vCPU gets fixed value start
@@ -5331,6 +6282,15 @@ int main(void)
 	pci_rqmid_28796_PCIe_config_space_and_host_Interrupt_Pin_Register_002();
 	pci_rqmid_25232_PCIe_config_space_and_host_Control_of_INTx_interrupt_001();
 	pci_rqmid_28797_PCIe_config_space_and_host_Control_of_INTx_interrupt_002();
+	pci_rqmid_38068_PCIe_config_space_and_host_hostbridge_bdf_001();
+	pci_rqmid_38074_PCIe_config_space_and_host_bar_control_function_net_01_following_startup_001();
+	pci_rqmid_38076_PCIe_config_space_and_host_bar_control_function_usb_01_following_startup_001();
+#ifdef IN_NON_SAFETY_VM
+	pci_rqmid_38075_PCIe_config_space_and_host_bar_control_function_net_02_following_init_001();
+	pci_rqmid_38266_PCIe_config_space_and_host_bar_control_function_net_02_following_init_002();
+	pci_rqmid_38080_PCIe_config_space_and_host_bar_control_function_usb_02_following_init_001();
+	pci_rqmid_38265_PCIe_config_space_and_host_bar_control_function_usb_02_following_init_002();
+#endif
 //512: PCIe_ACRN shall guarantee that the vCPU gets fixed value end
 
 //517: PCIe_IO port access start
@@ -5380,6 +6340,9 @@ int main(void)
 	pci_rqmid_29069_PCIe_config_space_and_host_Address_register_start_up_001();
 	pci_rqmid_29084_PCIe_config_space_and_host_device_interrupt_line_register_value_start_up_001();
 	pci_rqmid_29083_PCIe_config_space_and_host_device_interrupt_line_register_value_start_up_002();
+	pci_rqmid_38101_PCIe_config_space_and_host_msi_control_register_following_start_up_USB_001();
+	pci_rqmid_38105_PCIe_config_space_and_host_PCI_command_register_following_start_up_USB_001();
+	pci_rqmid_38106_PCIe_config_space_and_host_PCI_command_register_following_start_up_Ethernet_001();
 #ifdef IN_NON_SAFETY_VM
 	pci_rqmid_37250_PCIe_config_space_and_host_Address_register_init_001();
 	pci_rqmid_37251_PCIe_config_space_and_host_Address_register_init_002();
@@ -5387,6 +6350,16 @@ int main(void)
 	pci_rqmid_37256_PCIe_config_space_and_host_device_interrupt_line_register_value_init_002();
 	pci_rqmid_37263_PCIe_config_space_and_host_device_interrupt_line_register_value_init_003();
 	pci_rqmid_37264_PCIe_config_space_and_host_device_interrupt_line_register_value_init_004();
+	pci_rqmid_37661_PCIe_config_space_and_BAR_Address_register_init_001();
+	pci_rqmid_38204_PCIe_config_space_and_BAR_Address_register_init_002();
+	pci_rqmid_38099_PCIe_config_space_and_host_msi_control_register_following_init_USB_001();
+	pci_rqmid_38217_PCIe_config_space_and_host_msi_control_register_following_init_USB_002();
+	pci_rqmid_38100_PCIe_config_space_and_host_msi_control_register_following_init_Ethernet_001();
+	pci_rqmid_38222_PCIe_config_space_and_host_msi_control_register_following_init_Ethernet_002();
+	pci_rqmid_38103_PCIe_config_space_and_host_PCI_command_register_following_init_USB_001();
+	pci_rqmid_38246_PCIe_config_space_and_host_PCI_command_register_following_init_USB_002();
+	pci_rqmid_38104_PCIe_config_space_and_host_PCI_command_register_following_init_Ethernet_001();
+	pci_rqmid_38249_PCIe_config_space_and_host_PCI_command_register_following_init_Ethernet_002();
 #endif
 //511:PCIe_start-up and init end
 
