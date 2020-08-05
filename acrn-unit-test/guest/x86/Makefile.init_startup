@@ -139,3 +139,10 @@ $(TEST_DIR)/power_thermal.o: $(TEST_DIR)/power_thermal.c $(TEST_DIR)/power_therm
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/debug_features.o: CFLAGS += -DAP_INIT_CHECK=\"debug_features_init.S\"
+$(TEST_DIR)/debug_features.o: CFLAGS += -DBP_STARTUP_CHECK=\"debug_features_startup.S\"
+$(TEST_DIR)/debug_features.o: $(TEST_DIR)/debug_features.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

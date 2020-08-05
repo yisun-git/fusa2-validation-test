@@ -4,14 +4,14 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 	memory_order tsc mp_initialization xsave local_apic paging general_purpose pmu_fu rdt branch_profile \
 	device_passthrough mmx locked_atomic machine_check vmx fpu info_leakage idle_block sse \
 	taskmanagement interrupt pt pci power_thermal avx mpx segmentation \
-	safety_analysis_high_direct safety_analysis_high_dma safety_analysis_low_direct safety_analysis_low_dma"
+	safety_analysis_high_direct safety_analysis_high_dma safety_analysis_low_direct safety_analysis_low_dma debug_features"
 
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
 	segmentation"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
-BUILD_NATIVE_64_FEATURE="xsave device_passthrough hsi sse pt info_leakage safety_analysis_cat machine_check"
+BUILD_NATIVE_64_FEATURE="xsave device_passthrough hsi sse pt info_leakage safety_analysis_cat machine_check debug_features"
 BUILD_NATIVE_32_FEATURE=""
 
 RESULT=0
