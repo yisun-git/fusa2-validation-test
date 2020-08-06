@@ -7,10 +7,19 @@ endif
 
 export ENTRY_OFFSET = 0x1000800
 export START_A = 0x1000800 + SIZEOF_HEADERS
+FILE_NAME1 = $(shell echo $(FILE_NAME) | grep "safety_analysis_low")
+ifneq ($(FILE_NAME1), )
+    export ENTRY_OFFSET = 0x11000800
+    export START_A = 0x11000800 + SIZEOF_HEADERS
+endif
 
 ifeq ($(VM), safety)
     export ENTRY_OFFSET = 0x100000
     export START_A = 1M
+ifneq ($(FILE_NAME1), )
+    export ENTRY_OFFSET = 0x10100000
+    export START_A = 0x10100000
+endif
 endif
 
 include config.mak
