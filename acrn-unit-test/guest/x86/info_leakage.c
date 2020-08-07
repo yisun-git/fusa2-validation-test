@@ -467,6 +467,24 @@ void infoleak_rqmid_33873_L1D_FLUSH_expose_001(void)
 	L1D_FLUSH(__FUNCTION__);
 }
 
+/**
+ * @brief Case name: information leakage of L1D_Flush expose_002
+ *
+ * Summary: Dump register IA32_FLUSH_CMDshall generate #GP(0).
+ */
+void infoleak_rqmid_38262_L1D_FLUSH_expose_002(void)
+{
+	u32 index = IA32_FLUSH_CMD_MSR;
+	u32 a = 0;
+	u32 d = 0;
+
+	asm volatile(ASM_TRY("1f")
+		"rdmsr\n\t"
+		"1:"
+		: "=a"(a), "=d"(d) : "c"(index) : "memory");
+
+	report("\t\t %s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
+}
 
 /**
  * @brief Case name: information leakage of IBRS expose_001
@@ -502,6 +520,25 @@ void infoleak_rqmid_33874_IBPB_expose_001(void)
 	IBPB(__FUNCTION__);
 }
 
+/**
+ * @brief Case name: information leakage of IBPB expose_002
+ *
+ * Summary: Dump register IA32_PRED_CMD shall generate #GP(0).
+ *
+ */
+void infoleak_rqmid_38261_IBPB_expose_002(void)
+{
+	u32 index = IA32_PRED_CMD_MSR;
+	u32 a = 0;
+	u32 d = 0;
+
+	asm volatile(ASM_TRY("1f")
+		"rdmsr\n\t"
+		"1:"
+		: "=a"(a), "=d"(d) : "c"(index) : "memory");
+
+	report("\t\t %s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
+}
 
 /**
  * @brief Case name: information leakage of MDS mitigation mechnism expose_001
@@ -696,10 +733,12 @@ static void print_case_list(void)
 #else
 	printf("\t\t Case ID:%d case name:%s\n\r", 33869u, "IA32_SPEC_CTRL start-up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33873u, "L1D_Flush expose_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38262u, "L1D_Flush expose_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33872u, "IBRS expose_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33875u, "SSBD expose_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33871u, "MDS mitigation mechnism expose_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33874u, "IBPB expose_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38261u, "IBPB expose_002");
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 33870u, "IA32_SPEC_CTRL INIT_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 37018u, "IA32_SPEC_CTRL INIT_002");
@@ -727,10 +766,12 @@ int main(int ac, char **av)
 #else
 	infoleak_rqmid_33869_IA32_SPEC_CTRL_startup_001();
 	infoleak_rqmid_33873_L1D_FLUSH_expose_001();
+	infoleak_rqmid_38262_L1D_FLUSH_expose_002();
 	infoleak_rqmid_33872_IBRS_expose_001();
 	infoleak_rqmid_33875_SSBD_expose_001();
 	infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001();
 	infoleak_rqmid_33874_IBPB_expose_001();
+	infoleak_rqmid_38261_IBPB_expose_002();
 #ifdef IN_NON_SAFETY_VM
 	infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001();
 	infoleak_rqmid_37018_IA32_SPEC_CTRL_INIT_002();
