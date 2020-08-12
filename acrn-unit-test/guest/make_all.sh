@@ -5,7 +5,7 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 	device_passthrough mmx locked_atomic machine_check vmx fpu info_leakage idle_block sse \
 	taskmanagement interrupt pt pci power_thermal avx mpx segmentation \
 	safety_analysis_high_direct safety_analysis_high_dma safety_analysis_low_direct safety_analysis_low_dma debug_features \
-	misc_msr interrupt_mc"
+	misc_msr interrupt_mc misc_cpuid"
 
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
@@ -14,7 +14,7 @@ BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
 
 BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
-	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order"
+	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order misc_cpuid"
 
 BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt \
 	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp"

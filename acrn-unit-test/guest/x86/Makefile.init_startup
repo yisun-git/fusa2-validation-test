@@ -186,3 +186,9 @@ $(TEST_DIR)/misc_msr.o: $(TEST_DIR)/misc_msr.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/misc_cpuid.o: CFLAGS += -DAP_INIT_CHECK=\"misc_cpuid_init.S\"
+$(TEST_DIR)/misc_cpuid.o: CFLAGS += -DBP_STARTUP_CHECK=\"misc_cpuid_startup.S\"
+$(TEST_DIR)/misc_cpuid.o: $(TEST_DIR)/misc_cpuid.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
