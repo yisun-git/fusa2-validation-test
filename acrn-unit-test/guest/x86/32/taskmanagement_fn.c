@@ -2920,7 +2920,7 @@ const struct {
 		"guest CR0.TS keeps unchanged in task switch attempts_002"
 	},
 	{
-		true, 23836, taskm_id_23836_cr0_ts_unchanged_call,
+		false, 23836, taskm_id_23836_cr0_ts_unchanged_call,
 		"guest CR0.TS keeps unchanged in task switch attempts_003"
 	},
 	{
@@ -2936,7 +2936,7 @@ const struct {
 		"Task switch in protect mode_002"
 	},
 	{
-		true, 23763, taskm_id_23763_protect,
+		false, 23763, taskm_id_23763_protect,
 		"Task switch in protect mode_003"
 	},
 	{
