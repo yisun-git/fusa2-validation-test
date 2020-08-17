@@ -132,3 +132,10 @@ $(TEST_DIR)/taskmanagement.o: $(TEST_DIR)/taskmanagement.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/power_thermal.o: CFLAGS += -DAP_INIT_CHECK=\"power_ap_init.S\"
+$(TEST_DIR)/power_thermal.o: CFLAGS += -DBP_STARTUP_CHECK=\"power_bp_startup.S\"
+$(TEST_DIR)/power_thermal.o: $(TEST_DIR)/power_thermal.c $(TEST_DIR)/power_thermal.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
