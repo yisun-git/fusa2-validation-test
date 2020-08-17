@@ -11,7 +11,7 @@ BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse tas
 	segmentation"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
-BUILD_NATIVE_64_FEATURE="xsave device_passthrough hsi sse pt info_leakage safety_analysis_cat"
+BUILD_NATIVE_64_FEATURE="xsave device_passthrough hsi sse pt info_leakage safety_analysis_cat machine_check"
 BUILD_NATIVE_32_FEATURE=""
 
 RESULT=0
