@@ -1586,7 +1586,7 @@ static void power_rqmid_28208_MSR_WEIGHTED_CORE_C0_002(void)
  *
  * Summary: Dump register MSR_PMG_IO_CAPTURE_BASE shall generate #GP(0).
  */
-static void power_rqmid_28566_MSR_PMG_IO_CAPTURE_BASE_001(void)
+static void power_rqmid_29566_MSR_PMG_IO_CAPTURE_BASE_001(void)
 {
 	power_test_rdmsr(MSR_PMG_IO_CAPTURE_BASE, GP_VECTOR, 0, __FUNCTION__);
 }
@@ -1596,7 +1596,7 @@ static void power_rqmid_28566_MSR_PMG_IO_CAPTURE_BASE_001(void)
  *
  * Summary: Execute WRMSR instruction to write MSR_PMG_IO_CAPTURE_BASE with 1H shall generate #GP(0).
  */
-static void power_rqmid_28567_MSR_PMG_IO_CAPTURE_BASE_002(void)
+static void power_rqmid_29567_MSR_PMG_IO_CAPTURE_BASE_002(void)
 {
 	power_test_wrmsr(MSR_PMG_IO_CAPTURE_BASE, GP_VECTOR, 0, __FUNCTION__);
 }
@@ -1606,7 +1606,7 @@ static void power_rqmid_28567_MSR_PMG_IO_CAPTURE_BASE_002(void)
  *
  * Summary: Dump register MSR_POWER_CTL shall generate #GP(0).
  */
-static void power_rqmid_28568_MSR_POWER_CTL_001(void)
+static void power_rqmid_29568_MSR_POWER_CTL_001(void)
 {
 	power_test_rdmsr(MSR_POWER_CTL, GP_VECTOR, 0, __FUNCTION__);
 }
@@ -1616,7 +1616,7 @@ static void power_rqmid_28568_MSR_POWER_CTL_001(void)
  *
  * Summary: Execute WRMSR instruction to write MSR_POWER_CTL with 1H shall generate #GP(0).
  */
-static void power_rqmid_28569_MSR_POWER_CTL_002(void)
+static void power_rqmid_29569_MSR_POWER_CTL_002(void)
 {
 	power_test_wrmsr(MSR_POWER_CTL, GP_VECTOR, 0, __FUNCTION__);
 }
@@ -1986,10 +1986,10 @@ int main(int ac, char **av)
 	power_rqmid_27465_MSR_TURBO_RATIO_LIMIT_002();
 	power_rqmid_28207_MSR_WEIGHTED_CORE_C0_001();
 	power_rqmid_28208_MSR_WEIGHTED_CORE_C0_002();
-	power_rqmid_28566_MSR_PMG_IO_CAPTURE_BASE_001();
-	power_rqmid_28567_MSR_PMG_IO_CAPTURE_BASE_002();
-	power_rqmid_28568_MSR_POWER_CTL_001();
-	power_rqmid_28569_MSR_POWER_CTL_002();
+	power_rqmid_29566_MSR_PMG_IO_CAPTURE_BASE_001();
+	power_rqmid_29567_MSR_PMG_IO_CAPTURE_BASE_002();
+	power_rqmid_29568_MSR_POWER_CTL_001();
+	power_rqmid_29569_MSR_POWER_CTL_002();
 	power_rqmid_29516_MSR_PLATFORM_ENERGY_COUNTER_001();
 	power_rqmid_29517_MSR_PLATFORM_ENERGY_COUNTER_002();
 	power_rqmid_29564_MSR_PLATFORM_POWER_LIMIT_001();
