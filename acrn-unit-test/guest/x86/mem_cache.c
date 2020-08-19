@@ -23,7 +23,9 @@
 #include "memory_type.h"
 #include "debug_print.h"
 
-/*#define CACHE_IN_NATIVE*/
+//#define CACHE_IN_NATIVE
+//#define DUMP_CACHE_NATIVE_DATA
+//#define NO_PAGING_TESTS
 
 #define CACHE_TEST_TIME_MAX			40
 
@@ -174,7 +176,7 @@ struct cache_data cache_bench[CACHE_SIZE_TYPE_MAX] = {
 	{345369505UL, 1590UL},		/*CACHE_OVER_L3_WRITE_WT,*/
 	{3733753UL, 26365UL},		/*CACHE_OVER_L3_WRITE_WC,*/
 	{345369240UL, 1273UL},		/*CACHE_OVER_L3_WRITE_WP,*/
-#if 0
+
 	{2071703UL, 1091UL},/*CACHE_DEVICE_4K_READ, 40*/
 	{104626UL, 13887UL},/*CACHE_4K_READ,*/
 	{1500492UL, 605UL},/*CACHE_DEVICE_4K_WRITE,*/
@@ -186,7 +188,6 @@ struct cache_data cache_bench[CACHE_SIZE_TYPE_MAX] = {
 	{657227UL, 32265UL},/*CACHE_CLFLUSHOPT_READ,*/
 	{15223198UL, 125174UL},/*CACHE_WBINVD_DIS_READ,*/
 	{226598UL, 27398UL},/*CACHE_WBINVD_READ,*/
-#endif
 };
 
 struct case_fun_index {
@@ -194,6 +195,209 @@ struct case_fun_index {
 	void (*func)(void);
 };
 typedef void (*trigger_func)(void *data);
+
+struct msr_data {
+	u64 value;
+	u32 index;
+};
+
+unsigned long long asm_read_tsc(void)
+{
+	long long r;
+#ifdef __x86_64__
+	unsigned a, d;
+
+	asm volatile("mfence" ::: "memory");
+	asm volatile ("rdtsc" : "=a"(a), "=d"(d));
+	r = a | ((long long)d << 32);
+#else
+	asm volatile ("rdtsc" : "=A"(r));
+#endif
+	asm volatile("mfence" ::: "memory");
+	return r;
+}
+
+void asm_mfence()
+{
+	asm volatile("mfence" ::: "memory");
+}
+
+void asm_wbinvd()
+{
+	asm volatile ("wbinvd\n" : : : "memory");
+}
+
+void asm_mfence_wbinvd()
+{
+	asm_mfence();
+	asm_wbinvd();
+	asm_mfence();
+}
+
+void asm_invd()
+{
+	asm volatile ("invd\n" : : : "memory");
+}
+
+u64 disorder_access(u64 index, u64 size)
+{
+	int i = 0;
+	u64 *p;
+	u64 t[2] = {0};
+	u64 disorder_index = 0;
+
+	t[0] = asm_read_tsc();
+	disorder_index = (index*(t[0]&0xffff))%size;
+	p = &cache_test_array[disorder_index];
+
+	t[0] = asm_read_tsc();
+	asm_read_access_memory(p);
+	t[1] = asm_read_tsc();
+
+	i = t[1]-t[0];
+	return i;
+}
+
+u64 disorder_access_size(u64 size)
+{
+	int i;
+	u64 ts_delta = 0;
+	u64 ts_delta_all = 0;
+
+	i = size;
+	while (i) {
+		ts_delta = disorder_access(i, size);
+		ts_delta_all = ts_delta_all + ts_delta;
+		i--;
+	}
+	return ts_delta_all;
+}
+
+
+void write_cr0_bybit(u32 bit, u32 bitvalue)
+{
+	u32 cr0 = read_cr0();
+	if (bitvalue) {
+		write_cr0(cr0 | (1 << bit));
+	} else {
+		write_cr0(cr0 & ~(1 << bit));
+	}
+}
+
+u64 PT_MEMORY_TYPE   = PT_MEMORY_TYPE_MASK0;
+
+/*Modify the PTE/PCD/PWT bit in paging table entry*/
+void set_memory_type_pt(void *address, u64 type, u64 size)
+{
+	unsigned long *ptep;
+	u64 *next_addr;
+	int i;
+	int j = 0;
+	int pat = PT_PAT;
+
+	PT_MEMORY_TYPE = type;
+
+	for (i = 0; i < size; i += PAGE_SIZE) {
+		j++;
+		next_addr = (u64 *)((u8 *)address + i);
+
+		ptep = get_pte_level(current_page_table(), next_addr, 1);
+		if (ptep == NULL) {
+			pat = PT_PAT_LARGE_PAGE;
+		}
+		switch (type) {
+		case PT_MEMORY_TYPE_MASK0:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK1:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK2:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK3:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 0, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK4:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK5:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK6:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 0, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
+			break;
+		case PT_MEMORY_TYPE_MASK7:
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PWT, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, PT_PCD, 1, 0);
+			set_page_control_bit(next_addr, PAGE_PTE, pat, 1, 0);
+			break;
+		default:
+			debug_error("error type\n");
+			break;
+		}
+	}
+}
+
+void flush_tlb()
+{
+	u32 cr3;
+	cr3 = read_cr3();
+	write_cr3(cr3);
+}
+
+void mem_cache_reflush_cache()
+{
+	u32 cr4;
+
+	/*Disable interrupts;*/
+	irq_disable();
+
+	/*Save current value of CR4;*/
+	cr4 = read_cr4();
+
+	/*Disable and flush caches;*/
+	write_cr0_bybit(CR0_BIT_CD, 1);
+	write_cr0_bybit(CR0_BIT_NW, 0);
+	asm_wbinvd();
+
+	/*Flush TLBs;*/
+	flush_tlb();
+
+	/*Disable MTRRs;*/
+	//disable_MTRR();
+
+	/*Flush caches and TLBs;*/
+	asm_wbinvd();
+	flush_tlb();
+
+	/*Enable MTRRs;*/
+	//enable_MTRR();
+
+	/*enable caches;*/
+	write_cr0_bybit(CR0_BIT_CD, 0);
+	write_cr0_bybit(CR0_BIT_NW, 0);
+
+	/*Restore value of CR4;*/
+	write_cr4(cr4);
+
+	/*Enable interrupts;*/
+	irq_enable();
+}
 
 void set_mem_cache_type(u64 cache_type)
 {
@@ -273,6 +477,71 @@ bool cache_order_read_test(enum cache_size_type type, u64 size)
 	return ret;
 }
 
+u64 write_mem_cache_test(u64 size)
+{
+	u64 index;
+	u64 t[2] = {0};
+	u64 t_total = 0;
+
+	#if 0
+	u64 tt = asm_read_tsc();
+	for (index = 0; index < size; index++) {
+		tt += index;
+		t[0] = asm_read_tsc();
+		asm_write_access_memory((unsigned long)&cache_test_array[index], tt);
+		t[1] = asm_read_tsc();
+		t_total += t[1] - t[0];
+	}
+	#else
+	t[0] = asm_read_tsc();
+	for (index = 0; index < size; index++) {
+		asm_write_access_memory((unsigned long)&cache_test_array[index], index);
+	}
+	t[1] = asm_read_tsc();
+	t_total += t[1] - t[0];
+	#endif
+
+#ifdef __x86_64__
+	//printf("%ld\n", t_total);
+#elif __i386__
+	//printf("%lld\n", t_total);
+#endif
+	asm_mfence();
+	return t_total;
+}
+
+u64 cache_order_write(enum cache_size_type type, u64 size)
+{
+	int i;
+
+	tsc_delay_delta_total = 0;
+	/*Remove the first test data*/
+	write_mem_cache_test(size);
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay[i] = write_mem_cache_test(size);
+		tsc_delay_delta_total += tsc_delay[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+
+	return tsc_delay_delta_total;
+}
+
+bool cache_order_write_test(enum cache_size_type type, u64 size)
+{
+	bool ret = true;
+	u64 ave;
+	u64 std;
+
+	ave = cache_bench[type].ave;
+	std = cache_bench[type].std;
+	tsc_delay_delta_total = cache_order_write(type, size);
+
+	ret = cache_check_memory_type(tsc_delay_delta_total, ave, std, size);
+
+	asm_mfence_wbinvd();
+	return ret;
+}
+
 int get_bit_range(u32 r, int start, int end)
 {
 	int mask = 0;
@@ -283,6 +552,35 @@ int get_bit_range(u32 r, int start, int end)
 		mask += 1;
 	}
 	return t_r&mask;
+}
+
+void asm_clflush(long unsigned int addr)
+{
+	asm volatile("clflush (%0)" : : "b" (addr));
+}
+
+void clflush_all_line(u64 size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		asm volatile("clflush (%0)" : : "b" (&cache_test_array[i]));
+	}
+}
+
+static inline void asm_clflushopt(void *p)
+{
+	asm volatile ("clflushopt (%0)" :: "r"(p));
+}
+
+void clflushopt_all_line(u64 size)
+{
+	int i;
+
+	for (i = 0; i < size; i++) {
+		/*asm volatile(".byte 0x66, 0x0f, 0xae, 0x3b" : : "b" (&cache_test_array[i]));*/
+		asm_clflushopt(&cache_test_array[i]);
+	}
 }
 
 void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
@@ -303,11 +601,17 @@ void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 }
 
 #ifdef __x86_64__
-/*test case which should run under 64bit  */
+#ifndef CACHE_IN_NATIVE
+/* test case which should run under 64bit  */
 #include "64/mem_cache_fn.c"
-#elif __i386__
+#else
+/* native test cases */
+#include "64/mem_cache_native.c"
+#endif
+
+//#elif __i386__
 /*test case which should run  under 32bit  */
-#include "32/mem_cache_fn.c"
+//#include "32/mem_cache_fn.c"
 #endif
 
 #ifdef __x86_64__
@@ -430,6 +734,58 @@ void cache_rqmid_23242_cr0_nw_startup(void)
 	report("%s", (bp_cr0 & (1<<29)), __FUNCTION__);
 }
 
+void cache_rqmid_36851_ia32_pat_startup(void)
+{
+	volatile u32 ia32_pat_l = *(volatile u32 *)(0x6000 + 0x8);
+	volatile u32 ia32_pat_h = *(volatile u32 *)(0x6000 + 0xC);
+
+	/* The value should be 0007040600070406H */
+	report("%s", (ia32_pat_l == 0x00070406) &&
+		(ia32_pat_h == 0x00070406), __FUNCTION__);
+}
+
+void cache_rqmid_36852_cr0_cd_startup(void)
+{
+	volatile u32 cr0 = *(volatile u32 *)0x6000;
+
+	report("%s", (cr0 & (1 << 30)), __FUNCTION__);
+}
+
+void cache_rqmid_36850_cr0_nw_init(void)
+{
+	volatile u32 cr0 = *(volatile u32 *)0x8000;
+
+	report("%s", (cr0 & (1 << 29)), __FUNCTION__);
+}
+
+void cache_rqmid_36869_cr3_pcd_init(void)
+{
+	volatile u32 cr3 = *(volatile u32 *)(0x8000 + 0x4);
+
+	report("%s", ~(cr3 & (1 << 4)), __FUNCTION__);
+}
+
+void cache_rqmid_36853_cr3_pwt_init(void)
+{
+	volatile u32 cr3 = *(volatile u32 *)(0x8000 + 0x4);
+
+	report("%s", ~(cr3 & (1 << 3)), __FUNCTION__);
+}
+
+void cache_rqmid_36854_cr3_pcd_startup(void)
+{
+	volatile u32 cr3 = *(volatile u32 *)(0x6000 + 0x4);
+
+	report("%s", ~(cr3 & (1 << 4)), __FUNCTION__);
+}
+
+void cache_rqmid_36855_cr3_pwt_startup(void)
+{
+	volatile u32 cr3 = *(volatile u32 *)(0x6000 + 0x4);
+
+	report("%s", ~(cr3 & (1 << 3)), __FUNCTION__);
+}
+
 /* 10 init startup case */
 void cache_test_init_startup(long rqmid)
 {
@@ -438,15 +794,48 @@ void cache_test_init_startup(long rqmid)
 	struct case_fun_index case_fun[] = {
 	#ifdef IN_NON_SAFETY_VM
 		/*Must be in front of 23239 */
-		{33333, cache_rqmid_37108_ia32_pat_init_unchange_02},
+		{37108, cache_rqmid_37108_ia32_pat_init_unchange_02},
 		{23239, cache_rqmid_23239_ia32_pat_init_unchange_01},
 		{23241, cache_rqmid_23241_cr0_cd_init},
 	#endif
 		{23242, cache_rqmid_23242_cr0_nw_startup},
+		{36851, cache_rqmid_36851_ia32_pat_startup},
+		{36852, cache_rqmid_36852_cr0_cd_startup},
+		{36850, cache_rqmid_36850_cr0_nw_init},
+		{36869, cache_rqmid_36869_cr3_pcd_init},
+		{36853, cache_rqmid_36853_cr3_pwt_init},
+		{36854, cache_rqmid_36854_cr3_pcd_startup},
+		{36855, cache_rqmid_36855_cr3_pwt_startup},
 	};
 
 	cache_fun_exec(case_fun, sizeof(case_fun)/sizeof(case_fun[0]), rqmid);
 }
+
+#ifndef CACHE_IN_NATIVE
+
+void cache_test_no_paging_tests(long rqmid)
+{
+	int i;
+
+	struct case_fun_index case_fun[] = {
+		{36873, cache_rqmid_36873_memory_mapped_guest_physical_normal},
+		{36876, cache_rqmid_36876_device_mapped_guest_physical_normal},
+		{36886, cache_rqmid_36886_empty_mapped_guest_physical_normal},
+	};
+
+	printf("cache 64bit No Paging tests list:\n\r");
+
+	for (i = 0; i < (sizeof(case_fun)/sizeof(case_fun[0])); i++) {
+		printf("Case ID: %d\n", case_fun[i].rqmid);
+	}
+
+	printf("\n");
+
+	cache_fun_exec(case_fun, sizeof(case_fun)/sizeof(case_fun[0]), rqmid);
+}
+
+#endif // CACHE_IN_NATIVE
+
 #endif
 
 int main(int ac, char **av)
@@ -464,6 +853,11 @@ int main(int ac, char **av)
 #ifdef __x86_64__
 	setup_idt();
 
+#ifndef CACHE_IN_NATIVE
+#ifdef NO_PAGING_TESTS
+	cache_test_no_paging_tests(rqmid);
+#endif
+#endif
 	/*default PAT entry value 0007040600070406*/
 	set_mem_cache_type_all(0x0000000001040506);
 	setup_vm();
@@ -490,7 +884,7 @@ int main(int ac, char **av)
 #ifndef CACHE_IN_NATIVE
 	cache_test_64(rqmid);
 #else
-	/*cache_test_native(rqmid);*/
+	cache_test_native(rqmid);
 #endif
 #elif defined(__i386__)
 	/*cache_test_32(rqmid);*/
