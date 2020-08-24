@@ -1899,7 +1899,6 @@ static struct case_fun_index cache_control_cases[] = {
 	{23875, cache_rqmid_23875_check_l2_ucache_parameters},
 	{23876, cache_rqmid_23876_check_l3_ucache_parameters},
 	{23877, cache_rqmid_23877_check_no_cache_parameters},
-	{23985, cache_rqmid_23985_invd},
 	{24189, cache_rqmid_24189_l1_data_cache_context_mode},
 	{26972, cache_rqmid_26972_guest_linear_normal_wb},
 	{26973, cache_rqmid_26973_guest_linear_normal_wb},
@@ -1925,7 +1924,6 @@ static struct case_fun_index cache_control_cases[] = {
 	{36875, cache_rqmid_36875_empty_mapped_guest_linear_normal},
 #endif
 	{28100, cache_rqmid_28100_wt_wp_shall_be_the_same},
-	{36877, cache_rqmid_36877_no_fill_cache_mode},
 	{27073, cache_rqmid_27073_clflush_exception},
 	{36865, cache_rqmid_36865_mtrr_general_support},
 	{36866, cache_rqmid_36866_mtrr_fixed_range_registers},
@@ -1939,6 +1937,8 @@ static struct case_fun_index cache_control_cases[] = {
 	{36863, cache_rqmid_36863_pat_controls},
 	{36864, cache_rqmid_36864_guest_clflush_clflushopt_line_size},
 	{36874, cache_rqmid_36874_invalid_cache_mode},
+	{23985, cache_rqmid_23985_invd},
+	{36877, cache_rqmid_36877_no_fill_cache_mode},
 };
 
 static void print_cache_control_case_list_64()
