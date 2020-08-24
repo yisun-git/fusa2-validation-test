@@ -2297,7 +2297,8 @@ static void taskm_id_23689_tr_expose(void)
 	u16 val = 0;
 
 	if (!set_UMIP(true)) {
-		report("%s(N/A,UMIP Not Avail)", false, __func__);
+		printf("%s, UMIP is NOT supported.\n", __func__);
+		report("%s", true, __func__);
 		return;
 	}
 	/*Ring 0: Use STR to store TSS selector to memory.*/
