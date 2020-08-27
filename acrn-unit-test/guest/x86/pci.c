@@ -6076,6 +6076,8 @@ static __unused void print_case_list(void)
 	"PCIe config space and host_device interrupt line register value start-up_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38101u,
 	"PCIe config space and host_msi_control_register_following_start_up_USB_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38102u,
+	"PCIe config space and host_msi_control_register_following_start_up_Ethernet_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38105u,
 	"PCIe config space and host_PCI command register_following_start_up_USB_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38106u,
@@ -6341,6 +6343,7 @@ int main(void)
 	pci_rqmid_29084_PCIe_config_space_and_host_device_interrupt_line_register_value_start_up_001();
 	pci_rqmid_29083_PCIe_config_space_and_host_device_interrupt_line_register_value_start_up_002();
 	pci_rqmid_38101_PCIe_config_space_and_host_msi_control_register_following_start_up_USB_001();
+	pci_rqmid_38102_PCIe_config_space_and_host_msi_control_register_following_start_up_Ethernet_001();
 	pci_rqmid_38105_PCIe_config_space_and_host_PCI_command_register_following_start_up_USB_001();
 	pci_rqmid_38106_PCIe_config_space_and_host_PCI_command_register_following_start_up_Ethernet_001();
 #ifdef IN_NON_SAFETY_VM
