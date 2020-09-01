@@ -146,3 +146,11 @@ $(TEST_DIR)/debug_features.o: $(TEST_DIR)/debug_features.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/interrupt.o:CFLAGS += -DAP_INIT_CHECK=\"init_startup_interrupt_init.S\"
+$(TEST_DIR)/interrupt.o:CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_interrupt_startup.S\"
+$(TEST_DIR)/interrupt.o:$(TEST_DIR)/interrupt.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
