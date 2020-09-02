@@ -50,28 +50,6 @@ bool eflags_nt_to_0(void)
 	return result;
 }
 
-static bool set_UMIP(bool set)
-{
-	#define CPUID_7_ECX_UMIP (1 << 2)
-
-	int cpuid_7_ecx;
-	u32 cr4 = 0;
-
-	cpuid_7_ecx = cpuid(7).c;
-	if (!(cpuid_7_ecx & CPUID_7_ECX_UMIP))
-		return false;
-
-	cr4 = read_cr4();
-	if (set)
-		cr4 |= X86_CR4_UMIP;
-	else
-		cr4 &= ~X86_CR4_UMIP;
-
-	write_cr4(cr4);
-
-	return true;
-}
-
 void init_do_less_privilege(void)
 {
 	setup_ring_env();
@@ -127,30 +105,30 @@ static __unused void test_tr_init(void)
 
 
 /* cond 1 */
-static void cond_1_gate_present(void)
+static __unused void cond_1_gate_present(void)
 {
 	gate.p = 0;
 }
 
 /* cond 3 */
-static void cond_3_gate_null_sel(void)
+static __unused void cond_3_gate_null_sel(void)
 {
 	gate.selector = 0;
 }
 
 /* cond 10 */
-static void cond_10_desc_busy(void)
+static __unused void cond_10_desc_busy(void)
 {
 	gdt32[TSS_INTR>>3].access |= 0x2;/*busy = 1*/
 }
 
-static void tss_desc_not_present(void)
+static __unused void tss_desc_not_present(void)
 {
 	gdt32[TSS_INTR>>3].access &= (~0x80);
 }
 
 /* cond 13 */
-void cond_13_desc_tss_not_page(void)
+void __unused cond_13_desc_tss_not_page(void)
 {
 	unsigned char *linear_addr;
 
@@ -179,7 +157,7 @@ void cond_13_desc_tss_not_page(void)
 		PAGE_PTE, 0, 0, true);
 }
 
-static void cond_3_iret_desc_type(void)
+static __unused void cond_3_iret_desc_type(void)
 {
 	gdt32[TSS_INTR>>3].access &= 0xf0;
 	gdt32[TSS_INTR>>3].access |= 0x09;/*type = 1001B*/
@@ -192,6 +170,29 @@ static inline u32 read_esp(void)
 	asm volatile ("mov %%esp, %0" : "=mr"(val));
 
 	return val;
+}
+
+#if defined(IN_NON_SAFETY_VM) || defined(IN_SAFETY_VM)
+static bool set_UMIP(bool set)
+{
+	#define CPUID_7_ECX_UMIP (1 << 2)
+
+	int cpuid_7_ecx;
+	u32 cr4 = 0;
+
+	cpuid_7_ecx = cpuid(7).c;
+	if (!(cpuid_7_ecx & CPUID_7_ECX_UMIP))
+		return false;
+
+	cr4 = read_cr4();
+	if (set)
+		cr4 |= X86_CR4_UMIP;
+	else
+		cr4 &= ~X86_CR4_UMIP;
+
+	write_cr4(cr4);
+
+	return true;
 }
 
 static void ltr_from_general_purpose_register(void *data)
@@ -244,56 +245,6 @@ static void test_str_mem_for_exception(const char *data)
 	report("%s", ret, data);
 }
 
-static int ret_val_tc24561;
-static int error_code_tc24561;
-static void call_ring3_tc24561(const char *data)
-{
-	asm volatile(ASM_TRY("1f")
-			"lcall $" xstr(TASK_GATE_SEL) ", $0xf4f4f4f4\n\t"
-			"1:":::);
-
-	ret_val_tc24561 = exception_vector();
-	error_code_tc24561 = exception_error_code();
-}
-
-static int ret_val_tc24544;
-static int error_code_tc24544;
-static void call_ring3_tc24544(const char *data)
-{
-	asm volatile(ASM_TRY("1f")
-			"lcall $" xstr(TSS_INTR) ", $0xf4f4f4f4\n\t"
-			"1:":::);
-
-	ret_val_tc24544 = exception_vector();
-	error_code_tc24544 = exception_error_code();
-}
-
-static int ret_val_tc24564;
-static int error_code_tc24564;
-static void call_ring3_tc24564(const char *data)
-{
-	asm volatile(ASM_TRY("1f")
-			"int $6\n\t"
-			"1:":::);
-
-	ret_val_tc24564 = exception_vector();
-	error_code_tc24564 = exception_error_code();
-}
-
-#ifdef IN_NATIVE
-static int ret_val_tc37686;
-static int error_code_tc37686;
-static void call_ring3_tc37686(const char *data)
-{
-	asm volatile(ASM_TRY("1f")
-			"lcall $" xstr(TASK_GATE_SEL) ", $0xf4f4f4f4\n\t"
-			"1:":::);
-
-	ret_val_tc37686 = exception_vector();
-	error_code_tc37686 = exception_error_code();
-}
-#endif
-
 static void trigger_NMI(void)
 {
 	u32 val = APIC_DEST_PHYSICAL | APIC_DM_NMI | APIC_INT_ASSERT;
@@ -345,10 +296,11 @@ static void taskm_id_25205_nmi_gate_p_bit(void)
 
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_002
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_002
  *
  * Summary: TSS selector in the task gate is a null selector,
- *	it would gernerate #GP(Error code =? 1H )
+ *	it would gernerate #GP(Error code == 1H )
  *	when switching to a task gate in IDT by NMI
  */
 static void taskm_id_25206_nmi_null_selector(void)
@@ -380,10 +332,11 @@ static void taskm_id_25206_nmi_null_selector(void)
 
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_003
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_003
  *
  * Summary: TSS selector in the task gate has TI flag set,
- *	it would gernerate #GP(Error code =?(TSS selector & F8H) | 05H )
+ *	it would gernerate #GP(Error code == (TSS selector & F8H) | 05H )
  *	when switching to a task gate in IDT by NMI.
  */
 static void taskm_id_25207_nmi_TI_flag_set(void)
@@ -415,10 +368,11 @@ static void taskm_id_25207_nmi_TI_flag_set(void)
 }
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_004
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_004
  *
  * Summary: Index of TSS selector in the task gate is out of GDT limits,
- *	it would gernerate #GP(Error code =?(TSS selector & F8H) | 01H )
+ *	it would gernerate #GP(Error code == (TSS selector & F8H) | 01H )
  *	when switching to a task gate in IDT by NMI.
  */
 static void taskm_id_25208_nmi_gdt_limit_overflow(void)
@@ -453,7 +407,8 @@ static void taskm_id_25208_nmi_gdt_limit_overflow(void)
 
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_005
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_005
  *
  * Summary: Page fault occurs when read the descriptor at index of TSS
  *	    selector, it would gernerate #PF when switching to a task gate
@@ -504,11 +459,12 @@ static void taskm_id_26173_nmi_tss_desc_page_fault(void)
 }
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_006
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_006
  *
  * Summary: The descriptor at index of TSS selector is not a non-busy TSS
  *	descriptor (i.e. [bit 44:40] != 01001B), it would gernerate
- *	#GP(Error code =?(TSS selector & F8H) | 01H )
+ *	#GP(Error code == (TSS selector & F8H) | 01H )
  *	when switching to a task gate in IDT by NMI.
  */
 static void taskm_id_25209_nmi_tss_desc_busy(void)
@@ -543,10 +499,11 @@ static void taskm_id_25209_nmi_tss_desc_busy(void)
 
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_007
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_007
  *
  * Summary: Present bit of the TSS descriptor is 0,
- *	it would gernerate #NP(Error code =?(TSS selector & F8H) | 01H )
+ *	it would gernerate #NP(Error code == (TSS selector & F8H) | 01H )
  *	when switching to a task gate in IDT by NMI.
  */
 static void taskm_id_25210_nmi_tss_desc_not_present(void)
@@ -580,12 +537,13 @@ static void taskm_id_25210_nmi_tss_desc_not_present(void)
 }
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_008
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_008
  *
- * Summary: G bit of the TSS descriptor is 0 and?The TSS descriptor points to
+ * Summary: G bit of the TSS descriptor is 0 and The TSS descriptor points to
  *	   32-bit TSS (i.e. [bit 44:40] is 01001B) and the limit of the TSS
  *	   descriptor is lees than 67H, it would gernerate
- *	   #TS(Error code =?(TSS selector & F8H) | 01H ) when switching to a
+ *	   #TS(Error code == (TSS selector & F8H) | 01H ) when switching to a
  *	   task gate in IDT by NMI.
  */
 static void taskm_id_25211_nmi_tss_desc_limit_67H(void)
@@ -619,12 +577,13 @@ static void taskm_id_25211_nmi_tss_desc_limit_67H(void)
 
 /**
  * @brief case name:
- *  Invalid task switch in protected mode_Exception_Checking_on_IDT_by_NMI_009
+ *  Invalid task switch in protected mode
+ *	Exception_Checking_on_IDT_by_NMI_009
  *
- * Summary: G bit of the TSS descriptor is 0 and?The TSS descriptor points to
+ * Summary: G bit of the TSS descriptor is 0 and The TSS descriptor points to
  *	    16-bit TSS (i.e. [bit 44:40] is 0001B) and the limit of the TSS
  *	    descriptor is less than 2BH, it would gernerate
- *	    #TS(Error code =?(TSS selector & F8H) | 01H )
+ *	    #TS(Error code == (TSS selector & F8H) | 01H )
  *	    when switching to a task gate in IDT by NMI.
  */
 static void taskm_id_26093_nmi_tss_desc_limit_2BH(void)
@@ -657,13 +616,25 @@ static void taskm_id_26093_nmi_tss_desc_limit_2BH(void)
 	memcpy((void *)(&boot_idt[2]), (void *)&bak, sizeof(idt_entry_t));
 }
 
+static int ret_val_tc24564;
+static int error_code_tc24564;
+static void call_ring3_tc24564(const char *data)
+{
+	asm volatile(ASM_TRY("1f")
+			"int $6\n\t"
+			"1:":::);
+
+	ret_val_tc24564 = exception_vector();
+	error_code_tc24564 = exception_error_code();
+}
+
 /**
  * @brief case name:
  *  Invalid task switch in protected
  *  mode_Exception_Checking_on_IDT_by_Software_interrupt_001
  *
  * Summary: CPL > task gate DPL, it would gernerate
- *	    #GP(Error code =?(vector << 3H) | 02H) when switching to a task
+ *	    #GP(Error code == (vector << 3H) | 02H) when switching to a task
  *	    gate in IDT by a software interrupt (i.e. INT n, INT3 or INTO).
  */
 static void taskm_id_24564_int_CPL_over_DPL(void)
@@ -693,7 +664,7 @@ static void taskm_id_24564_int_CPL_over_DPL(void)
  *  mode_Exception_Checking_on_IDT_by_Software_interrupt_002
  *
  * Summary: Present bit of task gate is 0, it would gernerate
- *	    #NP(Error code =?(vector << 3H) | 02H) when switching to a task
+ *	    #NP(Error code == (vector << 3H) | 02H) when switching to a task
  *	    gate in IDT by a software interrupt (i.e. INT n, INT3 or INTO).
  */
 static void taskm_id_25087_int_gate_present_clear(void)
@@ -761,7 +732,7 @@ static void taskm_id_25089_int_gate_selector_null(void)
  *  mode_Exception_Checking_on_IDT_by_Software_interrupt_004
  *
  * Summary: TSS selector in the task gate has TI flag set, it would gernerate
- *	    #GP(Error code =?(TSS selector & F8H) | 04H) when switching to a
+ *	    #GP(Error code == (TSS selector & F8H) | 04H) when switching to a
  *	    task gate in IDT by a software interrupt(i.e. INT n, INT3 or INTO).
  */
 static void taskm_id_25092_int_gate_TI_flag_set(void)
@@ -793,7 +764,7 @@ static void taskm_id_25092_int_gate_TI_flag_set(void)
  *  mode_Exception_Checking_on_IDT_by_Software_interrupt_005
  *
  * Summary: Index of TSS selector in the task gate is out of GDT limits,
- *	it would gernerate #GP(Error code =?TSS selector & F8H)
+ *	it would gernerate #GP(Error code ==TSS selector & F8H)
  *	when switching to a task gate in IDT by a software interrupt
  *	(i.e. INT n, INT3 or INTO).
  */
@@ -882,7 +853,7 @@ static void taskm_id_26172_int_pagefault(void)
  *
  * Summary: The descriptor at index of TSS selector is not a non-busy TSS
  *	    descriptor (i.e. [bit 44:40] != 01001B), it would gernerate
- *	    #GP(Error code =?TSS selector & F8H) when switching to a task gate
+ *	    #GP(Error code ==TSS selector & F8H) when switching to a task gate
  *	    in IDT by a software interrupt (i.e. INT n, INT3 or INTO).
  */
 static void taskm_id_25195_int_tss_desc_busy(void)
@@ -917,7 +888,7 @@ static void taskm_id_25195_int_tss_desc_busy(void)
  *  mode_Exception_Checking_on_IDT_by_Software_interrupt_008
  *
  * Summary: Present bit of the TSS descriptor is 0,
- *	it would gernerate #NP(Error code =?TSS selector & F8H)
+ *	it would gernerate #NP(Error code ==TSS selector & F8H)
  *	when switching to a task gate in IDT by a software interrupt
  *	(i.e. INT n, INT3 or INTO).
  */
@@ -954,7 +925,7 @@ static void taskm_id_25196_int_tss_desc_present_clear(void)
  * Summary: G bit of the TSS descriptor is 0 and The TSS descriptor points to
  *	    32-bit TSS (i.e. [bit 44:40] is 01001B) and the limit of the TSS
  *	    descriptor is lees than 67H, it would gernerate #TS
- *	    (Error code =?TSS selector & F8H) when switching to a task gate
+ *	    (Error code ==TSS selector & F8H) when switching to a task gate
  *	    in IDT by a software interrupt (i.e. INT n, INT3 or INTO).
  */
 static void taskm_id_25197_int_tss_desc_limit_67H(void)
@@ -989,7 +960,7 @@ static void taskm_id_25197_int_tss_desc_limit_67H(void)
  * Summary: G bit of the TSS descriptor is 0 and The TSS descriptor points to
  *	    16-bit TSS (i.e. [bit 44:40] is 0001B) and the limit of the TSS
  *	    descriptor is less than 2BH, it would gernerate
- *	    #TS(Error code =?TSS selector & F8H) when switching to a task gate
+ *	    #TS(Error code == TSS selector & F8H) when switching to a task gate
  *	    in IDT by a software interrupt (i.e. INT n, INT3 or INTO).
  */
 static void taskm_id_26091_int_tss_desc_limit_2BH(void)
@@ -1064,7 +1035,7 @@ static void taskm_id_25212_iret_prelink_null_sel(void)
  *  Invalid task switch in protected mode_Exception_Checking_on_IRET_002
  *
  * Summary: The previous task link has TI flag set,
- *	it would gernerate #TS(Error code =?(previous task link & F8H) | 04H)
+ *	it would gernerate #TS(Error code == (previous task link & F8H) | 04H)
  *	when executing IRET with EFLAGS.NT = 1.
  */
 static void taskm_id_25219_iret_prelink_TI_flag_set(void)
@@ -1102,7 +1073,7 @@ static void taskm_id_25219_iret_prelink_TI_flag_set(void)
  *  Invalid task switch in protected mode_Exception_Checking_on_IRET_003
  *
  * Summary: Index of the previous task link is out of GDT limits,
- *	it would gernerate #TS(Error code =?previous task link & FFF8H)
+ *	it would gernerate #TS(Error code == previous task link & FFF8H)
  *	when executing IRET with EFLAGS.NT = 1.
  */
 static void taskm_id_25221_iret_prelink_gdt_overflow(void)
@@ -1196,7 +1167,7 @@ static void taskm_id_26174_iret_prelink_pagefault(void)
  *
  * Summary: The descriptor at index of the previous task link is not a busy
  *	TSS descriptor (i.e. [bit 44:40] == 01001B), it would generate
- *	#TS(Error code =?previous task link & F8H) when executing IRET
+ *	#TS(Error code == previous task link & F8H) when executing IRET
  *	with EFLAGS.NT = 1.
  */
 static void taskm_id_25222_iret_type_not_busy(void)
@@ -1229,7 +1200,7 @@ static void taskm_id_25222_iret_type_not_busy(void)
  *  Invalid task switch in protected mode_Exception_Checking_on_IRET_006
  *
  * Summary: Present bit of the TSS descriptor is 0,
- *	it would gernerate #NP(Error code =?previous task link & F8H)
+ *	it would gernerate #NP(Error code == previous task link & F8H)
  *	when executing IRET with EFLAGS.NT = 1.
  */
 static void taskm_id_25223_iret_tss_desc_not_present(void)
@@ -1267,9 +1238,9 @@ static void taskm_id_25223_iret_tss_desc_not_present(void)
  * @brief case name:
  *  Invalid task switch in protected mode_Exception_Checking_on_IRET_007
  *
- * Summary: ?G bit of the TSS descriptor is 0 and The TSS descriptor points to
+ * Summary: G bit of the TSS descriptor is 0 and The TSS descriptor points to
  *	32-bit TSS(i.e. [bit 44:40] is 01001B) and the limit of the TSS
- *	descriptor is lees than 67H,?it would gernerate
+ *	descriptor is lees than 67H,it would gernerate
  *	#TS(Error code ==previous task link & F8H)
  *	when executing IRET with EFLAGS.NT = 1.
  */
@@ -1309,7 +1280,7 @@ static void taskm_id_25224_iret_tss_desc_limit_67H(void)
  * @brief case name:
  *  Invalid task switch in protected mode_Exception_Checking_on_IRET_008
  *
- * Summary: G bit of the TSS descriptor is 0?and The TSS descriptor points to
+ * Summary: G bit of the TSS descriptor is 0 and The TSS descriptor points to
  *	16-bit TSS (i.e. [bit 44:40] is 00001B) and limit of the TSS descriptor
  *	is less than 2BH,it would gernerate #TS(Error code == previous task
  *	link & F8H) when executing IRET with EFLAGS.NT = 1.
@@ -1345,6 +1316,17 @@ static void taskm_id_26094_iret_tss_desc_limit_2BH(void)
 	gdt32[TSS_INTR>>3].access = 0x89;
 }
 
+static int ret_val_tc24561;
+static int error_code_tc24561;
+static void call_ring3_tc24561(const char *data)
+{
+	asm volatile(ASM_TRY("1f")
+			"lcall $" xstr(TASK_GATE_SEL) ", $0xf4f4f4f4\n\t"
+			"1:":::);
+
+	ret_val_tc24561 = exception_vector();
+	error_code_tc24561 = exception_error_code();
+}
 
 /**
  * @brief case name:
@@ -1389,7 +1371,7 @@ static void taskm_id_24561_task_gate_CPL_check(void)
  *  Invalid task switch in protected mode_Exception_Checking_on_Task_gate_002
  *
  * Summary: Task gate selector RPL > task gate DPL, it would gernerate
- *	    #GP(Error code =?gate selector & F8H)
+ *	    #GP(Error code == gate selector & F8H)
  *	    when executing a CALL or JMP instruction to a task gate.
  */
 static void taskm_id_24613_task_gate_RPL_check(void)
@@ -1460,7 +1442,7 @@ static void taskm_id_24562_task_gate_present_bit_check(void)
  *  Invalid task switch in protected mode_Exception_Checking_on_Task_gate_004
  *
  * Summary:TSS selector in the task gate is a null selector,
- *	it would gernerate #NP(Error code =?gate.selector & 0xF8)
+ *	it would gernerate #NP(Error code == gate.selector & 0xF8)
  *	when executing a CALL or JMP instruction to a task gate.
  */
 static void taskm_id_24566_task_gate_selector_null_check(void)
@@ -1691,7 +1673,7 @@ static void taskm_id_25028_task_gate_tss_desc_limit_67H_check(void)
  * @brief case name:
  *  Invalid task switch in protected mode_Exception_Checking_on_Task_gate_011
  *
- * Summary:?G bit of the TSS descriptor is 0 and The TSS descriptor
+ * Summary:G bit of the TSS descriptor is 0 and The TSS descriptor
  *	points to 16-bit TSS (i.e. [bit 44:40] is 0001B) and the
  *	limit of the TSS descriptor is less than 2BH,
  *	it would gernerate #TS(Error code = TSS selector & F8H)
@@ -1723,6 +1705,18 @@ static void taskm_id_26061_task_gate_tss_desc_limit_2BH(void)
 		__func__);
 }
 
+static int ret_val_tc24544;
+static int error_code_tc24544;
+static void call_ring3_tc24544(const char *data)
+{
+	asm volatile(ASM_TRY("1f")
+			"lcall $" xstr(TSS_INTR) ", $0xf4f4f4f4\n\t"
+			"1:":::);
+
+	ret_val_tc24544 = exception_vector();
+	error_code_tc24544 = exception_error_code();
+}
+
 /**
  * @brief case name:
  *  Invalid task switch in protected
@@ -1750,7 +1744,7 @@ static void taskm_id_24544_tss_CPL_over_DPL(void)
  *  mode_Exception_Checking_on_TSS_selector_002
  *
  * Summary: TSS selector RPL > TSS descriptor DPL,
- *	it would gernerate #GP(Error code =?TSS selector & F8H)
+ *	it would gernerate #GP(Error code == TSS selector & F8H)
  *	when executing a CALL or JMP instruction with a TSS selector to
  *	a TSS descriptor.
  */
@@ -1774,7 +1768,7 @@ static void taskm_id_24546_tss_RPL_over_DPL(void)
  * Invalid task switch in protected mode_Exception_Checking_on_TSS_selector_003
  *
  * Summary: The TSS selector has TI flag set,
- *	it would gernerate #GP(Error code =?(TSS selector & F8H) | 04H)
+ *	it would gernerate #GP(Error code == (TSS selector & F8H) | 04H)
  *	when executing a CALL or JMP instruction with a TSS selector
  *	to a TSS descriptor.
  */
@@ -1823,7 +1817,7 @@ static void taskm_id_25030_tss_desc_busy(void)
  * Invalid task switch in protected mode_Exception_Checking_on_TSS_selector_005
  *
  * Summary: Present bit of the TSS descriptor is 0,
- *	it would gernerate #NP(Error code =?TSS selector & F8H)
+ *	it would gernerate #NP(Error code == TSS selector & F8H)
  *	when executing a CALL or JMP instruction with a TSS selector to
  *	a TSS descriptor.
  */
@@ -1877,7 +1871,7 @@ static void taskm_id_25034_tss_limit_67H(void)
  * Summary: G bit of the TSS descriptor is 0 and The TSS descriptor points to
  *	    16-bit TSS(i.e. [bit 44:40] is 00001B) and limit of the TSS
  *	    descriptor is less than 2BH, it would gernerate
- *	    #TS(Error code = TSS selector & F8H)?when executing a CALL
+ *	    #TS(Error code = TSS selector & F8H) when executing a CALL
  *	    or JMP instruction with a TSS selector to a TSS descriptor.
  */
 static void taskm_id_26088_tss_limit_2BH(void)
@@ -1898,6 +1892,7 @@ static void taskm_id_26088_tss_limit_2BH(void)
 		&& (exception_error_code() == (TSS_INTR & 0xF8))),
 		__func__);
 }
+
 
 /**
  * @brief case name:guest CR0.TS keeps unchanged in task switch attempts_001
@@ -2150,7 +2145,7 @@ static void taskm_id_23892_cr0_ts_expose(void)
 /**
  * @brief case name:Task Management expose CR0.TS_004
  *
- * Summary: Set CR0.EM,?CR0.TS set and executes SSE instruction MOVAPS.
+ * Summary: Set CR0.EM, CR0.TS set and executes SSE instruction MOVAPS.
  *         Set CR0.EM, Clear TS not set and executes SSE instruction MOVAPS.
  */
 static void taskm_id_23893_cr0_ts_expose(void)
@@ -2360,7 +2355,7 @@ static void taskm_id_23762_protect(void)
 /**
  * @brief case name:Task switch in protect mode_003
  *
- * Summary: ?Configure TSS and use INT instruction with the vector
+ * Summary: Configure TSS and use INT instruction with the vector
  * points to a task-gate descriptor in the IDT as the operand
  */
 static void taskm_id_23763_protect(void)
@@ -2390,7 +2385,7 @@ static void taskm_id_23763_protect(void)
 /**
  * @brief case name:Task switch in protect mode_004
  *
- * Summary: ?Configure TSS and use?IRET with the EFLAGS.NT set
+ * Summary: Configure TSS and use IRET with the EFLAGS.NT set
  *	and the previous task link field configured.
  */
 static void taskm_id_24006_protect(void)
@@ -2464,28 +2459,6 @@ static void taskm_id_24026_tr_start_up(void)
 		"mov %ax, %ss\n\t");
 }
 
-#ifdef IN_NON_SAFETY_VM
-/**
- * @brief case name:TR base following INIT_001
- *
- * Summary: Check the TR invisible part in INIT
- */
-static __unused void taskm_id_24027_tr_init(void)
-{
-	struct descriptor_table_ptr gdt_ptr;
-
-	sgdt(&gdt_ptr);
-
-	memcpy(&(gdt32[GDT_NEWTSS_INDEX]), &(gdt32[2]), sizeof(gdt_entry_t));
-
-	lgdt(&gdt_ptr);
-
-	smp_init();
-
-	on_cpu(1, (void *)test_tr_init, NULL);
-}
-#endif
-
 /**
  * @brief case name: CR0.TS state following STARTUP_001
  *
@@ -2524,7 +2497,9 @@ static void taskm_id_26023_tr_selector_start_up(void)
 	report("%s", tr_sel == 0, __func__);
 }
 
-#ifdef IN_NON_SAFETY_VM
+#endif /* defined(IN_NON_SAFETY_VM) || defined(IN_SAFETY_VM) */
+
+#if defined(IN_NON_SAFETY_VM)
 /**
  * @brief case name: CR0.TS state following INIT_001
  *
@@ -2562,9 +2537,68 @@ static void taskm_id_26024_tr_selector_init(void)
 
 	report("%s", tr_sel == 0, __func__);
 }
-#endif
 
-#ifdef IN_NATIVE
+/**
+ * @brief case name:TR base following INIT_001
+ *
+ * Summary: Check the TR invisible part in INIT
+ */
+static void taskm_id_24027_tr_init(void)
+{
+	struct descriptor_table_ptr gdt_ptr;
+
+	sgdt(&gdt_ptr);
+
+	memcpy(&(gdt32[GDT_NEWTSS_INDEX]), &(gdt32[2]), sizeof(gdt_entry_t));
+
+	lgdt(&gdt_ptr);
+
+	smp_init();
+
+	on_cpu(1, (void *)test_tr_init, NULL);
+}
+
+#endif /* #if defined(IN_NON_SAFETY_VM) */
+
+#if defined(IN_NATIVE)
+
+/**
+ * @brief case name:
+ *   Limit check for 16-bit TSS on the physical platform
+ *
+ * Summary:G bit of the TSS descriptor is 0 and The TSS descriptor
+ *	points to 16-bit TSS (i.e. [bit 44:40] is 0001B) and the
+ *	limit of the TSS descriptor is less than 2BH,
+ *	it would gernerate #TS(Error code = TSS selector & F8H)
+ *	when executing a CALL or JMP instruction to a task gate.
+ */
+
+static void taskm_id_38864_limit_check_tss_desc_limit_2BH(void)
+{
+	/*Construct tss_intr*/
+	setup_tss32();
+	tss_intr.eip = (u32)irq_tss;
+
+	gdt32[TSS_INTR>>3].limit_low = 0x2A;
+	gdt32[TSS_INTR>>3].access = 0x81; /*p=1, type:0001b*/
+
+	gate.selector = TSS_INTR;
+	gate.type = 5;
+	gate.system = 0;
+	gate.dpl = 1;
+	gate.p = 1;
+	memcpy((void *)(&gdt32[TASK_GATE_SEL>>3]),
+		(void *)(&gate), sizeof(gate));
+
+	asm volatile(ASM_TRY("1f")
+		"lcall $" xstr(TASK_GATE_SEL) ", $0xf4f4f4f4\n\t"
+		"1:":::);
+
+	report("%s", ((exception_vector() == TS_VECTOR)
+		&& (exception_error_code() == (TSS_INTR & 0xF8))),
+		__func__);
+}
+
 /**
  * @brief case name:
  *	Order of checks on TSS descriptor during a task switch_001
@@ -2577,9 +2611,9 @@ static void taskm_id_26024_tr_selector_init(void)
  *	2) Check P bit of the TSS descriptor.
  *	3) Check G bit and limit of the TSS descriptor.
  *
- *	This test case set S bit and clear P??bit of the TSS descriptor,
+ *	This test case set S bit and clear P bit of the TSS descriptor,
  *	also set limit of TSS descriptor to 0x66 (G = 0),
- *	it would generate #GP (Error code = 0) ?
+ *	it would generate #GP (Error code = 0)
  *	when executing a CALL to TSS_INTR
  *
  *	Note:  Check S bit before P bit of the TSS descriptor and G bit and
@@ -2618,7 +2652,7 @@ static void taskm_id_37691_checks_on_TSS_descriptor_S_bit_set(void)
  *
  *	This test case clear P bit of the TSS descriptor,
  *	also set limit of TSS descriptor to 0x66 (G = 0),
- *	it would generate #NP (Error code = TSS selector & F8H) ?
+ *	it would generate #NP (Error code == TSS selector & F8H)
  *	when executing a CALL to TSS_INTR.
  *
  *	Note: Check P bit of the TSS descriptor before G bit
@@ -2642,6 +2676,18 @@ static void taskm_id_37692_checks_on_TSS_descriptor_P_bit_clear(void)
 		__func__);
 }
 
+static int ret_val_tc37686;
+static int error_code_tc37686;
+static void call_ring3_tc37686(const char *data)
+{
+	asm volatile(ASM_TRY("1f")
+			"lcall $" xstr(TASK_GATE_SEL) ", $0xf4f4f4f4\n\t"
+			"1:":::);
+
+	ret_val_tc37686 = exception_vector();
+	error_code_tc37686 = exception_error_code();
+}
+
 /**
  * @brief case name:
  *  Order of checks on task gate P bit check during a task switch_001
@@ -2649,13 +2695,13 @@ static void taskm_id_37692_checks_on_TSS_descriptor_P_bit_clear(void)
  * Summary: When a vCPU attempts to do task switch and a task gate is used
  *	    to specify the TSS selector, the physical platform shall check
  *	    the present bit of the task gate after privilege checks and
- *	    before checking the new TSS selector.?
+ *	    before checking the new TSS selector.
  *
  *	With below conditions, the physical platform shall check the privilege
  *	first and generate #GP(Error code = gate selector & F8H)
  *	when executing a CALL to a task gate.
  *
- *	1)CPL > task gate DPL(set CPL to 3 and DPL of?task gate to 0)
+ *	1)CPL > task gate DPL(set CPL to 3 and DPL of task gate to 0)
  *	2) present bit of the task gate is 0;
  *	3)Set G bit to 0 and limit to 0x66;
  */
@@ -2762,7 +2808,7 @@ static void taskm_id_37694_task_switch_null_selector(void)
  *	    present bit of the task gate after privilege checks and
  *	    before checking the new TSS selector.
  *
- *	TSS selector in the task gate has TI flag?set and selector is
+ *	TSS selector in the task gate has TI flag set and selector is
  *	gdt.limit +1, it would generate #GP(Error code = TSS selector )
  *	when executing a CALL or JMP instruction to a task gate.
  */
@@ -2800,7 +2846,16 @@ const struct {
 	const char *desc;
 } tc_tbl32[] = {
 
-#ifdef IN_NATIVE
+#if defined(IN_NATIVE)
+	/**
+	 * Task Management Application constraint:
+	 * Valid limit check for 16-bit TSS on the physical platform
+	 */
+	{
+		true, 38864, taskm_id_38864_limit_check_tss_desc_limit_2BH,
+		"Valid limit check for 16-bit TSS on the physical platform"
+	},
+
 	/**
 	 * Task Management Application constraint:
 	 * Order of checks on TSS descriptor during a task switch
@@ -2842,22 +2897,6 @@ const struct {
 	},
 #endif
 
-	{
-		true, 23826, taskm_id_23826_cr0_ts_startup,
-		"CR0.TS state following STARTUP_001"
-	},
-	{
-		true, 23829, taskm_id_23829_eflags_nt_start_up,
-		"EFLAGS.NT state following STARTUP_001"
-	},
-	{
-		true, 26023, taskm_id_26023_tr_selector_start_up,
-		"TR selector following STARTUP_001"
-	},
-	{
-		true, 24026, taskm_id_24026_tr_start_up,
-		"TR Initial value following start-up_001"
-	},
 #ifdef IN_NON_SAFETY_VM
 	{
 		true, 23827, taskm_id_23827_cr0_ts_init,
@@ -2876,6 +2915,26 @@ const struct {
 		"TR Initial value following INIT_001"
 	},
 #endif
+
+#if defined(IN_NON_SAFETY_VM) || defined(IN_SAFETY_VM)
+	{
+		true, 23826, taskm_id_23826_cr0_ts_startup,
+		"CR0.TS state following STARTUP_001"
+	},
+	{
+		true, 23829, taskm_id_23829_eflags_nt_start_up,
+		"EFLAGS.NT state following STARTUP_001"
+	},
+	{
+		true, 26023, taskm_id_26023_tr_selector_start_up,
+		"TR selector following STARTUP_001"
+	},
+	{
+		true, 24026, taskm_id_24026_tr_start_up,
+		"TR Initial value following start-up_001"
+	},
+
+	/* Expose Registers: Task Management Expose TR*/
 	{
 		true, 23674, taskm_id_23674_tr_expose,
 		"Task Management expose TR_001"
@@ -2896,6 +2955,8 @@ const struct {
 		true, 23689, taskm_id_23689_tr_expose,
 		"Task Management expose TR_005"
 	},
+
+	/* Expose Registers: Task Management Expose CR0.TS*/
 	{
 		true, 23821, taskm_id_23821_cr0_ts_expose,
 		"Task Management expose CR0.TS_001"
@@ -2912,6 +2973,10 @@ const struct {
 		true, 23893, taskm_id_23893_cr0_ts_expose,
 		"Task Management expose CR0.TS_004"
 	},
+
+	/* Expose Registers:
+	 * guest CR0.TS keeps unchanged in task switch attempt
+	 */
 	{
 		true, 23803, taskm_id_23803_cr0_ts_unchanged_call,
 		"guest CR0.TS keeps unchanged in task switch attempts_001"
@@ -2928,6 +2993,8 @@ const struct {
 		true, 24008, taskm_id_24008_cr0_ts_unchanged_call,
 		"guest CR0.TS keeps unchanged in task switch attempts_004"
 	},
+
+	/* Expose Task Switch Support: Task Switch in protect mode */
 	{
 		true, 23761, taskm_id_23761_protect,
 		"Task switch in protect mode_001"
@@ -3151,6 +3218,7 @@ const struct {
 		true, 26061, taskm_id_26061_task_gate_tss_desc_limit_2BH,
 		"Exception_Checking_on_Task_gate_011"
 	}
+#endif
 };
 
 static void print_case_list_32(void)

@@ -54,7 +54,7 @@ struct tss_desc {
 struct tss_desc desc_intr_backup, desc_cur_backup;
 
 #ifndef __x86_64__
-static void write_cr0_ts(u32 bitvalue)
+static __unused void write_cr0_ts(u32 bitvalue)
 {
 	u32 cr0 = read_cr0();
 	if (bitvalue) {
