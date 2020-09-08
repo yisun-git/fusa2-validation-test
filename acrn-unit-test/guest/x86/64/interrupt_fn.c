@@ -270,27 +270,33 @@ static void interrupt_rqmid_36254_expose_exception_gp_001(void)
 	cr4_value = read_cr4();
 	cr4_value |= CR4_RESERVED_BIT23;
 
-	/* step 5 generate #GP*/
+	/* step 5 dump CR and rax rbx register*/
+	DUMP_REGS1(regs_check[0]);
+	/* step 6 generate #GP*/
+	asm volatile ("mov %0, %%cr4" : : "d"(cr4_value) : "memory");
+	/* step 7 dump CR and rax rbx register*/
+	DUMP_REGS1(regs_check[1]);
+
+	/* step 8 dump all remaining registers*/
+	DUMP_REGS2(regs_check[0]);
+	/* step 9 generate #GP*/
+	asm volatile ("mov %0, %%cr4" : : "a"(cr4_value) : "memory");
+	/* step 10 dump all remaining registers*/
+	DUMP_REGS2(regs_check[1]);
+
+	/* step 11 generate #GP*/
 	asm volatile ("mov %0, %%cr4" : : "d"(cr4_value) : "memory");
 
-	/*step 6 get 'mov %0, %%cr4' instruction address*/
+	/*step 12 get 'mov %0, %%cr4' instruction address*/
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 3 is 'mov %rdx,%cr4' instruction len*/
 	current_rip -= (5 + 3);
-
-	/* step 7 dump CR and rax rbx register*/
-	DUMP_REGS1(regs_check[0]);
-	/* step 8 generate #GP*/
-	asm volatile ("mov %0, %%cr4" : : "d"(cr4_value) : "memory");
-	/* step 9 dump CR and rax rbx register*/
-	DUMP_REGS1(regs_check[1]);
-
-	/* step 10 dump all remaining registers*/
-	DUMP_REGS2(regs_check[0]);
-	/* step 11 generate #GP*/
-	asm volatile ("mov %0, %%cr4" : : "a"(cr4_value) : "memory");
-	/* step 12 dump all remaining registers*/
-	DUMP_REGS2(regs_check[1]);
 
 	debug_print("%lx %lx %lx %lx %lx\n", save_rflags1, save_rflags2,
 		save_error_code, current_rip, rip[0]);
@@ -298,7 +304,7 @@ static void interrupt_rqmid_36254_expose_exception_gp_001(void)
 	/* step 13 check #GP exception, program state and error code*/
 	check = check_all_regs();
 	report("%s", ((irqcounter_query(GP_VECTOR) == 6) && (check == 0)
-		&& (save_error_code == 0) && (current_rip == rip[0])), __FUNCTION__);
+		&& (save_error_code == 0) && (current_rip == rip[2])), __FUNCTION__);
 
 	/* resume environment */
 	execption_inc_len = 0;
@@ -381,36 +387,42 @@ static void interrupt_rqmid_36701_expose_exception_mf_001(void)
 	/* step 6 set cr0.ne[bit 5]*/
 	write_cr0(read_cr0() | CR0_NE_BIT);
 
-	/* step 7 and 8 build the FPU exception generate #MF*/
-	asm volatile("fninit;fldcw %0;fld %1\n"
-				 "fdiv %2\n"
-				 "emms\n"
-				 :: "m"(cw), "m"(op1), "m"(op2));
-
-	/*step 9 get 'mov %0, %%cr4' instruction address*/
-	asm volatile("call get_current_rip");
-	/* 5 is call get_current_rip instruction len, 2 is 'emms' instruction len*/
-	current_rip -= (5 + 2);
-
-	/* step 10 dump CR and rax rbx register*/
+	/* step 7 dump CR and rax rbx register*/
 	DUMP_REGS1(regs_check[0]);
-	/* step 11 and 12 build the FPU exception generate #MF*/
+	/* step 8 and 9 build the FPU exception generate #MF*/
 	asm volatile("fninit;fldcw %0;fld %1\n"
 				 "fdiv %2\n"
 				 "emms\n"
 				 :: "m"(cw), "m"(op1), "m"(op2));
-	/* step 13 dump CR and rax rbx register*/
+	/* step 10 dump CR and rax rbx register*/
 	DUMP_REGS1(regs_check[1]);
 
-	/* step 14 dump all remaining registers*/
+	/* step 11 dump all remaining registers*/
 	DUMP_REGS2(regs_check[0]);
+	/* step 12 and 13 build the FPU exception generate #MF*/
+	asm volatile("fninit;fldcw %0;fld %1\n"
+				 "fdiv %2\n"
+				 "emms\n"
+				 :: "m"(cw), "m"(op1), "m"(op2));
+	/* step 14 dump all remaining registers*/
+	DUMP_REGS2(regs_check[1]);
+
 	/* step 15 and 16 build the FPU exception generate #MF*/
 	asm volatile("fninit;fldcw %0;fld %1\n"
 				 "fdiv %2\n"
 				 "emms\n"
 				 :: "m"(cw), "m"(op1), "m"(op2));
-	/* step 17 dump all remaining registers*/
-	DUMP_REGS2(regs_check[1]);
+
+	/*step 17 get 'mov %0, %%cr4' instruction address*/
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
+	asm volatile("call get_current_rip");
+	/* 5 is call get_current_rip instruction len, 2 is 'emms' instruction len*/
+	current_rip -= (5 + 2);
 
 	debug_print("%lx %lx %lx %lx %lx\n", save_rflags1, save_rflags2,
 		save_error_code, current_rip, rip[0]);
@@ -418,7 +430,7 @@ static void interrupt_rqmid_36701_expose_exception_mf_001(void)
 	/* step 18 check #MF, program state register, error code */
 	check = check_all_regs();
 	report("%s", ((irqcounter_query(MF_VECTOR) == 6) && (check == 0)
-		&& (save_error_code == 0) && (current_rip == rip[0])), __FUNCTION__);
+		&& (save_error_code == 0) && (current_rip == rip[2])), __FUNCTION__);
 
 	/* resume environment */
 	execption_inc_len = 0;
@@ -1482,30 +1494,36 @@ static void interrupt_rqmid_38173_expose_exception_de_001(void)
 	memset(rip, 0, sizeof(rip));
 	rip_index = 0;
 
-	/* step 5 generate #DE, use any register*/
+	/* step 5 dump CR and rax rbx register*/
+	DUMP_REGS1(regs_check[0]);
+	/* step 6 generate #DE, use edx*/
+	asm volatile ("mov $0x0,%edx\n\t"
+		"div    %edx");
+	/* step 7 dump CR and rax rbx register*/
+	DUMP_REGS1(regs_check[1]);
+
+	/* step 8 dump all remaining registers*/
+	DUMP_REGS2(regs_check[0]);
+	/* step 9 generate #DE, , use ebx*/
+	asm volatile ("mov $0x0,%ebx\n\t"
+		"div    %ebx");
+	/* step 10 dump all remaining registers*/
+	DUMP_REGS2(regs_check[1]);
+
+	/* step 11 generate #DE, use any register*/
 	asm volatile ("mov $0x0,%ebx\n\t"
 		"div    %ebx");
 
-	/*step 6 get 'div %eax' instruction address*/
+	/*step 12 get 'div %eax' instruction address*/
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 2 is 'div %eax' instruction len*/
 	current_rip -= (5 + 2);
-
-	/* step 7 dump CR and rax rbx register*/
-	DUMP_REGS1(regs_check[0]);
-	/* step 8 generate #DE, use edx*/
-	asm volatile ("mov $0x0,%edx\n\t"
-		"div    %edx");
-	/* step 9 dump CR and rax rbx register*/
-	DUMP_REGS1(regs_check[1]);
-
-	/* step 10 dump all remaining registers*/
-	DUMP_REGS2(regs_check[0]);
-	/* step 11 generate #DE, , use ebx*/
-	asm volatile ("mov $0x0,%ebx\n\t"
-		"div    %ebx");
-	/* step 12 dump all remaining registers*/
-	DUMP_REGS2(regs_check[1]);
 
 	debug_print("%lx %lx %lx %lx %lx\n", save_rflags1, save_rflags2,
 		save_error_code, current_rip, rip[0]);
@@ -1513,7 +1531,7 @@ static void interrupt_rqmid_38173_expose_exception_de_001(void)
 	/* step 13 check #DE exception, program state*/
 	check = check_all_regs();
 	report("%s", ((irqcounter_query(DE_VECTOR) == 6) && (check == 0)
-		&& (current_rip == rip[0])), __FUNCTION__);
+		&& (current_rip == rip[2])), __FUNCTION__);
 
 	/* resume environment */
 	execption_inc_len = 0;
@@ -1620,6 +1638,12 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	 * this code must be put in the final test
 	 */
 	asm volatile("call get_current_rip");
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	/* 5 is call get_current_rip instruction len, 2 is 'wrmsr' instruction len */
 	current_rip -= 5 + 2;
 
@@ -1733,6 +1757,12 @@ static void interrupt_rqmid_38178_expose_exception_bp_001(void)
 	asm volatile("int3");
 
 	/*step 14 get setp 13 'int3' instruction address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len*/
 	current_rip -= 5;
@@ -1843,6 +1873,12 @@ static void interrupt_rqmid_38263_expose_exception_ud_001(void)
 	asm volatile("UD2");
 
 	/*step 12 get setp 11 'UD2' instruction address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 2 is UD2 instruction len*/
 	current_rip -= 5 + 2;
@@ -1951,6 +1987,12 @@ static void interrupt_rqmid_38286_expose_exception_nm_001(void)
 	asm volatile("fld %0\n\t"::"m"(op1));
 
 	/*step 14 get setp 13 'fld %0' instruction address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 3 is 'fld %0' instruction len*/
 	current_rip -= 5 + 3;
@@ -2062,6 +2104,12 @@ static void interrupt_rqmid_38289_expose_exception_df_001(void)
 	asm volatile("INT $8");
 
 	/*step 12 get setp 11 'INT 8' instruction exception address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len*/
 	current_rip -= 5;
@@ -2170,6 +2218,12 @@ static void interrupt_rqmid_38300_expose_exception_np_001(void)
 	asm volatile("UD2");
 
 	/*step 14 get setp 11 'UD2' instruction address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 2 is UD2 instruction len*/
 	current_rip -= 5 + 2;
@@ -2294,6 +2348,12 @@ static void interrupt_rqmid_38352_expose_exception_ss_001(void)
 		::"m"(lss));
 
 	/*step 14 get setp 12 instruction address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 4 is 'lss -0x14(%rbp),%eax' instruction len*/
 	current_rip -= 5 + 4;
@@ -2361,6 +2421,7 @@ static void interrupt_rqmid_38353_expose_exception_ss_002(void)
 	execption_inc_len = 0;
 }
 
+// CR2 shoud be set #PF vaddr
 /**
  * @brief case name: Expose exception and interrupt handling_PF_001
  *
@@ -2424,6 +2485,12 @@ static void interrupt_rqmid_38393_expose_exception_pf_001(void)
 	asm volatile("mov %rax, (%rbx)\n\t");
 
 	/*step 14 get setp 11 instruction address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 2 is instruction len*/
 	current_rip -= 5 + 2;
@@ -2459,7 +2526,9 @@ static void interrupt_rqmid_38394_expose_exception_pf_002(void)
 	irqcounter_initialize();
 
 	/* length of the instruction that generated the exception 'mov %al,(%r12)'*/
-	execption_inc_len = 4;
+	//execption_inc_len = 4;
+	/* length of the instruction that generated the exception 'mov %dl,(%rax)'*/
+	execption_inc_len = 2;
 
 	/* step 2 prepare the interrupt handler of #PF. */
 	handle_exception(PF_VECTOR, &handled_exception);
@@ -2475,7 +2544,7 @@ static void interrupt_rqmid_38394_expose_exception_pf_002(void)
 
 	/*setp 6 trigger #PF*/
 	asm volatile("mov %[value], (%[p])\n\t"
-		"1:" : : [value]"r"(value), [p]"r"(gva));
+		"1:" : : [value]"d"(value), [p]"a"(gva));
 
 	check = check_rflags();
 
@@ -2545,6 +2614,12 @@ static void interrupt_rqmid_38455_expose_exception_xm_001(void)
 	asm volatile("ADDPS %xmm2, %xmm1");
 
 	/*step 14 get setp 11 instruction address */
+	/* If ASM is used to call a function, GCC will not see the
+	 * modification of register inside the called function,
+	 * which will cause subsequent code to continue to use
+	 * the modified register. In this case,
+	 * this code must be put in the final test
+	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 2 is instruction len*/
 	current_rip -= 5 + 2;
@@ -2599,7 +2674,7 @@ static void interrupt_rqmid_38456_expose_exception_xm_002(void)
 	check = check_rflags();
 
 	/* step 7 check #XM exception and rflag*/
-	report("%s", ((irqcounter_query(MF_VECTOR) == 1) && (check == 0)), __FUNCTION__);
+	report("%s", ((irqcounter_query(XM_VECTOR) == 1) && (check == 0)), __FUNCTION__);
 
 	/* resume environment */
 	execption_inc_len = 0;
@@ -2773,6 +2848,41 @@ static void interrupt_rqmid_38460_expose_instruction_breakpoints_004(void)
 	execption_inc_len = 0;
 }
 
+/**
+ * @brief case name:Set EFLAGS.RF_001
+ *
+ * Summary: At 64bit mode, when a vCPU attempts to call a handler for a NMI,
+ * ACRN hypervisor shall guarantee that the EFLAGS.RF on the current guest stack is 1H.
+ */
+static void interrupt_rqmid_39087_set_eflags_rf_001(void)
+{
+	bool check = false;
+
+	/* step 1 init g_irqcounter */
+	irqcounter_initialize();
+
+	/* length of the instruction that generated the exception */
+	execption_inc_len = 2;
+
+	/* step 2 prepare the interrupt handler of #NMI. */
+	handle_exception(NMI_VECTOR, &handled_exception);
+
+	/* step 3 init by setup_idt(prepare the interrupt-gate descriptor of #NMI)*/
+
+	/* step 4 generate #NMI */
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, APIC_ID_BSP);
+
+	if (save_rflags1 & RFLAG_RF_BIT) {
+		check = true;
+	}
+
+	/* step 5 check #NMI exception and rflag*/
+	report("%s", ((irqcounter_query(NMI_VECTOR) == 1) && (check == true)), __FUNCTION__);
+
+	/* resume environment */
+	execption_inc_len = 0;
+}
+
 static void print_case_list_64(void)
 {
 	printf("\t Interrupt feature 64-Bits Mode case list:\n\r");
@@ -2880,6 +2990,7 @@ static void print_case_list_64(void)
 		"Expose masking and unmasking Instruction breakpoints_003");
 	printf("Case ID:%d case name:%s\n\r", 38460,
 		"Expose masking and unmasking Instruction breakpoints_003");
+	printf("Case ID:%d case name:%s\n\r", 39087, "Set EFLAGS.RF_001");
 #ifdef IN_NON_SAFETY_VM
 		printf("Case ID:%d case name:%s\n\r", 38001,
 			"Page fault while handling #DF in non-safety VM_001");
@@ -2975,8 +3086,10 @@ static void test_interrupt_64(void)
 
 	interrupt_rqmid_38459_expose_instruction_breakpoints_003();
 	interrupt_rqmid_38460_expose_instruction_breakpoints_004();
+	interrupt_rqmid_39087_set_eflags_rf_001();
 #ifdef IN_NON_SAFETY_VM
-	interrupt_rqmid_38001_df_pf();	//non-safety VM shutdowns	not ok
+	/* non-safety VM shutdowns, no information can be print */
+	//interrupt_rqmid_38001_df_pf();
 #endif
 #ifdef IN_SAFETY_VM
 	interrupt_rqmid_38002_df_pf();	//safety call bsp_fatal_error()

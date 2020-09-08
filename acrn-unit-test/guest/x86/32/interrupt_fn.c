@@ -1106,7 +1106,8 @@ static void test_interrupt_32(void)
 	interrupt_rqmid_38298_expose_exception_ts_002();
 	interrupt_rqmid_38296_expose_exception_ts_001();
 #ifdef IN_NON_SAFETY_VM
-	interrupt_rqmid_36128_df_ts();	//non-safety VM shutdowns	not ok
+	/* non-safety VM shutdowns, no information can be print */
+	//interrupt_rqmid_36128_df_ts();
 #endif
 #ifdef IN_SAFETY_VM
 	interrupt_rqmid_36132_df_ts();	//safety call bsp_fatal_error()
