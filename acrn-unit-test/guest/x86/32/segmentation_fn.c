@@ -2953,8 +2953,10 @@ static void call_gate_function31_1(void)
 		);
 
 	esp_val = (u32 *)esp_32;
-	printf("orig: current-ss=0x%x, cs=0x%x, esp=0x%x calling cs=0x%x eip=0x%x, ss=0x%x\n",
-		read_ss(), read_cs(), esp_32, esp_val[1], esp_val[0], esp_val[3]);
+
+	/* This case calls printf at ring3, will generate #PF */
+	//printf("orig: current-ss=0x%x, cs=0x%x, esp=0x%x calling cs=0x%x eip=0x%x, ss=0x%x\n",
+	//	read_ss(), read_cs(), esp_32, esp_val[1], esp_val[0], esp_val[3]);
 
 	asm volatile("mov $" xstr(STACK_2ND + 1) ",%ax\n\t"
 		"mov %ax, %ss\n\t"
