@@ -413,7 +413,7 @@ static void interrupt_rqmid_36701_expose_exception_mf_001(void)
 				 "emms\n"
 				 :: "m"(cw), "m"(op1), "m"(op2));
 
-	/*step 17 get 'mov %0, %%cr4' instruction address*/
+	/*step 17 get step 16 'emms' instruction address*/
 	/* If ASM is used to call a function, GCC will not see the
 	 * modification of register inside the called function,
 	 * which will cause subsequent code to continue to use
@@ -1518,7 +1518,7 @@ static void interrupt_rqmid_38173_expose_exception_de_001(void)
 	asm volatile ("mov $0x0,%ebx\n\t"
 		"div    %ebx");
 
-	/*step 12 get 'div %eax' instruction address*/
+	/*step 12 get step 11 'div %eax' instruction address*/
 	/* If ASM is used to call a function, GCC will not see the
 	 * modification of register inside the called function,
 	 * which will cause subsequent code to continue to use
@@ -1634,7 +1634,7 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 		"d"(APIC_ID_BSP),
 		"c"(APIC_BASE_MSR + APIC_ICR/16));
 
-	/*step 14 get 'wrmsr' instruction address
+	/*step 14 get step 13 'wrmsr' instruction address
 	 * If ASM is used to call a function, GCC will not see the
 	 * modification of register inside the called function,
 	 * which will cause subsequent code to continue to use
@@ -2221,7 +2221,7 @@ static void interrupt_rqmid_38300_expose_exception_np_001(void)
 	/*setp 13 execute UD2 instruction trigger #NP*/
 	asm volatile("UD2");
 
-	/*step 14 get setp 11 'UD2' instruction address */
+	/*step 14 get setp 13 'UD2' instruction address */
 	/* If ASM is used to call a function, GCC will not see the
 	 * modification of register inside the called function,
 	 * which will cause subsequent code to continue to use
@@ -2351,7 +2351,7 @@ static void interrupt_rqmid_38352_expose_exception_ss_001(void)
 	asm volatile("lss  %0, %%eax\t\n"
 		::"m"(lss));
 
-	/*step 14 get setp 12 instruction address */
+	/*step 14 get setp 13 'lss -0x14(%rbp),%eax' instruction address */
 	/* If ASM is used to call a function, GCC will not see the
 	 * modification of register inside the called function,
 	 * which will cause subsequent code to continue to use
@@ -2488,7 +2488,7 @@ static void interrupt_rqmid_38393_expose_exception_pf_001(void)
 	/*setp 13 trigger #PF*/
 	asm volatile("mov %rax, (%rbx)\n\t");
 
-	/*step 14 get setp 11 instruction address */
+	/*step 14 get setp 13 'mov %rax,(%rbx)' instruction address */
 	/* If ASM is used to call a function, GCC will not see the
 	 * modification of register inside the called function,
 	 * which will cause subsequent code to continue to use
@@ -2618,7 +2618,7 @@ static void interrupt_rqmid_38455_expose_exception_xm_001(void)
 	/*setp 13 trigger #XM*/
 	asm volatile("DIVPD %xmm2, %xmm1");
 
-	/*step 14 get setp 11 instruction address */
+	/*step 14 get setp 13 'DIVPD %xmm2, %xmm1' instruction address */
 	/* If ASM is used to call a function, GCC will not see the
 	 * modification of register inside the called function,
 	 * which will cause subsequent code to continue to use

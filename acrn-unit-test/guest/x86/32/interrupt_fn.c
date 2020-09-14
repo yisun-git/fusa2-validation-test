@@ -744,6 +744,37 @@ struct check_regs_32 regs_check[2];
 	asm volatile ("mov %%ss, %0" : "=m"(p_regs.SS));				\
 }
 
+#define DUMP_REGS_NO_CR1(p_regs)	\
+{					\
+	asm volatile ("mov %%eax, %0" : "=m"(p_regs.EAX) : : "memory");	\
+	asm volatile ("mov %%ebx, %0" : "=m"(p_regs.EBX) : : "memory");	\
+}
+
+#define DUMP_REGS_NO_CR2(p_regs)	\
+{					\
+	asm volatile ("mov %%ecx, %0" : "=m"(p_regs.ECX) : : "memory");	\
+	asm volatile ("mov %%edx, %0" : "=m"(p_regs.EDX) : : "memory");	\
+	asm volatile ("mov %%edi, %0" : "=m"(p_regs.EDI) : : "memory");	\
+	asm volatile ("mov %%esi, %0" : "=m"(p_regs.ESI) : : "memory");	\
+	asm volatile ("mov %%ebp, %0" : "=m"(p_regs.EBP) : : "memory");	\
+	asm volatile ("mov %%esp, %0" : "=m"(p_regs.ESP) : : "memory");	\
+	asm volatile ("mov %%cs, %0" : "=m"(p_regs.CS));				\
+	asm volatile ("mov %%ds, %0" : "=m"(p_regs.DS));				\
+	asm volatile ("mov %%es, %0" : "=m"(p_regs.ES));				\
+	asm volatile ("mov %%fs, %0" : "=m"(p_regs.FS));				\
+	asm volatile ("mov %%gs, %0" : "=m"(p_regs.GS));				\
+	asm volatile ("mov %%ss, %0" : "=m"(p_regs.SS));				\
+}
+
+#define DUMP_REGS_CR(p_regs)	\
+{					\
+	asm volatile ("mov %%cr0, %0" : "=d"(p_regs.CR0) : : "memory");	\
+	asm volatile ("mov %%cr2, %0" : "=d"(p_regs.CR2) : : "memory");	\
+	asm volatile ("mov %%cr3, %0" : "=d"(p_regs.CR3) : : "memory");	\
+	asm volatile ("mov %%cr4, %0" : "=d"(p_regs.CR4) : : "memory");	\
+}
+
+
 void print_all_regs(struct check_regs_32 *p_regs)
 {
 	printf("0x%lx 0x%lx 0x%lx 0x%lx\n",
@@ -830,7 +861,7 @@ static void interrupt_rqmid_38259_expose_exception_of_001(void)
 	/*setp 13 execute INTO instruction trigger #OF*/
 	asm volatile("into");
 
-	/*step 14 get setp 13 'int3' instruction address */
+	/*step 14 get setp 13 'into' instruction address */
 	asm volatile("call get_current_eip");
 	/* 5 is call get_current_eip instruction len*/
 	current_eip -= 5;
@@ -1045,6 +1076,208 @@ static void interrupt_rqmid_38298_expose_exception_ts_002(void)
 	set_idt_addr(TS_VECTOR, addr);
 }
 
+void ring3_expose_ac1(const char *arg)
+{
+	/* step 9 eax ebx register*/
+	DUMP_REGS_NO_CR1(regs_check[0]);
+
+	/* step 10 Make ESP not aligned in memory, use ecx*/
+	asm volatile (
+		"mov %%esp, %%ecx\n\t"
+		"add $1, %%ecx\n\t"
+		"mov %%ecx, %%esp\n\t"
+		:::"ecx");
+
+	/* step 11 push a 64bit value in the stack to trigger #AC exception.*/
+	asm volatile ("push %ecx");
+
+	/* step 12 Make ESP aligned in memory, use ecx*/
+	asm volatile (
+		"mov %%esp, %%ecx\n\t"
+		"sub $1, %%ecx\n\t"
+		"mov %%ecx, %%esp\n\t"
+		:::"ecx");
+
+	/* step 13 eax ebx register*/
+	DUMP_REGS_NO_CR1(regs_check[1]);
+}
+
+void ring3_expose_ac2(const char *arg)
+{
+	/* step 16 dump all remaining registers*/
+	DUMP_REGS_NO_CR2(regs_check[0]);
+
+	/* step 17 Make ESP not aligned in memory, use eax*/
+	asm volatile (
+		"mov %%esp, %%eax\n\t"
+		"add $1, %%eax\n\t"
+		"mov %%eax, %%esp\n\t"
+		:::"eax");
+
+	/* step 18 push a 64bit value in the stack to trigger #AC exception.*/
+	asm volatile ("push %eax");
+
+	/* step 19 Make ESP aligned in memory, use eax*/
+	asm volatile (
+		"mov %%esp, %%eax\n\t"
+		"sub $1, %%eax\n\t"
+		"mov %%eax, %%esp\n\t"
+		:::"eax");
+
+	/* step 20 dump all remaining registers*/
+	DUMP_REGS_NO_CR2(regs_check[1]);
+}
+
+void ring3_expose_ac3(const char *arg)
+{
+	/* step 22 Make ESP not aligned in memory*/
+	asm volatile (
+		"mov %%esp, %%eax\n\t"
+		"add $1, %%eax\n\t"
+		"mov %%eax, %%esp\n\t"
+		:::"eax");
+
+	/* step 23 push a 64bit value in the stack to trigger #AC exception.*/
+	asm volatile ("push %eax");
+
+	/* step 24 Make ESP aligned in memory*/
+	asm volatile (
+		"mov %%esp, %%eax\n\t"
+		"sub $1, %%eax\n\t"
+		"mov %%eax, %%esp\n\t"
+		:::"eax");
+
+	/*step 25 get setp 13 'push %eax' instruction address */
+	asm volatile("call get_current_eip");
+	/* 5 is call get_current_eip instruction len
+	 * 53                      push   %ebx
+	 * 89 e0                   mov    %esp,%eax
+	 * 83 e8 01                sub    $0x1,%eax
+	 * 89 c4                   mov    %eax,%esp
+	 */
+	current_eip -= (5 + 1 + 2 + 3 + 2);
+}
+
+/**
+ * @brief case name: Expose exception and interrupt handling_AC_001
+ *
+ * Summary:At protected mode, set CR0.AM and RFLAGS.AC to enable memory alignment check,
+ * run at ring3 execute INC instruction with a double word operand stored at an address
+ * that is not an integer multiple of 4 will trigger #AC exception and call the
+ * #AC handler, program state should be unchanged, the saved contents of EIP
+ * registers point to the instruction that generated the exception.
+ */
+static void interrupt_rqmid_39163_expose_exception_ac_001(void)
+{
+	int check = 0;
+
+	/* step 1 init g_irqcounter */
+	irqcounter_initialize();
+
+	/* length of the instruction that generated the exception 'push  %eax' */
+	execption_inc_len = 1;
+
+	/* step 2 prepare the interrupt handler of #AC. */
+	handle_exception(AC_VECTOR, &handled_32_exception);
+
+	/* step 3 init by setup_idt(prepare the interrupt-gate descriptor of #AC)*/
+
+	/* step 4 init rip array and rip_index*/
+	memset(eip, 0, sizeof(eip));
+	eip_index = 0;
+
+	/* step 5 Set CR0.AC[bit 18] to 1.*/
+	cr0_am_to_1();
+	/* step 6 Set RFLAGS.AC[bit 18] bit to 1*/
+	eflags_ac_to_1();
+
+	/*step 7 dump all CR registers*/
+	DUMP_REGS_CR(regs_check[0]);
+
+	/*step 8 Switch cpl to ring3*/
+	do_at_ring3(ring3_expose_ac1, "");
+
+	/*step 14 dump all CR registers*/
+	DUMP_REGS_CR(regs_check[1]);
+
+	/*setp 15 trigger #AC*/
+	do_at_ring3(ring3_expose_ac2, "");
+
+	/*setp 21 trigger #AC*/
+	do_at_ring3(ring3_expose_ac3, "");
+
+	/* step 26 check #AC exception, program state*/
+	check = check_all_regs();
+	debug_print("%x %x %x %x\n", irqcounter_query(AC_VECTOR), check,
+		current_eip, eip[2]);
+	report("%s", ((irqcounter_query(AC_VECTOR) == 6) && (check == 0)
+		&& (current_eip == eip[2])), __FUNCTION__);
+
+	/* resume environment */
+	execption_inc_len = 0;
+}
+
+void ring3_expose_ac4(const char *arg)
+{
+	/* step 7 Make ESP not aligned in memory*/
+	asm volatile (
+		"mov %%esp, %%eax\n\t"
+		"add $1, %%eax\n\t"
+		"mov %%eax, %%esp\n\t"
+		:::"eax");
+
+	/* step 8 push a 64bit value in the stack to trigger #AC exception.*/
+	asm volatile ("push %ebx");
+
+	/* step 9 Make ESP aligned in memory*/
+	asm volatile (
+		"mov %%esp, %%eax\n\t"
+		"sub $1, %%eax\n\t"
+		"mov %%eax, %%esp\n\t"
+		:::"eax");
+}
+
+/**
+ * @brief case name:Expose exception and interrupt handling_OF_002
+ *
+ * Summary:At protected mode, set CR0.AM and RFLAGS.AC to enable memory alignment check,
+ * run at ring3 execute INC instruction with a double word operand stored at an
+ * address that is not an integer multiple of 4 will trigger #AC exception and
+ * call the #AC handler, EFLAGS.TF, EFLAGS.VM, EFLAGS.RF, EFLAGS.NT
+ * is cleared after EFLAGS is saved on the stack.
+ */
+static void interrupt_rqmid_39164_expose_exception_ac_002(void)
+{
+	int check = 0;
+
+	/* step 1 init g_irqcounter */
+	irqcounter_initialize();
+
+	/* length of the instruction that generated the exception 'push  %eax' */
+	execption_inc_len = 1;
+
+	/* step 2 prepare the interrupt handler of #AC. */
+	handle_exception(AC_VECTOR, &handled_32_exception);
+
+	/* step 3 init by setup_idt(prepare the interrupt-gate descriptor of #AC)*/
+
+	/* step 4 Set CR0.AC[bit 18] to 1.*/
+	cr0_am_to_1();
+	/* step 5 Set RFLAGS.AC[bit 18] bit to 1*/
+	eflags_ac_to_1();
+
+	/*setp 6 trigger #AC*/
+	do_at_ring3(ring3_expose_ac4, "");
+
+	check = check_rflags();
+
+	/* step 10 check #AC exception and eflag*/
+	report("%s", ((irqcounter_query(AC_VECTOR) == 1) && (check == 0)), __FUNCTION__);
+
+	/* resume environment */
+	execption_inc_len = 0;
+}
+
 static void print_case_list_32(void)
 {
 	printf("\t\t Interrupt feature 32-Bits Mode case list:\n\r");
@@ -1077,6 +1310,10 @@ static void print_case_list_32(void)
 		"Expose exception and interrupt handling_TS_001");
 	printf("Case ID:%d case name:%s\n\r", 38298,
 		"Expose exception and interrupt handling_TS_002");
+	printf("Case ID:%d case name:%s\n\r", 39163,
+		"Expose exception and interrupt handling_AC_001");
+	printf("Case ID:%d case name:%s\n\r", 39164,
+		"Expose exception and interrupt handling_AC_002");
 #ifdef IN_NON_SAFETY_VM
 	printf("Case ID:%d case name:%s\n\r", 36128,
 		"Contributory exception while handling #DF in non-safety VM_001");
@@ -1105,6 +1342,8 @@ static void test_interrupt_32(void)
 	interrupt_rqmid_38260_expose_exception_of_002();
 	interrupt_rqmid_38298_expose_exception_ts_002();
 	interrupt_rqmid_38296_expose_exception_ts_001();
+	interrupt_rqmid_39163_expose_exception_ac_001();
+	interrupt_rqmid_39164_expose_exception_ac_002();
 #ifdef IN_NON_SAFETY_VM
 	/* non-safety VM shutdowns, no information can be print */
 	//interrupt_rqmid_36128_df_ts();
