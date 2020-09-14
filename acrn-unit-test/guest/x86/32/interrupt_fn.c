@@ -896,7 +896,7 @@ static void interrupt_rqmid_38260_expose_exception_of_002(void)
 /**
  * @brief case name: Expose exception and interrupt handling_TS_001
  *
- * Summary:At 64bit mode, will trigger #TS
+ * Summary:At protected mode, will trigger #TS
  * exception and call the #TS handler, program state should be unchanged,
  * the saved contents of EIP registers point to the
  * instruction that generated the exception.
@@ -990,7 +990,7 @@ static void interrupt_rqmid_38296_expose_exception_ts_001(void)
 /**
  * @brief case name:Expose exception and interrupt handling_TS_002
  *
- * Summary:At 64bit mode, will trigger #TS
+ * Summary:At protected mode, will trigger #TS
  * exception and call the #TS handler, EFLAGS.TF, EFLAGS.VM,
  * EFLAGS.RF, EFLAGS.NT is cleared after EFLAGS is saved on the stack.
  */

@@ -491,13 +491,15 @@ static void interrupt_rqmid_36702_expose_exception_mf_002(void)
 	write_cr0(cr0);
 }
 
+//test fail test result: first #UD, second interrupt
 /**
  * @brief case name: Expose priority among simultaneous exceptions and interrupts_P4_P7_001
  *
- * Summary: At 64bit mode, arm a TSC deadline timer with 0x500 periods increament.
+ * Summary: At 64bit mode, arm a TSC deadline timer with 0x1000 periods increament
+ * (when the deadline timer expires, an 0xE0 interrupt is generated).
  * Immediately execute RDPMC instruction to trigger a VM-exit.
  * This will generate an interrupt and #UD simultaneously after VM-exit finished.
- * #UD should be serviced first, and the specified interrupt should be serviced later.
+ * The 0xE0 interrupt should be serviced first, and the #UD should be serviced later.
  */
 static void interrupt_rqmid_36689_p4_p7_001(void)
 {
@@ -549,7 +551,7 @@ static void interrupt_rqmid_36689_p4_p7_001(void)
 		test_delay(1);
 	}
 
-	/* step 10  the test result is: first #UD, second interrupt*/
+	/* step 10  first interrupt, second #UD */
 	report("%s", ((irqcounter_query(EXTEND_INTERRUPT_E0) == 1)
 		&& (irqcounter_query(UD_VECTOR) == 2)), __FUNCTION__);
 
@@ -557,13 +559,15 @@ static void interrupt_rqmid_36689_p4_p7_001(void)
 	execption_inc_len = 0;
 }
 
+//test fail test result: first #GP, second interrupt
 /**
  * @brief case name: Expose priority among simultaneous exceptions and interrupts_P4_P8_001
  *
- * Summary: At 64bit mode, arm a TSC deadline timer with 0x500 periods increament.
+ * Summary: At 64bit mode, arm a TSC deadline timer with 0x1000 periods increament
+ * (when the deadline timer expires, an 0xE0 interrupt is generated).
  * Immediately execute RDMSR instruction with an invalid MSR to trigger a VM-exit.
  * This will generate an interrupt and #GP simultaneously after VM-exit finished.
- * #GP should be serviced first, and the specified interrupt should be serviced later.
+ * The 0xE0 interrupt should be serviced first, and the #GP should be serviced later.
  */
 static void interrupt_rqmid_36691_p4_p8_001(void)
 {
@@ -612,7 +616,7 @@ static void interrupt_rqmid_36691_p4_p8_001(void)
 		test_delay(1);
 	}
 
-	/* step 10 the test result is: first #GP, second interrupt*/
+	/* step 10 first interrupt, second #GP */
 	report("%s", ((irqcounter_query(EXTEND_INTERRUPT_E0) == 1)
 		&& (irqcounter_query(GP_VECTOR) == 2)), __FUNCTION__);
 
@@ -647,7 +651,7 @@ static void interrupt_rqmid_36693_p3_p4_ap_001(void)
 
 		/* wait bp vm_exit to host */
 		t_ap = asm_read_tsc();
-		while (asm_read_tsc() < (t_ap + 0x1000)) {
+		while (asm_read_tsc() < (t_ap + 0x500)) {
 			asm volatile ("nop\n\t" :::"memory");
 		}
 		/* setp 10 AP send NMI to BP*/
@@ -1645,7 +1649,7 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	 * this code must be put in the final test
 	 */
 	/* 5 is call get_current_rip instruction len, 2 is 'wrmsr' instruction len */
-	current_rip -= 5 + 2;
+	current_rip -= (5 + 2);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(NMI_VECTOR), check,
 		current_rip, rip[2]);
@@ -1765,7 +1769,7 @@ static void interrupt_rqmid_38178_expose_exception_bp_001(void)
 	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len*/
-	current_rip -= 5;
+	current_rip -= (5 + 0);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(BP_VECTOR), check,
 		current_rip, rip[2]);
@@ -1881,7 +1885,7 @@ static void interrupt_rqmid_38263_expose_exception_ud_001(void)
 	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 2 is UD2 instruction len*/
-	current_rip -= 5 + 2;
+	current_rip -= (5 + 2);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(UD_VECTOR), check,
 		current_rip, rip[2]);
@@ -1995,7 +1999,7 @@ static void interrupt_rqmid_38286_expose_exception_nm_001(void)
 	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 3 is 'fld %0' instruction len*/
-	current_rip -= 5 + 3;
+	current_rip -= (5 + 3);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(NM_VECTOR), check,
 		current_rip, rip[2]);
@@ -2112,7 +2116,7 @@ static void interrupt_rqmid_38289_expose_exception_df_001(void)
 	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len*/
-	current_rip -= 5;
+	current_rip -= (5 + 0);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(DF_VECTOR), check,
 		current_rip, rip[2]);
@@ -2226,7 +2230,7 @@ static void interrupt_rqmid_38300_expose_exception_np_001(void)
 	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 2 is UD2 instruction len*/
-	current_rip -= 5 + 2;
+	current_rip -= (5 + 2);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(NP_VECTOR), check,
 		current_rip, rip[2]);
@@ -2356,7 +2360,7 @@ static void interrupt_rqmid_38352_expose_exception_ss_001(void)
 	 */
 	asm volatile("call get_current_rip");
 	/* 5 is call get_current_rip instruction len, 4 is 'lss -0x14(%rbp),%eax' instruction len*/
-	current_rip -= 5 + 4;
+	current_rip -= (5 + 4);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(SS_VECTOR), check,
 		current_rip, rip[2]);
@@ -2492,13 +2496,14 @@ static void interrupt_rqmid_38393_expose_exception_pf_001(void)
 	 * this code must be put in the final test
 	 */
 	asm volatile("call get_current_rip");
-	/* 5 is call get_current_rip instruction len, 2 is instruction len*/
-	current_rip -= 5 + 2;
+	/* 5 is call get_current_rip instruction len, 3 is the 'mov %rax,(%rbx)' instruction len */
+	current_rip -= (5 + 3);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(PF_VECTOR), check,
 		current_rip, rip[2]);
 
-	/* step 15 check #PF exception, program state*/
+	/* step 15 check #PF exception, program state, not check CR2 */
+	regs_check[1].CR2 = regs_check[0].CR2;
 	check = check_all_regs();
 	report("%s", ((irqcounter_query(PF_VECTOR) == 6) && (check == 0)
 		&& (current_rip == rip[2])), __FUNCTION__);
@@ -2572,8 +2577,8 @@ static void interrupt_rqmid_38455_expose_exception_xm_001(void)
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
 
-	/* length of the instruction that generated the exception */
-	execption_inc_len = 2;
+	/* length of the instruction that generated the exception 'divpd  %xmm2,%xmm1'*/
+	execption_inc_len = 4;
 
 	/* step 2 prepare the interrupt handler of #XM */
 	handle_exception(XM_VECTOR, &handled_exception);
@@ -2584,7 +2589,7 @@ static void interrupt_rqmid_38455_expose_exception_xm_001(void)
 	memset(rip, 0, sizeof(rip));
 	rip_index = 0;
 
-	/* step 5 set cr4.OSFXSR[bit 9] and set cr4.OSXMMEXCEPT[bit 10]*/
+	/* step 5 set cr4.OSFXSR[bit 9] and set cr4.OSXMMEXCPT[bit 10]*/
 	cr4_osfxsr_to_1();
 	cr4_osxmmexcpt_to_1();
 
@@ -2596,7 +2601,7 @@ static void interrupt_rqmid_38455_expose_exception_xm_001(void)
 	DUMP_REGS1(regs_check[0]);
 
 	/*setp 8 trigger #XM*/
-	asm volatile("ADDPS %xmm2, %xmm1");
+	asm volatile("DIVPD %xmm2, %xmm1");
 
 	/* step 9 dump CR and rax rbx register*/
 	DUMP_REGS1(regs_check[1]);
@@ -2605,13 +2610,13 @@ static void interrupt_rqmid_38455_expose_exception_xm_001(void)
 	DUMP_REGS2(regs_check[0]);
 
 	/*setp 11 trigger #XM*/
-	asm volatile("ADDPS %xmm2, %xmm1");
+	asm volatile("DIVPD %xmm2, %xmm1");
 
 	/* step 12 dump all remaining registers*/
 	DUMP_REGS2(regs_check[1]);
 
 	/*setp 13 trigger #XM*/
-	asm volatile("ADDPS %xmm2, %xmm1");
+	asm volatile("DIVPD %xmm2, %xmm1");
 
 	/*step 14 get setp 11 instruction address */
 	/* If ASM is used to call a function, GCC will not see the
@@ -2621,8 +2626,8 @@ static void interrupt_rqmid_38455_expose_exception_xm_001(void)
 	 * this code must be put in the final test
 	 */
 	asm volatile("call get_current_rip");
-	/* 5 is call get_current_rip instruction len, 2 is instruction len*/
-	current_rip -= 5 + 2;
+	/* 5 is call get_current_rip instruction len,  4 is 'DIVPD %xmm2, %xmm1' instruction len */
+	current_rip -= (5 + 4);
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(XM_VECTOR), check,
 		current_rip, rip[2]);
@@ -2652,15 +2657,15 @@ static void interrupt_rqmid_38456_expose_exception_xm_002(void)
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
 
-	/* length of the instruction that generated the exception */
-	execption_inc_len = 2;
+	/* length of the instruction that generated the exception 'divpd  %xmm2,%xmm1'*/
+	execption_inc_len = 4;
 
 	/* step 2 prepare the interrupt handler of #XM. */
 	handle_exception(XM_VECTOR, &handled_exception);
 
 	/* step 3 init by setup_idt(prepare the interrupt-gate descriptor of #XM)*/
 
-	/* step 4 set cr4.OSFXSR[bit 9] and set cr4.OSXMMEXCEPT[bit 10]*/
+	/* step 4 set cr4.OSFXSR[bit 9] and set cr4.OSXMMEXCPT[bit 10]*/
 	cr4_osfxsr_to_1();
 	cr4_osxmmexcpt_to_1();
 
@@ -2669,7 +2674,7 @@ static void interrupt_rqmid_38456_expose_exception_xm_002(void)
 		::"m"(mxcrs));
 
 	/*setp 6 trigger #XM*/
-	asm volatile("ADDPS %xmm2, %xmm1");
+	asm volatile("DIVPD %xmm2, %xmm1");
 
 	check = check_rflags();
 
@@ -2710,12 +2715,12 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 	if (cpuid(1).c & (1 << 24))
 	{
 		apic_write(APIC_LVTT, APIC_LVT_TIMER_TSCDEADLINE | EXTEND_INTERRUPT_80);
-		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x100));
+		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x1000));
 	}
 
 	/* step 5 execute OUT iteration */
 	t[0] = asm_read_tsc();
-	asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xaa));
+	asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xaa));	//0x1600 TSC
 	t[1] = asm_read_tsc();
 
 	test_delay(1);
@@ -2766,12 +2771,12 @@ static void interrupt_rqmid_38459_expose_instruction_breakpoints_003(void)
 	if (cpuid(1).c & (1 << 24))
 	{
 		apic_write(APIC_LVTT, APIC_LVT_TIMER_TSCDEADLINE | BP_VECTOR);
-		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x100));
+		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x1000));
 	}
 
 	/* step 5 execute OUT iteration */
 	t[0] = asm_read_tsc();
-	asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xf1));
+	asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xf1));	//0x1500 TSC
 	t[1] = asm_read_tsc();
 
 	test_delay(1);
@@ -2878,6 +2883,69 @@ static void interrupt_rqmid_39087_set_eflags_rf_001(void)
 
 	/* step 5 check #NMI exception and rflag*/
 	report("%s", ((irqcounter_query(NMI_VECTOR) == 1) && (check == true)), __FUNCTION__);
+
+	/* resume environment */
+	execption_inc_len = 0;
+}
+
+//test fail test result: first #PF, second interrupt
+/**
+ * @brief case name: Expose priority among simultaneous exceptions and interrupts_P4_P6_001
+ *
+ * Summary: At 64bit mode, arm a TSC deadline timer with 0x1000 periods increament
+ * (when the deadline timer expires, an 0xE0 interrupt is generated).
+ * Immediately access memory address above 512M to trigger VM exit(EPT violation).
+ * This will generate an interrupt and #PF simultaneously after VM-exit finished.
+ * The 0xE0 interrupt should be serviced first, and the #PF should be serviced later.
+ */
+static void interrupt_rqmid_39157_p4_p6_001(void)
+{
+	u8 *gva = (u8 *)0x40000000;	//1G address space
+	int i = 1;
+	__unused u64 t[2];
+
+	while (i--) {
+		/* step 1 init g_irqcounter */
+		irqcounter_initialize();
+
+		/* length of the instruction that generated the exception 'mov %edx,(%rax)'*/
+		execption_inc_len = 2;
+
+		/* step 2 prepare the interrupt handler of #PF. */
+		handle_exception(PF_VECTOR, &handled_exception);
+
+		/* step 3 init by setup_idt (prepare the interrupt-gate descriptor of #PF)*/
+
+		/* step 4 is define handled_interrupt_external_e0*/
+		/* setp 5 set_idt_entry for irq */
+		handle_irq(EXTEND_INTERRUPT_E0, handled_interrupt_external_e0);
+
+		/* step 6 enable interrupt*/
+		irq_enable();
+
+		/* step 7 use TSC deadline timer delivery 224 interrupt*/
+		if (cpuid(1).c & (1 << 24)) {
+			apic_write(APIC_LVTT, APIC_LVT_TIMER_TSCDEADLINE | EXTEND_INTERRUPT_E0);
+			wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+0x1000);
+		}
+
+		/* step 8 trigger VM-exit and generate #PF*/
+		t[0] = asm_read_tsc();
+		asm volatile("mov %[value], (%[p])\n\t"
+			"1:" : : [value]"d"(0), [p]"a"(gva));	//0x2c00 TSC
+		t[1] = asm_read_tsc();
+
+		/* step 9 enable interrupt*/
+		irq_disable();
+		debug_print("%s %d i=%d interrupt=%d PF=%d tsc_delay=0x%lx\n", __FUNCTION__, __LINE__, i,
+			irqcounter_query(EXTEND_INTERRUPT_E0), irqcounter_query(PF_VECTOR), t[1] - t[0]);
+
+		test_delay(1);
+	}
+
+	/* step 10 first interrupt, second #PF */
+	report("%s", ((irqcounter_query(EXTEND_INTERRUPT_E0) == 1)
+		&& (irqcounter_query(PF_VECTOR) == 2)), __FUNCTION__);
 
 	/* resume environment */
 	execption_inc_len = 0;
@@ -2991,6 +3059,8 @@ static void print_case_list_64(void)
 	printf("Case ID:%d case name:%s\n\r", 38460,
 		"Expose masking and unmasking Instruction breakpoints_003");
 	printf("Case ID:%d case name:%s\n\r", 39087, "Set EFLAGS.RF_001");
+	printf("Case ID:%d case name:%s\n\r", 39157,
+		"Expose priority among simultaneous exceptions and interrupts_P4_P6_001");
 #ifdef IN_NON_SAFETY_VM
 		printf("Case ID:%d case name:%s\n\r", 38001,
 			"Page fault while handling #DF in non-safety VM_001");
@@ -3087,6 +3157,7 @@ static void test_interrupt_64(void)
 	interrupt_rqmid_38459_expose_instruction_breakpoints_003();
 	interrupt_rqmid_38460_expose_instruction_breakpoints_004();
 	interrupt_rqmid_39087_set_eflags_rf_001();
+	interrupt_rqmid_39157_p4_p6_001();
 #ifdef IN_NON_SAFETY_VM
 	/* non-safety VM shutdowns, no information can be print */
 	//interrupt_rqmid_38001_df_pf();
