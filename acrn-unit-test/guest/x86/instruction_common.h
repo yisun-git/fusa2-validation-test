@@ -125,6 +125,7 @@ typedef void (*gp_trigger_func)(void *data);
  */
 #define SUPPORT_AVX2_BIT		5
 #define SUPPORT_AVX512F_BIT		16
+#define SUPPORT_AVX512PF_BIT		26
 #define SUPPORT_AVX512ER_BIT		27
 #define SUPPORT_AVX512CD_BIT		28
 #define SUPPORT_AVX512VL_BIT		31
@@ -133,6 +134,8 @@ typedef void (*gp_trigger_func)(void *data);
 #define SUPPORT_AVX512ER		(1 << SUPPORT_AVX512ER_BIT)
 #define SUPPORT_AVX512CD		(1 << SUPPORT_AVX512CD_BIT)
 #define SUPPORT_AVX512VL		(1 << SUPPORT_AVX512VL_BIT)
+#define SUPPORT_AVX512PF		(1 << SUPPORT_AVX512PF_BIT)
+
 /***
  *XSAVE structure end!
  ******************************************************

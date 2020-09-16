@@ -59,3 +59,10 @@ $(TEST_DIR)/segmentation.o: $(TEST_DIR)/segmentation.c
 	@rm -rf $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/avx.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/avx.o: $(TEST_DIR)/avx.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
