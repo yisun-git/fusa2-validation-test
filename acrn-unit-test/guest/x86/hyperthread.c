@@ -22,8 +22,8 @@ static void print_case_list(void)
 
 int main(void)
 {
-	setup_vm();
 	setup_idt();
+	setup_vm();
 
 	print_case_list();
 
