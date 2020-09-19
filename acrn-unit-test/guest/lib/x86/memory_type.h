@@ -94,6 +94,11 @@
 #define CACHE_OVE_L3_SIZE	0x200000ULL		/* 16M/8 */
 #define CACHE_MALLOC_SIZE	0x200000ULL		/* 16M/8 */
 #endif
+#define CACHE_PAT_UC		0x0
+#define CACHE_PAT_WC		0x1
+#define CACHE_PAT_WT		0x4
+#define CACHE_PAT_WP		0x5
+#define CACHE_PAT_WB		0x6
 
 void asm_mfence();
 void asm_read_access_memory(u64 *p);
