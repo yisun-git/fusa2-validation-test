@@ -530,7 +530,7 @@ static void test_ss_table5_01(const char *args)
 }
 
 /**
- * @brief case name:segmentation_SS_table5_001
+ * @brief case name:segmentation_exception_check_SS_table5_001
  *
  * Summary: In 64-bit mode, if pushing the old values of SS selector, stack pointer,
  * EFLAGS, CS selector, offset, or error code onto the stack violates the canonical

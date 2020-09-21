@@ -1398,7 +1398,7 @@ static void test_table23_5(const char *args)
  * stack segment does not have room for the return address, parameters, or stack
  * segment pointer, when stack switch occurs, execute CALL will generate #SS(0).
  */
-static void segmentation_rqmid_38116_cs_call_ss_table23_05()
+static void segmentation_rqmid_38816_cs_call_ss_table23_05()
 {
 	struct descriptor_table_ptr old_gdt_desc;
 
@@ -3534,7 +3534,7 @@ static void test_segmentation_32(void)
 	segmentation_rqmid_35363_cs_call_gp_table23_02();
 	segmentation_rqmid_38809_cs_call_gp_table23_03();
 	segmentation_rqmid_38811_cs_call_np_table23_04();
-	segmentation_rqmid_38116_cs_call_ss_table23_05();
+	segmentation_rqmid_38816_cs_call_ss_table23_05();
 	segmentation_rqmid_38823_cs_call_gp_table23_06();
 	segmentation_rqmid_38824_cs_call_gp_table23_07();
 	segmentation_rqmid_38825_cs_call_gp_table23_08();
