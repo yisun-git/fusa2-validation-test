@@ -24,6 +24,11 @@ $(TEST_DIR)/xsave.o: $(TEST_DIR)/xsave.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/tsc.o:CFLAGS += -DBP_STARTUP_CHECK=\"tsc_bp_startup.S\"
+$(TEST_DIR)/tsc.o:$(TEST_DIR)/tsc.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
 $(TEST_DIR)/paging.o: CFLAGS += -DAP_INIT_CHECK=\"paging_init.S\"
 $(TEST_DIR)/paging.o: CFLAGS += -DBP_STARTUP_CHECK=\"paging_startup.S\"
