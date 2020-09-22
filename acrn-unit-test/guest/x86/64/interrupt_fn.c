@@ -2696,8 +2696,8 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 {
 	int check = 0;
 	__unused u64 t[2];
-	const char *buf = "test outs info to 0xf1";
-	unsigned long len = strlen(buf);
+	char *in;
+	char *out;
 
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
@@ -2718,9 +2718,23 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x1000));
 	}
 
-	/* step 5 execute OUT iteration */
+	/* step 5 execute movsb iteration */
+	in = malloc(INTERRUPT_MOVSB_MAX_SIZE);
+	out = malloc(INTERRUPT_MOVSB_MAX_SIZE);
+
+	if ((in == NULL) || (out == NULL)) {
+		printf("%s malloc error!\n", __FUNCTION__);
+		if (in) {
+			free(in);
+		}
+		else if (out) {
+			free(out);
+		}
+		return;
+	}
+
 	t[0] = asm_read_tsc();
-	asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xaa));	//0x1600 TSC
+	asm volatile ("rep/movsb" : "+D"(out) : "S"(in), "c"(INTERRUPT_MOVSB_MAX_SIZE));	//0x125bd8 TSC
 	t[1] = asm_read_tsc();
 
 	test_delay(1);
@@ -2735,66 +2749,12 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 	}
 
 	debug_print("%d %d\n", irqcounter_query(EXTEND_INTERRUPT_80), check);
-	report("%s", ((irqcounter_query(GP_VECTOR) == 1) && (check == 1)), __FUNCTION__);
+	report("%s", ((irqcounter_query(EXTEND_INTERRUPT_80) == 1) && (check == 1)), __FUNCTION__);
 
 	/* resume environment */
 	execption_inc_len = 0;
-}
-
-/**
- * @brief case name:Expose masking and unmasking Instruction breakpoints_003
- *
- * Summary: At 64bit mode, trigger a trap-class exception during executing
- * OUTS iteration (except the last iteration) of a repeated string instruction,
- * check that the value of EFLAGS.RF pushed on the stack is 1.
- */
-static void interrupt_rqmid_38459_expose_instruction_breakpoints_003(void)
-{
-	int check = 0;
-	__unused u64 t[2];
-	const char *buf = "test outs info to 0xf1";
-	unsigned long len = strlen(buf);
-
-	/* step 1 init g_irqcounter */
-	irqcounter_initialize();
-
-	/* length of the instruction that generated the exception */
-	execption_inc_len = 0;
-
-	/* step 2 prepare the interrupt handler of #BP. */
-	handle_exception(BP_VECTOR, &handled_exception);
-
-	/* step 3 init by setup_idt(prepare the interrupt-gate descriptor of #BP)*/
-	sti();
-
-	/* step 4 use TSC deadline timer delivery 224 interrupt*/
-	if (cpuid(1).c & (1 << 24))
-	{
-		apic_write(APIC_LVTT, APIC_LVT_TIMER_TSCDEADLINE | BP_VECTOR);
-		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x1000));
-	}
-
-	/* step 5 execute OUT iteration */
-	t[0] = asm_read_tsc();
-	asm volatile ("rep/outsb" : "+S"(buf), "+c"(len) : "d"(0xf1));	//0x1500 TSC
-	t[1] = asm_read_tsc();
-
-	test_delay(1);
-
-	debug_print("t0=%lx t1=%lx %lx\n", t[0], t[1], t[1]-t[0]);
-	debug_print("%lx %lx %d\n", save_rflags1, save_rflags2,
-		irqcounter_query(BP_VECTOR));
-
-	/* step 6 confirm #BP exception and EFLAGS.RF */
-	if ((save_rflags1 & RFLAG_RF_BIT)) {
-		check = 1;
-	}
-
-	debug_print("%d %d\n", irqcounter_query(BP_VECTOR), check);
-	report("%s", ((irqcounter_query(BP_VECTOR) == 1) && (check == 1)), __FUNCTION__);
-
-	/* resume environment */
-	execption_inc_len = 0;
+	free(in);
+	free(out);
 }
 
 /**
@@ -3054,10 +3014,8 @@ static void print_case_list_64(void)
 	printf("Case ID:%d case name:%s\n\r", 38458,
 		"Expose masking and unmasking Instruction breakpoints_002");
 
-	printf("Case ID:%d case name:%s\n\r", 38459,
-		"Expose masking and unmasking Instruction breakpoints_003");
 	printf("Case ID:%d case name:%s\n\r", 38460,
-		"Expose masking and unmasking Instruction breakpoints_003");
+		"Expose masking and unmasking Instruction breakpoints_004");
 	printf("Case ID:%d case name:%s\n\r", 39087, "Set EFLAGS.RF_001");
 	printf("Case ID:%d case name:%s\n\r", 39157,
 		"Expose priority among simultaneous exceptions and interrupts_P4_P6_001");
@@ -3154,7 +3112,6 @@ static void test_interrupt_64(void)
 	interrupt_rqmid_38456_expose_exception_xm_002();
 	interrupt_rqmid_38458_expose_instruction_breakpoints_002();
 
-	interrupt_rqmid_38459_expose_instruction_breakpoints_003();
 	interrupt_rqmid_38460_expose_instruction_breakpoints_004();
 	interrupt_rqmid_39087_set_eflags_rf_001();
 	interrupt_rqmid_39157_p4_p6_001();

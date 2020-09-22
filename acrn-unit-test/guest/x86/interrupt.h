@@ -27,4 +27,6 @@
 
 #define APIC_ID_BSP		0
 
+#define INTERRUPT_MOVSB_MAX_SIZE			0x100000
+
 #endif
