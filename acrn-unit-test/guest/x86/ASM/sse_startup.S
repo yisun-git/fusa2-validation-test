@@ -1,2 +1,4 @@
+#include "../sse.h"
 mov %cr4, %eax
-mov %eax, (0x7000)
+mov %eax, STARTUP_CR4_SAVE_ADDR
+fxsave STARTUP_SSE_XSAVE_ADDR

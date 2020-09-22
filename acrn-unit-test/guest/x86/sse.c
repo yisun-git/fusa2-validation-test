@@ -11,6 +11,9 @@
 #include "vmalloc.h"
 #include "alloc_page.h"
 #include "asm/io.h"
+#include "xsave.h"
+#include "sse.h"
+#include "delay.h"
 
 #define SSE_DEBUG
 #ifdef SSE_DEBUG
@@ -31,8 +34,81 @@ enum sse_instuction_e {
 	SSE4_2_INS,
 };
 
+typedef struct fxsave_struct {
+	u16 fcw;
+	u16 fsw;
+	u8  ftw;
+	u8  revd1;
+	u16 fop;
+	u32 fip;
+	u16 fcs;
+	u16 rsvd2;
+	u32 fdp;
+	u16 fds;
+	u16 rsvd3;
+	u32 mxcsr;
+	u32 mxcsr_mask;
+	long double fpregs[8];
+	sse_xmm xmm_regs[8];
+} __attribute__((packed)) fxsave_non64bit_t;
+
+typedef struct fxsave_64bit {
+	u16 fcw;
+	u16 fsw;
+	u8  ftw;
+	u8  revd1;
+	u16 fop;
+	u32 fip;
+	u16 fcs;
+	u16 rsvd2;
+	u32 fdp;
+	u16 fds;
+	u16 rsvd3;
+	u32 mxcsr;
+	u32 mxcsr_mask;
+	long double fpregs[8];
+	long double xmm_regs[16];
+	sse_xmm reserve[3];
+	sse_xmm available[3];
+} __attribute__((packed)) fxsave_64bit_t;
+
+
 static volatile uint32_t bp_cr4 = 0x0U;
 static volatile uint32_t ap_cr4 = 0x0U;
+int ap_start_count = 0;
+
+static volatile int wait_ap = 0;
+volatile u32 set_mxcsr1 = 0;
+volatile u32 set_mxcsr2 = 0;
+
+volatile long double xmm_unchange_regs1[16];
+volatile long double xmm_unchange_regs2[16];
+static volatile int cur_case_id = 0;
+
+void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+#ifdef __i386__
+/*
+ *
+ *This function for i386 compiling, do nothing
+ */
+void save_unchanged_reg()
+{
+	asm volatile ("pause");
+}
+#elif __x86_64__
+/*this function is called when macro (AP_UNCHANGED_CHECK) is defined*/
+void save_unchanged_reg(void)
+{
+	asm volatile ("pause");
+}
+#endif
 
 static bool is_sse_x_support(enum sse_instuction_e ins_type)
 {
@@ -130,6 +206,67 @@ static __unused void sse_rqmid_27868_Physical_POPCNT_instruction_support_001(voi
 	is_pass = (check_bit == (1 << FEATURE_INFORMATION_23)) ? true : false;
 	report("%s \n", is_pass, __FUNCTION__);
 }
+
+/*
+ * @brief case name:Physical SSE2 support_001
+ *
+ * Summary:Physical platform: SSE2 shall be available on the physical platform.
+ */
+static __unused void sse_rqmid_36247_physical_sse2_support_001(void)
+{
+	bool is_pass = false;
+	is_pass = cpuid_sse2_to_1();
+	report("%s \n", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:Physical SSE3 support_001
+ *
+ * Summary:Physical platform: SSE3 shall be available on the physical platform.
+ */
+static __unused void sse_rqmid_36245_physical_sse3_support_001(void)
+{
+	bool is_pass = false;
+	is_pass = cpuid_sse3_to_1();
+	report("%s \n", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:Physical SSSE3 support_001
+ *
+ * Summary:Physical platform: SSSE3 shall be available on the physical platform.
+ */
+static __unused void sse_rqmid_36244_physical_ssse3_support_001(void)
+{
+	bool is_pass = false;
+	is_pass = cpuid_ssse3_to_1();
+	report("%s \n", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:Physical SSE4 support_001
+ *
+ * Summary:Physical platform: SSE4 shall be available on the physical platform.
+ */
+static __unused void sse_rqmid_36243_physical_sse4_support_001(void)
+{
+	bool is_pass = false;
+	is_pass = cpuid_sse4_1_to_1();
+	report("%s \n", is_pass, __FUNCTION__);
+}
+
+/*
+ * @brief case name:Physical SSE4_2 support_001
+ *
+ * Summary:Physical platform: SSE4_2 shall be available on the physical platform.
+ */
+static __unused void sse_rqmid_36242_physical_sse4_2_support_001(void)
+{
+	bool is_pass = false;
+	is_pass = cpuid_sse4_2_to_1();
+	report("%s \n", is_pass, __FUNCTION__);
+}
+
 #endif
 
 /*
@@ -140,11 +277,126 @@ static __unused void sse_rqmid_27868_Physical_POPCNT_instruction_support_001(voi
 static __unused void sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_startup_001(void)
 {
 	bool  is_pass = false;
-	bp_cr4 = *(volatile uint32_t *)(0x7000);
+	bp_cr4 = *(volatile uint32_t *)STARTUP_CR4_SAVE_ADDR;
 	sse_debug("\nDump bp_cr4 = 0x%x\n", bp_cr4);
 	is_pass = ((CR4_OSFXSR_BIT_MASK & bp_cr4) == 0);
 	report("%s \n", is_pass, __FUNCTION__);
 }
+
+/*
+ * @brief case name: SSE MXCSR initial state following start up_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest MXCSR to 1F80H following start up.
+ */
+static __unused void sse_rqmid_23207_SSE_MXCSR_initial_state_following_startup_001(void)
+{
+	volatile fxsave_non64bit_t *sse_startup;
+	sse_startup = (fxsave_non64bit_t *)STARTUP_SSE_XSAVE_ADDR;
+	report("%s \n", sse_startup->mxcsr == 0x1F80, __FUNCTION__);
+}
+
+
+/*
+ * @brief case name: SSE XMM0-XMM15 initial state following start up_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest XMM0 through XMM15 to 0H following start up.
+ */
+static __unused void sse_rqmid_23208_SSE_XMM0_XMM15_initial_state_following_startup_001(void)
+{
+	u8 *ptr;
+
+	volatile fxsave_64bit_t *sse_startup;
+	sse_startup = (fxsave_64bit_t *)STARTUP_SSE64BIT_XSAVE_ADDR;
+
+	ptr = (u8 *)sse_startup->xmm_regs;
+	for (int i = 0; i < sizeof(sse_startup->xmm_regs); i++) {
+		if (*(ptr + i) != 0) {
+			report("%s", 0, __FUNCTION__);
+			return;
+		}
+	}
+	report("%s", 1, __FUNCTION__);
+}
+
+#ifdef IN_NON_SAFETY_VM
+
+/*
+ * @brief case name: SSE MXCSR initial state following INIT_002
+ *
+ * Summary: ACRN hypervisor shall set initial guest MXCSR to 0x1F80 folllowing INIT.
+ */
+
+static void sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002(void)
+{
+	volatile fxsave_non64bit_t *sse_save;
+
+	sse_save = (fxsave_non64bit_t *)INIT_SSE_XSAVE_ADDR;
+	report("%s ", sse_save->mxcsr == 0x1F80, __FUNCTION__);
+}
+
+/*
+ * @brief case name: SSE MXCSR initial state following INIT_001
+ *
+ * Summary: ACRN hypervisor shall keep unchange guest MXCSR folllowing INIT.
+ */
+
+static void sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001(void)
+{
+	volatile u32 mxcsr1;
+	volatile u32 mxcsr2;
+
+	cur_case_id = 23197;/*trigger ap_main function entering switch  23197*/
+	wait_ap_ready();
+	/*get mxcsr value modified*/
+	mxcsr1 = set_mxcsr1;
+
+	/*send sipi to ap again*/
+	send_sipi();
+	cur_case_id = 23197;
+	wait_ap_ready();
+
+	/*get mxcsr value again after ap reset*/
+	mxcsr2 = set_mxcsr2;
+	/*compare init value with unchanged */
+	report("%s ", mxcsr1 == mxcsr2, __FUNCTION__);
+
+	/*send sipi to ap again for restoring mxcsr init value*/
+	send_sipi();
+	cur_case_id = 23197;
+	wait_ap_ready();
+	ap_start_count = 0;
+}
+
+/*
+ * @brief case name: SSE XMM0-XMM15 initial state following INIT
+ *
+ * Summary: ACRN hypervisor shall keep unchange guest XMM0 through XMM15 folllowing INIT.
+ */
+
+static void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
+{
+	cur_case_id = 27437;/*trigger ap_main function entering switch  27437*/
+	wait_ap_ready();
+	/*send sipi to ap  trigger ap_main function was called to get XMM0 through XMM15 again.*/
+	send_sipi();
+	cur_case_id = 27437;
+	wait_ap_ready();
+	for (int i = 0; i < 16; i++) {
+		if (xmm_unchange_regs1[i] != xmm_unchange_regs2[i]) {
+			report("%s ", 0, __FUNCTION__);
+			return;
+		}
+	}
+	report("%s ", 1, __FUNCTION__);
+
+	/*send sipi to ap again for restoring XMM0 through XMM15 initial value*/
+	send_sipi();
+	cur_case_id = 27437;
+	wait_ap_ready();
+	ap_start_count = 0;
+}
+
+#endif
 
 /*
  * @brief case name: SSE CR4.OSFXSR initial state following INIT_001
@@ -154,7 +406,7 @@ static __unused void sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_star
 static __unused void sse_rqmid_23189_SSE_CR4_OSFXSR_initial_state_following_INIT_001(void)
 {
 	bool  is_pass = false;
-	ap_cr4 = *(volatile uint32_t *)(0x7004);
+	ap_cr4 = *(volatile uint32_t *)INIT_CR4_SAVE_ADDR;
 	sse_debug("\nDump ap_cr4 = 0x%x\n", ap_cr4);
 	is_pass = ((CR4_OSFXSR_BIT_MASK & ap_cr4) == 0);
 	report("%s \n", is_pass, __FUNCTION__);
@@ -694,6 +946,13 @@ static __unused void sse_rqmid_30916_SSE2_instructions_support_Protected_Mode_PS
 
 #endif
 
+static void sse_get_64bit_xsave_value_for_startup(void)
+{
+	volatile fxsave_64bit_t *sse_64bit_start;
+	sse_64bit_start = (volatile fxsave_64bit_t *)STARTUP_SSE64BIT_XSAVE_ADDR;
+	asm volatile("fxsave %0" : "=m"(*sse_64bit_start));
+}
+
 static __unused void print_case_list(void)
 {
 	printf("\t\t SSE feature case list:\n\r");
@@ -703,6 +962,18 @@ static __unused void print_case_list(void)
 	"Physical SSE support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27868u,
 	"Physical POPCNT instruction support_001");
+
+	printf("\t\t Case ID:%d case name:%s\n\r", 36247u,
+	"Physical SSE2 support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 36245u,
+	"Physical SSE3 support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 36244u,
+	"Physical SSSE3 support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 36243u,
+	"Physical SSE4_1 support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 36242u,
+	"Physical SSE4_2 support_001");
+
 #else
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27797u,
@@ -743,7 +1014,16 @@ static __unused void print_case_list(void)
 	"SSE3 instructions support_64 bit Mode PALIGNR #PF_009");
 	printf("\t\t Case ID:%d case name:%s\n\r", 30637u,
 	"SSE3 instructions support_64 bit Mode MOVDDUP #PF_008");
+	printf("\t\t Case ID:%d case name:%s\n\r", 23197u,
+	"SSE MXCSR initial state following INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27437u,
+	"SSE XMM0-XMM15 initial state following INIT");
 #endif
+	printf("\t\t Case ID:%d case name:%s\n\r", 23207u,
+	"SSE MXCSR initial state following start up_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 23208u,
+	"SSE XMM0-XMM15 initial state following start up_001");
+
 #endif
 #else
 #ifdef IN_NON_SAFETY_VM
@@ -761,21 +1041,141 @@ static __unused void print_case_list(void)
 #endif
 }
 
+static void sse_ap_unchanged_case_23197()
+{
+	volatile fxsave_64bit_t *sse_save;
+	ulong cr4;
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));/* enable cr4.OSFXSR[9] for SSE. */
+
+	if (ap_start_count == 0) {
+		sse_save = (volatile fxsave_64bit_t *)INIT_UNCHANGED_SSE_XSAVE_ADDR;
+		asm volatile("fxsave %0" : "=m"(*sse_save));
+		/* set new value to sse */
+		sse_save->mxcsr = sse_save->mxcsr ^ MXCSR_OE_BIT;/*modify mxcsr's OE bit*/
+		/*modified value restore to fpu*/
+		asm volatile("fxrstor %0" : : "m"(*sse_save));
+		/*save new values to gloabal var for case for  23197  */
+		set_mxcsr1 = sse_save->mxcsr;
+		ap_start_count++;
+		wait_ap = 1;
+	} else if (ap_start_count == 1) {
+		/*run to here when ap receive SIPI  */
+		/*save new values to gloabal var for case  23197 */
+		sse_save = (volatile fxsave_64bit_t *)INIT_UNCHANGED_SSE_XSAVE_ADDR;
+		asm volatile("fxsave %0" : "=m"(*sse_save));
+		set_mxcsr2 = sse_save->mxcsr;
+		ap_start_count++;
+		wait_ap = 1;
+	} else if (ap_start_count == 2) {
+		sse_save = (volatile fxsave_64bit_t *)INIT_UNCHANGED_SSE_XSAVE_ADDR;
+		asm volatile("fxsave %0" : "=m"(*sse_save));
+		sse_save->mxcsr = sse_save->mxcsr ^ MXCSR_OE_BIT;/*mxcsr restore to init value*/
+		asm volatile("fxrstor %0" : : "m"(*sse_save));
+		wait_ap = 1;
+	}
+	/*restore cr4's value*/
+	write_cr4(cr4);
+}
+
+static void sse_ap_unchanged_case_27437()
+{
+	ulong cr4;
+	volatile fxsave_64bit_t *sse_save;
+
+	/*test only on the ap  2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));/* enable cr4.OSFXSR[9] for SSE. */
+
+	if (ap_start_count == 0) {
+		sse_save = (volatile fxsave_64bit_t *)INIT_UNCHANGED_SSE_XSAVE_ADDR;
+		asm volatile("fxsave %0" : "=m"(*sse_save));
+
+		/* set new value to sse */
+		for (int i = 0; i < 16; i++) {
+			sse_save->xmm_regs[i] = sse_save->xmm_regs[i] + 1; /*old value add one*/
+		}
+
+		/*modified value restore to fpu*/
+		asm volatile("fxrstor %0" : : "m"(*sse_save));
+		/*save new values to gloabal var for case for 27437  */
+		for (int i = 0; i < 16; i++) {
+			xmm_unchange_regs1[i] = sse_save->xmm_regs[i];
+		}
+		ap_start_count++;
+		wait_ap = 1;
+	} else if (ap_start_count == 1) {
+		/*run to here when ap receive SIPI again */
+		/*save new values to gloabal var for case 27437 */
+		sse_save = (volatile fxsave_64bit_t *)INIT_UNCHANGED_SSE_XSAVE_ADDR;
+		asm volatile("fxsave %0" : "=m"(*sse_save));
+		for (int i = 0; i < 16; i++) {
+			xmm_unchange_regs2[i] = sse_save->xmm_regs[i];
+		}
+		ap_start_count++;
+		wait_ap = 1;
+	} else if (ap_start_count == 2) {
+		/*xmm_regs restore to init value*/
+		sse_save = (volatile fxsave_64bit_t *)INIT_UNCHANGED_SSE_XSAVE_ADDR;
+		asm volatile("fxsave %0" : "=m"(*sse_save));
+		for (int i = 0; i < 16; i++) {
+			sse_save->xmm_regs[i] = sse_save->xmm_regs[i] - 1;
+		}
+		asm volatile("fxrstor %0" : : "m"(*sse_save));
+		wait_ap = 1;
+	}
+	/*restore cr4's value*/
+	write_cr4(cr4);
+}
+
+void ap_main(void)
+{
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	while (1) {
+		switch (cur_case_id) {
+		case 23197:
+			sse_ap_unchanged_case_23197();
+			cur_case_id = 0;
+			break;
+		case 27437:
+			sse_ap_unchanged_case_27437();
+			cur_case_id = 0;
+			break;
+		default:
+			asm volatile ("nop\n\t" :::"memory");
+		}
+	}
+}
+
 int main(void)
 {
 	setup_idt();
 	setup_vm();
+	sse_get_64bit_xsave_value_for_startup();
 	print_case_list();
 #ifdef __x86_64__
 #ifdef IN_NATIVE
 	sse_rqmid_27859_physical_sse_support_001();
 	sse_rqmid_27868_Physical_POPCNT_instruction_support_001();
+	sse_rqmid_36247_physical_sse2_support_001();
+	sse_rqmid_36245_physical_sse3_support_001();
+	sse_rqmid_36244_physical_ssse3_support_001();
+	sse_rqmid_36243_physical_sse4_support_001();
+	sse_rqmid_36242_physical_sse4_2_support_001();
 #else
 #ifdef IN_NON_SAFETY_VM
 	sse_rqmid_27797_SSE_instructions_support_001();
 	sse_rqmid_27800_SSE2_instructions_support_001();
 	sse_rqmid_27527_ACRN_General_support_001();
-	sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_startup_001();
 	sse_rqmid_23189_SSE_CR4_OSFXSR_initial_state_following_INIT_001();
 	sse_rqmid_27813_SSE2_instructions_support_004();
 	sse_rqmid_30071_SSE2_instructions_support_64_bit_Mode_CVTPS2DQ_PF_001();
@@ -791,7 +1191,14 @@ int main(void)
 	sse_rqmid_31001_SSE_instructions_support_64bit_Mode_PMULHUW_PF_011();
 	sse_rqmid_30813_SSE3_instructions_support_64bit_Mode_PALIGNR_PF_009();
 	sse_rqmid_30637_SSE3_instructions_support_64bit_Mode_MOVDDUP_PF_008();
+	sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002();
+	sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001();
+	sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001();
 #endif
+	sse_rqmid_23207_SSE_MXCSR_initial_state_following_startup_001();
+	sse_rqmid_23208_SSE_XMM0_XMM15_initial_state_following_startup_001();
+	sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_startup_001();
+
 #endif
 #else
 #ifdef IN_NON_SAFETY_VM
