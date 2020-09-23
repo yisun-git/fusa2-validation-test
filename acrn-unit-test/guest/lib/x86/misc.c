@@ -475,7 +475,6 @@ u64 enable_xsave()
 	write_cr4(read_cr4() | (1 << 18)); /* osxsave */
 	supported_xcr0 = get_xcr0();
 	/*enable all xsave bitmap 0x3--we support until now!!
-	 *MPX component is hidden,so we add it ?
 	 */
 	xsave_getbv(0, &xcr0);
 	xsave_setbv(0, supported_xcr0);
@@ -529,14 +528,7 @@ bool xsave_reg_dump(void *ptr)
 #ifdef __x86_64__
 u64 *creat_non_canon_add(u64 addr)
 {
-	u64 address = addr;
-
-	if ((address >> 63) & 1) {
-		address = (address & (~(1ull << 63)));
-	} else {
-		address = (address|(1UL<<63));
-	}
-	return (u64 *)address;
+	return (u64 *)(addr ^ (1ULL << 63));
 }
 #endif
 
