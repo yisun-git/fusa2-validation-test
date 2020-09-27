@@ -330,6 +330,16 @@ smp_init:
 	mov $(sipi_end - sipi_entry), %rcx
 	rep/movsb
 
+	lea sipi_entry, %rsi
+	mov $4096, %rdi
+	mov $(sipi_end - sipi_entry), %rcx
+	rep/movsb
+
+	lea sipi_entry, %rsi
+	mov $8192, %rdi
+	mov $(sipi_end - sipi_entry), %rcx
+	rep/movsb
+
 	movl $APIC_ICR, %ecx
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
