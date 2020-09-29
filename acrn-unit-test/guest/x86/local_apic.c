@@ -286,7 +286,7 @@ void local_apic_rqmid_27696_apic_capability(void)
 }
 /**
  * @brief case name x2APIC capability
- * 140200 x2APIC capability
+ *
  * Summary: When a vCPU reads CPUID.1H, ACRN hypervisor shall set guest ECX[bit 21] to 1H.
  *  x2APIC mode is used to provide extended processor addressability to the VM.
  *
@@ -361,7 +361,7 @@ void local_apic_rqmid_27685_different_x2apic_id_001(void)
 
 /**
  * @brief case name Software disable support
- * 140216 Software disable support
+ *
  * Summary: ACRN hypervisor shall expose LAPIC software disable support to any VM, in
  *  compliance with Chapter 10.4.7.2, Vol. 3, SDM.
  *  LAPIC is in a software-disabled state following power-up or reset according to
@@ -1721,7 +1721,7 @@ void local_apic_rqmid_27926_cr8_is_mirror_of_tpr(void)
 #ifdef IN_NON_SAFETY_VM
 /**
  * @brief case name APIC Base field state following INIT
- *	rqmid:140212
+ *
  * Summary: ACRN hypervisor shall set initial guest MSR_IA32_APICBASE of AP
  *  to 0FEE00C00H following INIT.
  *  In compliance with Chapter 10.4.4, Vol.3, SDM. INIT reset only occurs on APs,
@@ -5408,8 +5408,6 @@ static void print_case_list()
 		   "local_apic_rqmid_27593_read_only_apic_base");
 	printf("\t Case ID:%d case name:%s\n\r", 27592,
 		   "local_apic_rqmid_27592_read_only_local_apic_version_register");
-	printf("\t Case ID:%d case name:%s\n\r", 27590,
-		   "local_apic_rqmid_27590_write_only_eoi_register");
 	printf("\t Case ID:%d case name:%s\n\r", 27589,
 		   "local_apic_rqmid_27589_read_only_isr");
 	printf("\t Case ID:%d case name:%s\n\r", 27588,
