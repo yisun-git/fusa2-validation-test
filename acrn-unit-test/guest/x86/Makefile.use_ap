@@ -29,3 +29,9 @@ $(TEST_DIR)/interrupt.o: $(TEST_DIR)/interrupt.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/hsi_multi_proc_mgmt.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/hsi_multi_proc_mgmt.o: $(TEST_DIR)/hsi_multi_proc_mgmt.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
