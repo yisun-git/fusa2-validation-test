@@ -155,6 +155,14 @@ $(TEST_DIR)/interrupt.o:$(TEST_DIR)/interrupt.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/rtc.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_rtc_init.S\"
+$(TEST_DIR)/rtc.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_rtc_startup.S\"
+$(TEST_DIR)/rtc.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/rtc.o: $(TEST_DIR)/rtc.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
 $(TEST_DIR)/local_apic.o: CFLAGS += -DAP_INIT_CHECK=\"local_apic_init.S\"
 $(TEST_DIR)/local_apic.o: CFLAGS += -DBP_STARTUP_CHECK=\"local_apic_startup.S\"
 $(TEST_DIR)/local_apic.o: CFLAGS += -DAP_UNCHANGED_CHECK
@@ -169,4 +177,5 @@ $(TEST_DIR)/multiboot.o:$(TEST_DIR)/multiboot.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
 
