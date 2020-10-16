@@ -71,6 +71,20 @@
 start:
 	mov	$0xa0000, %esp
 
+/* get BP EIP starup value */
+#ifdef IN_NON_SAFETY_VM
+	call 11f
+11:
+	pop %edx
+	mov %edx, (0x6004)	//MULTIBOOT_STARTUP_EIP_ADDR		(0x6004)
+
+	mov %ebx, (0x6014)	//MULTIBOOT_STARTUP_EBX_ADDR		(0x6014)
+	mov %ebp, (0x6018)	//MULTIBOOT_STARTUP_EBP_ADDR		(0x6018)
+	mov %edi, (0x6010)	//MULTIBOOT_STARTUP_EDI_ADDR		(0x6010)
+	pushf
+	pop (0x601C)		//MULTIBOOT_STARTUP_EFLAGS_ADDR		(0x601C)
+#endif
+
 	/* Init UART FIFOs */
 	mov	$(UART_BASE + UART_FCR), %dx
 	mov	$0x7, %al
