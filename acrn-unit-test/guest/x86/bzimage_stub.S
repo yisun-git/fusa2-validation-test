@@ -1,6 +1,7 @@
 /*
  * Stub code that serves as the entry of a bzimage to load a unit test image.
  */
+#include "general_purpose.h"
 
 #define MEM_1K             0x400
 #define MEM_2K             (2 * MEM_1K)
@@ -69,6 +70,15 @@
 
 	/* Entry of the stub. Shall be the third sector in the bzimage. */
 start:
+#ifdef IN_NON_SAFETY_VM /*gouyong add*/
+	mov %eax,STARTUP_EAX_ADDR_IN_NON_SAFETY
+	mov %edx,STARTUP_EDX_ADDR_IN_NON_SAFETY
+	mov %ebx,STARTUP_EBX_ADDR_IN_NON_SAFETY
+	mov %ecx,STARTUP_ECX_ADDR_IN_NON_SAFETY
+	mov %ebp,STARTUP_EBP_ADDR_IN_NON_SAFETY
+	mov %esp,STARTUP_ESP_ADDR_IN_NON_SAFETY
+	mov %edi,STARTUP_EDI_ADDR_IN_NON_SAFETY
+#endif
 	mov	$0xa0000, %esp
 
 /* get BP EIP starup value */
@@ -76,6 +86,10 @@ start:
 	call 11f
 11:
 	pop %edx
+	mov %edx, STARTUP_EIP_ADDR_IN_NON_SAFETY
+	pushfl
+	pop %eax
+	mov %eax, STARTUP_EFLAGS_ADDR_IN_NON_SAFETY
 	mov %edx, (0x6004)	//MULTIBOOT_STARTUP_EIP_ADDR		(0x6004)
 
 	mov %ebx, (0x6014)	//MULTIBOOT_STARTUP_EBX_ADDR		(0x6014)
