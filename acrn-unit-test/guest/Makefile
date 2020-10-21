@@ -13,6 +13,12 @@ ifneq ($(FILE_NAME1), )
     export START_A = 0x11000800 + SIZEOF_HEADERS
 endif
 
+FILE_NAME_HSI = $(shell echo $(FILE_NAME) | grep "hsi_mem_paging_access_low")
+ifneq ($(FILE_NAME_HSI), )
+	export ENTRY_OFFSET = 0x11000800
+	export START_A = 0x11000800 + SIZEOF_HEADERS
+endif
+
 ifeq ($(VM), safety)
     export ENTRY_OFFSET = 0x100000
     export START_A = 1M

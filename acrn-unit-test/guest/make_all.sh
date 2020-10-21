@@ -11,9 +11,15 @@ BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse tas
 	segmentation"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE=""
-BUILD_NATIVE_64_FEATURE="xsave device_passthrough hsi sse pt info_leakage safety_analysis_cat machine_check debug_features \
-	mem_cache taskmanagement idle_block local_apic hsi_multi_proc_mgmt rtc segmentation paging memory_order"
+
+BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
+	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order"
+
+BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt"
+
 BUILD_NATIVE_32_FEATURE="taskmanagement"
+BUILD_NATIVE_32_FEATURE="$BUILD_NATIVE_32_FEATURE hsi_mem_mgmt"
+BUILD_NATIVE_REAL_MODE_FEATURE="hsi_mem_mgmt"
 
 RESULT=0
 
@@ -22,6 +28,7 @@ RESULT=0
 	find . -name *.bzimage |xargs rm -rf
 	rm -rf x86/obj
 	mkdir x86/obj
+	mkdir x86/obj/realmode
 for i in $BUILD_32BIT_FEATURE;
 do
         echo "start build $i protected mode file"
@@ -76,6 +83,19 @@ for i in $BUILD_NATIVE_32_FEATURE;
 do
 	echo "start build $i native 32bit mode file"
 	./make32_native.sh $i 32;
+        make_result=$?
+        if [ $make_result -ne 0 ]; then
+            RESULT=$make_result
+            echo "FAILED TO MAKE $i"
+	    exit $RESULT
+        fi
+
+done
+
+for i in $BUILD_NATIVE_REAL_MODE_FEATURE;
+do
+	echo "start build $i native real mode file"
+	./make32_native.sh realmode/$i real_mode;
         make_result=$?
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result

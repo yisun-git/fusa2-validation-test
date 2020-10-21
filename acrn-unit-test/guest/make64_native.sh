@@ -6,6 +6,7 @@
 echo “Please make the patch of native first”
 make clean
 ./configure --arch=x86_64
+export FILE_NAME=$1
 echo "make x86/"$1".raw"
 make x86/$1.raw NATIVE=yes
 make_result=$?
