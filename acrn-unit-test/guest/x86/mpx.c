@@ -13,6 +13,10 @@
 #include "misc.h"
 #include "instruction_common.h"
 #include "register_op.h"
+#include "segmentation.h"
+
+#define DATA_READ_ONLY_SEL (0x0F << 3)
+
 __attribute__((aligned(64))) xsave_area_t st_xsave_area;
 
 static __unused int xsave_checking(xsave_area_t *xsave_array, u64 xcr0)
@@ -131,6 +135,8 @@ static void mpx_rqmid_25254_environment_hiding_exception_BNDCN_001(void)
 	report("%s", ret, __FUNCTION__);
 }
 
+#if 0
+/* commented because the invalid entry can't be created if MPX is hidden */
 /**
  * @brief case name:MPX environment hiding_exception_BNDLDX_001
  *
@@ -148,6 +154,8 @@ static void mpx_rqmid_25251_environment_hiding_exception_BNDLDX_001(void)
 									"bndldx %0, %%bnd0\n\t" : : "m"(a)));
 	report("%s", result, __FUNCTION__);
 }
+#endif
+
 /**
  * @brief case name:MPX environment hiding_exception_BNDSTX_001
  *
@@ -158,12 +166,28 @@ static void mpx_rqmid_25251_environment_hiding_exception_BNDLDX_001(void)
  */
 static void mpx_rqmid_25252_environment_hiding_exception_BNDSTX_001(void)
 {
-	int c = 0xffff;
-	int a = 0x80754567;
 	bool ret = false;
+	struct descriptor_table_ptr gdt_desc;
+	u16 old_gs = read_gs();
 
 	enable_xsave();
-	ret = CHECK_INSTRUCTION_REGS(asm volatile("bndstx %%bnd0, %1\n\t" : "=m"(a) : "m"(c)));
+
+	sgdt(&gdt_desc);
+
+	/* read only data segment */
+	set_gdt_entry(DATA_READ_ONLY_SEL, 0, SEGMENT_LIMIT_ALL,
+		SEGMENT_PRESENT_SET | DESCRIPTOR_PRIVILEGE_LEVEL_0 |
+		DESCRIPTOR_TYPE_CODE_OR_DATA | SEGMENT_TYPE_DATE_READ_ONLY_ACCESSED,
+		GRANULARITY_SET | DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
+	lgdt(&gdt_desc);
+
+	/* update gs */
+	write_gs(DATA_READ_ONLY_SEL);
+
+	ret = CHECK_INSTRUCTION_REGS(asm volatile("bndstx %bnd0, %gs:0x1000\n\t"));
+
+	/* restore gs */
+	write_gs(old_gs);
 	report("%s", ret, __FUNCTION__);
 }
 
@@ -610,7 +634,9 @@ static void test_mpx(void)
 #ifdef __x86_64__
 	mpx_rqmid_23119_env_hiding_register_bndregs_001();
 	mpx_rqmid_23120_env_hiding_register_bndcsr_001();
-	mpx_rqmid_25251_environment_hiding_exception_BNDLDX_001();
+/* commented because the invalid entry can't be created if MPX is hidden.
+ *	mpx_rqmid_25251_environment_hiding_exception_BNDLDX_001();
+ */
 	mpx_rqmid_23096_environment_hiding_instruction_BNDMK_001();
 	mpx_rqmid_23099_environment_hiding_instruction_BNDCL_001();
 	mpx_rqmid_23100_environment_hiding_instruction_BNDCU_001();
