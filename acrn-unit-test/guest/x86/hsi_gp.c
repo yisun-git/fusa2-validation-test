@@ -30,7 +30,7 @@
 #else
 #define debug_print(fmt, args...)
 #endif
- 
+
 #define ADD_SIGN ".byte 0x48, 0x83, 0xc0, 0x80\n\t"               // add $0x80, %%rax
 #define SUB_SIGN ".byte 0x48, 0x2d, 0x00, 0x00, 0x00, 0x80\n\t"   // sub $0x80000000, %%rax
 
@@ -51,7 +51,7 @@ static bool cmovnc_8_checking(void)
 		"1:"
 		: "=r" (op)
 		:
-		:"rbx"
+		: "rbx"
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (op == 10));
 }
@@ -60,10 +60,10 @@ static bool cmovnc_8_ncf_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
-	        "mov $10, %%rbx\n\t"
-                "mov $0,  %0\n\t"
-                "mov $0xff, %%al\n\t"
-                "add $10, %%al\n\t"
+		"mov $10, %%rbx\n\t"
+		"mov $0,  %0\n\t"
+		"mov $0xff, %%al\n\t"
+		"add $10, %%al\n\t"
 		ASM_TRY("1f")
 		"cmovnc %%rbx, %0\n"
 		"1:"
@@ -170,13 +170,13 @@ static bool add_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
-	        "mov $0, %%rax\n\t"
+		"mov $0, %%rax\n\t"
 		ASM_TRY("1f")
 		ADD_SIGN
 		"mov %%rax, %0\n"
 		"1:"
 		: "=r" (op)
-		: 
+		:
 		: "rax"
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xffffffffffffff80));
@@ -186,13 +186,13 @@ static bool sub_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
-	        "mov $0, %%rax\n\t"
+		"mov $0, %%rax\n\t"
 		ASM_TRY("1f")
 		SUB_SIGN
 		"mov %%rax, %0\n"
 		"1:"
 		: "=r" (op)
-		: 
+		:
 		: "rax"
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x80000000));
@@ -498,22 +498,6 @@ static bool call_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (call_cnt == 1));
 }
 /*
-static bool loop_checking(void)
-{
-	u16 op = 10;
-	asm volatile(
-		"mov $10, %%cx\n"
-		"2: inc %0\n"
-		ASM_TRY("1f")
-		"loop 2b\n"
-		"1:"
-		: "+r"(op) 
-		: : "cx"
-	);
-	return ((exception_vector() == NO_EXCEPTION) && (op == 20));
-}
-*/
-/*
  * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
@@ -529,7 +513,7 @@ static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_
 	if (cmovnc_8_checking()) {
 		chk++;
 	}
-	
+
 	if (cmovnc_8_ncf_checking()) {
 		chk++;
 	}
@@ -552,7 +536,7 @@ static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_
 	if (cdqe_checking()) {
 		chk++;
 	}
-        
+
 	report("%s", (chk == 8), __FUNCTION__);
 }
 
@@ -696,8 +680,8 @@ int main(void)
 
 	print_case_list();
 
-#ifdef IN_NATIVE  
-	
+#ifdef IN_NATIVE
+
 #ifdef __x86_64__
 	hsi_rqmid_35956_generic_processor_features_general_purpose_instructions_001();
 	hsi_rqmid_35959_generic_processor_features_general_purpose_instructions_002();
