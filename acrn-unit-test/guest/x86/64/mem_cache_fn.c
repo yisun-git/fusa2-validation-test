@@ -6,7 +6,16 @@
  * This work is licensed under the terms of the GNU GPL, version 2.
  */
 
-#include "pci_util.h"
+#ifdef DUMP_CACHE_NATIVE_DATA
+#define DUMP_CACHE_DATA(msg) \
+	for (int i = 0; i < CACHE_TEST_TIME_MAX; i++) { \
+		printf("[%s] line=%d %"LD"\r\n", __FILE__, __LINE__, tsc_delay[i]); \
+	} \
+	printf("native "msg" average is %"LD"\r\n", tsc_delay_delta_total)
+#else
+#define DUMP_CACHE_DATA(msg)
+#endif
+
 
 /**
  * @brief Construct non canonical address
@@ -200,15 +209,19 @@ void cache_rqmid_26972_guest_linear_normal_wb(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_read_test(CACHE_L1_READ_WB, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WB READ");
 
 	/*Cache size L2*/
 	ret2 = cache_order_read_test(CACHE_L2_READ_WB, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WB READ");
 
 	/*Cache size L3*/
 	ret3 = cache_order_read_test(CACHE_L3_READ_WB, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WB READ");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WB, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WB READ");
 
 	report("%s WB read test\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -246,15 +259,19 @@ void cache_rqmid_26973_guest_linear_normal_wb(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_WB, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WB WRITE");
 
 	/*Cache size L2*/
 	ret2 = cache_order_write_test(CACHE_L2_WRITE_WB, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WB WRITE");
 
 	/*Cache size L3*/
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_WB, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WB WRITE");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_WB, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WB WRITE");
 
 	report("%s WB write test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -292,15 +309,19 @@ void cache_rqmid_26974_guest_linear_normal_wc(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_read_test(CACHE_L1_READ_WC, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WC READ");
 
 	/*Cache size L2*/
 	ret2 = cache_order_read_test(CACHE_L2_READ_WC, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WC READ");
 
 	/*Cache size L3*/
 	ret3 = cache_order_read_test(CACHE_L3_READ_WC, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WC READ");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WC, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WC READ");
 
 	report("%s WC read test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -338,15 +359,19 @@ void cache_rqmid_26975_guest_linear_normal_wc(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_WC, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WC WRITE");
 
 	/*Cache size L2*/
 	ret2 = cache_order_write_test(CACHE_L2_WRITE_WC, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WC WRITE");
 
 	/*Cache size L3*/
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_WC, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WC WRITE");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_WC, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WC WRITE");
 
 	report("%s WC write test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -384,15 +409,19 @@ void cache_rqmid_26976_guest_linear_normal_wt(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_read_test(CACHE_L1_READ_WT, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WT READ");
 
 	/*Cache size L2*/
 	ret2 = cache_order_read_test(CACHE_L2_READ_WT, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WT READ");
 
 	/*Cache size L3*/
 	ret3 = cache_order_read_test(CACHE_L3_READ_WT, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WT READ");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WT, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WT READ");
 
 	report("%s WT read test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -430,15 +459,19 @@ void cache_rqmid_26977_guest_linear_normal_wt(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_WT, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WT WRITE");
 
 	/*Cache size L2*/
 	ret2 = cache_order_write_test(CACHE_L2_WRITE_WT, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WT WRITE");
 
 	/*Cache size L3*/
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_WT, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WT WRITE");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_WT, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WT WRITE");
 
 	report("%s WT write test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -476,15 +509,19 @@ void cache_rqmid_26978_guest_linear_normal_wp(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_read_test(CACHE_L1_READ_WP, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WP READ");
 
 	/*Cache size L2*/
 	ret2 = cache_order_read_test(CACHE_L2_READ_WP, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WP READ");
 
 	/*Cache size L3*/
 	ret3 = cache_order_read_test(CACHE_L3_READ_WP, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WP READ");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WP, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WP READ");
 
 	report("%s WP read test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -522,15 +559,19 @@ void cache_rqmid_26979_guest_linear_normal_wp(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_WP, cache_l1_size);
+	DUMP_CACHE_DATA("L1 WP WRITE");
 
 	/*Cache size L2*/
 	ret2 = cache_order_write_test(CACHE_L2_WRITE_WP, cache_l2_size);
+	DUMP_CACHE_DATA("L2 WP WRITE");
 
 	/*Cache size L3*/
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_WP, cache_l3_size);
+	DUMP_CACHE_DATA("L3 WP WRITE");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_WP, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 WP WRITE");
 
 	report("%s WP write test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -568,15 +609,19 @@ void cache_rqmid_26980_guest_linear_normal_uc(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
+	DUMP_CACHE_DATA("L1 UC READ");
 
 	/*Cache size L2*/
 	ret2 = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
+	DUMP_CACHE_DATA("L2 UC READ");
 
 	/*Cache size L3*/
 	ret3 = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
+	DUMP_CACHE_DATA("L3 UC READ");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 UC READ");
 
 	report("%s UC read test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -614,15 +659,19 @@ void cache_rqmid_26981_guest_linear_normal_uc(void)
 
 	/*Cache size L1*/
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
+	DUMP_CACHE_DATA("L1 UC WRITE");
 
 	/*Cache size L2*/
 	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
+	DUMP_CACHE_DATA("L2 UC WRITE");
 
 	/*Cache size L3*/
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
+	DUMP_CACHE_DATA("L3 UC WRITE");
 
 	/*Cache size over L3*/
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 UC WRITE");
 
 	report("%s UC write test\n",
 		   (ret1 == true) && (ret2 == true) && (ret3 == true) && (ret4 == true), __FUNCTION__);
@@ -742,45 +791,54 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	 */
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
 	/* Read test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
-	ret2 = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
-	ret3 = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
-	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+	ret1 = cache_order_read_test(CACHE_L1_READ_UC_NOFILL, cache_l1_size);
+	DUMP_CACHE_DATA("L1 UC READ NOFILL");
+	ret2 = cache_order_read_test(CACHE_L2_READ_UC_NOFILL, cache_l2_size);
+	DUMP_CACHE_DATA("L2 UC READ NOFILL");
+	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
+	DUMP_CACHE_DATA("L3 UC READ NOFILL");
+	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 UC READ NOFILL");
 
 	report("%s Read test in No-fill Cache Mode, should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
 		(ret4 == true), __FUNCTION__);
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
-	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
-	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
-	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
+	DUMP_CACHE_DATA("L1 UC WRITE NOFILL");
+	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC_NOFILL, cache_l2_size);
+	DUMP_CACHE_DATA("L2 UC WRITE NOFILL");
+	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
+	DUMP_CACHE_DATA("L3 UC WRITE NOFILL");
+	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
+	DUMP_CACHE_DATA("OVER L3 UC WRITE NOFILL");
 
 	report("%s Write test in No-fill Cache Mode, should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
 		(ret4 == true), __FUNCTION__);
 
+#ifndef DUMP_CACHE_NATIVE_DATA
 	/* Configure PAT to use WB, however in No-fill Cache Mode,
 	 * it should behavior like UC.
 	 */
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
 
 	/* Read test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
-	ret2 = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
-	ret3 = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
-	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+	ret1 = cache_order_read_test(CACHE_L1_READ_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_read_test(CACHE_L2_READ_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Read test in No-fill Cache Mode, WB configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
 		(ret4 == true), __FUNCTION__);
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
-	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
-	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
-	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Write test in No-fill Cache Mode, WB configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
@@ -792,20 +850,20 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK1);
 
 	/* Read test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
-	ret2 = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
-	ret3 = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
-	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+	ret1 = cache_order_read_test(CACHE_L1_READ_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_read_test(CACHE_L2_READ_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Read test in No-fill Cache Mode, WP configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
 		(ret4 == true), __FUNCTION__);
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
-	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
-	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
-	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Write test in No-fill Cache Mode, WP configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
@@ -817,20 +875,20 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK2);
 
 	/* Read test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
-	ret2 = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
-	ret3 = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
-	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+	ret1 = cache_order_read_test(CACHE_L1_READ_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_read_test(CACHE_L2_READ_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Read test in No-fill Cache Mode, WT configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
 		(ret4 == true), __FUNCTION__);
 
 	/* write test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
-	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
-	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
-	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Write test in No-fill Cache Mode, WT configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
@@ -842,71 +900,25 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK3);
 
 	/* Read test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
-	ret2 = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
-	ret3 = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
-	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+	ret1 = cache_order_read_test(CACHE_L1_READ_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_read_test(CACHE_L2_READ_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Read test in No-fill Cache Mode, WC configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
 		(ret4 == true), __FUNCTION__);
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
-	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
-	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
-	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
-	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
+	ret2 = cache_order_write_test(CACHE_L2_WRITE_UC_NOFILL, cache_l2_size);
+	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
+	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
 	report("%s Write test in No-fill Cache Mode, WC configured but should behavior like UC.\n",
 		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
 		(ret4 == true), __FUNCTION__);
-}
-
-#define BAR_REMAP_USB_BASE    0xDFFF0000
-#define PCI_BAR_MASK	      0xFFFF0000
-#define USB_HCIVERSION        0x02
-#define PCI_PCIR_BAR(x)	      (0x10 + (x) * 4)
-
-/**
- * @brief In 64-bit mode,Select USB device BAR0 as the test object.
- *       Write the value 0xDFFF_0000 to the BAR0 register of USB device.
- *       Read the HCIVERSION register of USB device
- *       If HCIVERSION register value is 0x100, pass,otherwize fail
- *
- * none
- * Application Constraints: Only for USB.
- *
- * @param none
- *
- * @return OK. seccessed,pci_mem_address value is valid
- *
- * @retval (-1) fialed,pci_mem_address value is invalid
- */
-int pci_mem_get(void *pci_mem_address)
-{
-	union pci_bdf bdf = {.bits = {.b = 0, .d = 0x14, .f = 0} };
-	uint32_t bar_base;
-	uint32_t reg_val;
-	int ret = OK;
-
-	pci_pdev_write_cfg(bdf, PCI_PCIR_BAR(0), 4, BAR_REMAP_USB_BASE);
-
-	reg_val = pci_pdev_read_cfg(bdf, PCI_PCIR_BAR(0), 4);
-	DBG_INFO("R reg[%xH] = [%xH]", PCI_PCIR_BAR(0), reg_val);
-
-	bar_base = PCI_BAR_MASK & reg_val;
-
-	reg_val = pci_pdev_read_mem(bdf, (bar_base + USB_HCIVERSION), 2);
-	if (0x100 != reg_val) {
-		DBG_ERRO("R mem[%xH] != [%xH]", bar_base + USB_HCIVERSION, 0x100);
-		ret = ERROR;
-	}
-
-	if (OK == ret) {
-		*((uint64_t *)pci_mem_address) = BAR_REMAP_USB_BASE;
-	}
-
-	return ret;
+#endif
 }
 
 /**
@@ -1312,6 +1324,7 @@ void cache_rqmid_27027_map_to_device_linear_uc(void)
 
 		/*Cache size 4k*/
 		ret = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
+		DUMP_CACHE_DATA("DEVICE 4K READ");
 	}
 
 	cache_test_array = tmp;
@@ -1358,6 +1371,7 @@ void cache_rqmid_27028_map_to_device_linear_uc(void)
 
 		/*Cache size 4k*/
 		ret = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		DUMP_CACHE_DATA("DEVICE 4K WRITE");
 	}
 
 	cache_test_array = tmp;
@@ -1893,6 +1907,7 @@ void cache_rqmid_36864_guest_clflush_clflushopt_line_size(void)
 		__FUNCTION__, cache_line_size * 8);
 }
 
+#ifndef DUMP_CACHE_NATIVE_DATA
 static struct case_fun_index cache_control_cases[] = {
 	{23873, cache_rqmid_23873_check_l1_dcache_parameters},
 	{23874, cache_rqmid_23874_check_l1_icache_parameters},
@@ -1940,6 +1955,28 @@ static struct case_fun_index cache_control_cases[] = {
 	{23985, cache_rqmid_23985_invd},
 	{36877, cache_rqmid_36877_no_fill_cache_mode},
 };
+#else
+static struct case_fun_index cache_control_cases[] = {
+	{26972, cache_rqmid_26972_guest_linear_normal_wb},
+	{26973, cache_rqmid_26973_guest_linear_normal_wb},
+	{26974, cache_rqmid_26974_guest_linear_normal_wc},
+	{26975, cache_rqmid_26975_guest_linear_normal_wc},
+	{26976, cache_rqmid_26976_guest_linear_normal_wt},
+	{26977, cache_rqmid_26977_guest_linear_normal_wt},
+	{26978, cache_rqmid_26978_guest_linear_normal_wp},
+	{26979, cache_rqmid_26979_guest_linear_normal_wp},
+	{26980, cache_rqmid_26980_guest_linear_normal_uc},
+	{26981, cache_rqmid_26981_guest_linear_normal_uc},
+	{27027, cache_rqmid_27027_map_to_device_linear_uc},
+	{27028, cache_rqmid_27028_map_to_device_linear_uc},
+	{36877, cache_rqmid_36877_no_fill_cache_mode},
+};
+
+void dump_cache_bentch_mark_64(long rqmid)
+{
+	cache_fun_exec(cache_control_cases, sizeof(cache_control_cases)/sizeof(cache_control_cases[0]), rqmid);
+}
+#endif
 
 static void print_cache_control_case_list_64()
 {

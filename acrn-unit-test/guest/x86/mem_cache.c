@@ -22,9 +22,13 @@
 #include "fwcfg.h"
 #include "memory_type.h"
 #include "debug_print.h"
+#include "pci_util.h"
 
-//#define CACHE_IN_NATIVE
-//#define DUMP_CACHE_NATIVE_DATA
+#ifdef IN_NATIVE
+#define CACHE_IN_NATIVE
+#define DUMP_CACHE_NATIVE_DATA
+#endif
+
 //#define NO_PAGING_TESTS
 
 #define CACHE_TEST_TIME_MAX			40
@@ -119,6 +123,16 @@ enum cache_size_type {
 	CACHE_WBINVD_DIS_READ,
 	CACHE_WBINVD_READ,
 
+	CACHE_L1_READ_UC_NOFILL,
+	CACHE_L2_READ_UC_NOFILL,
+	CACHE_L3_READ_UC_NOFILL,
+	CACHE_OVER_L3_READ_UC_NOFILL,
+
+	CACHE_L1_WRITE_UC_NOFILL,
+	CACHE_L2_WRITE_UC_NOFILL,
+	CACHE_L3_WRITE_UC_NOFILL,
+	CACHE_OVER_L3_WRITE_UC_NOFILL,
+
 	CACHE_SIZE_TYPE_MAX
 };
 
@@ -127,67 +141,64 @@ struct cache_data {
 	u64 std;
 };
 
+/* The cache_bench is auto-generated, don't modify it. */
 struct cache_data cache_bench[CACHE_SIZE_TYPE_MAX] = {
-	{433796UL, 23647UL},		/*CACHE_L1_READ_UC, 0*/
-	{2559UL, 11UL},				/*CACHE_L1_READ_WB,*/
-	{2557UL, 11UL},				/*CACHE_L1_READ_WT,*/
-	{435176UL, 23877UL},		/*CACHE_L1_READ_WC,*/
-	{2557UL, 11UL},				/*CACHE_L1_READ_WP,*/
-
-	{3479968UL, 29924UL},		/*CACHE_L2_READ_UC, 5*/
-	{19447UL, 39UL},			/*CACHE_L2_READ_WB,*/
-	{19443UL, 35UL},			/*CACHE_L2_READ_WT,*/
-	{3480217UL, 29759UL},		/*CACHE_L2_READ_WC,*/
-	{19438UL, 34UL},			/*CACHE_L2_READ_WP,*/
-
-	{111318576UL, 4757UL},		/*CACHE_L3_READ_UC, 10*/
-	{675272UL, 651UL},			/*CACHE_L3_READ_WB,*/
-	{675276UL, 807UL},			/*CACHE_L3_READ_WT,*/
-	{111319218UL, 35080UL},		/*CACHE_L3_READ_WC,*/
-	{675368UL, 690UL},			/*CACHE_L3_READ_WP,*/
-
-	{445280643UL, 37021UL},		/*CACHE_OVER_L3_READ_UC, 15*/
-	{3656013UL, 21757UL},		/*CACHE_OVER_L3_READ_WB,*/
-	{3642278UL, 26704UL},		/*CACHE_OVER_L3_READ_WT,*/
-	{445276301UL, 42465UL},		/*CACHE_OVER_L3_READ_WC,*/
-	{3642478UL, 26895UL},		/*CACHE_OVER_L3_READ_WP,*/
-
-	{337330UL, 50UL},			/*CACHE_L1_WRITE_UC, 20*/
-	{3169UL, 16UL},				/*CACHE_L1_WRITE_WB,*/
-	{337365UL, 83UL},			/*CACHE_L1_WRITE_WT,*/
-	{3385UL, 118UL},			/*CACHE_L1_WRITE_WC,*/
-	{337377UL, 81UL},			/*CACHE_L1_WRITE_WP,*/
-
-	{2698424UL, 174UL},			/*CACHE_L2_WRITE_UC, 25*/
-	{25060UL, 28UL},			/*CACHE_L2_WRITE_WB,*/
-	{2698413UL, 168UL},			/*CACHE_L2_WRITE_WT,*/
-	{28373UL, 5996UL},			/*CACHE_L2_WRITE_WC,*/
-	{2698451UL, 162UL},			/*CACHE_L2_WRITE_WP,*/
-
-	{86342539UL, 645UL},		/*CACHE_L3_WRITE_UC, 30*/
-	{804229UL, 211UL},			/*CACHE_L3_WRITE_WB,*/
-	{86342445UL, 693UL},		/*CACHE_L3_WRITE_WT,*/
-	{932708UL, 12316UL},		/*CACHE_L3_WRITE_WC,*/
-	{86342359UL, 589UL},		/*CACHE_L3_WRITE_WP,*/
-
-	{345369076UL, 1194UL},		/*CACHE_OVER_L3_WRITE_UC, 35*/
-	/* Abnormal large test on CI*/
-	{5804371UL, 118930UL},		/*CACHE_OVER_L3_WRITE_WB,*/
-	{345369505UL, 1590UL},		/*CACHE_OVER_L3_WRITE_WT,*/
-	{3733753UL, 26365UL},		/*CACHE_OVER_L3_WRITE_WC,*/
-	{345369240UL, 1273UL},		/*CACHE_OVER_L3_WRITE_WP,*/
-
-	{2071703UL, 1091UL},/*CACHE_DEVICE_4K_READ, 40*/
-	{104626UL, 13887UL},/*CACHE_4K_READ,*/
-	{1500492UL, 605UL},/*CACHE_DEVICE_4K_WRITE,*/
-	{84378UL, 55UL},/*CACHE_4K_WRITE,*/
-
-	{14750957UL, 127314UL},/*CACHE_CLFLUSH_DIS_READ, 44*/
-	{664331UL, 36943UL},/*CACHE_CLFLUSH_READ,*/
-	{14743159UL, 147640UL},/*CACHE_CLFLUSHOPT_DIS_READ,*/
-	{657227UL, 32265UL},/*CACHE_CLFLUSHOPT_READ,*/
-	{15223198UL, 125174UL},/*CACHE_WBINVD_DIS_READ,*/
-	{226598UL, 27398UL},/*CACHE_WBINVD_READ,*/
+	[CACHE_L1_READ_WB] = {2566UL, 14UL},
+	[CACHE_L2_READ_WB] = {19428UL, 28UL},
+	[CACHE_L3_READ_WB] = {674996UL, 1086UL},
+	[CACHE_OVER_L3_READ_WB] = {3665751UL, 26498UL},
+	[CACHE_L1_WRITE_WB] = {2567UL, 18UL},
+	[CACHE_L2_WRITE_WB] = {21832UL, 29UL},
+	[CACHE_L3_WRITE_WB] = {771740UL, 33UL},
+	[CACHE_OVER_L3_WRITE_WB] = {5741758UL, 107777UL},
+	[CACHE_L1_READ_WC] = {433598UL, 23379UL},
+	[CACHE_L2_READ_WC] = {3481055UL, 31877UL},
+	[CACHE_L3_READ_WC] = {111432029UL, 41220UL},
+	[CACHE_OVER_L3_READ_WC] = {445671900UL, 40189UL},
+	[CACHE_L1_WRITE_WC] = {2847UL, 129UL},
+	[CACHE_L2_WRITE_WC] = {28741UL, 8271UL},
+	[CACHE_L3_WRITE_WC] = {933109UL, 19788UL},
+	[CACHE_OVER_L3_WRITE_WC] = {3730164UL, 29432UL},
+	[CACHE_L1_READ_WT] = {2564UL, 6UL},
+	[CACHE_L2_READ_WT] = {19426UL, 23UL},
+	[CACHE_L3_READ_WT] = {675270UL, 665UL},
+	[CACHE_OVER_L3_READ_WT] = {3669097UL, 29404UL},
+	[CACHE_L1_WRITE_WT] = {337452UL, 40UL},
+	[CACHE_L2_WRITE_WT] = {2698911UL, 55UL},
+	[CACHE_L3_WRITE_WT] = {86362423UL, 80UL},
+	[CACHE_OVER_L3_WRITE_WT] = {345448347UL, 335UL},
+	[CACHE_L1_READ_WP] = {2565UL, 6UL},
+	[CACHE_L2_READ_WP] = {19429UL, 22UL},
+	[CACHE_L3_READ_WP] = {675156UL, 708UL},
+	[CACHE_OVER_L3_READ_WP] = {3665243UL, 24908UL},
+	[CACHE_L1_WRITE_WP] = {337441UL, 41UL},
+	[CACHE_L2_WRITE_WP] = {2698914UL, 73UL},
+	[CACHE_L3_WRITE_WP] = {86362435UL, 88UL},
+	[CACHE_OVER_L3_WRITE_WP] = {345448403UL, 370UL},
+	[CACHE_L1_READ_UC] = {433552UL, 23122UL},
+	[CACHE_L2_READ_UC] = {3481242UL, 28727UL},
+	[CACHE_L3_READ_UC] = {111420110UL, 26730UL},
+	[CACHE_OVER_L3_READ_UC] = {445679384UL, 44220UL},
+	[CACHE_L1_WRITE_UC] = {337466UL, 49UL},
+	[CACHE_L2_WRITE_UC] = {2698914UL, 60UL},
+	[CACHE_L3_WRITE_UC] = {86362426UL, 98UL},
+	[CACHE_OVER_L3_WRITE_UC] = {345448405UL, 312UL},
+	[CACHE_DEVICE_4K_READ] = {2137022UL, 1358UL},
+	[CACHE_DEVICE_4K_WRITE] = {1676842UL, 75UL},
+	[CACHE_L1_READ_UC_NOFILL] = {4335223UL, 27896UL},
+	[CACHE_L2_READ_UC_NOFILL] = {34610219UL, 32317UL},
+	[CACHE_L3_READ_UC_NOFILL] = {1108764319UL, 785335UL},
+	[CACHE_OVER_L3_READ_UC_NOFILL] = {4436098764UL, 3215272UL},
+	[CACHE_L1_WRITE_UC_NOFILL] = {4715080UL, 26200UL},
+	[CACHE_L2_WRITE_UC_NOFILL] = {37681405UL, 25600UL},
+	[CACHE_L3_WRITE_UC_NOFILL] = {1208788775UL, 141990UL},
+	[CACHE_OVER_L3_WRITE_UC_NOFILL] = {4835623807UL, 674855UL},
+	[CACHE_CLFLUSH_READ] = {300314UL, 1219UL},
+	[CACHE_CLFLUSH_DIS_READ] = {6202172UL, 17674UL},
+	[CACHE_CLFLUSHOPT_READ] = {300002UL, 1204UL},
+	[CACHE_CLFLUSHOPT_DIS_READ] = {6207999UL, 11483UL},
+	[CACHE_WBINVD_READ] = {304443UL, 1647UL},
+	[CACHE_WBINVD_DIS_READ] = {6199389UL, 14449UL},
 };
 
 struct case_fun_index {
@@ -200,6 +211,8 @@ struct msr_data {
 	u64 value;
 	u32 index;
 };
+
+void clear_cache();
 
 unsigned long long asm_read_tsc(void)
 {
@@ -409,6 +422,11 @@ __attribute__((aligned(64))) u64 read_mem_cache_test(u64 size)
 	return read_mem_cache_test_addr(cache_test_array, size);
 }
 
+__attribute__((aligned(64))) u64 write_mem_cache_test(u64 size)
+{
+	return write_mem_cache_test_addr(cache_test_array, size);
+}
+
 void read_mem_cache_test_time_invd(u64 size, int time)
 {
 	int t_time = time;
@@ -468,47 +486,17 @@ bool cache_order_read_test(enum cache_size_type type, u64 size)
 	ave = cache_bench[type].ave;
 	std = cache_bench[type].std;
 
-	asm_mfence_wbinvd();
+	clear_cache();
+
 	tsc_delay_delta_total = cache_order_read(type, size);
 
 	ret = cache_check_memory_type(tsc_delay_delta_total, ave, std, size);
 
-	asm_mfence_wbinvd();
+	clear_cache();
+
 	return ret;
 }
 
-u64 write_mem_cache_test(u64 size)
-{
-	u64 index;
-	u64 t[2] = {0};
-	u64 t_total = 0;
-
-	#if 0
-	u64 tt = asm_read_tsc();
-	for (index = 0; index < size; index++) {
-		tt += index;
-		t[0] = asm_read_tsc();
-		asm_write_access_memory((unsigned long)&cache_test_array[index], tt);
-		t[1] = asm_read_tsc();
-		t_total += t[1] - t[0];
-	}
-	#else
-	t[0] = asm_read_tsc();
-	for (index = 0; index < size; index++) {
-		asm_write_access_memory((unsigned long)&cache_test_array[index], index);
-	}
-	t[1] = asm_read_tsc();
-	t_total += t[1] - t[0];
-	#endif
-
-#ifdef __x86_64__
-	//printf("%ld\n", t_total);
-#elif __i386__
-	//printf("%lld\n", t_total);
-#endif
-	asm_mfence();
-	return t_total;
-}
 
 u64 cache_order_write(enum cache_size_type type, u64 size)
 {
@@ -534,11 +522,15 @@ bool cache_order_write_test(enum cache_size_type type, u64 size)
 
 	ave = cache_bench[type].ave;
 	std = cache_bench[type].std;
+
+	clear_cache();
+
 	tsc_delay_delta_total = cache_order_write(type, size);
 
 	ret = cache_check_memory_type(tsc_delay_delta_total, ave, std, size);
 
-	asm_mfence_wbinvd();
+	clear_cache();
+
 	return ret;
 }
 
@@ -600,11 +592,67 @@ void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 	}
 }
 
+#define BAR_REMAP_USB_BASE    0xDFFF0000
+#define PCI_BAR_MASK	      0xFFFF0000
+#define USB_HCIVERSION        0x02
+#define PCI_PCIR_BAR(x)	      (0x10 + (x) * 4)
+
+/**
+ * @brief In 64-bit mode,Select USB device BAR0 as the test object.
+ *       Write the value 0xDFFF_0000 to the BAR0 register of USB device.
+ *       Read the HCIVERSION register of USB device
+ *       If HCIVERSION register value is 0x100, pass,otherwize fail
+ * none
+ * Application Constraints: Only for USB.
+ *
+ * @param none
+ *
+ * @return OK. seccessed,pci_mem_address value is valid
+ *
+ * @retval (-1) fialed,pci_mem_address value is invalid
+ */
+int pci_mem_get(void *pci_mem_address)
+{
+	union pci_bdf bdf = {.bits = {.b = 0, .d = 0x14, .f = 0} };
+	uint32_t bar_base;
+	uint32_t reg_val;
+	int ret = OK;
+
+	pci_pdev_write_cfg(bdf, PCI_PCIR_BAR(0), 4, BAR_REMAP_USB_BASE);
+
+	reg_val = pci_pdev_read_cfg(bdf, PCI_PCIR_BAR(0), 4);
+	DBG_INFO("R reg[%xH] = [%xH]", PCI_PCIR_BAR(0), reg_val);
+
+	bar_base = PCI_BAR_MASK & reg_val;
+
+	reg_val = pci_pdev_read_mem(bdf, (bar_base + USB_HCIVERSION), 2);
+	if (0x100 != reg_val) {
+		DBG_ERRO("R mem[%xH] != [%xH]", bar_base + USB_HCIVERSION, 0x100);
+		ret = ERROR;
+	}
+
+	if (OK == ret) {
+		*((uint64_t *)pci_mem_address) = BAR_REMAP_USB_BASE;
+	}
+
+	return ret;
+}
+
+void clear_cache()
+{
+	clflush_all_line(cache_malloc_size);
+	flush_tlb();
+	asm_mfence_wbinvd();
+}
+
 #ifdef __x86_64__
 #ifndef CACHE_IN_NATIVE
 /* test case which should run under 64bit  */
 #include "64/mem_cache_fn.c"
 #else
+# ifdef DUMP_CACHE_NATIVE_DATA
+#include "64/mem_cache_fn.c"
+# endif
 /* native test cases */
 #include "64/mem_cache_native.c"
 #endif
@@ -884,7 +932,11 @@ int main(int ac, char **av)
 #ifndef CACHE_IN_NATIVE
 	cache_test_64(rqmid);
 #else
+# ifdef DUMP_CACHE_NATIVE_DATA
+	dump_cache_bentch_mark_64(rqmid);
+# else
 	cache_test_native(rqmid);
+# endif
 #endif
 #elif defined(__i386__)
 	/*cache_test_32(rqmid);*/

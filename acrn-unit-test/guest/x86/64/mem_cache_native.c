@@ -51,6 +51,99 @@ void cache_rqmid_24445_native_PREFETCHW_native(void)
 }
 
 /**
+ * @brief case name:Cache control CLFLUSH instruction_002
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Order read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute CLFLUSH instruction reflush cache,
+ * 5. Order read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in CLFLUSH benchmark interval (average-3 *stdev, average+3*stdev), 
+ * CLFLUSH benchmark get from native,refer CLFLUSH test on native
+ */
+void cache_rqmid_25314_native_clflush(void)
+{
+	int i;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
+		clflush_all_line(cache_l3_size);
+		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+	printf("native clflush read average is %ld\r\n", tsc_delay_delta_total);
+}
+
+/**
+ * @brief case name:Cache control CLFLUSHOPT instruction_002
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Order read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute CLFLUSHOPT instruction reflush cache,
+ * 5. Order read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in CLFLUSHOPT benchmark interval (average-3 *stdev, average+3*stdev), 
+ * CLFLUSHOPT benchmark get from native,refer CLFLUSHOPT test on native
+ */
+void cache_rqmid_25472_native_clflushopt(void)
+{
+	int i;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
+		clflushopt_all_line(cache_l3_size);
+		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+	printf("native clflushopt read average is %ld\r\n", tsc_delay_delta_total);
+}
+
+/**
+ * @brief case name:Cache control cache invalidation instructions_002
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Order read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute wbinvd instruction reflush cache,
+ * 5. Order read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in wbinvd benchmark interval (average-3 *stdev, average+3*stdev), 
+ * wbinvd benchmark get from native,refer wbinvd test on native
+ */
+void cache_rqmid_26891_native_invalidation(void)
+{
+	int i;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
+		asm_wbinvd();
+		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+	printf("native wbinvd read average is %ld\r\n", tsc_delay_delta_total);
+}
+
+/**
  * @brief case name:Memory type test on native L1_WB_001
  *
  * Summary: This part verifies different memory type and instructions will invalid cache on native,
@@ -69,7 +162,7 @@ void cache_rqmid_26913_native_l1_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -98,7 +191,7 @@ void cache_rqmid_26992_native_l1_wb(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -127,7 +220,7 @@ void cache_rqmid_26917_native_l1_wc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -156,7 +249,7 @@ void cache_rqmid_26919_native_l1_wc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -185,7 +278,7 @@ void cache_rqmid_26921_native_l1_wt(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -214,7 +307,7 @@ void cache_rqmid_26923_native_l1_wt(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -243,7 +336,7 @@ void cache_rqmid_26925_native_l1_wp(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -272,7 +365,7 @@ void cache_rqmid_26927_native_l1_wp(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -301,7 +394,7 @@ void cache_rqmid_26929_native_l1_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -330,7 +423,7 @@ void cache_rqmid_26931_native_l1_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l1_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -359,7 +452,7 @@ void cache_rqmid_26933_native_l2_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -388,7 +481,7 @@ void cache_rqmid_26935_native_l2_wb(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -417,7 +510,7 @@ void cache_rqmid_26937_native_l2_wc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -446,7 +539,7 @@ void cache_rqmid_26939_native_l2_wc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -475,7 +568,7 @@ void cache_rqmid_26941_native_l2_wt(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -504,7 +597,7 @@ void cache_rqmid_26943_native_l2_wt(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -533,7 +626,7 @@ void cache_rqmid_26945_native_l2_wp(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -562,7 +655,7 @@ void cache_rqmid_26947_native_l2_wp(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -591,7 +684,7 @@ void cache_rqmid_26948_native_l2_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -620,7 +713,7 @@ void cache_rqmid_26949_native_l2_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l2_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -649,7 +742,7 @@ void cache_rqmid_26950_native_l3_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -678,7 +771,7 @@ void cache_rqmid_26951_native_l3_wb(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -707,7 +800,7 @@ void cache_rqmid_26952_native_l3_wc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -736,7 +829,7 @@ void cache_rqmid_26953_native_l3_wc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -765,7 +858,7 @@ void cache_rqmid_26954_native_l3_wt(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -794,7 +887,7 @@ void cache_rqmid_26955_native_l3_wt(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -823,7 +916,7 @@ void cache_rqmid_26956_native_l3_wp(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -852,7 +945,7 @@ void cache_rqmid_26957_native_l3_wp(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -881,7 +974,7 @@ void cache_rqmid_26958_native_l3_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -910,7 +1003,7 @@ void cache_rqmid_26959_native_l3_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -939,7 +1032,7 @@ void cache_rqmid_26960_native_over_l3_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -968,7 +1061,7 @@ void cache_rqmid_26961_native_over_l3_wb(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -997,7 +1090,7 @@ void cache_rqmid_26962_native_over_l3_wc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -1026,7 +1119,7 @@ void cache_rqmid_26963_native_over_l3_wc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -1055,7 +1148,7 @@ void cache_rqmid_26964_native_over_l3_wt(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -1084,7 +1177,7 @@ void cache_rqmid_26965_native_over_l3_wt(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -1113,7 +1206,7 @@ void cache_rqmid_26966_native_over_l3_wp(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -1139,7 +1232,7 @@ void cache_rqmid_26967_native_over_l3_wp(void)
 {
 	int i;
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK1);
-
+	tsc_delay_delta_total = 0;
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_over_l3_size);
 
@@ -1171,7 +1264,7 @@ void cache_rqmid_26968_native_over_l3_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -1200,7 +1293,7 @@ void cache_rqmid_26969_native_over_l3_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_over_l3_size);
-
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -1208,6 +1301,93 @@ void cache_rqmid_26969_native_over_l3_uc(void)
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 
 	printf("native over L3 UC write average is %ld\r\n", tsc_delay_delta_total);
+}
+
+/**
+ * @brief case name:Cache control access to device-mapped guest linear addresses in normal cache mode_UC_001
+ *
+ * Summary: When a vCPU accesses a guest address range, the guest CR0.CD is 0H, the guest CR0.NW is 0H,
+ * the guest CR0.PG is 1H and the guest address range maps to device,
+ * ACRN hypervisor shall guarantee that the access follows caching and
+ * read/write policy of normal cache mode with effective memory type being UC.
+ *
+ * 1. Allocate an array a1 from the physical pages of "map to device",
+ *    a1 has 0x200 elements, each of size 8 bytes, (4K space)
+ * 2. Modify a1 array memory type to UC.
+ * 3. Order read a1 array 41 times, record each tsc_delay data.
+ *    Remove the first test data and calculate the average TSC delay for the next 40 times.
+ * Tsc delay average should be within the '4k' interval of 'map to device' UC benchmark
+ * data interval (average-3 *stdev, average+3*stdev), 'map to device' UC benchmark data (average, stdev )
+ * get from native, refer Memory type test on native
+ */
+void cache_rqmid_27027_native_map_to_device_linear_uc(void)
+{
+	u64 *tmp = cache_test_array;
+	int ret = pci_mem_get((void *)&cache_test_array);
+	if (ret != 0) {
+		cache_test_array = tmp;
+		printf("%s can't get pci mem address\n", __FUNCTION__);
+		return;
+	}
+	else {
+		cache_test_array += 601;	/* 601*8=0x3008*/
+
+		/* This address has 4k reserved space to operate
+		 * Set the next 4k sapce memory type to WP
+		 */
+		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK4, 4096);
+
+		/*Cache size 4k*/
+		asm_mfence_wbinvd();
+		tsc_delay_delta_total = cache_order_read(CACHE_DEVICE_4K_READ, cache_4k_size);
+		asm_mfence_wbinvd();
+		printf("native device 4k read average is %ld\r\n", tsc_delay_delta_total);
+	}
+	cache_test_array = tmp;
+}
+
+/**
+ * @brief case name:Cache control access to device-mapped guest linear addresses in normal cache mode_UC_002
+ *
+ * Summary: When a vCPU accesses a guest address range, the guest CR0.CD is 0H, the guest CR0.NW is 0H,
+ * the guest CR0.PG is 1H and the guest address range maps to device,
+ * ACRN hypervisor shall guarantee that the access follows caching and
+ * read/write policy of normal cache mode with effective memory type being UC.
+ *
+ * 1. Allocate an array a1 from the physical pages of "map to device",
+ *    a1 has 0x200 elements, each of size 8 bytes, (4K space)
+ * 2. Modify a1 array memory type to UC.
+ * 3. Order write a1 array 41 times, record each tsc_delay data.
+ *    Remove the first test data and calculate the average TSC delay for the next 40 times.
+ * Tsc delay average should be within the '4k' interval of 'map to device' UC benchmark
+ * data interval (average-3 *stdev, average+3*stdev), 'map to device' UC benchmark data (average, stdev )
+ * get from native, refer Memory type test on native
+ */
+void cache_rqmid_27028_native_map_to_device_linear_uc(void)
+{
+	u64 *tmp = cache_test_array;
+	int ret = pci_mem_get((void *)&cache_test_array);
+	if (ret != 0) {
+		cache_test_array = tmp;
+		printf("%s can't get pci mem address\n", __FUNCTION__);
+		return;
+	}
+	else {
+		/* 601*8=0x3008*/
+		// cache_test_array += 601;
+
+		/* This address has 4k reserved space to operate
+		 * Set the next 4k sapce memory type to WP
+		 */
+		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK4, 4096);
+
+		/*Cache size 4k*/
+		tsc_delay_delta_total = cache_order_write(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		asm_mfence_wbinvd();
+		printf("native device 4k write average is %ld\r\n", tsc_delay_delta_total);
+	}
+
+	cache_test_array = tmp;
 }
 
 /**
@@ -1223,7 +1403,7 @@ void cache_rqmid_26969_native_over_l3_uc(void)
  */
 void cache_rqmid_27487_native_clflushopt(void)
 {
-	int i;
+	int i, diff;
 
 	tsc_delay_delta_total = 0;
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
@@ -1234,11 +1414,13 @@ void cache_rqmid_27487_native_clflushopt(void)
 		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
 		clflushopt_all_line(cache_l3_size);
 		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		diff = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += diff;
+		debug_print("%d\n", diff);
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 
-	printf("native wbinvd delta average is %ld\r\n", tsc_delay_delta_total);
+	printf("native clflushopt dis read average is %ld\r\n", tsc_delay_delta_total);
 }
 
 /**
@@ -1254,7 +1436,7 @@ void cache_rqmid_27487_native_clflushopt(void)
  */
 void cache_rqmid_27488_native_invalidation(void)
 {
-	int i;
+	int i, diff;
 
 	tsc_delay_delta_total = 0;
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
@@ -1265,11 +1447,13 @@ void cache_rqmid_27488_native_invalidation(void)
 		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
 		asm_wbinvd();
 		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		diff = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += diff;
+		debug_print("%d\n", diff);
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 
-	printf("native wbinvd delta average is %ld\r\n", tsc_delay_delta_total);
+	printf("native wbinvd dis read average is %ld\r\n", tsc_delay_delta_total);
 }
 
 /**
@@ -1287,7 +1471,7 @@ void cache_rqmid_27488_native_invalidation(void)
  */
 void cache_rqmid_27489_native_clflush(void)
 {
-	int i;
+	int i, diff;
 
 	tsc_delay_delta_total = 0;
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
@@ -1298,11 +1482,13 @@ void cache_rqmid_27489_native_clflush(void)
 		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
 		clflush_all_line(cache_l3_size);
 		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		diff = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += diff;
+		debug_print("%d\n", diff);
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 
-	printf("native wbinvd delta average is %ld\r\n", tsc_delay_delta_total);
+	printf("native clflush dis read average is %ld\r\n", tsc_delay_delta_total);
 }
 
 /**
@@ -2347,6 +2533,7 @@ void cache_rqmid_28742_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l1_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2356,6 +2543,7 @@ void cache_rqmid_28742_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l2_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2365,6 +2553,7 @@ void cache_rqmid_28742_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2374,6 +2563,7 @@ void cache_rqmid_28742_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_over_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2412,6 +2602,7 @@ void cache_rqmid_28744_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l1_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2421,6 +2612,7 @@ void cache_rqmid_28744_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l2_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2430,6 +2622,7 @@ void cache_rqmid_28744_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2439,6 +2632,7 @@ void cache_rqmid_28744_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_over_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2477,6 +2671,7 @@ void cache_rqmid_28746_native_pat_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l1_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2486,6 +2681,7 @@ void cache_rqmid_28746_native_pat_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l2_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2495,6 +2691,7 @@ void cache_rqmid_28746_native_pat_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2504,6 +2701,7 @@ void cache_rqmid_28746_native_pat_wb(void)
 
 	/*Remove the first test data*/
 	read_mem_cache_test(cache_over_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = read_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2542,6 +2740,7 @@ void cache_rqmid_28747_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l1_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l1_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2551,6 +2750,7 @@ void cache_rqmid_28747_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l2_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l2_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2560,6 +2760,7 @@ void cache_rqmid_28747_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2569,6 +2770,7 @@ void cache_rqmid_28747_native_pat_uc(void)
 
 	/*Remove the first test data*/
 	write_mem_cache_test(cache_over_l3_size);
+	tsc_delay_delta_total = 0;
 	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
 		tsc_delay[i] = write_mem_cache_test(cache_over_l3_size);
 		tsc_delay_delta_total += tsc_delay[i];
@@ -2584,6 +2786,9 @@ struct case_fun_index cache_control_native_cases[] = {
 	{24443, cache_rqmid_24443_native_cache_parameters_in_cpuid02},
 	{24445, cache_rqmid_24445_native_PREFETCHW_native},
 #ifdef DUMP_CACHE_NATIVE_DATA
+	{25314, cache_rqmid_25314_native_clflush},
+	{25472, cache_rqmid_25472_native_clflushopt},
+	{26891, cache_rqmid_26891_native_invalidation},
 	{26913, cache_rqmid_26913_native_l1_wb},
 	{26917, cache_rqmid_26917_native_l1_wc},
 	{26919, cache_rqmid_26919_native_l1_wc},
@@ -2624,9 +2829,11 @@ struct case_fun_index cache_control_native_cases[] = {
 	{26968, cache_rqmid_26968_native_over_l3_uc},
 	{26969, cache_rqmid_26969_native_over_l3_uc},
 	{26992, cache_rqmid_26992_native_l1_wb},
-	{27487, cache_rqmid_27487_native_clflushopt},
-	{27488, cache_rqmid_27488_native_invalidation},
-	{27489, cache_rqmid_27489_native_clflush},
+	{27027, cache_rqmid_27027_native_map_to_device_linear_uc},
+	{27028, cache_rqmid_27028_native_map_to_device_linear_uc},
+	{27487, cache_rqmid_27487_native_clflushopt},   //clflushopt disorder
+	{27488, cache_rqmid_27488_native_invalidation}, //invalidation disorder
+	{27489, cache_rqmid_27489_native_clflush},      //clflush disorder
 	{27965, cache_rqmid_27965_native_has_l1d_cache},
 	{28742, cache_rqmid_28742_native_pat_uc},
 	{28744, cache_rqmid_28744_native_pat_uc},
