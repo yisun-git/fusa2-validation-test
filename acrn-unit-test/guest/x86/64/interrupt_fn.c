@@ -2697,7 +2697,7 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 	int check = 0;
 	__unused u64 t[2];
 	char *in;
-	char *out;
+	char *out, *out_ori;
 
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
@@ -2711,16 +2711,8 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 	//handle_exception(GP_VECTOR, &handled_exception);
 	sti();
 
-	/* step 4 use TSC deadline timer delivery 224 interrupt*/
-	if (cpuid(1).c & (1 << 24))
-	{
-		apic_write(APIC_LVTT, APIC_LVT_TIMER_TSCDEADLINE | EXTEND_INTERRUPT_80);
-		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x1000));
-	}
-
-	/* step 5 execute movsb iteration */
 	in = malloc(INTERRUPT_MOVSB_MAX_SIZE);
-	out = malloc(INTERRUPT_MOVSB_MAX_SIZE);
+	out_ori = out = malloc(INTERRUPT_MOVSB_MAX_SIZE);
 
 	if ((in == NULL) || (out == NULL)) {
 		printf("%s malloc error!\n", __FUNCTION__);
@@ -2733,6 +2725,14 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 		return;
 	}
 
+	/* step 4 use TSC deadline timer delivery 0x80 interrupt*/
+	if (cpuid(1).c & (1 << 24))
+	{
+		apic_write(APIC_LVTT, APIC_LVT_TIMER_TSCDEADLINE | EXTEND_INTERRUPT_80);
+		wrmsr(MSR_IA32_TSCDEADLINE, asm_read_tsc()+(0x1000));
+	}
+
+	/* step 5 execute movsb iteration, and out pointer will ++ for each time */
 	t[0] = asm_read_tsc();
 	asm volatile ("rep/movsb" : "+D"(out) : "S"(in), "c"(INTERRUPT_MOVSB_MAX_SIZE));	//0x125bd8 TSC
 	t[1] = asm_read_tsc();
@@ -2754,7 +2754,8 @@ static void interrupt_rqmid_38458_expose_instruction_breakpoints_002(void)
 	/* resume environment */
 	execption_inc_len = 0;
 	free(in);
-	free(out);
+	/* out pointer has changed, then need to free original out pointer */
+	free(out_ori);
 }
 
 /**
