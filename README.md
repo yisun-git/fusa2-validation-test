@@ -70,42 +70,12 @@
 
 ### QEMU environment setup step for SRS Test.
 
-### 1. Rebuild kernel and kvm modules (4.18.0 as an exemple)
+### 1. How to configure docker in linux
+    Please refer to: http://sit-image.sh.intel.com/FUSA/docker_20200602/Readme_V2.0.md
+    (QEMU have been installed in this docker)
 
-    $ cd /usr/src
-    $ apt-cache search linux-source
-    $ sudo apt-get source linux-source-4.18.0
-    $ tar -jxvf linux-source-4.18.0.tar.bz2
-    $ sudo apt-get install libelf-dev xorriso flex bison
-    $ sudo apt-get install grub-pc-bin      # for UEFI machine
 
-    Apply this patch to the linux-source-4.18.0: 
-    (https://intel.sharepoint.com/sites/ACRNFuSA/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches%2Fenable%5Finit%2Epatch&parent=%2Fsites%2FACRNFuSA%2FShared%20Documents%2FGeneral%2FPatches&p=true&originalPath=aHR0cHM6Ly9pbnRlbC5zaGFyZXBvaW50LmNvbS86dTovcy9BQ1JORnVTQS9FVkpHVVlEVnM1Rk9yTWtWSEEzUVVDa0JMVWRhT1hNTG5BUEJwT0tpbFo3alp3P3J0aW1lPVR4THZublg0MTBn)
-    $ cp /usr/src/linux-headers-4.18.0-generic/.config /usr/src/linux-source-4.18.0
-    $ cd /usr/src/linux-source-4.18.0
-    $ make menuconfig
-    $ make -j16
-    $ make modules
-    $ make modules_install
-    $ make install
-
-    Reboot to use the new kernel.
-
-    $ sudo rmmod kvm_intel
-    $ sudo rmmod kvm
-    $ sudo insmod <path_to_updated_module>/kvm.ko
-    $ sudo insmod <path_to_updated_module>/kvm-intel.ko nested=Y
-
-### 2. Build QEMU
-    $ git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/qemu
-    $ cd qemu
-    $ mkdir build
-    $ cd build
-    $ ../configure
-    $ make
-    $ make install
-
-### 3. Run in QEMU
+### 2. Run in QEMU
     
     Compile hypervisor (see ### 4). Add compile option QEMU=1.
     Compile unit-test (see ### 5).
