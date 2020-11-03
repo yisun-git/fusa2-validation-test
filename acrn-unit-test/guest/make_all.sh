@@ -15,7 +15,8 @@ BUILD_V8086_FEATURE=""
 BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
 	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order"
 
-BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt"
+BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt \
+	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals"
 
 BUILD_NATIVE_32_FEATURE="taskmanagement"
 BUILD_NATIVE_32_FEATURE="$BUILD_NATIVE_32_FEATURE hsi_mem_mgmt"
