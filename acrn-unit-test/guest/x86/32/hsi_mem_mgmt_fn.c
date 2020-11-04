@@ -29,7 +29,7 @@ static int lar_checking(volatile u32 *access, u16 sel)
  */
 __unused static void hsi_rqmid_40035_memory_management_features_segmentation_32bit_mode_002()
 {
-	segment_lgdt_sgdt_test();
+	report("\t\t %s", (segment_lgdt_sgdt_test()), __FUNCTION__);
 }
 
 /**
@@ -42,7 +42,7 @@ __unused static void hsi_rqmid_40035_memory_management_features_segmentation_32b
  */
 static __unused void hsi_rqmid_40036_memory_management_features_segmentation_32bit_mode_003()
 {
-	segment_lldt_sldt_test();
+	report("\t\t %s", (segment_lldt_sldt_test()), __FUNCTION__);
 }
 
 /**

@@ -1,11 +1,145 @@
 
 #define MEM_WR_HIGH_ADDR_START     (0x10000000UL)
 #define MEM_WR_HIGH_ADDR_END       (0x20000000UL)
+u64 *cache_test_addr = NULL;
+#define CACHE_TEST_MAX_TIMES			41
+typedef enum {
+	CACHE_MEM_TYPE_WB = 0,
+	CACHE_MEM_TYPE_UC,
+	CACHE_MEM_TYPE_BUTT,
+} EN_CACHE_TYPE;
+typedef enum {
+	SIZE_L1 = 0,
+	SIZE_L2,
+	SIZE_L3,
+	SIZE_OVER_L3,
+	SIZE_BUTT,
+} EN_CACHE_SIZE;
+
+#define X86_CR0_NW (1UL << 29)
+#define MTRR_DEFAULT_TYPE_WB 0x6
+#define CACHE_OVER_L3_SIZE	0x200000UL	/* 16M/8 */
+#define TEST_WBINVD_MEM_SIZE CACHE_L2_SIZE
+#define TEST_CLFLUSH_MEM_SIZE 1 //8bytes
+#define TEST_CLFLUSHOPT_MEM_SIZE 1 //8bytes
+
+/* read l2 size memory with cache and disable cache time desc for WBINVD */
+#define WBINVD_TSC_TIME_DESC 2000
+/* read 8 bytes memory with cache and disable cache time desc for CLFLUSH */
+#define CLFLUSH_TSC_TIME_DESC 100
+/* read 8 bytes memory with cache and disable cache time desc for CLFLUSHOPT */
+#define CLFLUSHOPT_TSC_TIME_DESC 100
 
 u8 *g_addr;
 /* record the access memory at ring3 result */
 int g_vector;
 /*P must be a non-null pointer */
+
+static const u64 test_mem_size[SIZE_BUTT] = {
+	CACHE_L1_SIZE,
+	CACHE_L2_SIZE,
+	CACHE_L3_SIZE,
+	CACHE_OVER_L3_SIZE,
+};
+__attribute__((aligned(64))) u64 hsi_read_mem_cache_test(u64 size)
+{
+	return read_mem_cache_test_addr(cache_test_addr, size);
+}
+
+void hsi_set_mem_cache_type(u64 cache_type)
+{
+	set_mem_cache_type_addr(cache_test_addr, cache_type, CACHE_OVE_L3_SIZE*8);
+}
+
+u64 get_read_mem_average_time(u64 cache_type, u64 size)
+{
+	int i;
+	u64 tsc_delay_delta_total = 0;
+	u64 tsc_delay[CACHE_TEST_MAX_TIMES] = {0};
+
+	if (cache_type == CACHE_MEM_TYPE_WB) {
+		hsi_set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
+	} else if (cache_type == CACHE_MEM_TYPE_UC) {
+		hsi_set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
+	}
+
+	size = test_mem_size[size];
+
+	/* Remove the first test data */
+	hsi_read_mem_cache_test(size);
+
+	for (i = 0; i < CACHE_TEST_MAX_TIMES; i++) {
+		tsc_delay[i] = hsi_read_mem_cache_test(size);
+		tsc_delay_delta_total += tsc_delay[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_MAX_TIMES;
+
+	asm_mfence_wbinvd();
+	return tsc_delay_delta_total;
+}
+
+void prepare_cache_condition(void)
+{
+	/* Clear CR0.CD[bit 30] and CR0.NW[bit 29] to 0. */
+	write_cr0(read_cr0() & ~X86_CR0_CD);
+	write_cr0(read_cr0() & ~X86_CR0_NW);
+
+	/* Check MTRR default type is WB */
+	if ((rdmsr(IA32_MTRR_DEF_TYPE) & 0xff) != MTRR_DEFAULT_TYPE_WB) {
+		debug_error("IA32_MTRR_DEF_TYPE is not WB\n");
+	}
+
+	/* config PAT entry value 0007040600070406 */
+	set_mem_cache_type_all(0x0000000001040506);
+}
+
+void malloc_cache_test_addr(void)
+{
+	cache_test_addr = (u64 *)malloc(CACHE_MALLOC_SIZE * 8);
+	if (cache_test_addr == NULL) {
+		debug_error("malloc cache test memory error.\n");
+		return;
+	}
+
+	debug_print("cache_test_addr=%p\n", cache_test_addr);
+	memset(cache_test_addr, 0xFF, CACHE_MALLOC_SIZE * 8);
+}
+
+void free_cache_test_addr(void)
+{
+	free((void *)cache_test_addr);
+}
+
+__unused static u8 wbinvd_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"wbinvd\n"
+		"1:"
+		:
+	);
+	return exception_vector();
+}
+
+static u8 clflush_checking(u64 *addr)
+{
+	asm volatile(ASM_TRY("1f")
+		"clflush (%0)\n\t"
+		"1:"
+		: : "r"(addr)
+	);
+	return exception_vector();
+}
+
+__unused static int clflushopt_checking(u64 *addr)
+{
+	asm volatile(ASM_TRY("1f")
+		"clflushopt (%0)\n"
+		"1:"
+		: : "r"(addr)
+	);
+	return exception_vector();
+}
+
 static int hsi_read_memory_checking(void *p)
 {
 	u64 value = 1;
@@ -102,7 +236,7 @@ __unused static void hsi_rqmid_39846_memory_management_features_segmentation_001
  */
 __unused static void hsi_rqmid_39867_memory_management_features_segmentation_002()
 {
-	segment_lgdt_sgdt_test();
+	report("%s", (segment_lgdt_sgdt_test()), __FUNCTION__);
 }
 
 /**
@@ -115,7 +249,7 @@ __unused static void hsi_rqmid_39867_memory_management_features_segmentation_002
  */
 static __unused void hsi_rqmid_40002_memory_management_features_segmentation_003()
 {
-	segment_lldt_sldt_test();
+	report("%s", (segment_lldt_sldt_test()), __FUNCTION__);
 }
 
 /**
@@ -539,6 +673,191 @@ static __unused void hsi_rqmid_40040_memory_management_features_paging_access_co
 	report("%s", (value_chk && pte_chk), __FUNCTION__);
 }
 
+/*
+ * @brief case name: HSI_Memory_Management_Features_Cache_Control_001
+ *
+ * Summary: Under 64 bit mode on native board, enable cache and paging,
+ * cache read with memory type WB should be better than with memory type UC.
+ */
+static __unused void hsi_rqmid_36574_memory_management_features_cache_control_001(void)
+{
+	u64 average_times[CACHE_MEM_TYPE_BUTT][SIZE_BUTT] = {0};
+	int chk = 0;
+
+	/* check MTRR_DEFAULT_TYPE and set PAT */
+	prepare_cache_condition();
+
+	malloc_cache_test_addr();
+
+	/* get average tsc data for cache type WB, UC, read memory L1,L2,L3,l3 over size */
+	u32 i, j;
+	for (i = 0; i < CACHE_MEM_TYPE_BUTT; i++) {
+		for (j = 0; j < SIZE_BUTT; j++) {
+			average_times[i][j] = get_read_mem_average_time((EN_CACHE_TYPE)i, (EN_CACHE_SIZE)j);
+			debug_print("average_times[%d][%d]:%ld\n", i, j, average_times[i][j]);
+		}
+	}
+
+	/* compare values between UC and WB */
+	for (i = 0; i < SIZE_BUTT; i++) {
+		if (average_times[CACHE_MEM_TYPE_UC][i] <=
+			(average_times[CACHE_MEM_TYPE_WB][i] * 100)) {
+			debug_print("check cache size:%d error.\n", i);
+			break;
+		}
+		chk++;
+	}
+
+	report("%s", (chk == SIZE_BUTT), __FUNCTION__);
+	/* resume environment */
+	free_cache_test_addr();
+}
+
+/*
+ * @brief case name: HSI_Memory_Management_Features_Cache_Management_Instructions_001
+ *
+ * Summary: Under 64 bit mode on native board, read L2 size memory type WB form cache, 
+ * record the tsc delay data, execute WBINVD, read L2 size memory
+ * again with no cache, record tsc delay data, compare the two dealy data make sure 
+ * WBINVD executed with no exception and invalidated cache successfully.
+ */
+static void hsi_rqmid_36539_memory_management_features_cache_management_instructions_001()
+{
+	u32 chk = 0;
+	u8 result = 0;
+	u64 tsc_with_cache = 0;
+	u64 tsc_dis_cache = 0;
+
+	/* check MTRR_DEFAULT_TYPE and set PAT */
+	prepare_cache_condition();
+
+	malloc_cache_test_addr();
+
+	/* set memory type WB */
+	hsi_set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
+
+	/* Remove the first test data */
+	hsi_read_mem_cache_test(TEST_WBINVD_MEM_SIZE);
+
+	/* get tsc time for read memory with cache */;
+	tsc_with_cache = hsi_read_mem_cache_test(TEST_WBINVD_MEM_SIZE);
+	/* execute the following instructions in IA-32e mode */
+	/* test instruction WBINVD */
+	result = wbinvd_checking();
+	if (result == NO_EXCEPTION) {
+		chk++;
+	}
+
+	asm_mfence();
+
+	tsc_dis_cache = hsi_read_mem_cache_test(TEST_WBINVD_MEM_SIZE);
+
+	debug_print("result:%d tsc_with_cache:%ld tsc_dis_cache:%ld\n", result, tsc_with_cache, tsc_dis_cache);
+
+	if (tsc_dis_cache > tsc_with_cache + WBINVD_TSC_TIME_DESC) {
+		chk++;
+	}
+	report("%s", (chk == 2), __FUNCTION__);
+	free_cache_test_addr();
+}
+
+/*
+ * @brief case name: HSI_Memory_Management_Features_Cache_Management_Instructions_002
+ *
+ * Summary: Under 64 bit mode on native board, read 8 bytes size memory type WB from cache, 
+ * record the tsc delay data, execute CLFLUSH with the memory address, read 8 bytes memory
+ * again with no cache, record tsc delay data, compare the two dealy data make sure
+ * CLFLUSH executed with no exception and invalidated cache successfully.
+ */
+static void hsi_rqmid_40081_memory_management_features_cache_management_instructions_002()
+{
+	u32 chk = 0;
+	u8 result = 0;
+	u64 tsc_with_cache = 0;
+	u64 tsc_dis_cache = 0;
+
+	/* check MTRR_DEFAULT_TYPE and set PAT */
+	prepare_cache_condition();
+
+	malloc_cache_test_addr();
+
+	/* set memory type WB */
+	hsi_set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
+
+	/* Remove the first test data */
+	hsi_read_mem_cache_test(TEST_CLFLUSH_MEM_SIZE);
+
+	/* get tsc time for read memory with cache */;
+	tsc_with_cache = hsi_read_mem_cache_test(TEST_CLFLUSH_MEM_SIZE);
+	/* execute the following instructions in IA-32e mode */
+	/* test instruction CLFLUSH */
+	result = clflush_checking(cache_test_addr);
+	if (result == NO_EXCEPTION) {
+		chk++;
+	}
+
+	asm_mfence();
+
+	tsc_dis_cache = hsi_read_mem_cache_test(TEST_CLFLUSH_MEM_SIZE);
+
+	debug_print("result:%d tsc_with_cache:%ld tsc_dis_cache:%ld\n", result, tsc_with_cache, tsc_dis_cache);
+
+	if (tsc_dis_cache > tsc_with_cache + CLFLUSH_TSC_TIME_DESC) {
+		chk++;
+	}
+	report("%s", (chk == 2), __FUNCTION__);
+
+	free_cache_test_addr();
+}
+
+/*
+ * @brief case name: HSI_Memory_Management_Features_Cache_Management_Instructions_003
+ *
+ * Summary: Under 64 bit mode on native board, read 8 bytes size memory type WB from cache, 
+ * record the tsc delay data, execute CLFLUSHOPT with the memory address, read 8 bytes memory
+ * again with no cache, record tsc delay data, compare the two dealy data make sure
+ * CLFLUSH executed with no exception and invalidated cache successfully.
+ */
+static void hsi_rqmid_40082_memory_management_features_cache_management_instructions_003()
+{
+	u32 chk = 0;
+	u8 result = 0;
+	u64 tsc_with_cache = 0;
+	u64 tsc_dis_cache = 0;
+
+	/* check MTRR_DEFAULT_TYPE and set PAT */
+	prepare_cache_condition();
+
+	malloc_cache_test_addr();
+
+	/* set memory type WB */
+	hsi_set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
+
+	/* Remove the first test data */
+	hsi_read_mem_cache_test(TEST_CLFLUSHOPT_MEM_SIZE);
+
+	/* get tsc time for read memory with cache */;
+	tsc_with_cache = hsi_read_mem_cache_test(TEST_CLFLUSHOPT_MEM_SIZE);
+
+	/* test instruction CLFLUSHOPT */
+	result = clflushopt_checking(cache_test_addr);
+	if (result == NO_EXCEPTION) {
+		chk++;
+	}
+
+	asm_mfence();
+
+	tsc_dis_cache = hsi_read_mem_cache_test(TEST_CLFLUSHOPT_MEM_SIZE);
+
+	debug_print("result:%d tsc_with_cache:%ld tsc_dis_cache:%ld\n", result, tsc_with_cache, tsc_dis_cache);
+
+	if (tsc_dis_cache > tsc_with_cache + CLFLUSHOPT_TSC_TIME_DESC) {
+		chk++;
+	}
+	report("%s", (chk == 2), __FUNCTION__);
+
+	free_cache_test_addr();
+}
 
 st_case_suit case_suit[] = {
 	{
@@ -615,6 +934,33 @@ st_case_suit case_suit[] = {
 		.case_id = 40040,
 		.case_name = GET_CASE_NAME(hsi_rqmid_40040_memory_management_\
 			features_paging_access_control_high_address_001),
+	},
+
+	{
+		.case_fun = hsi_rqmid_36574_memory_management_features_cache_control_001,
+		.case_id = 36574,
+		.case_name = GET_CASE_NAME(hsi_rqmid_36574_memory_management_features_cache_control_001),
+	},
+
+	{
+		.case_fun = hsi_rqmid_36539_memory_management_features_cache_management_instructions_001,
+		.case_id = 36539,
+		.case_name = GET_CASE_NAME(hsi_rqmid_36539_memory_management_features_\
+						cache_management_instructions_001),
+	},
+
+	{
+		.case_fun = hsi_rqmid_40081_memory_management_features_cache_management_instructions_002,
+		.case_id = 40081,
+		.case_name = GET_CASE_NAME(hsi_rqmid_40081_memory_management_features_\
+						cache_management_instructions_002),
+	},
+
+	{
+		.case_fun = hsi_rqmid_40082_memory_management_features_cache_management_instructions_003,
+		.case_id = 40082,
+		.case_name = GET_CASE_NAME(hsi_rqmid_40082_memory_management_features_\
+						cache_management_instructions_003),
 	},
 
 };

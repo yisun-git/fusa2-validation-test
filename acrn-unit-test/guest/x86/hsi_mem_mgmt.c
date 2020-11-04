@@ -121,7 +121,7 @@ void set_ldt_entry(gdt_entry_t *gdt, int sel, u32 base,  u32 limit, u8 access, u
 	gdt[num].access = access;
 }
 
-static void segment_lgdt_sgdt_test(void)
+static bool segment_lgdt_sgdt_test(void)
 {
 	struct descriptor_table_ptr old_gdt_desc;
 	struct descriptor_table_ptr new_gdt_desc;
@@ -160,15 +160,20 @@ static void segment_lgdt_sgdt_test(void)
 	}
 
 	debug_print("lgdt ret1:%d sgdt ret2:%d\n", ret1, ret2);
-	report("\t\t %s", (chk == 3), __FUNCTION__);
 
 	/* resume environment */
 	lgdt(&old_gdt_desc);
 	free(new_gdt_base);
 	new_gdt_base = NULL;
+
+	if (chk == 3) {
+		return true;
+	}
+
+	return false;
 }
 
-static void segment_lldt_sldt_test(void)
+static bool segment_lldt_sldt_test(void)
 {
 	struct descriptor_table_ptr old_gdt_desc;
 	struct descriptor_table_ptr new_gdt_desc;
@@ -213,12 +218,17 @@ static void segment_lldt_sldt_test(void)
 	}
 
 	debug_print("lldt ret1:%d sldt ret2:%d new_sel:%x\n", ret1, ret2, new_ldt);
-	report("\t\t %s", (chk == 3), __FUNCTION__);
 
 	/* resume environment */
 	lgdt(&old_gdt_desc);
 	free(new_gdt_base);
 	new_gdt_base = NULL;
+
+	if (chk == 3) {
+		return true;
+	}
+
+	return false;
 }
 
 
