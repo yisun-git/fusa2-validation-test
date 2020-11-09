@@ -296,6 +296,7 @@ excp_device_not_available:
 
 .align 8
 excp_double_fault:
+	push  $0x0
 	push  $0x08
 	jmp    __do_handle_rmode_excp
 
@@ -307,26 +308,31 @@ excp_coprocessor_seg_overrun:
 
 .align 8
 excp_invalid_tss:
+	push  $0x0
 	push  $0x0A
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_segment_not_present:
+	push  $0x0
 	push  $0x0B
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_stack_fault:
+	push  $0x0
 	push  $0x0C
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_general_protection:
+	push  $0x0
 	push  $0x0D
 	jmp    __do_handle_rmode_excp
 
 .align 8
 excp_page_fault:
+	push  $0x0
 	push  $0x0E
 	jmp    __do_handle_rmode_excp
 
@@ -338,6 +344,7 @@ excp_float_error:
 
 .align 8
 excp_alignment_check:
+	push  $0x0
 	push  $0x11
 	jmp    __do_handle_rmode_excp
 
@@ -392,7 +399,7 @@ rmode_excp:
 	.word 0
 
 	.word excp_coprocessor_seg_overrun
-	.word
+	.word 0
 
 	.word excp_invalid_tss
 	.word 0
