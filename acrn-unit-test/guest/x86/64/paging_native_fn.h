@@ -144,3 +144,10 @@
 	.name = "write protect support on physical platform",
 	.fn = paging_rqmid_35064_write_protect_support_physical_platform_constraint_AC_001
 },
+{
+	.suit_id = 613,
+	.case_id = 40363,
+	.name = "The physical platform doesn't support protection keys_001",
+	.fn = paging_rqmid_40363_protection_keys_not_support_hysical_platform_constraint_AC_001
+},
+

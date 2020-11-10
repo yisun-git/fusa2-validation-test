@@ -1,3 +1,8 @@
+/* SEFFE: Structured Extended Feature Flags Enumeration Leaf */
+#define CPUID_LEAF_SEFFE  0x07
+/* PKU: Protection keys for user-mode pages */
+#define CPUID_FEATURE_SEFFE_PKU  3
+
 static void
 paging_rqmid_35133_page_size_extension_support_physical_platform_constraint_AC_001()
 {
@@ -270,3 +275,12 @@ static void paging_rqmid_35064_write_protect_support_physical_platform_constrain
 
 	free((void *)p);
 }
+
+
+/* Executes CPUID.7H:ECX.PKU == 0 */
+static void
+paging_rqmid_40363_protection_keys_not_support_hysical_platform_constraint_AC_001()
+{
+	report("%s", 0 == ((cpuid(CPUID_LEAF_SEFFE).c >> CPUID_FEATURE_SEFFE_PKU) & 1), __func__);
+}
+
