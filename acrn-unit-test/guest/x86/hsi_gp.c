@@ -31,8 +31,8 @@
 #define debug_print(fmt, args...)
 #endif
 
-#define ADD_SIGN ".byte 0x48, 0x83, 0xc0, 0x80\n\t"               // add $0x80, %%rax
-#define SUB_SIGN ".byte 0x48, 0x2d, 0x00, 0x00, 0x00, 0x80\n\t"   // sub $0x80000000, %%rax
+#define ADD_SIGN ".byte 0x48, 0x83, 0xc0, 0x80\n\t"               // add $0xffffffffffffff80, %%rax
+#define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"               // sub $0xffffffffffffff80, %%rax
 
 static int call_cnt = 0;
 bool eflags_cf_to_1(void);
@@ -45,8 +45,10 @@ static bool cmovnc_8_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
+		"mov $0,  %0\n\t"
 		"mov $10, %%rbx\n\t"
 		ASM_TRY("1f")
+		/* CF = 0,It will move */
 		"cmovnc %%rbx, %0\n"
 		"1:"
 		: "=r" (op)
@@ -60,11 +62,12 @@ static bool cmovnc_8_ncf_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
-		"mov $10, %%rbx\n\t"
 		"mov $0,  %0\n\t"
+		"mov $10, %%rbx\n\t"
 		"mov $0xff, %%al\n\t"
 		"add $10, %%al\n\t"
 		ASM_TRY("1f")
+		/* CF = 1,It won't move */
 		"cmovnc %%rbx, %0\n"
 		"1:"
 		: "=r" (op)
@@ -74,12 +77,12 @@ static bool cmovnc_8_ncf_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0));
 }
 
-static bool movl_checking(void)
+static bool mov_checking(void)
 {
 	u32 op = 0;
 	asm volatile(ASM_TRY("1f")
-		"movl $10, %%eax\n"
-		"movl %%eax, %0\n"
+		"mov $10, %%eax\n"
+		"mov %%eax, %0\n"
 		"1:"
 		: "=r" (op)
 		:
@@ -94,6 +97,7 @@ static bool movsx_checking(void)
 	asm volatile(
 		"mov $0x80, %%al\n"
 		ASM_TRY("1f")
+		/* sign-extend value 0x80 */
 		"movsx %%al, %%ebx\n"
 		"mov %%ebx, %0\n\t"
 		"1:"
@@ -110,6 +114,7 @@ static bool movzx_checking(void)
 	asm volatile(
 		"mov $0x80, %%al\n"
 		ASM_TRY("1f")
+		/* zero-extend value 0x80 */
 		"movzx %%al, %%ebx\n"
 		"mov %%ebx, %0\n\t"
 		"1:"
@@ -126,6 +131,7 @@ static bool cdqe_checking(void)
 	asm volatile(
 		"mov $0x80000000, %%eax\n"
 		ASM_TRY("1f")
+		/* convert value 0x80000000 to double  with sign-extension */
 		"cdqe\n"
 		"mov %%rax, %0\n\t"
 		"1:"
@@ -142,6 +148,7 @@ static bool xchg_checking(void)
 	int data1 = 2;
 	int data2 = 5;
 	asm volatile(ASM_TRY("1f")
+		/* exchange the two value */
 		"xchg %1, %2\n"
 		"mov %2, %0\n"
 		"1:"
@@ -157,6 +164,7 @@ static bool xadd_checking(void)
 	int data1 = 2;
 	int data2 = 5;
 	asm volatile(ASM_TRY("1f")
+		/* exchange the two value and add it to another */
 		"xadd %1, %2\n"
 		"mov %2, %0\n"
 		"1:"
@@ -172,6 +180,7 @@ static bool add_checking(void)
 	asm volatile(
 		"mov $0, %%rax\n\t"
 		ASM_TRY("1f")
+		/* 0x80 sign-entenden to $0xffffffffffffff80, add to rax */
 		ADD_SIGN
 		"mov %%rax, %0\n"
 		"1:"
@@ -186,27 +195,34 @@ static bool sub_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
-		"mov $0, %%rax\n\t"
+		"mov $0xffffffffffffff90, %%rax\n\t"
 		ASM_TRY("1f")
 		SUB_SIGN
+		/* 0x80 sign-entenden to $0xffffffffffffff80, subtract fron rax */
 		"mov %%rax, %0\n"
 		"1:"
 		: "=r" (op)
 		:
 		: "rax"
 	);
-	return ((exception_vector() == NO_EXCEPTION) && (op == 0x80000000));
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
 }
 
 static bool neg_checking(void)
 {
-	u8 op = 1;
-	asm volatile(ASM_TRY("1f")
-		"neg %0\n\t"
+	u32 op = 1;
+	asm volatile(
+		/* mov -1 to ebx */
+		"mov $0xffffffff, %%ebx\n\t"
+		ASM_TRY("1f")
+		"neg %%ebx\n\t"
+		"mov %%ebx, %0\n\t"
 		"1:"
-		: "+r" (op)
+		: "=r" (op)
+		:
+		: "rbx"
 	);
-	return ((exception_vector() == NO_EXCEPTION) && (op == 0xff));
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1));
 }
 
 static bool inc_checking(void)
@@ -263,7 +279,24 @@ static bool div_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 64));
 }
 
-static bool cmp_checking(void)
+static bool cmp_1_checking(void)
+{
+	u8 op = 0;
+	asm volatile(
+		"mov $0x8, %%al\n"
+		ASM_TRY("1f")
+		"cmp $0x1, %%al\n"
+		"jnz 2f\n"
+		"mov $0xf, %%al\n"
+		"2: mov %%al, %0\n"
+		"1:"
+		: "=r"(op)
+		: : "rax"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
+}
+
+static bool cmp_2_checking(void)
 {
 	u16 op = 0;
 	asm volatile(
@@ -280,6 +313,39 @@ static bool cmp_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
 
+static bool cmp_4_checking(void)
+{
+	u32 op = 0;
+	asm volatile(
+		"mov $0x8, %%eax\n"
+		ASM_TRY("1f")
+		"cmp $0x1, %%eax\n"
+		"jnz 2f\n"
+		"mov $0xf, %%eax\n"
+		"2: mov %%eax, %0\n"
+		"1:"
+		: "=r"(op)
+		: : "rax"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
+}
+
+static bool cmp_8_checking(void)
+{
+	u64 op = 0;
+	asm volatile(
+		"mov $0x8, %%rax\n"
+		ASM_TRY("1f")
+		"cmp $0x1, %%rax\n"
+		"jnz 2f\n"
+		"mov $0xf, %%rax\n"
+		"2: mov %%rax, %0\n"
+		"1:"
+		: "=r"(op)
+		: : "rax"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
+}
 static bool push_pop_checking(void)
 {
 	u16 op = 0;
@@ -345,7 +411,7 @@ static bool not_checking(void)
 
 static bool shr_checking(void)
 {
-	u32 op = 0x100;
+	u64 op = 0x100;
 	asm volatile(ASM_TRY("1f")
 		"shr %0\n\t"
 		"1:"
@@ -373,6 +439,7 @@ static bool bts_checking(void)
 	u64 op = 0x1234;
 	u64 ret = 0x5;
 	asm volatile(ASM_TRY("1f")
+		/* store the test bit in the CF flag */
 		"bts $5, %0\n\t"
 		"pushf; pop %1\n\t"
 		"and $1, %1\n\t"
@@ -387,6 +454,7 @@ static bool btr_checking(void)
 	u64 op = 0x1234;
 	u64 ret = 0x5;
 	asm volatile(ASM_TRY("1f")
+		/* store the test bit in the CF flag, and reset the test bit */
 		"btr $5, %0\n\t"
 		"pushf; pop %1\n\t"
 		"and $1, %1\n\t"
@@ -401,6 +469,7 @@ static bool btc_checking(void)
 	u64 op = 0x1234;
 	u64 ret = 0x5;
 	asm volatile(ASM_TRY("1f")
+		/*  store the test bit in the CF flag, and complement the test bit */
 		"btc $5, %0\n\t"
 		"pushf; pop %1\n\t"
 		"and $1, %1\n\t"
@@ -416,10 +485,8 @@ static bool bsf_checking(void)
 	asm volatile(
 		"mov $0x1234, %%rax\n"
 		ASM_TRY("1f")
+		/* search for the least significant set bit */
 		"bsf %%rax, %0\n\t"
-		"jmp 2f\n"
-		"mov $0x0, %0\n"
-		"2: \n"
 		"1:"
 		: "=r"(op) : : "rax"
 	);
@@ -432,10 +499,8 @@ static bool bsr_checking(void)
 	asm volatile(
 		"mov $0x1234, %%rax\n"
 		ASM_TRY("1f")
+		/* search for the most significant set bit */
 		"bsr %%rax, %0\n\t"
-		"jmp 2f\n"
-		"mov $0x0, %0\n"
-		"2: \n"
 		"1:"
 		: "=r"(op) : : "rax"
 	);
@@ -448,6 +513,7 @@ static bool setcc_checking(void)
 	asm volatile(
 		"mov $0x1234, %%rax\n"
 		ASM_TRY("1f")
+		/* set al 1 when ZF = 0*/
 		"setnz %%al\n\t"
 		"mov %%rax, %0\n"
 		"1:"
@@ -497,11 +563,12 @@ static bool call_checking(void)
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (call_cnt == 1));
 }
+
 /*
  * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * MOV, ADD, INC, DEC, MUL, DIV,
+ * MOVNC, MOVL, XADD, XCHG, MOVSX, MOVZX, CDQE.
  * execution results are all correct and no exception occurs.
  */
 static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_instructions_001(void)
@@ -509,7 +576,7 @@ static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* MOV, ADD, INC, DEC, MUL, DIV */
+	/* MOVNC, MOVL, XADD, XCHG, MOVSX, MOVZX, CDQE */
 	if (cmovnc_8_checking()) {
 		chk++;
 	}
@@ -518,7 +585,7 @@ static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_
 		chk++;
 	}
 
-	if (movl_checking()) {
+	if (mov_checking()) {
 		chk++;
 	}
 	if (xadd_checking()) {
@@ -544,7 +611,7 @@ static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_
  * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_002
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * CMP, PUSH, POP, AND, OR, JMP, CALL, LOOP,
+ * PUSH, POP, PUSHF, POPF.
  * execution results are all correct and no exception occurs.
  */
 static __unused void hsi_rqmid_35959_generic_processor_features_general_purpose_instructions_002(void)
@@ -552,7 +619,7 @@ static __unused void hsi_rqmid_35959_generic_processor_features_general_purpose_
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* CMP, PUSH, POP, AND, OR, JMP, CALL, LOOP */
+	/* PUSH, POP, PUSHF, POPF */
 	if (push_pop_checking()) {
 		chk++;
 	}
@@ -563,12 +630,20 @@ static __unused void hsi_rqmid_35959_generic_processor_features_general_purpose_
 	report("%s", (chk == 2), __FUNCTION__);
 }
 
-static __unused void hsi_rqmid_35962_generic_processor_features_general_purpose_instructions_003(void)
+/*
+ * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_003
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * ADD, SUB, NEG, INC, DEC, MUL, DIV.
+ * execution results are all correct and no exception occurs.
+ */
+
+static __unused void hsi_rqmid_40347_generic_processor_features_general_purpose_instructions_003(void)
 {
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* CMP, PUSH, POP, AND, OR, JMP, CALL, LOOP */
+	/* ADD, SUB, NEG, INC, DEC, MUL, DIV */
 	if (add_checking()) {
 		chk++;
 	}
@@ -594,11 +669,29 @@ static __unused void hsi_rqmid_35962_generic_processor_features_general_purpose_
 	report("%s", (chk == 7), __FUNCTION__);
 }
 
-static __unused void hsi_rqmid_35965_generic_processor_features_general_purpose_instructions_004(void)
+/*
+ * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_004
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * CMP, XOR, NOT, SHR, BT, BTS, BTR, BTC, BSF, BSR, SETcc, TEST.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40348_generic_processor_features_general_purpose_instructions_004(void)
 {
 	u16 chk = 0;
 
-	if (cmp_checking()) {
+	/* execute the following instruction in IA-32e mode */
+	/* CMP, XOR, NOT, SHR, BT, BTS, BTR, BTC, BSF, BSR, SETcc, TEST */
+	if (cmp_1_checking()) {
+		chk++;
+	}
+	if (cmp_2_checking()) {
+		chk++;
+	}
+	if (cmp_4_checking()) {
+		chk++;
+	}
+	if (cmp_8_checking()) {
 		chk++;
 	}
 	if (xor_checking()) {
@@ -634,13 +727,22 @@ static __unused void hsi_rqmid_35965_generic_processor_features_general_purpose_
 	if (test_checking()) {
 		chk++;
 	}
-	report("%s", (chk == 12), __FUNCTION__);
+	report("%s", (chk == 15), __FUNCTION__);
 }
 
-static __unused void hsi_rqmid_35969_generic_processor_features_general_purpose_instructions_005(void)
+/*
+ * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_005
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * JMP, CALL.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40349_generic_processor_features_general_purpose_instructions_005(void)
 {
 	u16 chk = 0;
 
+	/* execute the following instruction in IA-32e mode */
+	/* JMP, CALL */
 	if (jmp_checking()) {
 		chk++;
 	}
@@ -660,11 +762,11 @@ static void print_case_list(void)
 		"general purpose instructions 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 35959u, "HSI generic processor features " \
 		"general purpose instructions 002");
-	printf("\t Case ID: %d Case name: %s\n\r", 35962u, "HSI generic processor features " \
+	printf("\t Case ID: %d Case name: %s\n\r", 40347u, "HSI generic processor features " \
 		"general purpose instructions 003");
-	printf("\t Case ID: %d Case name: %s\n\r", 35965u, "HSI generic processor features " \
+	printf("\t Case ID: %d Case name: %s\n\r", 40348u, "HSI generic processor features " \
 		"general purpose instructions 004");
-	printf("\t Case ID: %d Case name: %s\n\r", 35969u, "HSI generic processor features " \
+	printf("\t Case ID: %d Case name: %s\n\r", 40349u, "HSI generic processor features " \
 		"general purpose instructions 005");
 #else
 #endif
@@ -685,13 +787,10 @@ int main(void)
 #ifdef __x86_64__
 	hsi_rqmid_35956_generic_processor_features_general_purpose_instructions_001();
 	hsi_rqmid_35959_generic_processor_features_general_purpose_instructions_002();
-	hsi_rqmid_35962_generic_processor_features_general_purpose_instructions_003();
-	hsi_rqmid_35965_generic_processor_features_general_purpose_instructions_004();
-	hsi_rqmid_35969_generic_processor_features_general_purpose_instructions_005();
+	hsi_rqmid_40347_generic_processor_features_general_purpose_instructions_003();
+	hsi_rqmid_40348_generic_processor_features_general_purpose_instructions_004();
+	hsi_rqmid_40349_generic_processor_features_general_purpose_instructions_005();
 
-#elif __i386__
-
-	hsi_rqmid_35961_generic_processor_features_general_purpose_instructions_003();
 #endif
 #else
 #endif
