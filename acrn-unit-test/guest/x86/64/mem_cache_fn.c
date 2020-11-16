@@ -772,11 +772,19 @@ void cache_rqmid_28100_wt_wp_shall_be_the_same(void)
  */
 void cache_rqmid_36877_no_fill_cache_mode(void)
 {
+#define SUB_REPORT(str, result) do { \
+		if (result) { \
+			passed_sub_case_count++; \
+		} \
+		printf("\tSUB-%s: "str, ((result) ? "PASS" : "FAIL")); \
+	} while (0)
 	bool ret1 = true;
 	bool ret2 = true;
 	bool ret3 = true;
 	bool ret4 = true;
 	u32 cr0;
+	int total_sub_cases = 11;
+	int passed_sub_case_count = 0;
 
 	/* Don't care about NW bit,
 	 * following case shall be passed on no matter what NW
@@ -784,7 +792,7 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	write_cr0_bybit(CR0_BIT_CD, 1);
 	cr0 = read_cr0();
 
-	report("%s CR0 cd bit shoud be set.\n", (cr0 & CR0_BIT_CD),  __FUNCTION__);
+	SUB_REPORT("CR0 cd bit shoud be set.\n", (cr0 & CR0_BIT_CD));
 
 	/* Configure PAT to use UC, in No-fill Cache Mode, it
 	 * should behavior like UC
@@ -800,9 +808,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 	DUMP_CACHE_DATA("OVER L3 UC READ NOFILL");
 
-	report("%s Read test in No-fill Cache Mode, should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Read test in No-fill Cache Mode, should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
@@ -814,9 +821,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 	DUMP_CACHE_DATA("OVER L3 UC WRITE NOFILL");
 
-	report("%s Write test in No-fill Cache Mode, should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Write test in No-fill Cache Mode, should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 #ifndef DUMP_CACHE_NATIVE_DATA
 	/* Configure PAT to use WB, however in No-fill Cache Mode,
@@ -830,9 +836,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Read test in No-fill Cache Mode, WB configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Read test in No-fill Cache Mode, WB configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
@@ -840,9 +845,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Write test in No-fill Cache Mode, WB configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Write test in No-fill Cache Mode, WB configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* Configure PAT to use WP, however in No-fill Cache Mode,
 	 * it should behavior like UC.
@@ -855,9 +859,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Read test in No-fill Cache Mode, WP configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Read test in No-fill Cache Mode, WP configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
@@ -865,9 +868,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Write test in No-fill Cache Mode, WP configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Write test in No-fill Cache Mode, WP configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* Configure PAT to use WT, however in No-fill Cache Mode,
 	 * it should behavior like UC.
@@ -880,9 +882,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Read test in No-fill Cache Mode, WT configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Read test in No-fill Cache Mode, WT configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* write test, cache size L1, L2, L3 and over L3 */
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
@@ -890,9 +891,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Write test in No-fill Cache Mode, WT configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Write test in No-fill Cache Mode, WT configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* Configure PAT to use WC, however in No-fill Cache Mode,
 	 * it should behavior like UC.
@@ -905,9 +905,8 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_read_test(CACHE_L3_READ_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Read test in No-fill Cache Mode, WC configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Read test in No-fill Cache Mode, WC configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 
 	/* Write test, cache size L1, L2, L3 and over L3 */
 	ret1 = cache_order_write_test(CACHE_L1_WRITE_UC_NOFILL, cache_l1_size);
@@ -915,10 +914,13 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 	ret3 = cache_order_write_test(CACHE_L3_WRITE_UC_NOFILL, cache_l3_size);
 	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_UC_NOFILL, cache_over_l3_size);
 
-	report("%s Write test in No-fill Cache Mode, WC configured but should behavior like UC.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	SUB_REPORT("Write test in No-fill Cache Mode, WC configured but should behavior like UC.\n",
+		(ret1 && ret2 && ret3 && ret4));
 #endif
+	report("%s All types configured in No-fill Cache Mode,  should behavior like UC (total: %d, pass: %d).\n",
+		(total_sub_cases == passed_sub_case_count), __FUNCTION__, total_sub_cases, passed_sub_case_count);
+
+#undef SUB_REPORT
 }
 
 /**
