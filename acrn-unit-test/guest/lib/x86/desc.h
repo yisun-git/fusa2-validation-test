@@ -110,7 +110,9 @@ tss64_t;
 #define DB_VECTOR   1
 #define BP_VECTOR   3
 #define UD_VECTOR   6
+#define NM_VECTOR   7
 #define GP_VECTOR   13
+#define AC_VECTOR   17
 
 /*
  * selector     32-bit                        64-bit

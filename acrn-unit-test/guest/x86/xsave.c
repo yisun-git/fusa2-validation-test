@@ -12,6 +12,7 @@
 #include "register_op.h"
 #include "xsave.h"
 #include "debug_print.h"
+
 /**CPUID Function:**/
 /**Some common function **/
 u16 *creat_non_aligned_add(void)
@@ -23,130 +24,56 @@ u16 *creat_non_aligned_add(void)
 }
 
 int ap_start_count = 0;
-u64 init_xinuse = 0;
-u64 set_xinuse = 0;
+
+static uint64_t xcr0_enter_1st_init, xcr1_enter_1st_init;
+
+static uint64_t xcr0_init_write_7_to_xcr0, xcr1_init_after_sse_exe;
+static uint64_t xcr0_enter_2nd_init, xcr1_enter_2nd_init;
+
 void save_unchanged_reg(void)
 {
-	u32 volatile v1, v2;
 	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
-	/* enable cr4.OSFXSR[9] for SSE. */
-	write_cr4_osxsave(1);
+	debug_print(" ap_start_count=%d \n", ap_start_count);
+
+	/* CR4.OSXSAVE[bit 18] has been set to 1 in init_startup_xsave_init.S. No need to duplicate it here. */
 
 	if (ap_start_count == 0) {
-		/* XINUSE[bit 2:0] init value */
-		asm volatile(
-			"mov $0, %eax\n\t"
-			"mov $0, %edx\n\t"
-			"mov $1, %ecx\n\t"
-			"xgetbv\n\t"
-		);
+		debug_print("1st INIT: Start this AP \n");
 
-		/*store XCR0 & XINUSE to init_xinuse.*/
-		asm volatile (
-			"mov %%eax, %0\r\n"
-			"mov %%edx, %1\r\n"
-			: "=m"(v1), "=m"(v2));
-		init_xinuse = v1 | ((u64)v2 << 32UL);
+		/* Record XCR0 to verify XCR0 following the first INIT (for case 36768). */
+		xcr0_enter_1st_init = asm_read_xcr(0);
 
-		/* exec SSE instrction. */
+		debug_print("Set XCR0 to 7 (for case 24108 and 23635) \n");
+		asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+		/* Record XCR1 to verify XINUSE[bit 2:0] following the first INIT (for case 24108). */
+		xcr1_enter_1st_init = asm_read_xcr(1);
+
+		debug_print("Execute SSE instruction on this AP (for case 23635). \n");
 		asm volatile("movapd %xmm1, %xmm2");
 
-		/* xsetbv XCR0 to X87|SSE|AVX. */
-		asm volatile(
-			"mov $0, %ecx\n\t"
-			"mov $0, %edx\n\t"
-			"mov $7, %eax\n\t"
-			"xsetbv\n\t"
-		);
+		xcr0_init_write_7_to_xcr0 = asm_read_xcr(0);
+		xcr1_init_after_sse_exe = asm_read_xcr(1);
 
-		ap_start_count++;
+		debug_print(" xcr0_enter_1st_init=%lx xcr1_enter_1st_init=%lx \n",
+			xcr0_enter_1st_init, xcr1_enter_1st_init);
+		debug_print(" xcr0_init_write_7_to_xcr0=%lx xcr1_init_after_sse_exe=%lx \n",
+			xcr0_init_write_7_to_xcr0, xcr1_init_after_sse_exe);
+	} else if (ap_start_count == 1) {
+		debug_print("Right following 2nd INIT: record XCR0 and XCR1 to verify case 23635 and 23151. \n");
+		xcr0_enter_2nd_init = asm_read_xcr(0);
+		xcr1_enter_2nd_init = asm_read_xcr(1);
+
+		debug_print(" xcr0_enter_2nd_init=%lx xcr1_enter_2nd_init=%lx \n",
+			xcr0_enter_2nd_init, xcr1_enter_2nd_init);
 	}
 
-	/* xgetbv XCR0 & XINUSE. */
-	asm volatile(
-		"mov $0, %eax\n\t"
-		"mov $0, %edx\n\t"
-		"mov $1, %ecx\n\t"
-		"xgetbv\n\t"
-	);
-
-	/*store XCR0 & XINUSE to set_xinuse.*/
-	asm volatile (
-		"mov %%eax, %0\r\n"
-		"mov %%edx, %1\r\n"
-		: "=m"(v1), "=m"(v2));
-	set_xinuse = v1 | ((u64)v2 << 32UL);
+	ap_start_count++;
+	debug_print(" ap_start_count=%d \n", ap_start_count);
 }
-
-/*
- * Case name: 23631:XSAVE hide PKRU support_001.
- *
- * Summary: DNG_129928: XSAVE hide PKRU support.
- *	    ACRN hypervisor shall hide XSAVE-managed PKRU states from any VM,
- *	    in compliance with Chapter 13.2 and 13.3, Vol. 1, SDM.
- */
-static __unused void xsave_rqmid_23631_hide_pkru_support_001(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID that is the processor defult-support.******\n");
-	uint64_t supported_xcr0;
-	supported_xcr0 = get_supported_xcr0();
-	i++;
-#ifdef USE_DEBUG
-	debug_print("The supported CPUID = %#lx\n", supported_xcr0);
-#endif
-	debug_print("******Step2: Get EAX[9], and compare with 0b.******\n");
-	int r_eax;
-	r_eax = (u32)(supported_xcr0>>STATE_PKRU_BIT);
-	r_eax = 0x0001 & r_eax;
-	if (r_eax == 0) {
-		i++;
-		debug_print("The value of EAX[9] = %#x \n", r_eax);
-		debug_print("******23631:XSAVE_hide_PKRU_support_001, test case Passed.******\n");
-	} else {
-		debug_print("The value of EAX[9] = %#x \n", r_eax);
-		debug_print("******23631:XSAVE_hide_PKRU_support_001, test case Failed.******\n");
-	}
-	report("%s", (i == 2), __FUNCTION__);
-}
-
-
-/*
- * Case name: 23632:XSAVE hide MPX support_001.
- *
- * Summary: DNG_129926: XSAVE hide MPX support.
- *	    ACRN hypervisor shall hide XSAVE-managed MPX states from any VM,
- *	    in compliance with Chapter 13.2 and 13.3, Vol. 1, SDM.
- */
-static __unused void xsave_rqmid_23632_hide_mpx_support_001(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID that is the processor defult-support******\n");
-	uint64_t supported_xcr0;
-	supported_xcr0 = get_supported_xcr0();
-	i++;
-#ifdef USE_DEBUG
-	debug_print("The supported CPUID = %#lx\n", supported_xcr0);
-#endif
-	debug_print("******Step2: Get EAX[4:3], and compare with 00b.******\n");
-	int r_eax;
-	r_eax = (u32)(supported_xcr0>>STATE_MPX_BNDREGS_BIT);
-	r_eax = 0x0003 & r_eax;
-	if (r_eax == 0) {
-		i++;
-		debug_print("The value of EAX[4:3] = %#x\n", r_eax);
-		debug_print("******23632:XSAVE_hide_MPX_support_001, test case Passed.******\n");
-	} else {
-		debug_print("The value of EAX[4:3] = %#x\n", r_eax);
-		debug_print("******23632:XSAVE_hide_MPX_support_001, test case Failed.******\n");
-	}
-	report("%s", (i == 2), __FUNCTION__);
-}
-
-
 /*
  * Case name: 23633:XSAVE hide AVX-512 support_001.
  *
@@ -345,556 +272,6 @@ static __unused void xsave_rqmid_28392_physical_init_and_modified_optimizations_
 	report("%s", (i == 1), __FUNCTION__);
 }
 
-
-/*
- * Case name: 28393:XSAVE_general_support_009.
- *
- * Summary: DNG_132148: XSAVE general support
- *	    Vol1_13.7/13.8: XSAVE/XRSTOR instruction:
- *	    If the address of the XSAVE area is not 64-byte aligned, a general-protection exception (#GP) occurs.
- */
-static __unused void xsave_rqmid_28393_general_support_009(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Set CR4.osxsave[bit18] to 1.******\n");
-	write_cr4_osxsave(1);
-	i++;
-
-	debug_print("******Step2: Creat non-aligned address.******\n");
-	__attribute__((aligned(64))) u64 addr;
-	u64 *aligned_addr = &addr;
-	u64 *non_aligned_addr = (u64 *)((u8 *)aligned_addr + 1);
-	i++;
-	debug_print("aligned_addr = %#lx\n", *aligned_addr);
-	debug_print("non_aligned_addr = %#lx\n", *non_aligned_addr);
-
-	debug_print("Step3: Rand to execute XSAVE/XSAVEC/XSAVOPT/XRSTOR instruciton with the non-aligned address.\n");
-	debug_print("Excepted Result: Generate #GP exception, error_code=0000.\n");
-
-	u32 r_eax = 0;
-	u32 r_edx = 0;
-	switch (get_random_value()%4) {
-	case 0:
-		debug_print("******Step4: Execute XSAVE instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
-		asm volatile("xsave %[addr]\n\t"
-			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 1:
-		debug_print("******Step4: Execute XSAVEC instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
-		i++;
-		asm volatile("xsavec %[addr]\n\t"
-			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 2:
-		debug_print("******Step4: Execute XSAVEOPT instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
-		i++;
-		asm volatile("xsaveopt %[addr]\n\t"
-			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 3:
-		debug_print("******Step4: Execute XRSTOR instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
-		i++;
-		asm volatile("xrstor %[addr]\n\t"
-			: : [addr]"m"(non_aligned_addr), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	}
-	report("%s", (i == 2), __FUNCTION__);
-}
-
-
-/*
- * Case name: 28395:XSAVE_general_support_012.
- *
- * Summary: DNG_132148: XSAVE general support.
- *	    Vol1_13.7/13.8: XSAVE/XRSTOR instruction:
- *	    If the address of the XSAVE area is not 64-byte aligned, a general-protection exception (#GP) occurs;
- *	    If CR0.AM = 1, CPL = 3, and EFLAGS.AC =1, an alignment-check exception (#AC) may occur instead of #GP.
- */
-static __unused void xsave_rqmid_28395_general_support_012_subfun(const char *msg)
-{
-	u32 r_eax = 0;
-	u32 r_edx = 0;
-	switch (get_random_value()%4) {
-	case 0:
-		debug_print("******Step4: Execute XSAVE instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
-		asm volatile("xsave %[addr]\n\t"
-			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		break;
-	case 1:
-		debug_print("******Step4: Execute XSAVEC instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
-		asm volatile("xsavec %[addr]\n\t"
-			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		break;
-	case 2:
-		debug_print("******Step4: Execute XSAVEOPT instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
-		asm volatile("xsaveopt %[addr]\n\t"
-			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		break;
-	case 3:
-		debug_print("******Step4: Execute XRSTOR instruciton with the non-aligned address.******\n");
-		debug_print("******Excepted Result: Generate #AC exception, error_code=0000.******\n");
-		asm volatile("xrstor %[addr]\n\t"
-			: : [addr]"m"(*(creat_non_aligned_add())), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		break;
-	}
-}
-
-static __unused void xsave_rqmid_28395_general_support_012(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Set CR4.osxsave[bit18] to 1.******\n");
-	write_cr4_osxsave(1);
-	i++;
-	debug_print("******Step2: Set CR0.AM[bit18] and EFLAG.AC[bit18] to 1.******\n");
-	set_cr0_AM(1);
-	set_eflag_ac(1);
-	i++;
-
-	debug_print("Step3: Rand to execute XSAVE/XSAVEC/XSAVOPT/XRSTOR instruciton with the non-aligned address.\n");
-	debug_print("Excepted Result: Generate #AC exception, error_code=0000.\n");
-	do_at_ring3(xsave_rqmid_28395_general_support_012_subfun, "");
-	i++;
-	report("%s", (i == 2), __FUNCTION__);
-}
-
-
-/*
- * Case name: 28387:XSAVE_physical_x87_support_001.
- *
- * Summary: DNG_132148: XSAVE general support.
- *	    Vol1_13.8.2: The XCOMP_BV field of the XSAVE header sets a bit in the range 62:0 that is not set in XCR0.
- */
-static __unused void xsave_rqmid_28397_general_support_027(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
-	int r_ecx;
-	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
-	if (r_ecx == 1) {
-		i++;
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature.\n", r_ecx);
-	} else {
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
-			"XSAVE feature not support or disable.\n", r_ecx);
-		debug_print("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n");
-		return;
-	}
-
-	debug_print("******Step2: Set CR4.osxsave[bit18] to 1.******\n");
-	write_cr4_osxsave(1);
-	i++;
-
-	debug_print("******Step3: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n");
-	uint64_t xcr0;
-	uint64_t test_bits;
-	test_bits = STATE_X87 | STATE_SSE | STATE_AVX | STATE_MPX_BNDREGS | STATE_MPX_BNDCSR;
-	xgetbv_checking(XCR0_MASK, &xcr0);
-	if (xcr0 == test_bits) {
-		debug_print("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87/SSE/AVX/MPX STATE.\n", xcr0);
-	} else {
-		debug_print("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.\n", xcr0);
-	}
-
-	debug_print("******Step4: Execute XSAVE instruciton with [xsave_area_struct].******\n");
-	u32 r_eax = 0;
-	u32 r_edx = 0;
-	__attribute__((aligned(64)))xsave_area_t xsave_area_created;
-	asm volatile("xsave %[addr]\n\t"
-		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-		: "memory");
-	i++;
-	debug_print("******Step5: Set xcomp_bv[bit13] to 1.******\n ");
-	xsave_area_created.xsave_hdr.xcomp_bv  |= STATE_HDC;
-	i++;
-
-	debug_print("******Step6: Execute XRSTOR instruciton with [xsave_area_struct].******\n");
-	debug_print("******Excepted Result: Generate #GP exception, error_code=0000.******\n");
-	asm volatile("xrstor %[addr]\n\t"
-		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-		: "memory");
-	i++;
-	report("%s", (i == 4), __FUNCTION__);
-}
-
-
-/*
- * Case name: 24444:XSAVE_general_support_021.
- *
- * Summary: DNG_132148: XSAVE general support.
- *	    Vol1_13.3: XCR0[1] is 0 coming out of RESET.
- *	    (Software can use the XSAVE feature set to manage SSE state only if XCR0[1] = 1.)
- */
-static __unused void xsave_rqmid_24444_general_support_021(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b.******\n ");
-	int r_ecx;
-	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
-	if (r_ecx == 1) {
-		i++;
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature.\n", r_ecx);
-	} else {
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
-			"XSAVE feature not support or disable.\n", r_ecx);
-		debug_print("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n ");
-		return;
-	}
-
-	debug_print("******Step2: Set CR4.osxsave[bit18] to 1.******\n ");
-	write_cr4_osxsave(1);
-	i++;
-
-	debug_print("******Step3: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n ");
-	uint64_t xcr0;
-	uint64_t test_bits;
-	test_bits = STATE_X87 | STATE_SSE | STATE_AVX | STATE_MPX_BNDREGS | STATE_MPX_BNDCSR;
-	xgetbv_checking(XCR0_MASK, &xcr0);
-	if (xcr0 == test_bits) {
-		debug_print("The value of xcr0 = %#lx, XSAVE feature ONLY can manage X87/SSE/AVX/MPX STATE\n", xcr0);
-	} else {
-		debug_print("The value of xcr0 = %#lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.\n", xcr0);
-	}
-
-	debug_print("******Step4: Execute XSETBV with EDX:EAX=0x3/ECX=0.******\n");
-	test_bits = STATE_X87 | STATE_SSE;
-	xsetbv_checking(XCR0_MASK, test_bits);
-	i++;
-
-	debug_print("******Step5: Check XGETBV to make sure XSAVE feature "
-		"can be used to manage X87&SSE state.******\n");
-	test_bits = STATE_X87 | STATE_SSE;
-	debug_print("******TEST_BITS is %#lx.******\n", test_bits);
-	xcr0 = 0;
-	xgetbv_checking(XCR0_MASK, &xcr0);
-	if (xcr0 == test_bits) {
-		i++;
-		debug_print("******The value of xcr0 = 0x%lx, XSAVE feature "
-			"ONLY can manage X87&SSE STATE.******\n", xcr0);
-		debug_print("******24444:XSAVE_general_support_021, test case Passed.******\n");
-	} else {
-		debug_print("******The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature ONLY can manage X87.******\n",
-			xcr0);
-		debug_print("******24444:XSAVE_general_support_021, test case Failed.******\n");
-	}
-	report("%s", (i == 4), __FUNCTION__);
-}
-
-
-/*
- * Case name: 24418:XSAVE_general_support_022.
- *
- * Summary: DNG_132148: XSAVE general support.
- *	    Vol1_13.3: Software enables the XSAVE feature set by setting CR4.OSXSAVE[bit 18] to 1
- *	    (e.g., with the MOV to CR4 instruction). If this bit is 0,
- *	    execution of any of XGETBV, XRSTOR, XRSTORS, XSAVE, XSAVEC, XSAVEOPT, XSAVES, and XSETBV
- *	    causes an invalid-opcode exception (#UD).
- */
-static __unused void xsave_rqmid_24418_general_support_022(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
-	int r_ecx;
-	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
-	if (r_ecx == 1) {
-		i++;
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature SUPPORT.\n", r_ecx);
-	} else {
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
-			"XSAVE feature not support or disable.\n", r_ecx);
-		debug_print("******28386:XSAVE_rqmid_28397_general_support_027, test case Failed******\n");
-		return;
-	}
-
-	debug_print("******Step2: Clean CR4.osxsave[bit18] to 0.******\n");
-	write_cr4_osxsave(0);
-	i++;
-
-	debug_print("******Step3:Rand to execute /XGETBV/XSAVE/XSAVEC/XSAVES/XSAVOPT/XRSTOR instruciton.******\n");
-	int r_eax = 0;
-	int r_edx = 0;
-	uint64_t xcr0;
-	__attribute__((aligned(64)))xsave_area_t xsave_area_created;
-	switch (get_random_value()%7) {
-	case 0:
-		xgetbv_checking(XCR0_MASK, &xcr0);
-	case 1:
-		debug_print("******Step4: Execute XSAVE instruciton with CR4.osxsave[bit18]=0.******\n");
-		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
-		asm volatile("xsave %[addr]\n\t"
-			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 2:
-		debug_print("******Step4: Execute XRSTOR instruciton with CR4.osxsave[bit18]=0.******\n");
-		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
-		asm volatile("xrstor %[addr]\n\t"
-			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 3:
-		debug_print("******Step4: Execute XSAVEC instruciton with CR4.osxsave[bit18]=0.******\n");
-		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
-		asm volatile("xsavec %[addr]\n\t"
-			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 4:
-		debug_print("******Step4: Execute XSAVES instruciton with CR4.osxsave[bit18]=0.******\n");
-		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
-		asm volatile("xsaves %[addr]\n\t"
-			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 5:
-		debug_print("******Step4: Execute XRSTORS instruciton with CR4.osxsave[bit18]=0.******\n");
-		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
-		asm volatile("xrstors %[addr]\n\t"
-			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	case 6:
-		debug_print("******Step4: Execute XSAVEOPT instruciton with CR4.osxsave[bit18]=0.******\n");
-		debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n ");
-		asm volatile("xsaveopt %[addr]\n\t"
-			: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-			: "memory");
-		i++;
-	}
-	report("%s", (i == 2), __FUNCTION__);
-}
-
-
-/*
- * Case name: 23638:XSAVE init and modified optimizations_002.
- *
- * Summary: DNG_132105: XSAVE init and modified optimizations.
- *	    ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
- *	    in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
- */
-static __unused void xsave_rqmid_23638_init_and_modified_optimizations_002(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
-	int r_ecx;
-	r_ecx = check_cpuid_1_ecx(CPUID_1_ECX_XSAVE);
-	if (r_ecx == 1) {
-		i++;
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, so XSAVE feature SUPPORT.\n", r_ecx);
-	} else {
-		debug_print("The value of CPUID.1:ECX.XSAVE[bit 26] = %#x, "
-			"XSAVE feature not support or disable.\n", r_ecx);
-		debug_print("******23638:XSAVE_rqmid_23638_init_and_modified_optimizations_002, "
-			"test case Failed******\n");
-		return;
-	}
-
-	debug_print("******Step2: Clean CR4.osxsave[bit18] to 0.******\n");
-	write_cr4_osxsave(0);
-	i++;
-
-	debug_print("******Step4: Execute XSAVEOPT64 instruciton with CR4.osxsave[bit18]=0.******\n");
-	debug_print("******Excepted Result: Generate #UD exception, error_code=0000.******\n");
-	int r_eax = 0;
-	int r_edx = 0;
-	__attribute__((aligned(64)))xsave_area_t xsave_area_created;
-	asm volatile("XSAVEOPT64 %[addr]\n\t"
-		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-		: "memory");
-	i++;
-	report("%s", (i == 2), __FUNCTION__);
-}
-
-
-/*
- * Case name: 23639:XSAVE init and modified optimizations_003.
- *
- * Summary: DNG_132105: XSAVE init and modified optimizations.
- *	    ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
- *	    in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
- */
-static __unused void xsave_rqmid_23639_init_and_modified_optimizations_003(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
-	int bit_support;
-	bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
-	bit_support &= SUPPORT_XSAVEOPT;
-	if (bit_support == SUPPORT_XSAVEOPT) {
-		i++;
-		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
-	} else {
-		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, "
-			"XSAVEOPT not support or disable.", bit_support);
-		debug_print("******23639:XSAVE_rqmid_23639_init_and_modified_optimizations_003, "
-			"test case Failed******\n");
-		return;
-	}
-
-	debug_print("******Step2: Set CR4.osxsave[bit18] to 1.******\n");
-	write_cr4_osxsave(1);
-	i++;
-
-	debug_print("******Step3: Execute XSAVEOPT64 instruciton.******\n");
-	int r_eax = 0, r_edx = 0;
-	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
-	asm volatile("XSAVEOPT64 %[addr]\n\t"
-		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-		: "memory");
-	i++;
-
-	debug_print("******Step4: Check the value of xstate_bv[4:0].******\n ");
-	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
-	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX | STATE_MPX_BNDREGS | STATE_MPX_BNDCSR);
-	if (state_bv == 0) {
-		i++;
-		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
-		debug_print("******23639:XSAVE init and modified optimizations_003, test case Passed.******\n");
-	} else {
-		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
-		debug_print("******23639:XSAVE init and modified optimizations_003, test case Failed.******\n");
-	}
-	report("%s", (i == 4), __FUNCTION__);
-}
-
-
-/*
- * Case name: 23640:XSAVE init and modified optimizations_004.
- *
- * Summary: DNG_132105: XSAVE init and modified optimizations.
- *          ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
- *          in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
- */
-static __unused void xsave_rqmid_23640_init_and_modified_optimizations_004(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID.1:ECX.XSAVEOPT, and compare with 0b******\n");
-	int bit_support;
-	bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
-	bit_support &= SUPPORT_XSAVEOPT;
-	if (bit_support == SUPPORT_XSAVEOPT) {
-		i++;
-		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
-	} else {
-		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, "
-			"XSAVEOPT not support or disable.", bit_support);
-		debug_print("******23640:XSAVE_rqmid_23640_init_and_modified_optimizations_004, "
-			"test case Failed******\n");
-		return;
-	}
-
-	debug_print("******Step2: To XSETBV with ECX = 0 and EDX:EAX = 0x0.******\n");
-	xsetbv_checking(0, STATE_X87);
-	i++;
-
-	debug_print("******Step3: Set CR4.osxsave[bit18] to 1.******\n");
-	write_cr4_osxsave(1);
-	i++;
-
-	debug_print("******Step4: Execute XSAVEOPT64 instruciton.******\n");
-	int r_eax = STATE_X87 | STATE_SSE | STATE_AVX;
-	int r_edx = 0;
-	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
-	asm volatile("XSAVEOPT64 %[addr]\n\t"
-		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-		: "memory");
-	i++;
-
-	debug_print("******Step5: Check the value of xstate_bv[2:0].******\n ");
-	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
-	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
-	if (state_bv == STATE_X87) {
-		i++;
-		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
-		debug_print("******23640:XSAVE init and modified optimizations_004, test case Passed.******\n");
-	} else {
-		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
-		debug_print("******23640:XSAVE init and modified optimizations_004, test case Failed.******\n");
-	}
-	report("%s", (i == 5), __FUNCTION__);
-}
-
-
-/*
- * Case name: 23641:XSAVE init and modified optimizations_005.
- *
- * Summary: DNG_132105: XSAVE init and modified optimizations.
- *          ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
- *          in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
- */
-static __unused void xsave_rqmid_23641_init_and_modified_optimizations_005(void)
-{
-	u32 i = 0;
-	debug_print("******Step1: Get CPUID.1:ECX.XSAVE[bit 26], and compare with 0b******\n");
-	int bit_support;
-	bit_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
-	bit_support &= SUPPORT_XSAVEOPT;
-	if (bit_support == SUPPORT_XSAVEOPT) {
-		i++;
-		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, so XSAVEOPT Supported.\n", bit_support);
-	} else {
-		debug_print("The value of CPUID.(EAX=0DH,ECX=0x1):EAX[0] = %#x, "
-			"XSAVEOPT not support or disable.", bit_support);
-		debug_print("******23641:XSAVE_rqmid_23641_init_and_modified_optimizations_005, "
-			"test case Failed******\n");
-		return;
-	}
-
-	debug_print("******Step2: Check XGETBV to make sure XSAVE feature can be used to manage which state.******\n");
-	uint64_t xcr0;
-	xgetbv_checking(XCR0_MASK, &xcr0);
-	if (xcr0 == STATE_X87) {
-		debug_print("The value of xcr0 = 0x%lx, XSAVE feature ONLY can manage X87.\n", xcr0);
-	} else {
-		debug_print("The value of xcr0 = 0x%lx, if xcr0==0x1 XSAVE feature can manage more state component.\n",
-			xcr0);
-	}
-
-	debug_print("******Step3: Set CR4.osxsave[bit18] to 1.******\n");
-	write_cr4_osxsave(1);
-	i++;
-
-	debug_print("******Step4: To XSETBV with ECX = 0 and EDX:EAX = 0x3.******\n");
-	xsetbv_checking(0, STATE_X87);
-	i++;
-
-	debug_print("******Step5: Execute XSAVEOPT64 instruciton.******\n");
-	int r_eax = STATE_X87 | STATE_SSE;
-	int r_edx = 0;
-	__attribute__((aligned(64)))xsave_area_t xsave_area_created = {0};
-	asm volatile("XSAVEOPT64 %[addr]\n\t"
-		: : [addr]"m"(xsave_area_created), "a"(r_eax), "d"(r_edx)
-		: "memory");
-	i++;
-
-	debug_print("******Step6: Check the value of xstate_bv[2:0].******\n ");
-	u64 state_bv = xsave_area_created.xsave_hdr.xstate_bv;
-	state_bv &= (STATE_X87 | STATE_SSE | STATE_AVX);
-	if (state_bv == STATE_X87) {
-		i++;
-		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
-		debug_print("******23641:XSAVE init and modified optimizations_005, test case Passed.******\n");
-	} else {
-		debug_print("The value of xstate_bv = %#lx.\n", state_bv);
-		debug_print("******23641:XSAVE init and modified optimizations_005, test case Failed.******\n");
-	}
-	report("%s", (i == 5), __FUNCTION__);
-}
-
 /*
  * Case name: 23642:XSAVE init and modified optimizations_006.
  *
@@ -996,8 +373,6 @@ static __unused void xsave_rqmid_23642_init_and_modified_optimizations_006(void)
 	}
 	report("%s", (i == 7), __FUNCTION__);
 }
-
-
 
 /**Coding by Li,hexiang.**/
 
@@ -1526,102 +901,2450 @@ static __unused void xsave_rqmid_22825_supervisor_state_components_001(void)
 }
 
 
-static __unused u64 get_init_xinuse(u64 eax_addr, u64 edx_addr)
+static __unused uint32_t get_xsave_support(void)
 {
-	u64 xinuse = 0;
-	u32 volatile v, v1;
-	u64 v3, v4;
-	v = *((u32 volatile *)eax_addr);
-	v1 = *((u32 volatile *)edx_addr);
-	v3 = v;
-	v4 = v1;
-	xinuse = v3 | (v4 << 32UL);
-	return xinuse;
+	uint32_t xsave_support;
+	xsave_support = cpuid(1).c;
+	xsave_support &= CPUID_1_ECX_XSAVE;
+
+	return xsave_support;
+}
+
+static __unused uint32_t get_osxsave_support(void)
+{
+	uint32_t osxsave_support;
+	osxsave_support = cpuid(1).c;
+	osxsave_support &= CPUID_1_ECX_OSXSAVE;
+
+	return osxsave_support;
+}
+
+static __unused uint32_t get_xsaveopt_support(void)
+{
+	uint32_t xsaveopt_support;
+	xsaveopt_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
+	xsaveopt_support &= SUPPORT_XSAVEOPT;
+
+	return xsaveopt_support;
+}
+
+static __unused uint32_t get_xsavec_support(void)
+{
+	uint32_t xsavec_support;
+	xsavec_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
+	xsavec_support &= SUPPORT_XSAVEC;
+
+	return xsavec_support;
+}
+
+static __unused uint32_t get_xcr1_support(void)
+{
+	uint32_t read_xcr1_support;
+	read_xcr1_support = cpuid_indexed(CPUID_XSAVE_FUC, EXTENDED_STATE_SUBLEAF_1).a;
+	read_xcr1_support &= SUPPORT_XGETBV;
+
+	return read_xcr1_support;
+}
+
+static __unused uint64_t get_supported_user_states(void)
+{
+	uint64_t supported_user_states_low = cpuid_indexed(CPUID_XSAVE_FUC, 0).a;
+	uint64_t supported_user_states_hi = cpuid_indexed(CPUID_XSAVE_FUC, 0).d;
+	uint64_t supported_user_states = (supported_user_states_hi << 32U) | supported_user_states_low;
+
+	return supported_user_states;
+}
+
+static __unused uint64_t get_supported_supervisor_states(void)
+{
+	uint64_t supported_supervisor_states_low = cpuid_indexed(CPUID_XSAVE_FUC, 1).c;
+	uint64_t supported_supervisor_states_hi = cpuid_indexed(CPUID_XSAVE_FUC, 1).d;
+	uint64_t supported_supervisor_states = (supported_supervisor_states_hi << 32U) |
+						supported_supervisor_states_low;
+
+	return supported_supervisor_states;
+}
+
+static __unused struct xsave_exception xsaveopt_exception_checking(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile(ASM_TRY("1f")
+			"xsaveopt %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+static __unused struct xsave_exception xsave_exception_checking(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile(ASM_TRY("1f")
+			"xsave %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+static __unused struct xsave_exception xsavec_exception_checking(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile(ASM_TRY("1f")
+			"xsavec %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+static __unused struct xsave_exception xrstor_exception_checking(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile(ASM_TRY("1f")
+			"xrstor %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+static __unused struct xsave_exception xsetbv_exception_checking(uint32_t reg, uint64_t val)
+{
+	asm volatile(ASM_TRY("1f")
+			"xsetbv\n\t"
+			"1:"
+			: : "c"(reg), "a"((uint32_t)val), "d"((uint32_t)(val >> 32U)));
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+static __unused struct xsave_exception xgetbv_exception_checking(uint32_t reg)
+{
+	uint32_t xcrl, xcrh;
+
+	asm volatile(ASM_TRY("1f")
+			"xgetbv\n\t"
+			"1:"
+			: "=a"(xcrl), "=d"(xcrh)
+			: "c"(reg));
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+static __unused void xsave_reset_xinuse(void)
+{
+	/* Set XCR0 to 7 so that XINUSE[1] (SSE) and XINUSE[2] (AVX) can be cleared. */
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+	area_test.xsave_hdr.hdr.xcomp_bv = XSAVE_COMPACTED_FORMAT;
+
+	/* Execute XRSTOR instruction with EDX:EAX = 6 to clear XINUSE[2:1] */
+	asm_xrstor(&area_test, STATE_SSE | STATE_AVX);
+}
+
+static __unused void xsave_clean_up_env(void)
+{
+	asm_write_cr4_osxsave(1);
+
+	xsave_reset_xinuse();
+	debug_print("Clear XINUSE[1] (SSE) and XINUSE[2] (AVX): XCR1 = 0x%lx \n", asm_read_xcr(1));
+
+	asm_write_xcr(0, STATE_X87);
+	debug_print("Set XCR0 to 1: XCR0 = 0x%lx \n", asm_read_xcr(0));
+
+	asm_write_cr4_osxsave(0);
+	debug_print("Clear CR4.OSXSAVE[18]: CR4.OSXSAVE[18] = 0x%lx \n", read_cr4() & X86_CR4_OSXSAVE);
+
+	uint64_t cr0 = read_cr0();
+	uint64_t clr_bits_mask = CR0_AM_MASK | CR0_TS_MASK;
+	write_cr0(cr0 & (~clr_bits_mask));
+	debug_print("Clear CR0.AM: CR0.AM = 0x%lx \n", read_cr0() & CR0_AM_MASK);
+	debug_print("Clear CR0.TS: CR0.TS = 0x%lx \n", read_cr0() & CR0_TS_MASK);
+
+	uint64_t eflags = read_rflags();
+	write_rflags(eflags & (~X86_EFLAGS_AC));
+	debug_print("Clear EFLAGS.AC: EFLAGS.AC = 0x%lx \n", read_rflags() & X86_EFLAGS_AC);
 }
 
 /*
- * @brief case name: XSAVE XINUSE[bit 2:0] initial state following INIT_001
+ * @brief case name: XSAVE_CR4_initial_state_following_start-up_001
  *
- * Summary: After AP receives first INIT, set the value of XINUSE with executing SSE
- * instruction; executing XGETBV shall get the same XINUSE value after second INIT.
- * And the test case pass when bit 1 of (XINUSE & XCR0) equals with 1.
- * This case constructs the environment with XINUSE[1] is 1.
+ * Summary: ACRN hypervisor shall set initial guest CR4.OSXSAVE to 0 following start-up.
  */
-static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_01(void)
+static __unused void xsave_rqmid_23153_xsave_cr4_initial_state_following_startup_001(void)
 {
-	u32 chk = 0;
-	u64 xinuse = 0;
-	u64 xinuse1 = 0;
-	xinuse = set_xinuse;
-	debug_print("\n --->bp: before send sipi, XINUSE=%lx %d\n", xinuse, ap_start_count);
+	uint64_t volatile cr4_startup = *((uint64_t volatile *)XSAVE_STARTUP_CR4_ADDR);
+	uint64_t cr4_osxsave_startup = cr4_startup & X86_CR4_OSXSAVE;
 
-	/*send sipi to ap*/
-	send_sipi();
+	debug_print("Check CR4.OSXSAVE initial state following start-up \n");
+	debug_print("cr4_osxsave_startup = 0x%lx, XSAVE_EXPECTED_STARTUP_CR4_OSXSAVE = 0x%lx \n",
+		cr4_osxsave_startup, XSAVE_EXPECTED_STARTUP_CR4_OSXSAVE);
 
-	xinuse1 = set_xinuse;
-	debug_print("\n --->ap: after send sipi, XINUSE=%lx %d\n", xinuse1, ap_start_count);
+	report("%s", (cr4_osxsave_startup == XSAVE_EXPECTED_STARTUP_CR4_OSXSAVE), __FUNCTION__);
+}
 
-	if (xinuse == xinuse1) {
-		chk++;
-	}
-	if ((xinuse & STATE_SSE) == STATE_SSE) {
-		chk++;
-	}
+/*
+ * @brief case name: XSAVE_XCR0_initial_state_following_start-up_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest XCR0 to 1H following start-up.
+ */
+static __unused void xsave_rqmid_22853_xsave_xcr0_initial_state_following_startup_001(void)
+{
+	uint32_t volatile xcr0_startup_low = *((uint32_t volatile *)XSAVE_STARTUP_XCR0_LOW_ADDR);
+	uint32_t volatile xcr0_startup_hi = *((uint32_t volatile *)XSAVE_STARTUP_XCR0_HI_ADDR);
+	uint64_t xcr0_startup = ((uint64_t)xcr0_startup_hi << 32U) | (uint64_t)xcr0_startup_low;
 
-	report("%s", (chk == 2), __FUNCTION__);
+	debug_print("Check XCR0 initial state following start-up: \n");
+	debug_print("xcr0_startup = 0x%lx, XSAVE_EXPECTED_STARTUP_XCR0 = 0x%lx \n",
+		xcr0_startup, XSAVE_EXPECTED_STARTUP_XCR0);
+
+	report("%s", (xcr0_startup == XSAVE_EXPECTED_STARTUP_XCR0), __FUNCTION__);
+}
+
+/*
+ * @brief case name: XSAVE XINUSE[bit 2:0] initial state following start-up_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest XINUSE[bit 2:0] to 1H following start-up. SDM Vol1, Chapter 13.6.
+ *
+ * As XCR1 is equal to XCR0 & XINUSE, XINUSE[2:0] is equal to XCR1 when XCR0 is set to 7.
+ */
+static __unused void xsave_rqmid_23634_xinuse_bit2to0_initial_state_following_startup_001(void)
+{
+	uint32_t volatile xcr1_startup_low = *((uint32_t volatile *)XSAVE_STARTUP_XCR1_LOW_ADDR);
+	uint32_t volatile xcr1_startup_hi = *((uint32_t volatile *)XSAVE_STARTUP_XCR1_HI_ADDR);
+	uint64_t xcr1_startup = ((uint64_t)xcr1_startup_hi << 32U) | (uint64_t)xcr1_startup_low;
+
+	/* As XCR1 is equal to XCR0 & XINUSE, XINUSE[2:0] is equal to XCR1 when XCR0 is set to 7. */
+	uint64_t xinuse_startup = xcr1_startup;
+	debug_print("Check XINUSE initial state following start-up: \n");
+	debug_print("xinuse_startup = 0x%lx, XSAVE_EXPECTED_STARTUP_XINUSE = 0x%lx \n",
+		xinuse_startup, XSAVE_EXPECTED_STARTUP_XINUSE);
+
+	report("%s", (xinuse_startup == XSAVE_EXPECTED_STARTUP_XINUSE), __FUNCTION__);
+}
+
+/*
+ * @brief case name: XSAVE_CR4_initial_state_following_INIT_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest CR4.OSXSAVE to 0 following INIT.
+ */
+static __unused void xsave_rqmid_23154_xsave_cr4_initial_state_following_init_001(void)
+{
+	uint64_t volatile cr4_init = *((uint64_t volatile *)XSAVE_INIT_CR4_ADDR);
+	uint64_t cr4_osxsave_init = cr4_init & X86_CR4_OSXSAVE;
+
+	debug_print("Check CR4.OSXSAVE initial state following INIT \n");
+	debug_print("cr4_osxsave_init = 0x%lx, XSAVE_EXPECTED_INIT_CR4_OSXSAVE = 0x%lx \n",
+		cr4_osxsave_init, XSAVE_EXPECTED_INIT_CR4_OSXSAVE);
+
+	report("%s", (cr4_osxsave_init == XSAVE_EXPECTED_INIT_CR4_OSXSAVE), __FUNCTION__);
+}
+
+/*
+ * @brief case name: XSAVE_XCR0_initial_state_following_INIT_002
+ *
+ * Summary: ACRN hypervisor shall keep guest XCR0 unchanged following INIT.
+ *
+ * This case verifies the XCR0 following the first INIT received by the AP.
+ * It shall be equal to 1H since ACRN hypervisor shall set initial guest XCR0 to 1H following start-up.
+ */
+static __unused void xsave_rqmid_36768_xcr0_initial_state_following_init_002(void)
+{
+	debug_print("Check XCR0 following the first INIT received by the AP: \n");
+	debug_print("XCR0 following the first INIT = 0x%lx, expected value = 0x%lx \n",
+		xcr0_enter_1st_init, XSAVE_EXPECTED_STARTUP_XCR0);
+
+	report("%s", (xcr0_enter_1st_init == XSAVE_EXPECTED_STARTUP_XCR0), __FUNCTION__);
 }
 
 /*
  * @brief case name: XSAVE XINUSE[bit 2:0] initial state following INIT_002
  *
- * Summary: At BP executing 1st instruction and AP receives the first init,
- * set the value of XINUSE with executing SSE instruction;
- * execute XGETBV to get XINUSE value, and the two XINUSE values should be equal.
+ * Summary: ACRN hypervisor shall keep guest XINUSE[bit 2:0] unchanged following INIT. SDM Vol1, Chapter 13.6.
+ *
+ * This case verifies the XINUSE[bit 2:0] following the first INIT received by the AP.
+ * It shall be equal to 1H since ACRN hypervisor shall set initial guest XINUSE[bit 2:0] to 1H following start-up.
  */
-static __unused void xsave_rqmid_37093_XINUSE_bit2to0_initial_state_following_INIT_02(void)
+static __unused void xsave_rqmid_24108_xinuse_bit2to0_initial_state_following_init_002(void)
 {
-	u32 chk = 0;
-	u64 xinuse_bp = 0;
-	u64 xinuse_ap = 0;
-	xinuse_bp = get_init_xinuse(0x6000, 0x6004);
-	debug_print("\n --->bp: XINUSE=%lx\n", xinuse_bp);
+	debug_print("Check XINUSE[bit 2:0] following the first INIT received by the AP: \n");
+	debug_print("XINUSE[bit 2:0] following the first INIT = 0x%lx, expected value = 0x%lx \n",
+		xcr1_enter_1st_init, XSAVE_EXPECTED_STARTUP_XINUSE);
 
-	xinuse_ap = init_xinuse;
-	debug_print("\n --->ap: XINUSE=%lx\n", xinuse_ap);
+	report("%s", (xcr1_enter_1st_init == XSAVE_EXPECTED_STARTUP_XINUSE), __FUNCTION__);
+}
 
-	if (xinuse_bp == xinuse_ap) {
-		chk++;
+/*
+ * @brief case name: XSAVE_XCR0_initial_state_following_INIT_001
+ *
+ * Summary: ACRN hypervisor shall keep guest XCR0 unchanged following INIT.
+ *
+ * This case verifies XCR0 is unchanged following the INIT (when it has been set to 7H on the AP).
+ */
+static __unused void xsave_rqmid_23151_xcr0_initial_state_following_init_001(void)
+{
+	/* As the environment set-up is complete in 2nd INIT, wait until it happens. */
+	while (ap_start_count < 2) {
+		asm_pause();
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	debug_print("Check XCR0 following the INIT when it has been set to 7H: \n");
+	debug_print("XCR0 following the 2nd INIT = 0x%lx, expected value = 0x%lx \n",
+		xcr0_enter_2nd_init, xcr0_init_write_7_to_xcr0);
+
+	report("%s", (xcr0_enter_2nd_init == xcr0_init_write_7_to_xcr0), __FUNCTION__);
 }
+
+/*
+ * @brief case name: XSAVE XINUSE[bit 2:0] initial state following INIT_001
+ *
+ * Summary: ACRN hypervisor shall keep guest XINUSE[bit 2:0] unchanged following INIT. SDM Vol1, Chapter 13.6.
+ *
+ * This case verifies XINUSE[bit 2:0] is unchanged following the INIT (when XINUSE[1] has been set to 1 on the AP).
+ */
+static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_001(void)
+{
+	/* As the environment set-up is complete in 2nd INIT, wait until it happens. */
+	while (ap_start_count < 2) {
+		asm_pause();
+	}
+
+	debug_print("Check XINUSE[bit 2:0] following the INIT when XINUSE[1] has been set to 1: \n");
+	debug_print("XINUSE[bit 2:0] following the 2nd INIT = 0x%lx, expected value = 0x%lx \n",
+		xcr1_enter_2nd_init, xcr1_init_after_sse_exe);
+
+	bool cond_1 = ((xcr1_init_after_sse_exe & STATE_SSE) == STATE_SSE);
+	bool cond_2 = (xcr1_enter_2nd_init == xcr1_init_after_sse_exe);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_X87
+ *
+ * Summary:
+ * For state component i, when a vCPU executes XSAVEOPT, guest EDX:EAX[bit i] is 1,
+ * guest XCR0[bit i] is 1, guest XINUSE[i] is 1, exception conditions are unsatisfied and
+ * XRSTOR has never been executed since last initializing event, ACRN hypervisor shall
+ * guarantee that state component i is saved to the XSAVE area.
+ *
+ * This case verifies state component 0, which is X87.
+ */
+static __unused void xsave_rqmid_36703_xsaveopt_before_xrstor_initial_state_following_initializing_event_x87(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[bit 18] to 1.\n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 1 to XCR0 to make sure XCR0[0] is 1 \n");
+	asm_write_xcr(0, STATE_X87);
+
+	debug_print("Step-3: Execute X87 instruction to make sure XINUSE[0] is 1 \n");
+	asm volatile("fninit");
+
+	debug_print("Step-4: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-5: Execute XSAVEOPT instruction with EDX:EAX (instruction mask) is 1 to save X87 state \n");
+	asm_xsaveopt(&area_test, STATE_X87);
+
+	uint64_t expected_xstate_bv_x87 = STATE_X87;
+	uint64_t xstate_bv_test_x87 = area_test.xsave_hdr.hdr.xstate_bv & STATE_X87;
+	debug_print("Step-6: Check XSTATE_BV in the XSAVE area: \n");
+	debug_print("xstate_bv_test_x87 = 0x%lx, expected_xstate_bv_x87 = 0x%lx \n",
+		xstate_bv_test_x87, expected_xstate_bv_x87);
+
+	report("%s", (xstate_bv_test_x87 == expected_xstate_bv_x87), __FUNCTION__);
+}
+
+/*
+ * @brief case name: XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_SSE
+ *
+ * Summary:
+ * For state component i, when a vCPU executes XSAVEOPT, guest EDX:EAX[bit i] is 1,
+ * guest XCR0[bit i] is 1, guest XINUSE[i] is 1, exception conditions are unsatisfied and
+ * XRSTOR has never been executed since last initializing event, ACRN hypervisor shall
+ * guarantee that state component i is saved to the XSAVE area.
+ *
+ * This case verifies state component 1, which is SSE.
+ */
+static __unused void xsave_rqmid_23636_xsaveopt_before_xrstor_initial_state_following_initializing_event_sse(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[bit 18] to 1.\n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 3 to XCR0 to make sure XCR0[1] is 1 \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE);
+
+	debug_print("Step-3: Execute SSE instruction to let XINUSE[1] be 1 \n");
+	asm volatile("movapd %xmm1, %xmm2");
+
+	debug_print("Step-4: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-5: Execute XSAVEOPT instruction with EDX:EAX (instruction mask) is 2 to save SSE state \n");
+	asm_xsaveopt(&area_test, STATE_SSE);
+
+	uint64_t expected_xstate_bv_sse = STATE_SSE;
+	uint64_t xstate_bv_test_sse = area_test.xsave_hdr.hdr.xstate_bv & STATE_SSE;
+	debug_print("Step-6: Check XSTATE_BV in the XSAVE area: \n");
+	debug_print("xstate_bv_test_sse = 0x%lx, expected_xstate_bv_sse = 0x%lx \n",
+		xstate_bv_test_sse, expected_xstate_bv_sse);
+
+	report("%s", (xstate_bv_test_sse == expected_xstate_bv_sse), __FUNCTION__);
+}
+
+/*
+ * @brief case name: XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_AVX
+ *
+ * Summary:
+ * For state component i, when a vCPU executes XSAVEOPT, guest EDX:EAX[bit i] is 1,
+ * guest XCR0[bit i] is 1, guest XINUSE[i] is 1, exception conditions are unsatisfied and
+ * XRSTOR has never been executed since last initializing event, ACRN hypervisor shall
+ * guarantee that state component i is saved to the XSAVE area.
+ *
+ * This case verifies state component 2, which is AVX.
+ */
+static __unused void xsave_rqmid_23637_xsaveopt_before_xrstor_initial_state_following_initializing_event_avx(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[bit 18] to 1.\n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 7 to XCR0 to make sure XCR0[2] is 1 \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	debug_print("Step-3: Execute AVX instruction to let XINUSE[2] be 1 \n");
+	asm volatile("vmovapd %ymm1, %ymm2");
+
+	debug_print("Step-4: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-5: Execute XSAVEOPT instruction with EDX:EAX (instruction mask) is 4 to save AVX state \n");
+	asm_xsaveopt(&area_test, STATE_AVX);
+
+	uint64_t expected_xstate_bv_avx = STATE_AVX;
+	uint64_t xstate_bv_test_avx = area_test.xsave_hdr.hdr.xstate_bv & STATE_AVX;
+	debug_print("Step-6: Check XSTATE_BV in the XSAVE area: \n");
+	debug_print("xstate_bv_test_avx = 0x%lx, expected_xstate_bv_avx = 0x%lx \n",
+		xstate_bv_test_avx, expected_xstate_bv_avx);
+
+	report("%s", (xstate_bv_test_avx == expected_xstate_bv_avx), __FUNCTION__);
+}
+
+/*
+ * Case name: 22895:XSAVE init and modified optimizations_001.
+ *
+ * Summary: DNG_132105: XSAVE init and modified optimizations.
+ *
+ * ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
+ * in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
+ *
+ * CPUID.(EAX=DH, ECX=1H):EAX[2] enumerates support for execution of XGETBV with ECX = 1
+ */
+static __unused void xsave_rqmid_22895_init_and_modified_optimizations_001(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[bit 18] to 1.\n");
+	asm_write_cr4_osxsave(1);
+
+	uint32_t read_xcr1_support = get_xcr1_support();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=1H):EAX[2] is 1: read_xcr1_support = 0x%x \n",
+		read_xcr1_support);
+
+	debug_print("Step-3: Execute XGETBV with ECX=1 and no exception shall be generated. \n");
+	struct xsave_exception xgetbv_ret = xgetbv_exception_checking(1);
+
+	bool cond_1 = (read_xcr1_support != 0);
+	bool cond_2 = (xgetbv_ret.vector == NO_EXCEPTION);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 23638:XSAVE init and modified optimizations_002.
+ *
+ * Summary: DNG_132105: XSAVE init and modified optimizations.
+ *
+ * ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
+ * in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
+ *
+ * XSAVEOPT Instruction:
+ * UD exception triggered.
+ */
+static __unused void xsave_rqmid_23638_init_and_modified_optimizations_002(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t xsaveopt_support = get_xsaveopt_support();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=1H):EAX[0] is 1: xsaveopt_support = 0x%x \n",
+		xsaveopt_support);
+
+	debug_print("Step-2: Clear CR4.OSXSAVE[18] to 0. \n");
+	asm_write_cr4_osxsave(0);
+
+	debug_print("Step-3: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-4: Execute XSAVEOPT instruction with CR4.OSXSAVE[18]=0. \n");
+	struct xsave_exception ret = xsaveopt_exception_checking(&area_test, 0);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: ret.vector = %d \n",
+		UD_VECTOR, ret.vector);
+
+	bool cond_1 = (xsaveopt_support != 0);
+	bool cond_2 = (ret.vector == UD_VECTOR);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 23639:XSAVE init and modified optimizations_003.
+ *
+ * Summary: DNG_132105: XSAVE init and modified optimizations.
+ *
+ * ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
+ * in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
+ *
+ * XSAVEOPT Instruction:
+ * No exception triggered, Guest EDX:EAX[i] is 0.
+ */
+static __unused void xsave_rqmid_23639_init_and_modified_optimizations_003(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t xsaveopt_support = get_xsaveopt_support();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=1H):EAX[0] is 1: xsaveopt_support = 0x%x \n",
+		xsaveopt_support);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-3: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-4: Execute XSAVEOPT instruction with EDX:EAX = 0. \n");
+	asm_xsaveopt(&area_test, 0);
+
+	uint64_t expected_xstate_bv = 0;
+	uint64_t xstate_bv_test = area_test.xsave_hdr.hdr.xstate_bv;
+	debug_print("Step-5: Check XSTATE_BV in XSAVE area: xstate_bv_test = 0x%lx, expected_xstate_bv = 0x%lx \n",
+		xstate_bv_test, expected_xstate_bv);
+
+	bool cond_1 = (xsaveopt_support != 0);
+	bool cond_2 = (xstate_bv_test == expected_xstate_bv);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 23640:XSAVE init and modified optimizations_004.
+ *
+ * Summary: DNG_132105: XSAVE init and modified optimizations.
+ *
+ * ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
+ * in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
+ *
+ * XSAVEOPT Instruction:
+ * No exception triggered, Guest EDX:EAX[i] is 1, Guest XCR0[i] is 0.
+ *
+ * This case utilizes the state component 1 (SSE) to test.
+ * 1. Guest XCR0[1] is 0 by setting XCR0 to 1
+ * 2. Guest EDX:EAX[1] is 1 by executing XSAVEOPT with EDX:EAX = 7
+ */
+static __unused void xsave_rqmid_23640_init_and_modified_optimizations_004(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t xsaveopt_support = get_xsaveopt_support();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=1H):EAX[0] is 1: xsaveopt_support = 0x%x \n",
+		xsaveopt_support);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-3: Write 1 to XCR0 \n");
+	asm_write_xcr(0, STATE_X87);
+
+	debug_print("Step-4: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-5: Execute XSAVEOPT instruction with EDX:EAX = 7. \n");
+	asm_xsaveopt(&area_test, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	uint64_t expected_xstate_bv_sse = 0;
+	uint64_t xstate_bv_test_sse = area_test.xsave_hdr.hdr.xstate_bv & STATE_SSE;
+	debug_print("Step-6: Check XSTATE_BV in XSAVE area: \n");
+	debug_print("xstate_bv_test_sse = 0x%lx, expected_xstate_bv_sse = 0x%lx \n",
+		xstate_bv_test_sse, expected_xstate_bv_sse);
+
+	bool cond_1 = (xsaveopt_support != 0);
+	bool cond_2 = (xstate_bv_test_sse == expected_xstate_bv_sse);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 23641:XSAVE init and modified optimizations_005.
+ *
+ * Summary: DNG_132105: XSAVE init and modified optimizations.
+ *
+ * ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
+ * in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
+ *
+ * XSAVEOPT Instruction:
+ * No exception triggered, Guest EDX:EAX[i] is 1, Guest XCR0[i] is 1, XINUSE[i] is 0.
+ *
+ * This test case utilizes state component 2 (AVX) to test.
+ * 1. Guest XCR0[2] is 1 by setting XCR0 to 7.
+ * 2. XINUSE[2] is 0 by default environment set-up.
+ * 3. Guest EDX:EAX[2] is 1 by executing XSAVEOPT with EDX:EAX = 4.
+ */
+static __unused void xsave_rqmid_23641_init_and_modified_optimizations_005(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t xsaveopt_support = get_xsaveopt_support();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=1H):EAX[0] is 1: xsaveopt_support = 0x%x \n",
+		xsaveopt_support);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-3: Write 7 to XCR0 \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	uint64_t xcr1 = asm_read_xcr(1);
+	uint64_t xinuse_avx = xcr1 & STATE_AVX;
+	debug_print("Step-4: Check if XINUSE[2] is 0: xinuse_avx = 0x%lx \n", xinuse_avx);
+
+	debug_print("Step-5: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-6: Execute XSAVEOPT instruction with EDX:EAX = 4 (set AVX bit in the instruction mask) \n");
+	asm_xsaveopt(&area_test, STATE_AVX);
+
+	uint64_t expected_xstate_bv_avx = 0;
+	uint64_t xstate_bv_test_avx = area_test.xsave_hdr.hdr.xstate_bv & STATE_AVX;
+	debug_print("Step-7: Check XSTATE_BV in XSAVE area: \n");
+	debug_print("xstate_bv_test_avx = 0x%lx, expected_xstate_bv_avx = 0x%lx \n",
+		xstate_bv_test_avx, expected_xstate_bv_avx);
+
+	bool cond_1 = (xsaveopt_support != 0);
+	bool cond_2 = (xinuse_avx == 0);
+	bool cond_3 = (xstate_bv_test_avx == expected_xstate_bv_avx);
+
+	report("%s", (cond_1 && cond_2 && cond_3), __FUNCTION__);
+}
+
+/*
+ * Case name: 36805:XSAVE init and modified optimizations_007.
+ *
+ * Summary: DNG_132105: XSAVE init and modified optimizations.
+ *
+ * ACRN hypervisor shall expose XSAVE init and modified optimizations to any VM,
+ * in compliance with Chapter 13.2, 13.6 and 13.9, Vol. 1, SDM.
+ *
+ * XSAVEOPT Instruction:
+ * No exception triggered, Guest EDX:EAX[i] is 1, Guest XCR0[i] is 1, XINUSE[i] is 1, XRSTOR has been executed
+ * since last initializing event, XMODIFIED[i] is 1.
+ *
+ * Utilize state component 1 (SSE) to test.
+ *
+ * This test case utilizes state component 1 (SSE) to test.
+ * 1. Guest XCR0[1] is 1 by setting XCR0 to 3.
+ * 2. XINUSE[1] is 1 by executing SSE instruction.
+ * 3. XMODIFIED[1] is constructed as 1 through executing SSE instruction between XRSTOR instruction and XSAVEOPT
+ *    instruction.
+ * 4. Guest EDX:EAX[1] is 1 by executing XSAVEOPT with EDX:EAX = 2
+ */
+static __unused void xsave_rqmid_36805_init_and_modified_optimizations_007(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t xsaveopt_support = get_xsaveopt_support();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=1H):EAX[0] is 1: xsaveopt_support = 0x%x \n",
+		xsaveopt_support);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-3: Write 3 to XCR0 \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE);
+
+	debug_print("Step-4: Execute SSE instruction to let XINUSE[1] be 1 \n");
+	asm volatile("movapd %xmm1, %xmm2");
+
+	uint64_t xcr1 = asm_read_xcr(1);
+	uint64_t xinuse_sse = xcr1 & STATE_SSE;
+	debug_print("Step-5: Check if XINUSE[1] is 1: xinuse_sse = 0x%lx \n", xinuse_sse);
+
+	debug_print("Step-6: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-7: Execute XRSTOR instruction with EDX:EAX = 2 (set SSE bit in the instruction mask) \n");
+	asm_xrstor(&area_test, STATE_SSE);
+
+	debug_print("Step-8: Execute SSE instruction to let XMODIFIED[1] be 1 \n");
+	asm volatile("movapd %xmm1, %xmm2");
+
+	debug_print("Step-9: Execute XSAVEOPT instruction with EDX:EAX = 2 (set SSE bit in the instruction mask) \n");
+	asm_xsaveopt(&area_test, STATE_SSE);
+
+	uint64_t expected_xstate_bv_sse = STATE_SSE;
+	uint64_t xstate_bv_test_sse = area_test.xsave_hdr.hdr.xstate_bv & STATE_SSE;
+	debug_print("Step-10: Check XSTATE_BV in XSAVE area: \n");
+	debug_print("xstate_bv_test_sse = 0x%lx, expected_xstate_bv_sse = 0x%lx \n",
+		xstate_bv_test_sse, expected_xstate_bv_sse);
+
+	bool cond_1 = (xsaveopt_support != 0);
+	bool cond_2 = (xinuse_sse == STATE_SSE);
+	bool cond_3 = (xstate_bv_test_sse == expected_xstate_bv_sse);
+
+	report("%s", (cond_1 && cond_2 && cond_3), __FUNCTION__);
+}
+
+/*
+ * Case name: 22840:XSAVE_general_support_001_CPUID_XSAVE.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID.1:ECX.XSAVE[bit 26] enumerates general support for the XSAVE feature set.
+ * If this bit is 1, the processor supports the following instructions:
+ * XGETBV, XRSTOR, XSAVE, and XSETBV.
+ */
+static __unused void xsave_rqmid_22840_general_support_001_cpuid_xsave(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t xsave_support = get_xsave_support();
+	debug_print("Step-1: Check if CPUID.01H:ECX.XSAVE[bit 26] is 1: xsave_support = 0x%x \n", xsave_support);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-3: Execute XGETBV with ECX is 0. No exception shall be triggered. \n");
+	struct xsave_exception xgetbv_ret = xgetbv_exception_checking(0);
+
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-4: Execute XSAVE with 64-byte aligned memory. No exception shall be triggered. \n");
+	struct xsave_exception xsave_ret = xsave_exception_checking(&area_test, 0);
+
+	debug_print("Step-5: Execute XRSTOR with 64-byte aligned memory. No exception shall be triggered. \n");
+	struct xsave_exception xrstor_ret = xrstor_exception_checking(&area_test, 0);
+
+	debug_print("Step-6: Execute XSETBV with EDX:EAX is 1 and ECX is 3. No exception shall be triggered. \n");
+	struct xsave_exception xsetbv_ret = xsetbv_exception_checking(0, STATE_X87 | STATE_SSE);
+
+	bool cond_1 = (xsave_support != 0);
+	bool cond_2 = (xgetbv_ret.vector == NO_EXCEPTION);
+	bool cond_3 = (xsave_ret.vector == NO_EXCEPTION);
+	bool cond_4 = (xrstor_ret.vector == NO_EXCEPTION);
+	bool cond_5 = (xsetbv_ret.vector == NO_EXCEPTION);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4 && cond_5), __FUNCTION__);
+}
+
+/*
+ * Case name: 22863:XSAVE_general_support_002_set_CR4_OSXSAVE.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CR4.OSXSAVE can be set to 1 if and only if CPUID.1:ECX.XSAVE[bit 26] is enumerated as 1.
+ */
+static __unused void xsave_rqmid_22863_general_support_002_set_cr4_osxsave(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t xsave_support = get_xsave_support();
+	debug_print("Step-1: Check if CPUID.01H:ECX.XSAVE[bit 26] is 1: xsave_support = 0x%x \n", xsave_support);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. No exception shall be triggered. \n");
+	uint8_t cr4_osxsave_1_ret = write_cr4_osxsave(1);
+
+	uint64_t cr4_osxsave_1 = asm_read_cr4_osxsave();
+	debug_print("Step-3: Check if CR4.OSXSAVE[bit 18] is 1. cr4_osxsave_1 = 0x%lx \n", cr4_osxsave_1);
+
+	debug_print("Step-4: Set CR4.OSXSAVE[18] to 0. \n");
+	uint8_t cr4_osxsave_0_ret = write_cr4_osxsave(0);
+
+	uint64_t cr4_osxsave_0 = asm_read_cr4_osxsave();
+	debug_print("Step-5: Check if CR4.OSXSAVE[bit 18] is 0. cr4_osxsave_0 = 0x%lx \n", cr4_osxsave_0);
+
+	bool cond_1 = (xsave_support != 0);
+	bool cond_2 = (cr4_osxsave_1_ret == NO_EXCEPTION);
+	bool cond_3 = (cr4_osxsave_1 != 0);
+	bool cond_4 = (cr4_osxsave_0_ret == NO_EXCEPTION);
+	bool cond_5 = (cr4_osxsave_0 == 0);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4 && cond_5), __FUNCTION__);
+}
+
+/*
+ * Case name: 22793:XSAVE_general_support_003_set_XCR0.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID function 0DH, sub-function 0
+ * EDX:EAX is a bitmap of all the user state components that can be managed using the XSAVE feature set.
+ * A bit can be set in XCR0 if and only if the corresponding bit is set in this bitmap.
+ */
+static __unused void xsave_rqmid_22793_general_support_003_set_xcr0(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-1: Check CPUID.(EAX=DH, ECX=0H):(EDX:EAX): supported_user_states = 0x%lx \n",
+		supported_user_states);
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-3: Execute XSETBV with ECX = 0 and EDX:EAX = 1, 3, 7. No exception shall be triggered. \n");
+	struct xsave_exception xsetbv_ret_1 = xsetbv_exception_checking(0, STATE_X87);
+	struct xsave_exception xsetbv_ret_3 = xsetbv_exception_checking(0, STATE_X87 | STATE_SSE);
+	struct xsave_exception xsetbv_ret_7 = xsetbv_exception_checking(0, STATE_X87 | STATE_SSE | STATE_AVX);
+	bool cond_2 = ((xsetbv_ret_1.vector == NO_EXCEPTION) &&
+			(xsetbv_ret_3.vector == NO_EXCEPTION) &&
+			(xsetbv_ret_7.vector == NO_EXCEPTION));
+
+	debug_print("Step-3: For each i satisfying 3 <= i < 64, set XCR0[0] and XCR0[i] to 1. \n");
+	uint32_t i;
+	uint64_t val;
+	struct xsave_exception ret;
+	bool cond_3 = true;
+	for (i = 3U; i < 64U; i++) {
+		val = STATE_X87 | (1UL << i);
+		ret = xsetbv_exception_checking(0, val);
+
+		if ((ret.vector != GP_VECTOR) || (ret.error_code != 0)) {
+			cond_3 = false;
+			debug_print("Failure!!! Setting XCR0[%d] to 1. \n", i);
+			debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+			debug_print("Actual exception: ret.vector = %d, ret.error_code = %d \n",
+				ret.vector, ret.error_code);
+		}
+	}
+
+	report("%s", (cond_1 && cond_2 && cond_3), __FUNCTION__);
+}
+
+/*
+ * Case name: 22794:XSAVE_general_support_004_supported_states_size.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID.(EAX=DH, ECX=0H):ECX enumerates the size (in bytes) required by the XSAVE instruction for an XSAVE area
+ * containing all the user state components supported by this processor
+ */
+static __unused void xsave_rqmid_22794_general_support_004_supported_states_size(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	uint32_t avx_area_size = cpuid_indexed(CPUID_XSAVE_FUC, 2).a;
+	debug_print("Step-2: Get AVX area size (specified by CPUID.(EAX=DH, ECX=2H):EAX). avx_area_size = 0x%x \n",
+		avx_area_size);
+
+	uint32_t expected_size = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE + avx_area_size;
+	uint32_t total_size = cpuid_indexed(CPUID_XSAVE_FUC, 0).c;
+	debug_print("Step-3: Check CPUID.(EAX=DH, ECX=0H):ECX: total_size = 0x%x, expected_size = 0x%x \n",
+		total_size, expected_size);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (total_size == expected_size);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 22797:XSAVE_general_support_005_enabled_user_states_size.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID.(EAX=DH, ECX=0H):EBX enumerates the size (in bytes) required by the XSAVE instruction for an XSAVE area
+ * containing all the user state components corresponding to bits currently set in XCR0.
+ */
+static __unused void xsave_rqmid_22797_general_support_005_enabled_user_states_size(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	debug_print("Step-3: Write 7 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	uint32_t avx_area_size = cpuid_indexed(CPUID_XSAVE_FUC, 2).a;
+	debug_print("Step-4: Get AVX area size (specified by CPUID.(EAX=DH, ECX=2H):EAX). avx_area_size = 0x%x \n",
+		avx_area_size);
+
+	uint32_t expected_size_7 = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE + avx_area_size;
+	uint32_t enabled_size_7 = cpuid_indexed(CPUID_XSAVE_FUC, 0).b;
+	debug_print("Step-5: Check CPUID.(EAX=DH, ECX=0H):EBX: enabled_size_7 = 0x%x, expected_size_7 = 0x%x \n",
+		enabled_size_7, expected_size_7);
+
+	debug_print("Step-6: Write 3 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE);
+
+	uint32_t expected_size_3 = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE;
+	uint32_t enabled_size_3 = cpuid_indexed(CPUID_XSAVE_FUC, 0).b;
+	debug_print("Step-7: Check CPUID.(EAX=DH, ECX=0H):EBX: enabled_size_3 = 0x%x, expected_size_3 = 0x%x \n",
+		enabled_size_3, expected_size_3);
+
+	debug_print("Step-8: Write 1 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87);
+
+	uint32_t expected_size_1 = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE;
+	uint32_t enabled_size_1 = cpuid_indexed(CPUID_XSAVE_FUC, 0).b;
+	debug_print("Step-9: Check CPUID.(EAX=DH, ECX=0H):EBX: enabled_size_1 = 0x%x, expected_size_1 = 0x%x \n",
+		enabled_size_1, expected_size_1);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (enabled_size_7 == expected_size_7);
+	bool cond_3 = (enabled_size_3 == expected_size_3);
+	bool cond_4 = (enabled_size_1 == expected_size_1);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4), __FUNCTION__);
+}
+
+/*
+ * Case name: 22798:XSAVE_general_support_006_CPUID_XSAVEOPT.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID.(EAX=DH, ECX=1H):EAX[0] enumerates support for the XSAVEOPT instruction.
+ */
+static __unused void xsave_rqmid_22798_general_support_006_cpuid_xsaveopt(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint32_t xsaveopt_support = get_xsaveopt_support();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=1H):EAX[0] is 1: xsaveopt_support = 0x%x \n",
+		xsaveopt_support);
+
+	debug_print("Step-3: Execute XSAVEOPT instruction. No exception shall be triggered. \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+	struct xsave_exception xsaveopt_ret = xsaveopt_exception_checking(&area_test, 0);
+
+	bool cond_1 = (xsaveopt_support != 0);
+	bool cond_2 = (xsaveopt_ret.vector == NO_EXCEPTION);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 22827:XSAVE_general_support_011_all_enabled_states_size.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID.(EAX=DH, ECX=1H):EBX enumerates the size (in bytes) required by the XSAVES instruction for an XSAVE area
+ * containing all the state components corresponding to bits currently set in XCR0 | IA32_XSS.
+ */
+static __unused void xsave_rqmid_22827_general_support_011_all_enabled_states_size(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	uint64_t supported_supervisor_states = get_supported_supervisor_states();
+	debug_print("Step-3: Check if CPUID.(EAX=DH, ECX=1H):(EDX:ECX) is 0: supported_supervisor_states = 0x%lx \n",
+		supported_supervisor_states);
+
+	debug_print("Step-4: Write 7 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	uint32_t avx_area_size = cpuid_indexed(CPUID_XSAVE_FUC, 2).a;
+	debug_print("Step-5: Get AVX area size (specified by CPUID.(EAX=DH, ECX=2H):EAX). avx_area_size = 0x%x \n",
+		avx_area_size);
+
+	uint32_t expected_size_7 = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE + avx_area_size;
+	uint32_t enabled_size_7 = cpuid_indexed(CPUID_XSAVE_FUC, 1).b;
+	debug_print("Step-6: Check CPUID.(EAX=DH, ECX=1H):EBX: enabled_size_7 = 0x%x, expected_size_7 = 0x%x \n",
+		enabled_size_7, expected_size_7);
+
+	debug_print("Step-7: Write 3 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE);
+
+	uint32_t expected_size_3 = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE;
+	uint32_t enabled_size_3 = cpuid_indexed(CPUID_XSAVE_FUC, 1).b;
+	debug_print("Step-8: Check CPUID.(EAX=DH, ECX=1H):EBX: enabled_size_3 = 0x%x, expected_size_3 = 0x%x \n",
+		enabled_size_3, expected_size_3);
+
+	debug_print("Step-9: Write 1 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87);
+
+	uint32_t expected_size_1 = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE;
+	uint32_t enabled_size_1 = cpuid_indexed(CPUID_XSAVE_FUC, 1).b;
+	debug_print("Step-10: Check CPUID.(EAX=DH, ECX=1H):EBX: enabled_size_1 = 0x%x, expected_size_1 = 0x%x \n",
+		enabled_size_1, expected_size_1);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (supported_supervisor_states == XSAVE_SUPPORTED_SUPERVISOR_STATES);
+	bool cond_3 = (enabled_size_7 == expected_size_7);
+	bool cond_4 = (enabled_size_3 == expected_size_3);
+	bool cond_5 = (enabled_size_1 == expected_size_1);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4 && cond_5), __FUNCTION__);
+}
+
+/*
+ * Case name: 22829:XSAVE_general_support_013_state_size.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID function 0DH, sub-function i (i > 1).
+ * EAX enumerates the size (in bytes) required for state component i.
+ */
+static __unused void xsave_rqmid_22829_general_support_013_state_size(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	debug_print("Step-2: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-3: Write 7 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	uint32_t enabled_size = cpuid_indexed(CPUID_XSAVE_FUC, 0).b;
+	debug_print("Step-4: Check CPUID.(EAX=DH, ECX=0H):EBX: enabled_size = 0x%x \n", enabled_size);
+
+	uint32_t expected_avx_area_size = enabled_size - XSAVE_LEGACY_AREA_SIZE - XSAVE_HEADER_AREA_SIZE;
+	uint32_t avx_area_size = cpuid_indexed(CPUID_XSAVE_FUC, 2).a;
+	debug_print("Step-5: Get AVX area size (specified by CPUID.(EAX=DH, ECX=2H):EAX). \n");
+	debug_print("avx_area_size = 0x%x expected_avx_area_size = 0x%x \n",
+		avx_area_size, expected_avx_area_size);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (avx_area_size == expected_avx_area_size);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 22831:XSAVE_general_support_015_user_state_ECX_bit0.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID function 0DH, sub-function i (i > 1).
+ * If state component i is a user state component, ECX[0] return 0
+ */
+static __unused void xsave_rqmid_22831_general_support_015_user_state_ecx_bit0(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	uint64_t supported_supervisor_states = get_supported_supervisor_states();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=1H):(EDX:ECX) is 0: supported_supervisor_states = 0x%lx \n",
+		supported_supervisor_states);
+
+	uint32_t avx_us_bit = cpuid_indexed(CPUID_XSAVE_FUC, 2).c;
+	avx_us_bit &= XSAVE_USER_SUPERVISOR;
+	debug_print("Step-3: Check if CPUID.(EAX=DH, ECX=2H):ECX[0] is 0: avx_us_bit = 0x%x \n", avx_us_bit);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (supported_supervisor_states == XSAVE_SUPPORTED_SUPERVISOR_STATES);
+	bool cond_3 = (avx_us_bit == 0);
+
+	report("%s", (cond_1 && cond_2 && cond_3), __FUNCTION__);
+}
+
+/*
+ * Case name: 22865:XSAVE_general_support_016_state_offset.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID function 0DH, sub-function i (i > 1).
+ * If ECX[1] returns 0, state component i is located immediately following the preceding state component
+ */
+static __unused void xsave_rqmid_22865_general_support_016_state_offset(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	uint64_t supported_supervisor_states = get_supported_supervisor_states();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=1H):(EDX:ECX) is 0: supported_supervisor_states = 0x%lx \n",
+		supported_supervisor_states);
+
+	uint32_t avx_align_bit = cpuid_indexed(CPUID_XSAVE_FUC, 2).c;
+	avx_align_bit &= XSAVE_ALIGNMENT;
+	debug_print("Step-3: Check if CPUID.(EAX=DH, ECX=2H):ECX[1] is 0: avx_align_bit = 0x%x \n", avx_align_bit);
+
+	uint32_t expected_avx_offset = XSAVE_LEGACY_AREA_SIZE + XSAVE_HEADER_AREA_SIZE;
+	uint32_t avx_offset = cpuid_indexed(CPUID_XSAVE_FUC, 2).b;
+	debug_print("Step-4: Check CPUID.(EAX=DH, ECX=2H):EBX: avx_offset = 0x%x expected_avx_offset = 0x%x \n",
+		avx_offset, expected_avx_offset);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (supported_supervisor_states == XSAVE_SUPPORTED_SUPERVISOR_STATES);
+	bool cond_3 = (avx_align_bit == 0);
+	bool cond_4 = (avx_offset == expected_avx_offset);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4), __FUNCTION__);
+}
+
+/*
+ * Case name: 22832:XSAVE_general_support_017_CPUID_ECX_EDX_rsvd_bits.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID function 0DH, sub-function i (i > 1).
+ * ECX[31:2] and EDX return 0
+ */
+static __unused void xsave_rqmid_22832_general_support_017_cpuid_ecx_edx_rsvd_bits(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	uint64_t supported_supervisor_states = get_supported_supervisor_states();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=1H):(EDX:ECX) is 0: supported_supervisor_states = 0x%lx \n",
+		supported_supervisor_states);
+
+	uint32_t avx_ecx_rsvd = cpuid_indexed(CPUID_XSAVE_FUC, 2).c;
+	avx_ecx_rsvd = avx_ecx_rsvd >> 2U;
+	debug_print("Step-3: Check if CPUID.(EAX=DH, ECX=2H):ECX[31:2] is 0: avx_ecx_rsvd = 0x%x \n", avx_ecx_rsvd);
+
+	uint32_t avx_edx = cpuid_indexed(CPUID_XSAVE_FUC, 2).d;
+	debug_print("Step-4: Check if CPUID.(EAX=DH, ECX=2H):EDX is 0: avx_edx = 0x%x \n", avx_edx);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (supported_supervisor_states == XSAVE_SUPPORTED_SUPERVISOR_STATES);
+	bool cond_3 = (avx_ecx_rsvd == 0);
+	bool cond_4 = (avx_edx == 0);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4), __FUNCTION__);
+}
+
+/*
+ * Case name: 22835:XSAVE_general_support_018_CPUID_unsupported_states.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * CPUID function 0DH, sub-function i (i > 1).
+ * If the XSAVE feature set does not support state component i, sub-function i returns 0 in EAX, EBX, ECX, and EDX.
+ */
+static __unused void xsave_rqmid_22835_general_support_018_cpuid_unsupported_states(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_user_states = get_supported_user_states();
+	debug_print("Step-1: Check if CPUID.(EAX=DH, ECX=0H):(EDX:EAX) is 7: supported_user_states = 0x%lx \n",
+		supported_user_states);
+
+	uint64_t supported_supervisor_states = get_supported_supervisor_states();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=1H):(EDX:ECX) is 0: supported_supervisor_states = 0x%lx \n",
+		supported_supervisor_states);
+
+	bool cond_1 = (supported_user_states == XSAVE_SUPPORTED_USER_STATES);
+	bool cond_2 = (supported_supervisor_states == XSAVE_SUPPORTED_SUPERVISOR_STATES);
+
+	debug_print("Step-3: For each i in the range [3, 63], check if CPUID.(EAX=DH, ECX=i) return all 0. \n");
+	uint32_t i, eax, ebx, ecx, edx;
+	bool cond_3 = true;
+	for (i = 3U; i < 64U; i++) {
+		eax = cpuid_indexed(CPUID_XSAVE_FUC, i).a;
+		ebx = cpuid_indexed(CPUID_XSAVE_FUC, i).b;
+		ecx = cpuid_indexed(CPUID_XSAVE_FUC, i).c;
+		edx = cpuid_indexed(CPUID_XSAVE_FUC, i).d;
+
+		if ((eax != 0U) || (ebx != 0U) || (ecx != 0U) || (edx != 0U)) {
+			cond_3 = false;
+			debug_print("Failure!!! CPUID.(EAX=DH, ECX=%dH): EAX=%xH, EBX=%xH, ECX=%xH, EDX=%xH \n",
+				i, eax, ebx, ecx, edx);
+		}
+	}
+
+	report("%s", (cond_1 && cond_2 && cond_3), __FUNCTION__);
+}
+
+/*
+ * Case name: 21175:XSAVE_general_support_007_UD.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * If CR4.OSXSAVE[bit 18] is 0, execution of any of XGETBV, XRSTOR, XSAVE, XSAVEC, XSAVEOPT,
+ * and XSETBV causes an invalid-opcode exception (#UD).
+ */
+static __unused void xsave_rqmid_21175_general_support_007_ud(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Clear CR4.OSXSAVE[18] to 0. \n");
+	asm_write_cr4_osxsave(0);
+
+	debug_print("Step-2: Execute XGETBV with ECX is 0. \n");
+	struct xsave_exception xgetbv_ret = xgetbv_exception_checking(0);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xgetbv_ret.vector = %d \n",
+		UD_VECTOR, xgetbv_ret.vector);
+
+	debug_print("Step-3: Execute XSETBV with EDX:EAX is 1 and ECX is 0. \n");
+	struct xsave_exception xsetbv_ret = xsetbv_exception_checking(0, STATE_X87);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xsetbv_ret.vector = %d \n",
+		UD_VECTOR, xsetbv_ret.vector);
+
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-4: Execute XSAVE with 64-byte aligned memory specified \n");
+	struct xsave_exception xsave_ret = xsave_exception_checking(&area_test, 0);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xsave_ret.vector = %d \n",
+		UD_VECTOR, xsave_ret.vector);
+
+	debug_print("Step-5: Execute XRSTOR with 64-byte aligned memory specified \n");
+	struct xsave_exception xrstor_ret = xrstor_exception_checking(&area_test, 0);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xrstor_ret.vector = %d \n",
+		UD_VECTOR, xrstor_ret.vector);
+
+	debug_print("Step-6: Execute XSAVEC with 64-byte aligned memory specified \n");
+	struct xsave_exception xsavec_ret = xsavec_exception_checking(&area_test, 0);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xsavec_ret.vector = %d \n",
+		UD_VECTOR, xsavec_ret.vector);
+
+	debug_print("Step-7: Execute XSAVEOPT with 64-byte aligned memory specified \n");
+	struct xsave_exception xsaveopt_ret = xsaveopt_exception_checking(&area_test, 0);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xsaveopt_ret.vector = %d \n",
+		UD_VECTOR, xsaveopt_ret.vector);
+
+	bool cond_1 = (xgetbv_ret.vector == UD_VECTOR);
+	bool cond_2 = (xsetbv_ret.vector == UD_VECTOR);
+	bool cond_3 = (xsave_ret.vector == UD_VECTOR);
+	bool cond_4 = (xrstor_ret.vector == UD_VECTOR);
+	bool cond_5 = (xsavec_ret.vector == UD_VECTOR);
+	bool cond_6 = (xsaveopt_ret.vector == UD_VECTOR);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4 && cond_5 && cond_6), __FUNCTION__);
+}
+
+/*
+ * Case name: 22854:XSAVE_general_support_024_XCR0_rsvd_bits.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * XCR0[63:10] and XCR0[8] are reserved. So these bits shall be 0.
+ */
+static __unused void xsave_rqmid_22854_general_support_024_xcr0_rsvd_bits(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Execute XGETBV with ECX = 0. \n");
+	uint64_t xcr0 = asm_read_xcr(0);
+
+	uint64_t xcr0_bit_8 = xcr0 & (1UL << 8U);
+	debug_print("Step-3: Check if XCR0[8] is 0. xcr0_bit_8 = 0x%lx \n", xcr0_bit_8);
+
+	uint64_t xcr0_bit_63_10 = xcr0 >> 10U;
+	debug_print("Step-4: Check if XCR0[63:10] is 0. xcr0_bit_63_10 = 0x%lx \n", xcr0_bit_63_10);
+
+	bool cond_1 = (xcr0_bit_8 == 0);
+	bool cond_2 = (xcr0_bit_63_10 == 0);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+static bool cond_ring3_helper_22861;
+static uint64_t xcr0_set_val_helper_22861;
+
+static __unused void helper_22861_read_xcr0_at_ring3(const char *msg)
+{
+	uint16_t cpl = read_cs() & 0x3;
+	uint64_t xcr0 = asm_read_xcr(0);
+
+	debug_print("Execute XGETBV with ECX = 0 when CPL is 3. CPL = %d, XCR0 = 0x%lx \n",
+		cpl, xcr0);
+
+	cond_ring3_helper_22861 = ((cpl == 3) && (xcr0 == xcr0_set_val_helper_22861));
+}
+
+/*
+ * Case name: 22861:XSAVE_general_support_023_read_XCR0.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * Executing the XGETBV instruction with ECX = 0 returns the value of XCR0 in EDX:EAX.
+ * XGETBV can be executed if CR4.OSXSAVE = 1 (if CPUID.1:ECX.OSXSAVE = 1), regardless of CPL.
+ */
+static __unused void xsave_rqmid_22861_general_support_023_read_xcr0(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint32_t osxsave_support = get_osxsave_support();
+	debug_print("Step-2: Check if CPUID.1:ECX.OSXSAVE is 1. osxsave_support = 0x%x \n", osxsave_support);
+	bool cond_1 = (osxsave_support != 0);
+
+	debug_print("Step-3: Write 1 to XCR0. \n");
+	xcr0_set_val_helper_22861 = STATE_X87;
+	asm_write_xcr(0, xcr0_set_val_helper_22861);
+
+	uint16_t cpl = read_cs() & 0x3;
+	uint64_t xcr0 = asm_read_xcr(0);
+	debug_print("Step-4: Execute XGETBV with ECX = 0 when CPL is 0. CPL = %d, XCR0 = 0x%lx \n",
+		cpl, xcr0);
+	bool cond_ring0_1 = ((cpl == 0) && (xcr0 == xcr0_set_val_helper_22861));
+
+	debug_print("Step-6: Execute XGETBV with ECX = 0 when CPL is 3. \n");
+	cond_ring3_helper_22861 = false;
+	do_at_ring3(helper_22861_read_xcr0_at_ring3, "");
+	bool cond_ring3_1 = cond_ring3_helper_22861;
+
+	debug_print("Step-7: Write 3 to XCR0. \n");
+	xcr0_set_val_helper_22861 = STATE_X87 | STATE_SSE;
+	asm_write_xcr(0, xcr0_set_val_helper_22861);
+
+	cpl = read_cs() & 0x3;
+	xcr0 = asm_read_xcr(0);
+	debug_print("Step-8: Execute XGETBV with ECX = 0 when CPL is 0. CPL = %d, XCR0 = 0x%lx \n",
+		cpl, xcr0);
+	bool cond_ring0_3 = ((cpl == 0) && (xcr0 == xcr0_set_val_helper_22861));
+
+	debug_print("Step-10: Execute XGETBV with ECX = 0 when CPL is 3. \n");
+	cond_ring3_helper_22861 = false;
+	do_at_ring3(helper_22861_read_xcr0_at_ring3, "");
+	bool cond_ring3_3 = cond_ring3_helper_22861;
+
+	debug_print("Step-11: Write 7 to XCR0. \n");
+	xcr0_set_val_helper_22861 = STATE_X87 | STATE_SSE | STATE_AVX;
+	asm_write_xcr(0, xcr0_set_val_helper_22861);
+
+	cpl = read_cs() & 0x3;
+	xcr0 = asm_read_xcr(0);
+	debug_print("Step-12: Execute XGETBV with ECX = 0 when CPL is 0. CPL = %d, XCR0 = 0x%lx \n",
+		cpl, xcr0);
+	bool cond_ring0_7 = ((cpl == 0) && (xcr0 == xcr0_set_val_helper_22861));
+
+	debug_print("Step-14: Execute XGETBV with ECX = 0 when CPL is 3. \n");
+	cond_ring3_helper_22861 = false;
+	do_at_ring3(helper_22861_read_xcr0_at_ring3, "");
+	bool cond_ring3_7 = cond_ring3_helper_22861;
+
+	bool cond_ring0 = (cond_ring0_1 && cond_ring0_3 && cond_ring0_7);
+	bool cond_ring3 = (cond_ring3_1 && cond_ring3_3 && cond_ring3_7);
+
+	report("%s", (cond_1 && cond_ring0 && cond_ring3), __FUNCTION__);
+}
+
+/*
+ * Case name: 22855:XSAVE_general_support_025_XCR0_rsvd_bits_gp.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * XCR0[63:10] and XCR0[8] are reserved.
+ * Executing the XSETBV instruction causes a general-protection fault (#GP) if ECX = 0 and
+ * any corresponding bit in EDX:EAX is not 0.
+ */
+static __unused void xsave_rqmid_22855_general_support_025_xcr0_rsvd_bits_gp(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Set XCR0[0] and XCR0[8] to 1. \n");
+	uint64_t val = STATE_X87 | (1UL << 8U);
+	struct xsave_exception ret_8 = xsetbv_exception_checking(0, val);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: ret_8.vector = %d, ret_8.error_code = %d \n",
+		ret_8.vector, ret_8.error_code);
+
+	bool cond_1 = ((ret_8.vector == GP_VECTOR) && (ret_8.error_code == 0));
+
+	debug_print("Step-3: For each i satisfying 10 <= i < 64, set XCR0[0] and XCR0[i] to 1. \n");
+	uint32_t i;
+	struct xsave_exception ret;
+	bool cond_2 = true;
+	for (i = 10U; i < 64U; i++) {
+		val = STATE_X87 | (1UL << i);
+		ret = xsetbv_exception_checking(0, val);
+
+		if ((ret.vector != GP_VECTOR) || (ret.error_code != 0)) {
+			cond_2 = false;
+			debug_print("Failure!!! Setting XCR0[%d] to 1. \n", i);
+			debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+			debug_print("Actual exception: ret.vector = %d, ret.error_code = %d \n",
+				ret.vector, ret.error_code);
+		}
+	}
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 22856:XSAVE_general_support_026_CPUID_OSXSAVE.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * The value of CR4.OSXSAVE is returned in CPUID.1:ECX.OSXSAVE[bit 27].
+ */
+static __unused void xsave_rqmid_22856_general_support_026_cpuid_osxsave(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Clear CR4.OSXSAVE[18]. \n");
+	asm_write_cr4_osxsave(0);
+
+	uint32_t osxsave_support_0 = get_osxsave_support();
+	debug_print("Step-2: Check if CPUID.1:ECX.OSXSAVE is 0. osxsave_support_0 = 0x%x \n", osxsave_support_0);
+
+	debug_print("Step-3: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint32_t osxsave_support_1 = get_osxsave_support();
+	debug_print("Step-4: Check if CPUID.1:ECX.OSXSAVE is 1. osxsave_support_1 = 0x%x \n", osxsave_support_1);
+
+	bool cond_1 = (osxsave_support_0 == 0);
+	bool cond_2 = (osxsave_support_1 != 0);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 22862:XSAVE_general_support_019_NM.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * Execute XSAVE, XRSTOR, XSAVEC, XSAVEOPT.
+ * If CR0.TS[bit 3] is 1, a device-not-available exception (#NM) occurs.
+ */
+static __unused void xsave_rqmid_22862_general_support_019_nm(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Set CR0.TS[bit 3] to 1. \n");
+	uint64_t cr0 = read_cr0();
+	uint64_t cr0_set_ts = cr0 | CR0_TS_MASK;
+	write_cr0(cr0_set_ts);
+
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-3: Execute XSAVE with 64-byte aligned memory specified \n");
+	struct xsave_exception xsave_ret = xsave_exception_checking(&area_test, 0);
+	debug_print("Expect #NM exception (NM_VECTOR = %d). Actual exception: xsave_ret.vector = %d \n",
+		NM_VECTOR, xsave_ret.vector);
+
+	debug_print("Step-4: Execute XRSTOR with 64-byte aligned memory specified \n");
+	struct xsave_exception xrstor_ret = xrstor_exception_checking(&area_test, 0);
+	debug_print("Expect #NM exception (NM_VECTOR = %d). Actual exception: xrstor_ret.vector = %d \n",
+		NM_VECTOR, xrstor_ret.vector);
+
+	debug_print("Step-5: Execute XSAVEC with 64-byte aligned memory specified \n");
+	struct xsave_exception xsavec_ret = xsavec_exception_checking(&area_test, 0);
+	debug_print("Expect #NM exception (NM_VECTOR = %d). Actual exception: xsavec_ret.vector = %d \n",
+		NM_VECTOR, xsavec_ret.vector);
+
+	debug_print("Step-6: Execute XSAVEOPT with 64-byte aligned memory specified \n");
+	struct xsave_exception xsaveopt_ret = xsaveopt_exception_checking(&area_test, 0);
+	debug_print("Expect #NM exception (NM_VECTOR = %d). Actual exception: xsaveopt_ret.vector = %d \n",
+		NM_VECTOR, xsaveopt_ret.vector);
+
+	/* Clear CR0.TS[bit 3] */
+	write_cr0(cr0);
+
+	bool cond_1 = (xsave_ret.vector == NM_VECTOR);
+	bool cond_2 = (xrstor_ret.vector == NM_VECTOR);
+	bool cond_3 = (xsavec_ret.vector == NM_VECTOR);
+	bool cond_4 = (xsaveopt_ret.vector == NM_VECTOR);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4), __FUNCTION__);
+}
+
+/*
+ * Case name: 28393:XSAVE_general_support_009_non_aligned_addr_GP.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * Execute XSAVE, XRSTOR, XSAVEC, XSAVEOPT.
+ * If the address of the XSAVE area is not 64-byte aligned
+ * (following conditions are not satisfied: CR0.AM = 1, CPL = 3, and EFLAGS.AC = 1),
+ * a general-protection exception (#GP) occurs.
+ */
+static __unused void xsave_rqmid_28393_general_support_009_non_aligned_addr_gp(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint16_t cpl = read_cs() & 0x3;
+	uint64_t cr0_am = read_cr0() & CR0_AM_MASK;
+	uint64_t eflags_ac = read_rflags() & X86_EFLAGS_AC;
+	debug_print("Step-2: Ensure following conditions are not all satisfied: CR0.AM = 1, CPL = 3, EFLAGS.AC = 1 \n");
+	debug_print("cpl = %d, cr0_am = 0x%lx, eflags_ac = 0x%lx \n", cpl, cr0_am, eflags_ac);
+
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	uint64_t non_aligned_addr = (uint64_t)&area_test + 1U;
+	struct xsave_area *area_test_non_aligned = (struct xsave_area *)non_aligned_addr;
+	debug_print("Construct a non-64-byte aligned address. non_aligned_addr = 0x%lx \n", non_aligned_addr);
+
+	debug_print("Step-3: Execute XSAVE with non-64-byte aligned memory specified \n");
+	struct xsave_exception xsave_ret = xsave_exception_checking(area_test_non_aligned, 0);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: xsave_ret.vector = %d, xsave_ret.error_code = %d \n",
+		xsave_ret.vector, xsave_ret.error_code);
+
+	debug_print("Step-4: Execute XRSTOR with non-64-byte aligned memory specified \n");
+	struct xsave_exception xrstor_ret = xrstor_exception_checking(area_test_non_aligned, 0);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: xrstor_ret.vector = %d, xrstor_ret.error_code = %d \n",
+		xrstor_ret.vector, xrstor_ret.error_code);
+
+	debug_print("Step-5: Execute XSAVEC with non-64-byte aligned memory specified \n");
+	struct xsave_exception xsavec_ret = xsavec_exception_checking(area_test_non_aligned, 0);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: xsavec_ret.vector = %d, xsavec_ret.error_code = %d \n",
+		xsavec_ret.vector, xsavec_ret.error_code);
+
+	debug_print("Step-6: Execute XSAVEOPT with non-64-byte aligned memory specified \n");
+	struct xsave_exception xsaveopt_ret = xsaveopt_exception_checking(area_test_non_aligned, 0);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: xsaveopt_ret.vector = %d, xsaveopt_ret.error_code = %d \n",
+		xsaveopt_ret.vector, xsaveopt_ret.error_code);
+
+	bool cond_0 = !((cr0_am != 0) && (cpl == 3) && (eflags_ac != 0));
+	bool cond_1 = ((xsave_ret.vector == GP_VECTOR) && (xsave_ret.error_code == 0));
+	bool cond_2 = ((xrstor_ret.vector == GP_VECTOR) && (xrstor_ret.error_code == 0));
+	bool cond_3 = ((xsavec_ret.vector == GP_VECTOR) && (xsavec_ret.error_code == 0));
+	bool cond_4 = ((xsaveopt_ret.vector == GP_VECTOR) && (xsaveopt_ret.error_code == 0));
+
+	report("%s", (cond_0 && cond_1 && cond_2 && cond_3 && cond_4), __FUNCTION__);
+}
+
+static uint64_t non_aligned_helper_28395;
+static struct xsave_exception xsave_ret_helper_28395;
+static struct xsave_exception xrstor_ret_helper_28395;
+static struct xsave_exception xsavec_ret_helper_28395;
+static struct xsave_exception xsaveopt_ret_helper_28395;
+
+static __unused void helper_28395_at_ring3(const char *msg)
+{
+	/*
+	 * As Alignment Check has been enabled, it's very easy to trigger an #AC exception.
+	 * So, write the test code as pure as possible to avoid unintentional exceptions.
+	 */
+
+	/* Execute XSAVE with non-64-byte aligned memory specified */
+	asm volatile(ASM_TRY("1f")
+			"xsave %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*((struct xsave_area *)non_aligned_helper_28395)),
+			"d" (0),
+			"a" (0) :
+			"memory");
+	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(xsave_ret_helper_28395.vector));
+	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=rm"(xsave_ret_helper_28395.error_code));
+
+	/* Execute XRSTOR with non-64-byte aligned memory specified */
+	asm volatile(ASM_TRY("1f")
+			"xrstor %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*((struct xsave_area *)non_aligned_helper_28395)),
+			"d" (0),
+			"a" (0) :
+			"memory");
+	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(xrstor_ret_helper_28395.vector));
+	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=rm"(xrstor_ret_helper_28395.error_code));
+
+	/* Execute XSAVEC with non-64-byte aligned memory specified */
+	asm volatile(ASM_TRY("1f")
+			"xsavec %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*((struct xsave_area *)non_aligned_helper_28395)),
+			"d" (0),
+			"a" (0) :
+			"memory");
+	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(xsavec_ret_helper_28395.vector));
+	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=rm"(xsavec_ret_helper_28395.error_code));
+
+	/* Execute XSAVEOPT with non-64-byte aligned memory specified */
+	asm volatile(ASM_TRY("1f")
+			"xsaveopt %[addr]\n\t"
+			"1:"
+			: : [addr]"m" (*((struct xsave_area *)non_aligned_helper_28395)),
+			"d" (0),
+			"a" (0) :
+			"memory");
+	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(xsaveopt_ret_helper_28395.vector));
+	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=rm"(xsaveopt_ret_helper_28395.error_code));
+}
+
+/*
+ * Case name: 28395:XSAVE_general_support_012_non_aligned_addr_AC.
+ *
+ * Summary: DNG_132148: XSAVE general support.
+ *
+ * Execute XSAVE, XRSTOR, XSAVEC, XSAVEOPT.
+ * If the address of the XSAVE area is not 64-byte aligned, CR0.AM = 1, CPL = 3, and EFLAGS.AC = 1,
+ * an alignment-check exception (#AC) may occur instead of #GP.
+ */
+static __unused void xsave_rqmid_28395_general_support_012_non_aligned_addr_ac(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Set CR0.AM to 1. \n");
+	uint64_t cr0 = read_cr0();
+	write_cr0(cr0 | CR0_AM_MASK);
+
+	debug_print("Step-3: Set EFLAGS.AC to 1. \n");
+	uint64_t eflags = read_rflags();
+	write_rflags(eflags | X86_EFLAGS_AC);
+
+	debug_print("Check if CR0.AM = 1 and EFLAGS.AC = 1. cr0_am = 0x%lx, eflags_ac = 0x%lx \n",
+		read_cr0() & CR0_AM_MASK, read_rflags() & X86_EFLAGS_AC);
+
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	non_aligned_helper_28395 = (uint64_t)&area_test + 1U;
+	debug_print("Construct a non-64-byte aligned address. non_aligned_helper_28395 = 0x%lx \n",
+		non_aligned_helper_28395);
+
+	debug_print("Step-4: Switch to ring3 (CPL = 3) \n");
+	do_at_ring3(helper_28395_at_ring3, "");
+
+	debug_print("Step-5: Execute XSAVE with non-64-byte aligned memory specified \n");
+	debug_print("Expect #AC(0) exception (AC_VECTOR = %d). \n", AC_VECTOR);
+	debug_print("Actual: xsave_ret_helper_28395.vector = %d, xsave_ret_helper_28395.error_code = %d \n\n",
+		xsave_ret_helper_28395.vector, xsave_ret_helper_28395.error_code);
+
+	debug_print("Step-6: Execute XRSTOR with non-64-byte aligned memory specified \n");
+	debug_print("Expect #AC(0) exception (AC_VECTOR = %d). \n", AC_VECTOR);
+	debug_print("Actual: xrstor_ret_helper_28395.vector = %d, xrstor_ret_helper_28395.error_code = %d \n\n",
+		xrstor_ret_helper_28395.vector, xrstor_ret_helper_28395.error_code);
+
+	debug_print("Step-7: Execute XSAVEC with non-64-byte aligned memory specified \n");
+	debug_print("Expect #AC(0) exception (AC_VECTOR = %d). \n", AC_VECTOR);
+	debug_print("Actual: xsavec_ret_helper_28395.vector = %d, xsavec_ret_helper_28395.error_code = %d \n\n",
+		xsavec_ret_helper_28395.vector, xsavec_ret_helper_28395.error_code);
+
+	debug_print("Step-8: Execute XSAVEOPT with non-64-byte aligned memory specified \n");
+	debug_print("Expect #AC(0) exception (AC_VECTOR = %d). \n", AC_VECTOR);
+	debug_print("Actual: xsaveopt_ret_helper_28395.vector = %d, xsaveopt_ret_helper_28395.error_code = %d \n\n",
+		xsaveopt_ret_helper_28395.vector, xsaveopt_ret_helper_28395.error_code);
+
+	bool cond_1 = ((xsave_ret_helper_28395.vector == AC_VECTOR) && (xsave_ret_helper_28395.error_code == 0));
+	bool cond_2 = ((xrstor_ret_helper_28395.vector == AC_VECTOR) && (xrstor_ret_helper_28395.error_code == 0));
+	bool cond_3 = ((xsavec_ret_helper_28395.vector == AC_VECTOR) && (xsavec_ret_helper_28395.error_code == 0));
+	bool cond_4 = ((xsaveopt_ret_helper_28395.vector == AC_VECTOR) && (xsaveopt_ret_helper_28395.error_code == 0));
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4), __FUNCTION__);
+
+	xsave_clean_up_env();
+}
+
+/*
+ * Case name: 22847:XSAVE_expose x87_support_001.
+ *
+ * Summary:
+ * XCR0[0] is always 1.
+ * Executing the XSETBV instruction causes a general-protection fault (#GP) if ECX = 0 and EAX[0] is 0.
+ */
+static __unused void xsave_rqmid_22847_expose_x87_support_001(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint64_t xcr0_x87 = asm_read_xcr(0) & STATE_X87;
+	debug_print("Step-2: Check if XCR0[0] is 1. xcr0_x87 = 0x%lx \n", xcr0_x87);
+
+	debug_print("Step-3: Execute XSETBV with EDX:EAX is 0 and ECX is 0. \n");
+	struct xsave_exception xsetbv_ret = xsetbv_exception_checking(0, 0);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: xsetbv_ret.vector = %d, xsetbv_ret.error_code = %d \n",
+		xsetbv_ret.vector, xsetbv_ret.error_code);
+
+	bool cond_1 = (xcr0_x87 != 0);
+	bool cond_2 = ((xsetbv_ret.vector == GP_VECTOR) && (xsetbv_ret.error_code == 0));
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+static __unused struct xsave_exception x87_exception_checking(void)
+{
+	float f_val = 2.5;
+
+	asm volatile(ASM_TRY("1f")
+			"fld %0\n\t"
+			"1:"
+			: : "m"(f_val) : "memory");
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+/*
+ * Case name: 27758:XSAVE_expose x87_support_003.
+ *
+ * Summary:
+ * The XSAVE feature set can operate on x87 state only if the feature set is enabled (CR4.OSXSAVE = 1).
+ */
+static __unused void xsave_rqmid_27758_expose_x87_support_003(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Execute X87 instruction. \n");
+	float f_val = 2.5;
+	asm volatile("fninit");
+	asm volatile("fld %0\n" : : "m"(f_val) : "memory");
+
+	debug_print("Step-3: Set the FXSAVE area to all 0s \n");
+	ALIGNED(16) struct xsave_fxsave_struct fxsave_test;
+	fxsave_test.fcw = 0;
+	memset(&fxsave_test, 0, sizeof(struct xsave_fxsave_struct));
+
+	debug_print("Step-4: Execute FXSAVE instruction to save ST0 register. \n");
+	asm_fxsave(&fxsave_test);
+	uint64_t expected_st0_low64 = fxsave_test.fpregs[0];
+	uint64_t expected_st0_hi16 = fxsave_test.fpregs[1] & XSAVE_ST0_BITS_79_64_MASK;
+
+	debug_print("Step-5: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-6: Execute XSAVE instruction with EDX:EAX = 1. \n");
+	asm_xsave(&area_test, 1);
+	uint64_t st0_low64 = area_test.legacy_region[XSAVE_ST0_OFFSET];
+	uint64_t st0_hi16 = area_test.legacy_region[XSAVE_ST0_OFFSET + 1U] & XSAVE_ST0_BITS_79_64_MASK;
+
+	debug_print("Step-7: Check ST0 register value. \n");
+	debug_print("st0_low64 = 0x%lx expected_st0_low64 = 0x%lx \n", st0_low64, expected_st0_low64);
+	debug_print("st0_hi16 = 0x%lx expected_st0_hi16 = 0x%lx \n", st0_hi16, expected_st0_hi16);
+
+	debug_print("Step-8: Clear CR4.OSXSAVE[18]. \n");
+	asm_write_cr4_osxsave(0);
+
+	debug_print("Step-9: Set the XSAVE area to all 0s \n");
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-10: Execute X87 instruction. No exception shall be triggered. \n");
+	struct xsave_exception x87_ret = x87_exception_checking();
+
+	debug_print("Step-11: Execute XSAVE with with EDX:EAX = 1 \n");
+	struct xsave_exception xsave_ret = xsave_exception_checking(&area_test, 1);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xsave_ret.vector = %d \n",
+		UD_VECTOR, xsave_ret.vector);
+
+	bool cond_1 = ((st0_low64 == expected_st0_low64) && (st0_hi16 == expected_st0_hi16));
+	bool cond_2 = (x87_ret.vector == NO_EXCEPTION);
+	bool cond_3 = (xsave_ret.vector == UD_VECTOR);
+
+	report("%s", (cond_1 && cond_2 && cond_3), __FUNCTION__);
+}
+
+static __unused struct xsave_exception sse_exception_checking(void)
+{
+	sse_union sse_test;
+	sse_test.sse_u64[0] = 0xAAUL;
+	sse_test.sse_u64[1] = 0xBBUL;
+
+	asm volatile(ASM_TRY("1f")
+			"movapd %0, %%xmm0\n\t"
+			"1:"
+			: : "m"(sse_test));
+
+	struct xsave_exception ret;
+	ret.vector = exception_vector();
+	ret.error_code = exception_error_code();
+	return ret;
+}
+
+/*
+ * Case name: 27760:XSAVE_expose_SSE_support_002.
+ *
+ * Summary:
+ * The XSAVE feature set can operate on SSE state only if the feature set is enabled (CR4.OSXSAVE = 1) and
+ * has been configured to manage SSE state (XCR0[1] = 1).
+ */
+static __unused void xsave_rqmid_27760_expose_SSE_support_002(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Execute SSE instruction. \n");
+	sse_union sse_test;
+	sse_test.sse_u64[0] = 0xAAUL;
+	sse_test.sse_u64[1] = 0xBBUL;
+	asm volatile("movapd %0, %%xmm0" : : "m"(sse_test));
+
+	debug_print("Step-3: Set the FXSAVE area to all 0s \n");
+	ALIGNED(16) struct xsave_fxsave_struct fxsave_test;
+	fxsave_test.fcw = 0;
+	memset(&fxsave_test, 0, sizeof(struct xsave_fxsave_struct));
+
+	debug_print("Step-4: Execute FXSAVE instruction to save XMM0 register. \n");
+	asm_fxsave(&fxsave_test);
+	uint64_t expected_xmm0_low64 = fxsave_test.xmm_regs[0];
+	uint64_t expected_xmm0_hi64 = fxsave_test.xmm_regs[1];
+
+	debug_print("Step-5: Execute XSETBV with ECX = 0 and EDX:EAX = 3. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE);
+
+	debug_print("Step-6: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-7: Execute XSAVE instruction with EDX:EAX = 2. \n");
+	asm_xsave(&area_test, STATE_SSE);
+	uint64_t xmm0_low64 = area_test.legacy_region[XSAVE_XMM0_OFFSET];
+	uint64_t xmm0_hi64 = area_test.legacy_region[XSAVE_XMM0_OFFSET + 1U];
+
+	debug_print("Step-8: Check XMM0 register value in the XSAVE area. \n");
+	debug_print("xmm0_low64 = 0x%lx expected_xmm0_low64 = 0x%lx \n", xmm0_low64, expected_xmm0_low64);
+	debug_print("xmm0_hi64 = 0x%lx expected_xmm0_hi64 = 0x%lx \n", xmm0_hi64, expected_xmm0_hi64);
+
+	debug_print("Step-9: Execute XSETBV with ECX = 0 and EDX:EAX = 1. \n");
+	asm_write_xcr(0, STATE_X87);
+
+	debug_print("Step-10: Set the XSAVE area to all 0s \n");
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-11: Execute XSAVE instruction with EDX:EAX = 2. \n");
+	asm_xsave(&area_test, STATE_SSE);
+	uint64_t xmm0_2nd_low64 = area_test.legacy_region[XSAVE_XMM0_OFFSET];
+	uint64_t xmm0_2nd_hi64 = area_test.legacy_region[XSAVE_XMM0_OFFSET + 1U];
+
+	debug_print("Step-12: Check XMM0 register value in the XSAVE area. \n");
+	debug_print("xmm0_2nd_low64 = 0x%lx expected value = 0x%lx \n", xmm0_2nd_low64, 0UL);
+	debug_print("xmm0_2nd_hi64 = 0x%lx expected value = 0x%lx \n", xmm0_2nd_hi64, 0UL);
+
+	debug_print("Step-13: Clear CR4.OSXSAVE[18]. \n");
+	asm_write_cr4_osxsave(0);
+
+	debug_print("Step-14: Set the XSAVE area to all 0s \n");
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-15: Execute SSE instruction. No exception shall be triggered. \n");
+	struct xsave_exception sse_ret = sse_exception_checking();
+
+	debug_print("Step-16: Execute XSAVE with EDX:EAX = 2 \n");
+	struct xsave_exception xsave_ret = xsave_exception_checking(&area_test, STATE_SSE);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: xsave_ret.vector = %d \n",
+		UD_VECTOR, xsave_ret.vector);
+
+	bool cond_1 = ((xmm0_low64 == expected_xmm0_low64) && (xmm0_hi64 == expected_xmm0_hi64));
+	bool cond_2 = ((xmm0_2nd_low64 == 0UL) && (xmm0_2nd_hi64 == 0UL));
+	bool cond_3 = (sse_ret.vector == NO_EXCEPTION);
+	bool cond_4 = (xsave_ret.vector == UD_VECTOR);
+
+	report("%s", (cond_1 && cond_2 && cond_3 && cond_4), __FUNCTION__);
+}
+
+/*
+ * Case name: 22864:XSAVE_expose_AVX_support_002.
+ *
+ * Summary:
+ * Executing the XSETBV instruction causes a general-protection fault (#GP) if ECX = 0 and EAX[2:1] has the value 10b.
+ */
+static __unused void xsave_rqmid_22864_expose_AVX_support_002(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Execute XSETBV with EDX:EAX is 5 and ECX is 0. \n");
+	struct xsave_exception xsetbv_ret = xsetbv_exception_checking(0, STATE_X87 | STATE_AVX);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: xsetbv_ret.vector = %d, xsetbv_ret.error_code = %d \n",
+		xsetbv_ret.vector, xsetbv_ret.error_code);
+
+	report("%s", ((xsetbv_ret.vector == GP_VECTOR) && (xsetbv_ret.error_code == 0)), __FUNCTION__);
+}
+
+#define AVX_TEST_BITS		(~0UL)
+
+/*
+ * Case name: 22640:XSAVE_expose_AVX_support_003.
+ *
+ * Summary:
+ * Software can use the XSAVE feature set to manage AVX state only if XCR0[2] = 1.
+ *
+ * This test case verifies that the value of YMM0 register can be saved to memory when XCR0[2] is 1.
+ */
+static __unused void xsave_rqmid_22640_expose_AVX_support_003(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 7 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	debug_print("Step-3: Execute AVX instruction to let YMM0 be non-zero. \n");
+	ALIGNED(32) avx_union avx_test;
+	uint16_t i;
+	for (i = 0U; i < 4U; i++) {
+		avx_test.avx_u64[i] = AVX_TEST_BITS;
+	}
+	asm volatile("vmovapd %0, %%ymm0" : : "m"(avx_test));
+
+	debug_print("Step-4: Set the XSAVE area to all 0s. \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-5: Execute XSAVE instruction with EDX:EAX = 6. \n");
+	asm_xsave(&area_test, STATE_SSE | STATE_AVX);
+	/* low 128 bits saved in XMM0 in the legacy region */
+	uint64_t ymm0_low_128_bits[2];
+	ymm0_low_128_bits[0] = area_test.legacy_region[XSAVE_XMM0_OFFSET];
+	ymm0_low_128_bits[1] = area_test.legacy_region[XSAVE_XMM0_OFFSET + 1U];
+	/* high 128 bits saved in YMM0 in the extended region */
+	uint64_t ymm0_hi_128_bits[2];
+	ymm0_hi_128_bits[0] = area_test.extend_region[XSAVE_YMM0_OFFSET];
+	ymm0_hi_128_bits[1] = area_test.extend_region[XSAVE_YMM0_OFFSET + 1U];
+
+	debug_print("Step-6: Check YMM0 register value in the XSAVE area after executing XSAVE instruction. \n");
+	uint64_t expected_ymm0_low_128_bits[2];
+	expected_ymm0_low_128_bits[0] = AVX_TEST_BITS;
+	expected_ymm0_low_128_bits[1] = AVX_TEST_BITS;
+
+	uint64_t expected_ymm0_hi_128_bits[2];
+	expected_ymm0_hi_128_bits[0] = AVX_TEST_BITS;
+	expected_ymm0_hi_128_bits[1] = AVX_TEST_BITS;
+
+	/* low 128 bits */
+	bool cond_1 = true;
+	if (memcmp(ymm0_low_128_bits, expected_ymm0_low_128_bits, 16U)) {
+		cond_1 = false;
+	}
+
+	/* high 128 bits */
+	bool cond_2 = true;
+	if (memcmp(ymm0_hi_128_bits, expected_ymm0_hi_128_bits, 16U)) {
+		cond_2 = false;
+	}
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+static __unused void xsave_avx_ymm0_ymm15(void)
+{
+	ALIGNED(32) avx_union avx_test;
+	uint16_t i;
+	for (i = 0U; i < 4U; i++) {
+		avx_test.avx_u64[i] = AVX_TEST_BITS;
+	}
+
+	asm volatile("vmovapd %0, %%ymm0" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm1" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm2" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm3" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm4" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm5" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm6" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm7" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm8" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm9" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm10" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm11" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm12" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm13" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm14" : : "m"(avx_test));
+	asm volatile("vmovapd %0, %%ymm15" : : "m"(avx_test));
+}
+
+/*
+ * Case name: 37219:XSAVE_expose_AVX_support_64_bit_mode.
+ *
+ * Summary:
+ * Bytes 127:0 of the AVX-state section are used for YMM0_H–YMM7_H.
+ * Bytes 255:128 are used for YMM8_H–YMM15_H, but they are used only in 64-bit mode.
+ */
+static __unused void xsave_rqmid_37219_expose_AVX_support_64_bit_mode(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 7 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	debug_print("Step-3: Execute AVX instruction to YMM0~YMM15 be non-zero. \n");
+	xsave_avx_ymm0_ymm15();
+
+	debug_print("Step-4: Set the XSAVE area to all 0s. n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-5: Execute XSAVE instruction with EDX:EAX = 4. \n");
+	asm_xsave(&area_test, STATE_AVX);
+
+	uint16_t arr_size = XSAVE_AVX_AREA_SIZE / sizeof(uint64_t);
+	uint16_t i;
+
+	uint64_t test_avx_region[arr_size];
+	for (i = 0U; i < arr_size; i++) {
+		test_avx_region[i] = area_test.extend_region[i];
+	}
+
+	uint64_t expected_avx_region[arr_size];
+	for (i = 0U; i < arr_size; i++) {
+		expected_avx_region[i] = AVX_TEST_BITS;
+	}
+
+	debug_print("Step-6: Check bytes 255:0 of the AVX-state section in the XSAVE area. \n");
+	bool cond = true;
+	if (memcmp(test_avx_region, expected_avx_region, sizeof(XSAVE_AVX_AREA_SIZE))) {
+		cond = false;
+	}
+
+	report("%s", cond, __FUNCTION__);
+}
+
+/*
+ * Case name: 27761:XSAVE_expose_AVX_support_004.
+ *
+ * Summary:
+ * The XSAVE feature set can operate on AVX state only if the feature set is enabled (CR4.OSXSAVE = 1) and
+ * has been configured to manage AVX state (XCR0[2] = 1).
+ */
+static __unused void xsave_rqmid_27761_expose_AVX_support_004(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 1 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87);
+
+	debug_print("Step-3: Execute AVX instruction \n");
+	ALIGNED(32) avx_union avx_test;
+	avx_test.m[0] = 2.5f;
+	int avx_ret = vmovapd_check(&avx_test);
+	debug_print("Expect #UD exception (UD_VECTOR = %d). Actual exception: avx_ret = %d \n",
+		UD_VECTOR, avx_ret);
+
+	report("%s", (avx_ret == UD_VECTOR), __FUNCTION__);
+}
+
+/*
+ * Case name: 23631:XSAVE hide PKRU support_001.
+ *
+ * Summary: DNG_129928: XSAVE hide PKRU support.
+ * ACRN hypervisor shall hide XSAVE-managed PKRU states from any VM, in compliance with Chapter 13.2 and 13.3,
+ * Vol. 1, SDM.
+ *
+ * Check if CPUID.(EAX=DH, ECX=0H):EAX[9] is 0
+ */
+static __unused void xsave_rqmid_23631_hide_pkru_support_001(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t pkru_support = (cpuid_indexed(CPUID_XSAVE_FUC, 0).a) & STATE_PKRU;
+	debug_print("Check if CPUID.(EAX=DH, ECX=0H):EAX[9] is 0: pkru_support = 0x%x \n", pkru_support);
+
+	report("%s", (pkru_support == 0), __FUNCTION__);
+}
+
+/*
+ * Case name: 23632:XSAVE hide MPX support_001.
+ *
+ * Summary: DNG_129926: XSAVE hide MPX support.
+ * ACRN hypervisor shall hide XSAVE-managed MPX states from any VM, in compliance with Chapter 13.2 and 13.3,
+ * Vol. 1, SDM.
+ *
+ * Check if CPUID.(EAX=DH, ECX=0H):EAX[4:3] is 0
+ */
+static __unused void xsave_rqmid_23632_hide_mpx_support_001(void)
+{
+	xsave_clean_up_env();
+
+	uint32_t mpx_bndregs_support = (cpuid_indexed(CPUID_XSAVE_FUC, 0).a) & STATE_MPX_BNDREGS;
+	debug_print("Check if CPUID.(EAX=DH, ECX=0H):EAX[3] is 0: mpx_bndregs_support = 0x%x \n", mpx_bndregs_support);
+
+	uint32_t mpx_bndcsr_support = (cpuid_indexed(CPUID_XSAVE_FUC, 0).a) & STATE_MPX_BNDCSR;
+	debug_print("Check if CPUID.(EAX=DH, ECX=0H):EAX[4] is 0: mpx_bndcsr_support = 0x%x \n", mpx_bndcsr_support);
+
+	bool cond_1 = (mpx_bndregs_support == 0);
+	bool cond_2 = (mpx_bndcsr_support == 0);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 22828:XSAVE_supervisor_state_components_002
+ *
+ * Summary:
+ * CPUID function 0DH, sub-function 1:
+ * EDX:ECX is a bitmap of all the supervisor state components that can be managed by XSAVES and XRSTORS.
+ */
+static __unused void xsave_rqmid_22828_supervisor_state_components_002(void)
+{
+	xsave_clean_up_env();
+
+	uint64_t supported_supervisor_states = get_supported_supervisor_states();
+	debug_print("Check if CPUID.(EAX=DH, ECX=1H):(EDX:ECX) is 0: supported_supervisor_states = 0x%lx \n",
+		supported_supervisor_states);
+
+	report("%s", (supported_supervisor_states == XSAVE_SUPPORTED_SUPERVISOR_STATES), __FUNCTION__);
+}
+
+/*
+ * Case name: 22799:XSAVE_compaction_extensions_001.
+ *
+ * Summary:
+ * CPUID.(EAX=DH, ECX=1H):EAX[1] enumerates support for the XSAVEC instruction.
+ */
+static __unused void xsave_rqmid_22799_compaction_extensions_001(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	uint32_t xsavec_support = get_xsavec_support();
+	debug_print("Step-2: Check if CPUID.(EAX=DH, ECX=1H):EAX[1] is 1: xsavec_support = 0x%x \n",
+		xsavec_support);
+
+	debug_print("Step-3: Execute XSAVEC instruction. No exception shall be triggered. \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+	struct xsave_exception xsavec_ret = xsavec_exception_checking(&area_test, 0);
+
+	bool cond_1 = (xsavec_support != 0);
+	bool cond_2 = (xsavec_ret.vector == NO_EXCEPTION);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/*
+ * Case name: 37042:XSAVE_compaction_extensions_002.
+ *
+ * Summary:
+ * Verify XSAVEC instruction behaviors.
+ */
+static __unused void xsave_rqmid_37042_compaction_extensions_002(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 7 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+
+	debug_print("Step-3: Execute AVX instruction to let YMM0 be non-zero. \n");
+	ALIGNED(32) avx_union avx_test;
+	avx_test.avx_u64[2] = AVX_TEST_BITS;
+	avx_test.avx_u64[3] = AVX_TEST_BITS;
+	asm volatile("vmovapd %0, %%ymm0" : : "m"(avx_test));
+
+	debug_print("Step-4: Set the XSAVE area to all 0s. \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-5: Execute XSAVEC instruction with EDX:EAX is 4. \n");
+	asm_xsavec(&area_test, STATE_AVX);
+
+	debug_print("Step-6: Check XSTATE_BV in the XSAVE area (XSTATE_BV[bit 2] shall be 1): \n");
+	uint64_t expected_xstate_bv_avx = STATE_AVX;
+	uint64_t xstate_bv_test_avx = area_test.xsave_hdr.hdr.xstate_bv & STATE_AVX;
+	debug_print("xstate_bv_test_avx = 0x%lx, expected_xstate_bv_avx = 0x%lx \n",
+		xstate_bv_test_avx, expected_xstate_bv_avx);
+
+	debug_print("Step-6: Check XCOMP_BV in the XSAVE area (XCOMP_BV[bit 2] and XCOMP_BV[bit 63] shall be 1): \n");
+	uint64_t expected_xcomp_bv = STATE_AVX | XSAVE_COMPACTED_FORMAT;
+	uint64_t xcomp_bv_test = area_test.xsave_hdr.hdr.xcomp_bv & (STATE_AVX | XSAVE_COMPACTED_FORMAT);
+	debug_print("xcomp_bv_test = 0x%lx, expected_xcomp_bv = 0x%lx \n",
+		xcomp_bv_test, expected_xcomp_bv);
+
+	debug_print("Step-7: Check YMM0 in the XSAVE area after executing XSAVE instruction. \n");
+	/* high 128 bits saved in YMM0 in the extended region */
+	uint64_t ymm0_hi_128_bits[2];
+	ymm0_hi_128_bits[0] = area_test.extend_region[XSAVE_YMM0_OFFSET];
+	ymm0_hi_128_bits[1] = area_test.extend_region[XSAVE_YMM0_OFFSET + 1U];
+
+	uint64_t expected_ymm0_hi_128_bits[2];
+	expected_ymm0_hi_128_bits[0] = AVX_TEST_BITS;
+	expected_ymm0_hi_128_bits[1] = AVX_TEST_BITS;
+
+	bool cond_1 = (xstate_bv_test_avx == expected_xstate_bv_avx);
+	bool cond_2 = (xcomp_bv_test == expected_xcomp_bv);
+
+	bool cond_3 = true;
+	if (memcmp(ymm0_hi_128_bits, expected_ymm0_hi_128_bits, 16U)) {
+		cond_3 = false;
+	}
+
+	report("%s", (cond_1 && cond_2 && cond_3), __FUNCTION__);
+}
+
+/*
+ * Case name: 28387:XSAVE_Compacted_Form_of_XRSTOR_001.
+ *
+ * Summary:
+ *
+ * Vol1_13.8.2:
+ * The compacted from of XRSTOR performs additional fault checking. Any of the following conditions causes a #GP:
+ * The XCOMP_BV field of the XSAVE header sets a bit in the range 62:0 that is not set in XCR0.
+ */
+static __unused void xsave_rqmid_28397_compacted_form_of_xrstor_001(void)
+{
+	xsave_clean_up_env();
+
+	debug_print("Step-1: Set CR4.OSXSAVE[18] to 1. \n");
+	asm_write_cr4_osxsave(1);
+
+	debug_print("Step-2: Write 1 to XCR0. \n");
+	asm_write_xcr(0, STATE_X87);
+
+	debug_print("Step-3: Set the XSAVE area to all 0s \n");
+	ALIGNED(64) struct xsave_area area_test;
+	area_test.legacy_region[0] = 0;
+	memset(&area_test, 0, sizeof(struct xsave_area));
+
+	debug_print("Step-4: Set XCOMP_BV[63] and XCOMP_BV[2] to 1 \n");
+	area_test.xsave_hdr.hdr.xcomp_bv = XSAVE_COMPACTED_FORMAT | STATE_AVX;
+	debug_print("area_test.xsave_hdr.hdr.xcomp_bv = 0x%lx \n", area_test.xsave_hdr.hdr.xcomp_bv);
+
+	debug_print("Step-5: Execute XRSTOR with 64-byte aligned memory specified \n");
+	struct xsave_exception xrstor_ret = xrstor_exception_checking(&area_test, 1);
+	debug_print("Expect #GP(0) exception (GP_VECTOR = %d). \n", GP_VECTOR);
+	debug_print("Actual exception: xrstor_ret.vector = %d, xrstor_ret.error_code = %d \n",
+		xrstor_ret.vector, xrstor_ret.error_code);
+
+	report("%s", ((xrstor_ret.vector == GP_VECTOR) && (xrstor_ret.error_code == 0)), __FUNCTION__);
+}
+
+/*
+ * Case name: 40367: Physical platform doesn't support XSAVE-managed PKRU states (252410, Application Constraint)
+ *
+ * Summary:
+ * Physical platform doesn't support XSAVE-managed PKRU states (252410, Application Constraint)
+ *
+ * Check if CPUID.(EAX=DH, ECX=0H):EAX[9] is 0
+ */
+static __unused void xsave_rqmid_40367_physical_pkru_support_001(void)
+{
+	uint32_t pkru_support = (cpuid_indexed(CPUID_XSAVE_FUC, 0).a) & STATE_PKRU;
+	debug_print("Check if CPUID.(EAX=DH, ECX=0H):EAX[9] is 0: pkru_support = 0x%x \n", pkru_support);
+
+	report("%s", (pkru_support == 0), __FUNCTION__);
+}
+
+#define NUM_NATIVE_CASES		7U
+struct xsave_case native_cases[NUM_NATIVE_CASES] = {
+	{28468u, "XSAVE physical compaction extensions_001"},
+	{28386u, "XSAVE physical general support_001"},
+	{28385u, "XSAVE physical x87 support_001"},
+	{28388u, "XSAVE physical SSE support_001"},
+	{28390u, "XSAVE physical AVX support_001"},
+	{28392u, "XSAVE physical init and modified optimizations_001"},
+	{40367u, "XSAVE physical PKRU support_001"},
+};
+
+#define NUM_NON_SAFETY_VM_CASES		5U
+struct xsave_case non_safety_vm_cases[NUM_NON_SAFETY_VM_CASES] = {
+	{23154u, "XSAVE_CR4_initial_state_following_INIT_001"},
+	{36768u, "XSAVE_XCR0_initial_state_following_INIT_002"},
+	{24108u, "XSAVE_XINUSE[bit 2:0]_initial_state_following_INIT_002"},
+	{23151u, "XSAVE_XCR0_initial_state_following_INIT_001"},
+	{23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001"},
+};
+
+#define NUM_COMMON_CASES		55U
+struct xsave_case common_cases[NUM_COMMON_CASES] = {
+	{23633u, "XSAVE hide AVX-512 support_001"},
+	{22826u, "XSAVE general support_010"},
+	{22867u, "XSAVE expose AVX support_001"},
+	{22844u, "XSAVE general support_020"},
+	{22866u, "XSAVE expose SSE support_001"},
+	{22911u, "XSAVE general support_020"},
+	{22846u, "XSAVE expose x87 support_002"},
+	{22830u, "XSAVE general support_014"},
+	{22825u, "XSAVE supervisor state components_001"},
+
+	{23153u, "XSAVE_CR4_initial_state_following_start-up_001"},
+	{22853u, "XSAVE_XCR0_initial_state_following_start-up_001"},
+	{23634u, "XSAVE XINUSE[bit 2:0] initial state following start-up_001"},
+
+	{36703u, "XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_X87"},
+	{23636u, "XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_SSE"},
+	{23637u, "XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_AVX"},
+
+	{22895u, "XSAVE_init_and_modified_optimizations_001"},
+	{23638u, "XSAVE init and modified optimizations_002"},
+	{23639u, "XSAVE init and modified optimizations_003"},
+	{23640u, "XSAVE init and modified optimizations_004"},
+	{23641u, "XSAVE init and modified optimizations_005"},
+	{23642u, "XSAVE init and modified optimizations_006"},
+	{36805u, "XSAVE init and modified optimizations_007"},
+
+	{22840u, "XSAVE_general_support_001_CPUID_XSAVE"},
+	{22863u, "XSAVE_general_support_002_set_CR4_OSXSAVE"},
+	{22793u, "XSAVE_general_support_003_set_XCR0"},
+	{22794u, "XSAVE_general_support_004_supported_states_size"},
+	{22797u, "XSAVE_general_support_005_enabled_user_states_size"},
+	{22798u, "XSAVE_general_support_006_CPUID_XSAVEOPT"},
+	{21175u, "XSAVE_general_support_007_UD"},
+	{28393u, "XSAVE_general_support_009_non_aligned_addr_GP"},
+	{22827u, "XSAVE_general_support_011_all_enabled_states_size"},
+	{28395u, "XSAVE_general_support_012_non_aligned_addr_AC"},
+	{22829u, "XSAVE_general_support_013_state_size"},
+	{22831u, "XSAVE_general_support_015_user_state_ECX_bit0"},
+	{22865u, "XSAVE_general_support_016_state_offset"},
+	{22832u, "XSAVE_general_support_017_CPUID_ECX_EDX_rsvd_bits"},
+	{22835u, "XSAVE_general_support_018_CPUID_unsupported_states"},
+	{22862u, "XSAVE_general_support_019_NM"},
+	{22861u, "XSAVE_general_support_023_read_XCR0"},
+	{22854u, "XSAVE_general_support_024_XCR0_rsvd_bits"},
+	{22855u, "XSAVE_general_support_025_XCR0_rsvd_bits_gp"},
+	{22856u, "XSAVE_general_support_026_CPUID_OSXSAVE"},
+
+	{23631u, "XSAVE hide PKRU support_001"},
+	{23632u, "XSAVE hide MPX support_001"},
+	{22828u, "XSAVE_supervisor_state_components_002"},
+
+	{22847u, "XSAVE_expose x87_support_001"},
+	{27758u, "XSAVE_expose x87_support_003"},
+
+	{27760u, "XSAVE_expose_SSE_support_002"},
+
+	{22864u, "XSAVE_expose_AVX_support_002"},
+	{22640u, "XSAVE_expose_AVX_support_003"},
+	{27761u, "XSAVE_expose_AVX_support_004"},
+	{37219u, "XSAVE_expose_AVX_support_64_bit_mode"},
+
+	{22799u, "XSAVE_compaction_extensions_001"},
+	{37042u, "XSAVE_compaction_extensions_002"},
+	{28397u, "XSAVE_Compacted_Form_of_XRSTOR_001"},
+};
 
 static void print_case_list(void)
 {
+	uint32_t i;
+
 	/*_x86_64__*/
 	printf("\t\t XSAVE feature case list:\n\r");
 #ifdef IN_NATIVE
-	printf("\t\t Case ID:%d case name:%s\n\r", 28468u, "XSAVE physical compaction extensions_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28386u, "XSAVE physical general support_001 ");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28385u, "XSAVE physical x87 support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28388u, "XSAVE physical SSE support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28390u, "XSAVE physical AVX support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28392u, "XSAVE physical init and modified optimizations_001");
+	for (i = 0U; i < NUM_NATIVE_CASES; i++) {
+		printf("\t\t Case ID:%d Case Name:%s\n\r", native_cases[i].case_id, native_cases[i].case_name);
+	}
 #else
 #ifdef IN_NON_SAFETY_VM
-	printf("\t\t Case ID:%d case name:%s\n\r", 23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 37093u, "XSAVE XINUSE[bit 2:0] initial state following INIT_002");
+	for (i = 0U; i < NUM_NON_SAFETY_VM_CASES; i++) {
+		printf("\t\t Case ID:%d Case Name:%s\n\r",
+			non_safety_vm_cases[i].case_id, non_safety_vm_cases[i].case_name);
+	}
 #endif
-	printf("\t\t Case ID:%d case name:%s\n\r", 23633u, "XSAVE hide AVX-512 support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 23642u, "XSAVE init and modified optimizations_006");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22826u, "XSAVE general support_010");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22867u, "XSAVE expose AVX support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22844u, "XSAVE general support_020");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22866u, "XSAVE expose SSE support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22911u, "XSAVE general support_020");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22846u, "XSAVE expose x87 support_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22830u, "XSAVE general support_014");
-	printf("\t\t Case ID:%d case name:%s\n\r", 22825u, "XSAVE supervisor state components_001");
+	for (i = 0U; i < NUM_COMMON_CASES; i++) {
+		printf("\t\t Case ID:%d Case Name:%s\n\r",
+			common_cases[i].case_id, common_cases[i].case_name);
+	}
 #endif
 	printf("\t\t \n\r \n\r");
 }
@@ -1630,9 +3353,13 @@ int main(void)
 {
 	setup_idt();
 	setup_ring_env();
-	asm volatile("fninit");
 
 	print_case_list();
+
+	/* following start-up cases */
+	xsave_rqmid_23153_xsave_cr4_initial_state_following_startup_001();
+	xsave_rqmid_22853_xsave_xcr0_initial_state_following_startup_001();
+	xsave_rqmid_23634_xinuse_bit2to0_initial_state_following_startup_001();
 
 #ifdef IN_NATIVE
 	xsave_rqmid_28468_physical_compaction_extensions_AC_001();
@@ -1641,12 +3368,86 @@ int main(void)
 	xsave_rqmid_28388_physical_sse_support_AC_001();
 	xsave_rqmid_28390_physical_avx_support_AC_001();
 	xsave_rqmid_28392_physical_init_and_modified_optimizations_AC_001();
+	xsave_rqmid_40367_physical_pkru_support_001();
 #else
 #ifdef IN_NON_SAFETY_VM
-	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_01();
-	xsave_rqmid_37093_XINUSE_bit2to0_initial_state_following_INIT_02();
+	/* following INIT cases */
+	xsave_rqmid_23154_xsave_cr4_initial_state_following_init_001();
+
+	/* This case verifies the XCR0 following the first INIT received by the AP. */
+	xsave_rqmid_36768_xcr0_initial_state_following_init_002();
+	/* This case verifies the XINUSE[bit 2:0] following the first INIT received by the AP. */
+	xsave_rqmid_24108_xinuse_bit2to0_initial_state_following_init_002();
+
+	/* Using 2nd INIT to verify case 23151 and 23635 as the environment is very similar. */
+	send_sipi();
+	/* This case verifies XCR0 is unchanged following INIT (when it has been set to 7H on the AP). */
+	xsave_rqmid_23151_xcr0_initial_state_following_init_001();
+	/* This case verifies XINUSE[2:0] is unchanged following INIT (when XINUSE[1] has been set to 1 on the AP). */
+	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_001();
 #endif
+	/*
+	 * NOTE:
+	 * Following three test cases has to be executed before XRSTOR instruction has been executed.
+	 * 36703, 23636, 23637.
+	 */
+	xsave_rqmid_36703_xsaveopt_before_xrstor_initial_state_following_initializing_event_x87();
+	xsave_rqmid_23636_xsaveopt_before_xrstor_initial_state_following_initializing_event_sse();
+	xsave_rqmid_23637_xsaveopt_before_xrstor_initial_state_following_initializing_event_avx();
+
+	xsave_rqmid_22895_init_and_modified_optimizations_001();
+	xsave_rqmid_23638_init_and_modified_optimizations_002();
+	xsave_rqmid_23639_init_and_modified_optimizations_003();
+	xsave_rqmid_23640_init_and_modified_optimizations_004();
+	xsave_rqmid_23641_init_and_modified_optimizations_005();
+	/* NOTE: XRSTOR instruction will be executed in 36805. */
+	xsave_rqmid_36805_init_and_modified_optimizations_007();
+
+	xsave_rqmid_22840_general_support_001_cpuid_xsave();
+	xsave_rqmid_22863_general_support_002_set_cr4_osxsave();
+	xsave_rqmid_22856_general_support_026_cpuid_osxsave();
+	xsave_rqmid_22798_general_support_006_cpuid_xsaveopt();
+	xsave_rqmid_22835_general_support_018_cpuid_unsupported_states();
+
+	xsave_rqmid_22794_general_support_004_supported_states_size();
+	xsave_rqmid_22797_general_support_005_enabled_user_states_size();
+	xsave_rqmid_22827_general_support_011_all_enabled_states_size();
+
+	xsave_rqmid_22829_general_support_013_state_size();
+	xsave_rqmid_22865_general_support_016_state_offset();
+	xsave_rqmid_22831_general_support_015_user_state_ecx_bit0();
+
+	xsave_rqmid_22832_general_support_017_cpuid_ecx_edx_rsvd_bits();
+
+	xsave_rqmid_22861_general_support_023_read_xcr0();
+	xsave_rqmid_22854_general_support_024_xcr0_rsvd_bits();
+	xsave_rqmid_22855_general_support_025_xcr0_rsvd_bits_gp();
+
+	xsave_rqmid_21175_general_support_007_ud();
+	xsave_rqmid_22862_general_support_019_nm();
+	xsave_rqmid_28393_general_support_009_non_aligned_addr_gp();
+	xsave_rqmid_28395_general_support_012_non_aligned_addr_ac();
+
+	xsave_rqmid_23631_hide_pkru_support_001();
+	xsave_rqmid_23632_hide_mpx_support_001();
+	xsave_rqmid_22828_supervisor_state_components_002();
+
+	xsave_rqmid_22847_expose_x87_support_001();
+	xsave_rqmid_27758_expose_x87_support_003();
+
+	xsave_rqmid_27760_expose_SSE_support_002();
+
+	xsave_rqmid_22864_expose_AVX_support_002();
+	xsave_rqmid_22640_expose_AVX_support_003();
+	xsave_rqmid_27761_expose_AVX_support_004();
+	xsave_rqmid_37219_expose_AVX_support_64_bit_mode();
+
+	xsave_rqmid_22799_compaction_extensions_001();
+	xsave_rqmid_37042_compaction_extensions_002();
+	xsave_rqmid_28397_compacted_form_of_xrstor_001();
+
 	xsave_rqmid_23633_hide_avx_512_support_001();
+	/* NOTE: XRSTOR instruction will be executed in 23642. */
 	xsave_rqmid_23642_init_and_modified_optimizations_006();
 	xsave_rqmid_22826_check_reserved_bit();
 	xsave_rqmid_22867_expose_avx_support();
@@ -1656,6 +3457,9 @@ int main(void)
 	xsave_rqmid_22846_x87_support();
 	xsave_rqmid_22830_check_xsave_area_offset();
 	xsave_rqmid_22825_supervisor_state_components_001();
+
+	/* !!! 22793 will trigger #GP in hypervisor due to hypervisor bugs !!! */
+	// xsave_rqmid_22793_general_support_003_set_xcr0();
 #endif
 
 	return report_summary();

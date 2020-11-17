@@ -13,6 +13,7 @@
 #include "atomic.h"
 #include "types.h"
 #include "misc.h"
+#include "xsave_asm.h"
 
 #define X86_CR0_EM				(1 << 2)
 //#define X86_CR0_TS				(1 << 3)
@@ -65,15 +66,15 @@ typedef float __attribute__((vector_size(16))) avx128;
 typedef union {
 	sse128 sse;
 	unsigned u[4];
+	uint64_t sse_u64[2];
 } sse_union;
 
 typedef union {
 	avx256 avx;
 	float m[8];
 	u32 avx_u[8];
+	uint64_t avx_u64[4];
 } avx_union;
-
-
 
 
 /*
@@ -153,4 +154,163 @@ typedef struct xsave_dump_struct {
 /***
  *XSAVE structure end!
  */
+
+
+struct xsave_exception {
+	uint8_t vector;
+	uint16_t error_code;
+};
+
+/* Expected register values following the start-up/INIT */
+#define XSAVE_EXPECTED_STARTUP_XCR0		1UL
+#define XSAVE_EXPECTED_STARTUP_XINUSE		1UL
+#define XSAVE_EXPECTED_STARTUP_CR4_OSXSAVE	0UL
+#define XSAVE_EXPECTED_INIT_CR4_OSXSAVE		0UL
+
+#define XSAVE_LEGACY_AREA_SIZE			512U
+#define XSAVE_HEADER_AREA_SIZE			64U
+#define XSAVE_AVX_AREA_SIZE			256U
+#define XSAVE_EXTEND_AREA_SIZE			XSAVE_AVX_AREA_SIZE
+
+/* Mask of compacted form */
+#define XSAVE_COMPACTED_FORMAT			(1UL << 63U)
+
+/* ST0 is located in the legacy region */
+#define XSAVE_ST0_OFFSET			4U
+#define XSAVE_ST0_BITS_79_64_MASK		0xFFU
+
+/* XMM0 is located in the legacy region */
+#define XSAVE_XMM0_OFFSET			20U
+/* YMM0 is located in the extended region */
+#define XSAVE_YMM0_OFFSET			0U
+
+#define XSAVE_SUPPORTED_USER_STATES		(STATE_X87 | STATE_SSE | STATE_AVX)
+#define XSAVE_SUPPORTED_SUPERVISOR_STATES	0UL
+
+/* CPUID.(EAX=DH, ECX=i):ECX[0]: user or supervisor state component */
+#define XSAVE_USER_SUPERVISOR			(1U < 0U)
+/* CPUID.(EAX=DH, ECX=i):ECX[1]: alignment indicator */
+#define XSAVE_ALIGNMENT				(1U < 1U)
+
+/* Task Switched (bit 3 of CR0) */
+#define CR0_TS_MASK				(1UL << 3U)
+
+union xsave_header {
+	uint64_t value[XSAVE_HEADER_AREA_SIZE / sizeof(uint64_t)];
+	struct {
+		/* bytes 7:0 */
+		uint64_t xstate_bv;
+		/* bytes 15:8 */
+		uint64_t xcomp_bv;
+	} hdr;
+};
+
+struct xsave_area {
+	uint64_t legacy_region[XSAVE_LEGACY_AREA_SIZE / sizeof(uint64_t)];
+	union xsave_header xsave_hdr;
+	uint64_t extend_region[XSAVE_EXTEND_AREA_SIZE / sizeof(uint64_t)];
+};
+
+struct xsave_fxsave_struct {
+	uint16_t fcw;
+	uint16_t fsw;
+	uint8_t  ftw;
+	uint8_t  revd1;
+	uint16_t fop;
+	uint32_t fip;
+	uint16_t fcs;
+	uint16_t rsvd2;
+	uint32_t fdp;
+	uint16_t fds;
+	uint16_t rsvd3;
+	uint32_t mxcsr;
+	uint32_t mxcsr_mask;
+	uint64_t fpregs[16];
+	uint64_t xmm_regs[32];
+	uint64_t rsvd4[12];
+} __attribute__((packed));
+
+
+static inline void asm_write_xcr(uint32_t reg, uint64_t val)
+{
+	asm volatile("xsetbv" : : "c"(reg), "a"((uint32_t)val), "d"((uint32_t)(val >> 32U)));
+}
+
+static inline uint64_t asm_read_xcr(uint32_t reg)
+{
+	uint32_t xcrl, xcrh;
+
+	asm volatile("xgetbv " : "=a"(xcrl), "=d"(xcrh) : "c"(reg));
+	return (((uint64_t)xcrh << 32U) | xcrl);
+}
+
+static inline void asm_write_cr4_osxsave(uint64_t osxsave_bit)
+{
+	uint64_t cr4 = read_cr4();
+	uint64_t new_val;
+
+	if (osxsave_bit) {
+		new_val = cr4 | X86_CR4_OSXSAVE;
+	} else {
+		new_val = cr4 & (~X86_CR4_OSXSAVE);
+	}
+
+	write_cr4(new_val);
+}
+
+static inline uint64_t asm_read_cr4_osxsave(void)
+{
+	return (read_cr4() & X86_CR4_OSXSAVE);
+}
+
+static inline void asm_xsaveopt(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile("xsaveopt %0"
+			: : "m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+}
+
+static inline void asm_xsavec(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile("xsavec %0"
+			: : "m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+}
+
+static inline void asm_xsave(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile("xsave %0"
+			: : "m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+}
+
+static inline void asm_xrstor(struct xsave_area *area_ptr, uint64_t mask)
+{
+	asm volatile("xrstor %0"
+			: : "m" (*(area_ptr)),
+			"d" ((uint32_t)(mask >> 32U)),
+			"a" ((uint32_t)mask) :
+			"memory");
+}
+
+static inline void asm_fxsave(struct xsave_fxsave_struct *fxsave_ptr)
+{
+	asm volatile("fxsave %0" : "=m"(*(fxsave_ptr)));
+}
+
+static inline void asm_pause(void)
+{
+	asm volatile("pause" ::: "memory");
+}
+
+struct xsave_case {
+	uint32_t case_id;
+	const char *case_name;
+};
 #endif
