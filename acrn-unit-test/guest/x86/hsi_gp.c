@@ -31,11 +31,12 @@
 #define debug_print(fmt, args...)
 #endif
 
-#define ADD_SIGN ".byte 0x48, 0x83, 0xc0, 0x80\n\t"               // add $0xffffffffffffff80, %%rax
-#define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"               // sub $0xffffffffffffff80, %%rax
+#define ADD_SIGN ".byte 0x48, 0x83, 0xc0, 0x80\n\t"               // add $0xffffffffffffff80(0x80 sign-extension), %%rax
+#define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"               // sub $0xffffffffffffff80(0x80 sign-extension), %%rax
 
 static int call_cnt = 0;
 bool eflags_cf_to_1(void);
+
 static void test_call_instr(void)
 {
 	call_cnt++;
@@ -91,13 +92,13 @@ static bool mov_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 10));
 }
 
+/* sign-extend byte 0x80 which sigh bit is 1 to 0xffffff80, then move it to the variable op */
 static bool movsx_checking(void)
 {
 	u32 op = 0;
 	asm volatile(
 		"mov $0x80, %%al\n"
 		ASM_TRY("1f")
-		/* sign-extend value 0x80 */
 		"movsx %%al, %%ebx\n"
 		"mov %%ebx, %0\n\t"
 		"1:"
@@ -108,13 +109,13 @@ static bool movsx_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xffffff80));
 }
 
+/* zero-extend byte 0x80 to 0x80, then move it to the variable op  */
 static bool movzx_checking(void)
 {
 	u32 op = 0;
 	asm volatile(
 		"mov $0x80, %%al\n"
 		ASM_TRY("1f")
-		/* zero-extend value 0x80 */
 		"movzx %%al, %%ebx\n"
 		"mov %%ebx, %0\n\t"
 		"1:"
@@ -125,13 +126,13 @@ static bool movzx_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x80));
 }
 
+/* convert value 0x80000000 to double  with sign-extension */
 static bool cdqe_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
 		"mov $0x80000000, %%eax\n"
 		ASM_TRY("1f")
-		/* convert value 0x80000000 to double  with sign-extension */
 		"cdqe\n"
 		"mov %%rax, %0\n\t"
 		"1:"
@@ -142,13 +143,14 @@ static bool cdqe_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xffffffff80000000));
 }
 
+/* exchange the variable data1 and the variable data2 , then add data1 which equal to the original data2 to the data2 */
+/* which equal to  the original data1, finally move data2 to the variable op */
 static bool xchg_checking(void)
 {
 	u32 op = 0;
 	int data1 = 2;
 	int data2 = 5;
 	asm volatile(ASM_TRY("1f")
-		/* exchange the two value */
 		"xchg %1, %2\n"
 		"mov %2, %0\n"
 		"1:"
@@ -158,13 +160,13 @@ static bool xchg_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 2));
 }
 
+/* exchange the variable data1 and the variable data2 , then move data2 which equal to the original data1 to the variable op */
 static bool xadd_checking(void)
 {
 	u32 op = 0;
 	int data1 = 2;
 	int data2 = 5;
 	asm volatile(ASM_TRY("1f")
-		/* exchange the two value and add it to another */
 		"xadd %1, %2\n"
 		"mov %2, %0\n"
 		"1:"
@@ -174,13 +176,13 @@ static bool xadd_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 7));
 }
 
+/* 0x80 sign-entenden to 0xffffffffffffff80, add to rax */
 static bool add_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
 		"mov $0, %%rax\n\t"
 		ASM_TRY("1f")
-		/* 0x80 sign-entenden to $0xffffffffffffff80, add to rax */
 		ADD_SIGN
 		"mov %%rax, %0\n"
 		"1:"
@@ -191,6 +193,7 @@ static bool add_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xffffffffffffff80));
 }
 
+/* 0x80 sign-entenden to $0xffffffffffffff80, subtract fron rax */
 static bool sub_checking(void)
 {
 	u64 op = 0;
@@ -198,7 +201,6 @@ static bool sub_checking(void)
 		"mov $0xffffffffffffff90, %%rax\n\t"
 		ASM_TRY("1f")
 		SUB_SIGN
-		/* 0x80 sign-entenden to $0xffffffffffffff80, subtract fron rax */
 		"mov %%rax, %0\n"
 		"1:"
 		: "=r" (op)
@@ -208,11 +210,11 @@ static bool sub_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
 }
 
+/* mov -1 to ebx */
 static bool neg_checking(void)
 {
 	u32 op = 1;
 	asm volatile(
-		/* mov -1 to ebx */
 		"mov $0xffffffff, %%ebx\n\t"
 		ASM_TRY("1f")
 		"neg %%ebx\n\t"
@@ -225,6 +227,7 @@ static bool neg_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1));
 }
 
+/* increment the variable op by 1 */
 static bool inc_checking(void)
 {
 	u16 op = 0;
@@ -236,6 +239,7 @@ static bool inc_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1));
 }
 
+/* decrement the variable op by 1 */
 static bool dec_checking(void)
 {
 	u16 op = 10;
@@ -279,6 +283,7 @@ static bool div_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 64));
 }
 
+/* compare value 0x1 with 0x8, execute instruction JNZ to another code block */
 static bool cmp_1_checking(void)
 {
 	u8 op = 0;
@@ -346,6 +351,7 @@ static bool cmp_8_checking(void)
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
+
 static bool push_pop_checking(void)
 {
 	u16 op = 0;
@@ -409,6 +415,7 @@ static bool not_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xfffffffffffffff8));
 }
 
+/* shift the bits right, equal to divide the variable op with 2 */
 static bool shr_checking(void)
 {
 	u64 op = 0x100;
@@ -420,6 +427,7 @@ static bool shr_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x80));
 }
 
+/* select the test bit in the variable op, store it in the CF flag, move the CF flag to variable ret */
 static bool bt_checking(void)
 {
 	u64 op  = 0x1234;
@@ -434,12 +442,12 @@ static bool bt_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1234) && (ret == 0x1));
 }
 
+/* select the test bit in the variable op, store it in the CF flag, and set the test bit */
 static bool bts_checking(void)
 {
 	u64 op = 0x1234;
 	u64 ret = 0x5;
 	asm volatile(ASM_TRY("1f")
-		/* store the test bit in the CF flag */
 		"bts $5, %0\n\t"
 		"pushf; pop %1\n\t"
 		"and $1, %1\n\t"
@@ -449,12 +457,12 @@ static bool bts_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1234)) && (ret == 0x1);
 }
 
+/* select the test bit in the variable op, store it in the CF flag, and reset the test bit */
 static bool btr_checking(void)
 {
 	u64 op = 0x1234;
 	u64 ret = 0x5;
 	asm volatile(ASM_TRY("1f")
-		/* store the test bit in the CF flag, and reset the test bit */
 		"btr $5, %0\n\t"
 		"pushf; pop %1\n\t"
 		"and $1, %1\n\t"
@@ -464,12 +472,12 @@ static bool btr_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1214) && (ret == 0x1));
 }
 
+/* select the test bit in the variable op, store it in the CF flag, and complement the test bit */
 static bool btc_checking(void)
 {
 	u64 op = 0x1234;
 	u64 ret = 0x5;
 	asm volatile(ASM_TRY("1f")
-		/*  store the test bit in the CF flag, and complement the test bit */
 		"btc $5, %0\n\t"
 		"pushf; pop %1\n\t"
 		"and $1, %1\n\t"
@@ -479,13 +487,13 @@ static bool btc_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1214) && (ret == 0x1));
 }
 
+/* search for the least significant set bit */
 static bool bsf_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
 		"mov $0x1234, %%rax\n"
 		ASM_TRY("1f")
-		/* search for the least significant set bit */
 		"bsf %%rax, %0\n\t"
 		"1:"
 		: "=r"(op) : : "rax"
@@ -493,13 +501,13 @@ static bool bsf_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x2));
 }
 
+/* search the value 0x1234 for the most significant set bit, and store the index in the variable op */
 static bool bsr_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
 		"mov $0x1234, %%rax\n"
 		ASM_TRY("1f")
-		/* search for the most significant set bit */
 		"bsr %%rax, %0\n\t"
 		"1:"
 		: "=r"(op) : : "rax"
@@ -507,13 +515,13 @@ static bool bsr_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xc));
 }
 
+/* Set CF 1, execute instruction setnc to set register al to 1, and store it in the variable op */
 static bool setcc_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
 		"mov $0x1234, %%rax\n"
 		ASM_TRY("1f")
-		/* set al 1 when ZF = 0*/
 		"setnz %%al\n\t"
 		"mov %%rax, %0\n"
 		"1:"
@@ -522,6 +530,7 @@ static bool setcc_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1201));
 }
 
+/* TEST will set ZF flag to 0 . then jump to the right place */
 static bool test_checking(void)
 {
 	u8 op = 0;
@@ -554,6 +563,7 @@ static bool jmp_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
 
+/* execute instruction CALL to jump to another code block and return */
 static bool call_checking(void)
 {
 	asm volatile(ASM_TRY("1f")
@@ -564,11 +574,12 @@ static bool call_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (call_cnt == 1));
 }
 
+
 /*
  * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * MOVNC, MOVL, XADD, XCHG, MOVSX, MOVZX, CDQE.
+ * CMOVNC, MOV, XADD, XCHG, MOVSX, MOVZX, CDQE.
  * execution results are all correct and no exception occurs.
  */
 static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_instructions_001(void)
@@ -576,7 +587,7 @@ static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* MOVNC, MOVL, XADD, XCHG, MOVSX, MOVZX, CDQE */
+	/* CMOVNC, MOV, XADD, XCHG, MOVSX, MOVZX, CDQE */
 	if (cmovnc_8_checking()) {
 		chk++;
 	}
