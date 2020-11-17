@@ -31,8 +31,11 @@
 #define debug_print(fmt, args...)
 #endif
 
-#define ADD_SIGN ".byte 0x48, 0x83, 0xc0, 0x80\n\t"               // add $0xffffffffffffff80(0x80 sign-extension), %%rax
-#define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"               // sub $0xffffffffffffff80(0x80 sign-extension), %%rax
+// add $0xffffffffffffff80(0x80 sign-extension), %%rax
+#define ADD_SIGN ".byte 0x48, 0x83, 0xc0, 0x80\n\t"
+
+// sub $0xffffffffffffff80(0x80 sign-extension), %%rax
+#define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"
 
 static int call_cnt = 0;
 bool eflags_cf_to_1(void);
@@ -92,7 +95,8 @@ static bool mov_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 10));
 }
 
-/* sign-extend byte 0x80 which sigh bit is 1 to 0xffffff80, then move it to the variable op */
+/* sign-extend byte 0x80 which sigh bit is 1 to 0xffffff80,
+ * then move it to the variable op */
 static bool movsx_checking(void)
 {
 	u32 op = 0;
@@ -143,8 +147,10 @@ static bool cdqe_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xffffffff80000000));
 }
 
-/* exchange the variable data1 and the variable data2 , then add data1 which equal to the original data2 to the data2 */
-/* which equal to  the original data1, finally move data2 to the variable op */
+/* exchange the variable data1 and the variable data2,
+ * then add data1 which equal to the original data2 to
+ * the data2  which equal to  the original data1,
+ * finally move data2 to the variable op */
 static bool xchg_checking(void)
 {
 	u32 op = 0;
@@ -160,7 +166,9 @@ static bool xchg_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 2));
 }
 
-/* exchange the variable data1 and the variable data2 , then move data2 which equal to the original data1 to the variable op */
+/* exchange the variable data1 and the variable data2,
+ * then move data2 which equal to the
+ * original data1 to the variable op */
 static bool xadd_checking(void)
 {
 	u32 op = 0;
@@ -427,7 +435,8 @@ static bool shr_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x80));
 }
 
-/* select the test bit in the variable op, store it in the CF flag, move the CF flag to variable ret */
+/* select the test bit in the variable op, store it in the CF flag,
+ * move the CF flag to variable ret */
 static bool bt_checking(void)
 {
 	u64 op  = 0x1234;
@@ -442,7 +451,8 @@ static bool bt_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1234) && (ret == 0x1));
 }
 
-/* select the test bit in the variable op, store it in the CF flag, and set the test bit */
+/* select the test bit in the variable op, store it in the CF flag,
+ * and set the test bit */
 static bool bts_checking(void)
 {
 	u64 op = 0x1234;
@@ -457,7 +467,8 @@ static bool bts_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1234)) && (ret == 0x1);
 }
 
-/* select the test bit in the variable op, store it in the CF flag, and reset the test bit */
+/* select the test bit in the variable op, store it in the CF flag,
+ * and reset the test bit */
 static bool btr_checking(void)
 {
 	u64 op = 0x1234;
@@ -472,7 +483,8 @@ static bool btr_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1214) && (ret == 0x1));
 }
 
-/* select the test bit in the variable op, store it in the CF flag, and complement the test bit */
+/* select the test bit in the variable op, store it in the CF flag,
+ * and complement the test bit */
 static bool btc_checking(void)
 {
 	u64 op = 0x1234;
@@ -501,7 +513,8 @@ static bool bsf_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x2));
 }
 
-/* search the value 0x1234 for the most significant set bit, and store the index in the variable op */
+/* search the value 0x1234 for the most significant set bit,
+ * and store the index in the variable op */
 static bool bsr_checking(void)
 {
 	u64 op = 0;
@@ -515,7 +528,8 @@ static bool bsr_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xc));
 }
 
-/* Set CF 1, execute instruction setnc to set register al to 1, and store it in the variable op */
+/* Set CF 1, execute instruction setnc to set register al to 1,
+ * and store it in the variable op */
 static bool setcc_checking(void)
 {
 	u64 op = 0;
