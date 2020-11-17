@@ -480,7 +480,7 @@ static bool bts_checking(void)
 /*
  * select the test bit in the variable op, store it in the CF flag,
  * and reset the test bit
- * */
+ */
 static bool btr_checking(void)
 {
 	u64 op = 0x1234;
