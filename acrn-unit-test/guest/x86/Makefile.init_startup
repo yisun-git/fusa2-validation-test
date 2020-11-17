@@ -179,4 +179,10 @@ $(TEST_DIR)/multiboot.o:$(TEST_DIR)/multiboot.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/misc_msr.o: CFLAGS += -DAP_INIT_CHECK=\"misc_msr_init.S\"
+$(TEST_DIR)/misc_msr.o: CFLAGS += -DBP_STARTUP_CHECK=\"misc_msr_startup.S\"
+$(TEST_DIR)/misc_msr.o: $(TEST_DIR)/misc_msr.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
