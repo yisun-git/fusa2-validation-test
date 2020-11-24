@@ -2,14 +2,6 @@
 mov %cr4, %eax
 mov %eax, (0x8130)	//bp_cr4_greg_long
 
-#tscadj clear
-efer = 0x0000003b
-mov $efer, %edx
-
-val = 0x700000001
-mov $val,%ecx
-wrmsr
-
 #tscadj
 efer = 0x0000003b
 mov $efer, %ecx
