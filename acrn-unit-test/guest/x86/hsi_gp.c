@@ -648,10 +648,10 @@ static bool movs_checking(void)
 	u64 data = 12;
 	asm volatile(
 		"lea %1, %%rsi\n\t"
-                "lea %0, %%rdi\n"
-                "mov $0x8,  %%rcx\n"
+		"lea %0, %%rdi\n"
+		"mov $0x8,  %%rcx\n"
 		ASM_TRY("1f")
-                "rep movsb \n"
+		"rep movsb \n"
 		"1:"
 		: "+m" (op)
 		: "m" (data)
@@ -666,10 +666,10 @@ static bool stos_checking(void)
 	u64 op = 0;
 	asm volatile(
 		"mov $1, %%al\n\t"
-                "lea %0, %%rdi\n"
-                "mov $0x4,  %%rcx\n"
+		"lea %0, %%rdi\n"
+		"mov $0x4,  %%rcx\n"
 		ASM_TRY("1f")
-                "rep stosb \n"
+		"rep stosb \n"
 		"1:"
 		: "+m" (op)
 		:
@@ -682,15 +682,15 @@ static bool leave_checking(void)
 {
 	u64 op = 0;
 	asm volatile(
-	        "call 2f\n"
-                "jmp 3f\n\t"
-                "2: endbr64\n\t"
-                "push   %%rbp\n"
-                "mov    %%rsp,%%rbp\n\t"
+		"call 2f\n"
+		"jmp 3f\n\t"
+		"2: endbr64\n\t"
+		"push %%rbp\n"
+		"mov  %%rsp,%%rbp\n\t"
 		ASM_TRY("1f")
 		"leave\n\t"
-                "ret\n\t"
-                "3: mov $2, %0\n"
+		"ret\n\t"
+		"3: mov $2, %0\n"
 		"1:"
 		: "=r" (op)
 	);
@@ -706,9 +706,9 @@ static bool cld_checking(void)
 		ASM_TRY("1f")
 		"cld\n\t"
 		"lea %1, %%rsi\n\t"
-                "lea %0, %%rdi\n"
-                "mov $0x8,  %%rcx\n"
-                "rep movsb \n"
+		"lea %0, %%rdi\n"
+		"mov $0x8,  %%rcx\n"
+		"rep movsb \n"
 		"1:"
 		: "+m" (op)
 		: "m" (data)
@@ -751,7 +751,7 @@ static bool cpuid_checking(void)
 		"mov %%edx, %1\n\t"
 		"mov %%ecx, %2\n\t"
 		"1:"
-		: "=r" (op), "=r" (op2),"=r" (op3)
+		: "=r" (op), "=r" (op2), "=r" (op3)
 		:
 		: "ebx", "ecx", "edx"
 	);
@@ -852,13 +852,13 @@ static bool ret_pro_checking(void)
 {
 	u32 op = 0;
 	asm volatile(
-	        "call 2f\n"
-                "jmp 3f\n\t"
-                "2: \n\t"
+		"call 2f\n"
+		"jmp 3f\n\t"
+		"2: \n\t"
 		ASM_TRY("1f")
-                "ret\n\t"
+		"ret\n\t"
 		"mov $10, %0\n"
-                "3: mov $2, %0\n"
+		"3: mov $2, %0\n"
 		"1:"
 		: "=r" (op)
 	);
