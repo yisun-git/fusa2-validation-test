@@ -606,6 +606,264 @@ static bool call_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (call_cnt == 1));
 }
 
+static bool jne_checking(void)
+{
+	u16 op = 0;
+	asm volatile(
+		"mov $0x8, %0\n"
+		ASM_TRY("1f")
+		"jne 2f\n"
+		"mov $0xf, %0\n"
+		"2: \n"
+		"1:"
+		: "=r"(op)
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
+}
+
+/* adding $0x3 to $0xff can make OF flag to 1 */
+static bool jo_checking(void)
+{
+	u16 op = 0;
+	asm volatile(
+		"mov $0x8, %0\n"
+		"mov $0x7f, %%bl\n"
+		"add $0x3,  %%bl\n"
+		ASM_TRY("1f")
+		"jo 2f\n"
+		"mov $0xf, %0\n"
+		"2: \n"
+		"1:"
+		: "=r"(op)
+		:
+		: "rbx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
+}
+
+/* move the byte from address RSI to address RDI */
+static bool movs_checking(void)
+{
+	u64 op = 0;
+	u64 data = 12;
+	asm volatile(
+		"lea %1, %%rsi\n\t"
+                "lea %0, %%rdi\n"
+                "mov $0x8,  %%rcx\n"
+		ASM_TRY("1f")
+                "rep movsb \n"
+		"1:"
+		: "+m" (op)
+		: "m" (data)
+		: "rsi", "rdi", "rcx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 12));
+}
+
+/* store the byte from register al to the memory which address is in register rdi */
+static bool stos_checking(void)
+{
+	u64 op = 0;
+	asm volatile(
+		"mov $1, %%al\n\t"
+                "lea %0, %%rdi\n"
+                "mov $0x4,  %%rcx\n"
+		ASM_TRY("1f")
+                "rep stosb \n"
+		"1:"
+		: "+m" (op)
+		:
+		: "rax", "rdi", "rcx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1010101));
+}
+
+static bool leave_checking(void)
+{
+	u64 op = 0;
+	asm volatile(
+	        "call 2f\n"
+                "jmp 3f\n\t"
+                "2: endbr64\n\t"
+                "push   %%rbp\n"
+                "mov    %%rsp,%%rbp\n\t"
+		ASM_TRY("1f")
+		"leave\n\t"
+                "ret\n\t"
+                "3: mov $2, %0\n"
+		"1:"
+		: "=r" (op)
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 2));
+}
+
+/* string operations increment the index registers RSI and RDI */
+static bool cld_checking(void)
+{
+	u64 op = 0;
+	u64 data = 12;
+	asm volatile(
+		ASM_TRY("1f")
+		"cld\n\t"
+		"lea %1, %%rsi\n\t"
+                "lea %0, %%rdi\n"
+                "mov $0x8,  %%rcx\n"
+                "rep movsb \n"
+		"1:"
+		: "+m" (op)
+		: "m" (data)
+		: "rsi", "rdi", "rcx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 12));
+}
+
+static bool lea_checking(void)
+{
+	u64 op = 0;
+	u64 data = 12;
+	asm volatile(
+		ASM_TRY("1f")
+		"lea %1, %%rbx\n\t"
+		"mov (%%rbx), %0\n\t"
+		"1:"
+		: "=r" (op)
+		: "m" (data)
+		: "rbx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 12));
+}
+
+/*
+ * EBX "Genu"
+ * EDX "inel"
+ * ECX "ntel"
+ */
+static bool cpuid_checking(void)
+{
+	u32 op = 0;
+	u32 op2 = 12;
+	u32 op3 = 12;
+	asm volatile(
+		"mov $0, %%eax\n\t"
+		ASM_TRY("1f")
+		"cpuid\n\t"
+		"mov %%ebx, %0\n\t"
+		"mov %%edx, %1\n\t"
+		"mov %%ecx, %2\n\t"
+		"1:"
+		: "=r" (op), "=r" (op2),"=r" (op3)
+		:
+		: "ebx", "ecx", "edx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x756E6547) && \
+			(op2 ==  0x49656E69) && (op3 == 0x6C65746E));
+}
+
+static bool nop_checking(void)
+{
+	u64 op = 0;
+	asm volatile(
+		ASM_TRY("1f")
+		"nop\n\t"
+		"mov $3, %0\n\t"
+		"1:"
+		: "=r" (op)
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 3));
+}
+
+static bool cmovae_pro_checking(void)
+{
+	u16 op = 0;
+	asm volatile(
+		"mov $0,  %0\n\t"
+		"mov $0xff12, %%bx\n\t"
+		ASM_TRY("1f")
+		/* CF = 0,It will move */
+		"cmovae %%bx, %0\n"
+		"1:"
+		: "=r" (op)
+		:
+		: "rbx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0xff12));
+}
+
+static bool cmovne_pro_checking(void)
+{
+	u32 op = 0;
+	asm volatile(
+		"mov $0,  %0\n\t"
+		"mov $0xff12, %%ebx\n\t"
+		ASM_TRY("1f")
+		/* ZF = 0,It will move */
+		"cmovne %%ebx, %0\n"
+		"1:"
+		: "=r" (op)
+		:
+		: "rbx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0xff12));
+}
+
+static bool or_pro_checking(void)
+{
+	u16 op = 0;
+	asm volatile(
+		"mov $0xff,  %%bx\n\t"
+		ASM_TRY("1f")
+		"or %%bx, %0\n\t"
+		"1:"
+		: "+r" (op)
+		:
+		: "rbx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0xff));
+}
+
+/* shift the bits left, equal to multiply the variable op with 2 */
+static bool shl_pro_checking(void)
+{
+	u32 op = 0x1;
+	asm volatile(ASM_TRY("1f")
+		"shl $2, %0\n\t"
+		"1:"
+		: "+r"(op)
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x4));
+}
+
+static bool jmp_pro_checking(void)
+{
+	u16 op = 0;
+	asm volatile(
+		"mov $0x8, %0\n"
+		ASM_TRY("1f")
+		"jmp 2f\n"
+		"mov $0xf, %0\n"
+		"2: \n"
+		"1:"
+		: "=r"(op)
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
+}
+
+static bool ret_pro_checking(void)
+{
+	u32 op = 0;
+	asm volatile(
+	        "call 2f\n"
+                "jmp 3f\n\t"
+                "2: \n\t"
+		ASM_TRY("1f")
+                "ret\n\t"
+		"mov $10, %0\n"
+                "3: mov $2, %0\n"
+		"1:"
+		: "=r" (op)
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 2));
+}
 
 /*
  * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_001
@@ -777,7 +1035,7 @@ static __unused void hsi_rqmid_40348_generic_processor_features_general_purpose_
  * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_005
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * JMP, CALL.
+ * JMP, CALL, JNE, JO.
  * execution results are all correct and no exception occurs.
  */
 static __unused void hsi_rqmid_40349_generic_processor_features_general_purpose_instructions_005(void)
@@ -785,15 +1043,94 @@ static __unused void hsi_rqmid_40349_generic_processor_features_general_purpose_
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* JMP, CALL */
+	/* JMP, CALL, JNE, JO */
 	if (jmp_checking()) {
 		chk++;
 	}
 	if (call_checking()) {
 		chk++;
 	}
+	if (jne_checking()) {
+		chk++;
+	}
+	if (jo_checking()) {
+		chk++;
+	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	report("%s", (chk == 4), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_006
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * MOVS, STOS, LEAVE, CLD, LEA, CPUID, NOP.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40614_generic_processor_features_general_purpose_instructions_006(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* MOVS, STOS, LEAVE, CLD, LEA, CPUID, NOP */
+	if (movs_checking()) {
+		chk++;
+	}
+	if (stos_checking()) {
+		chk++;
+	}
+	if (leave_checking()) {
+		chk++;
+	}
+	if (cld_checking()) {
+		chk++;
+	}
+	if (lea_checking()) {
+		chk++;
+	}
+	if (cpuid_checking()) {
+		chk++;
+	}
+	if (nop_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 7), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_007
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * CMOVAE, CMOVNE, OR, SHL, JMP, RET.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40615_generic_processor_features_general_purpose_instructions_007(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/*  CMOVAE, CMOVNE, OR, SHL, JMP, RET */
+	if (cmovae_pro_checking()) {
+		chk++;
+	}
+	if (cmovne_pro_checking()) {
+		chk++;
+	}
+	if (or_pro_checking()) {
+		chk++;
+	}
+	if (shl_pro_checking()) {
+		chk++;
+	}
+	if (jmp_pro_checking()) {
+		chk++;
+	}
+	if (ret_pro_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 6), __FUNCTION__);
 }
 
 static void print_case_list(void)
@@ -801,6 +1138,7 @@ static void print_case_list(void)
 	/*_x86_64__*/
 	printf("\t Demo test case list: \n\r");
 #ifdef IN_NATIVE
+#ifdef __x86_64__
 	printf("\t Case ID: %d Case name: %s\n\r", 35956u, "HSI generic processor features " \
 		"general purpose instructions 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 35959u, "HSI generic processor features " \
@@ -811,7 +1149,14 @@ static void print_case_list(void)
 		"general purpose instructions 004");
 	printf("\t Case ID: %d Case name: %s\n\r", 40349u, "HSI generic processor features " \
 		"general purpose instructions 005");
-#else
+	printf("\t Case ID: %d Case name: %s\n\r", 40614u, "HSI generic processor features " \
+		"general purpose instructions 006");
+
+#endif
+#ifdef __i386__
+	printf("\t Case ID: %d Case name: %s\n\r", 40615u, "HSI generic processor features " \
+		"general purpose instructions 007");
+#endif
 #endif
 	printf("\t \n\r \n\r");
 }
@@ -825,17 +1170,18 @@ int main(void)
 
 	print_case_list();
 
-#ifdef IN_NATIVE
 
+#ifdef IN_NATIVE
 #ifdef __x86_64__
 	hsi_rqmid_35956_generic_processor_features_general_purpose_instructions_001();
 	hsi_rqmid_35959_generic_processor_features_general_purpose_instructions_002();
 	hsi_rqmid_40347_generic_processor_features_general_purpose_instructions_003();
 	hsi_rqmid_40348_generic_processor_features_general_purpose_instructions_004();
 	hsi_rqmid_40349_generic_processor_features_general_purpose_instructions_005();
-
+	hsi_rqmid_40614_generic_processor_features_general_purpose_instructions_006();
+#elif __i386__
+	hsi_rqmid_40615_generic_processor_features_general_purpose_instructions_007();
 #endif
-#else
 #endif
 	return report_summary();
 }
