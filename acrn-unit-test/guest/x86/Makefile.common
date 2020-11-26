@@ -39,10 +39,13 @@ include $(TEST_DIR)/Makefile.use_ap
 # stack.o relies on frame pointers.
 KEEP_FRAME_POINTER := y
 
+V8086_DIR := $(TEST_DIR)/v8086
+
 libgcc := $(shell $(CC) -m$(bits) --print-libgcc-file-name)
 
 # We want to keep intermediate file: %.elf and %.o
-.PRECIOUS: %.elf %.raw %.o $(TEST_DIR)/%_prelink.o $(TEST_DIR)/realmode/%.elf $(TEST_DIR)/realmode/%.o
+.PRECIOUS: %.elf %.raw %.o $(TEST_DIR)/%_prelink.o $(TEST_DIR)/realmode/%.elf $(TEST_DIR)/realmode/%.o \
+	$(V8086_DIR)/%.elf
 
 FLATLIBS = lib/libcflat.a $(libgcc)
 modifylds:
@@ -124,6 +127,19 @@ $(TEST_DIR)/%_prelink.o: $(TEST_DIR)/%.o
 
 $(TEST_DIR)/%.o: CFLAGS += -std=gnu99 -ffreestanding -I $(SRCDIR)/lib -I $(SRCDIR)/lib/x86 -I lib
 
+ifeq ($(V8086), v8086_mode)
+CFLAGS += -DV8086_CODE
+v8086_objs := $(V8086_DIR)/main.o
+v8086_objs += $(V8086_DIR)/common.o
+v8086_objs += $(V8086_DIR)/$(V8086_MAIN).o
+v8086_objs += $(V8086_DIR)/v8086_lib.o
+v8086_objs += $(V8086_DIR)/v8086_cstart.o
+
+$(V8086_DIR)/%.elf: $(v8086_objs)
+	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(V8086_DIR)/v8086_flat.lds $^
+	@chmod a-x $@
+endif
+
 $(TEST_DIR)/realmode.raw: ENTRY_OFFSET = 0x4000
 $(TEST_DIR)/realmode.elf: $(TEST_DIR)/realmode.o
 	$(CC) -m32 -nostdlib -o $@ -Wl,-T,$(SRCDIR)/$(TEST_DIR)/realmode.lds $^
@@ -155,7 +171,8 @@ arch_clean:
 	$(RM) $(TEST_DIR)/*.o $(TEST_DIR)/*.flat $(TEST_DIR)/*.elf $(TEST_DIR)/*.raw \
 	$(TEST_DIR)/.*.d lib/x86/.*.d \
 	$(tests-api) api/*.o api/*.a api/.*.d \
-	$(case_table.o:.o=.c) $(TEST_DIR)/*/*.d $(TEST_DIR)/realmode/*.o $(TEST_DIR)/realmode/*.elf
+	$(case_table.o:.o=.c) $(TEST_DIR)/*/*.d $(TEST_DIR)/realmode/*.o $(TEST_DIR)/realmode/*.elf \
+	$(V8086_DIR)/.*.d $(V8086_DIR)/*.elf $(V8086_DIR)/*.raw $(V8086_DIR)/*.o
 
 api/%.o: CXXFLAGS += -m32 -std=gnu++11
 

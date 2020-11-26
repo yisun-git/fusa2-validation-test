@@ -11,7 +11,7 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
 	segmentation"
 BUILD_REAL_MODE_FEATURE=""
-BUILD_V8086_FEATURE=""
+BUILD_V8086_FEATURE="v8086_main"
 
 BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
 	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order misc_cpuid tsx locked_atomic"
@@ -63,11 +63,17 @@ do
         fi
 done
 
-#for i in $BUILD_V8086_FEATURE;
-#do
-#        echo "start build $i v8086 mode file"
-#        ./make32_and_real_mode.sh $i;
-#done
+for i in $BUILD_V8086_FEATURE;
+do
+        echo "start build $i v8086 mode file"
+        ./make32_v8086_non_safety.sh $i;
+	make_result=$?
+        if [ $make_result -ne 0 ]; then
+            RESULT=$make_result
+            echo "FAILED TO MAKE $i"
+	    exit $RESULT
+        fi
+done
 
 for i in $BUILD_NATIVE_64_FEATURE;
 do

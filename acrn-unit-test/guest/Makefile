@@ -28,6 +28,11 @@ ifneq ($(FILE_NAME1), )
 endif
 endif
 
+ifeq ($(V8086), v8086_mode)
+    export ENTRY_OFFSET = 0x4000
+    export START_A = 0x4000 + SIZEOF_HEADERS
+endif
+
 include config.mak
 
 # Set search path for all sources
@@ -83,7 +88,11 @@ include $(SRCDIR)/$(TEST_DIR)/Makefile
 cc-option = $(shell if $(CC) $(1) -S -o /dev/null -xc /dev/null \
               > /dev/null 2>&1; then echo "$(1)"; else echo "$(2)"; fi ;)
 
+ifeq ($(V8086), v8086_mode)
+COMMON_CFLAGS += -fvisibility=hidden -s $(autodepend-flags)
+else
 COMMON_CFLAGS += -g $(autodepend-flags)
+endif
 COMMON_CFLAGS += -Wall -Wwrite-strings -Wclobbered -Wempty-body -Wuninitialized
 COMMON_CFLAGS += -Wignored-qualifiers -Wunused-but-set-parameter
 COMMON_CFLAGS += -Werror
