@@ -157,14 +157,14 @@ static bool cdqe_checking(void)
  */
 static bool xchg_checking(void)
 {
-	u32 op = 0;
-	int data1 = 2;
-	int data2 = 5;
+	u64 op = 0;
+	u64 data1 = 2;
+	u64 data2 = 5;
 	asm volatile(ASM_TRY("1f")
 		"xchg %1, %2\n"
 		"mov %2, %0\n"
 		"1:"
-		: "+r" (op)
+		: "=r" (op)
 		: "r" (data1), "r" (data2)
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (op == 2));
@@ -178,8 +178,8 @@ static bool xchg_checking(void)
 static bool xadd_checking(void)
 {
 	u32 op = 0;
-	int data1 = 2;
-	int data2 = 5;
+	u32 data1 = 2;
+	u32 data2 = 5;
 	asm volatile(ASM_TRY("1f")
 		"xadd %1, %2\n"
 		"mov %2, %0\n"
@@ -866,18 +866,18 @@ static bool ret_pro_checking(void)
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_001
+ * @brief case name: HSI_Generic_Processor_Features_Data_Move_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * CMOVNC, MOV, XADD, XCHG, MOVSX, MOVZX, CDQE.
+ * CMOVNC, MOV.
  * execution results are all correct and no exception occurs.
  */
-static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_instructions_001(void)
+static __unused void hsi_rqmid_35956_generic_processor_features_data_move_001(void)
 {
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* CMOVNC, MOV, XADD, XCHG, MOVSX, MOVZX, CDQE */
+	/* CMOVNC, MOV */
 	if (cmovnc_8_checking()) {
 		chk++;
 	}
@@ -889,33 +889,41 @@ static __unused void hsi_rqmid_35956_generic_processor_features_general_purpose_
 	if (mov_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 3), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Data_Exchange_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * XADD, XCHG.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41095_generic_processor_features_data_exchange_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* XADD, XCHG */
 	if (xadd_checking()) {
 		chk++;
 	}
 	if (xchg_checking()) {
 		chk++;
 	}
-	if (movsx_checking()) {
-		chk++;
-	}
-	if (movzx_checking()) {
-		chk++;
-	}
-	if (cdqe_checking()) {
-		chk++;
-	}
 
-	report("%s", (chk == 8), __FUNCTION__);
+	report("%s", (chk == 2), __FUNCTION__);
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_002
+ * @brief case name: HSI_Generic_Processor_Features_Stack_Manipulation_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
  * PUSH, POP, PUSHF, POPF.
  * execution results are all correct and no exception occurs.
  */
-static __unused void hsi_rqmid_35959_generic_processor_features_general_purpose_instructions_002(void)
+static __unused void hsi_rqmid_35959_generic_processor_features_stack_manipulation_001(void)
 {
 	u16 chk = 0;
 
@@ -932,14 +940,39 @@ static __unused void hsi_rqmid_35959_generic_processor_features_general_purpose_
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_003
+ * @brief case name: HSI_Generic_Processor_Features_Type_Conversion_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * MOVSX, MOVZX, CDQE.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41096_generic_processor_features_type_conversion_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* MOVSX, MOVZX, CDQE */
+	if (movsx_checking()) {
+		chk++;
+	}
+	if (movzx_checking()) {
+		chk++;
+	}
+	if (cdqe_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 3), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Binary_Arithmetic_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
  * ADD, SUB, NEG, INC, DEC, MUL, DIV.
  * execution results are all correct and no exception occurs.
  */
-
-static __unused void hsi_rqmid_40347_generic_processor_features_general_purpose_instructions_003(void)
+static __unused void hsi_rqmid_40347_generic_processor_features_binary_arithmetic_001(void)
 {
 	u16 chk = 0;
 
@@ -971,13 +1004,13 @@ static __unused void hsi_rqmid_40347_generic_processor_features_general_purpose_
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_004
+ * @brief case name: HSI_Generic_Processor_Features_Comparision_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * CMP, XOR, NOT, SHR, BT, BTS, BTR, BTC, BSF, BSR, SETcc, TEST.
+ * CMP.
  * execution results are all correct and no exception occurs.
  */
-static __unused void hsi_rqmid_40348_generic_processor_features_general_purpose_instructions_004(void)
+static __unused void hsi_rqmid_41097_generic_processor_features_comparision_001(void)
 {
 	u16 chk = 0;
 
@@ -995,15 +1028,86 @@ static __unused void hsi_rqmid_40348_generic_processor_features_general_purpose_
 	if (cmp_8_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 4), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Logical_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * XOR, NOT.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41098_generic_processor_features_logical_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* XOR, NOT */
 	if (xor_checking()) {
 		chk++;
 	}
 	if (not_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Shift_Rotate_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * SHR.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41099_generic_processor_features_shift_rotate_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* SHR */
 	if (shr_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Shift_Rotate_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * SHL.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41100_generic_processor_features_shift_rotate_002(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/* SHL */
+	if (shl_pro_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Bit_Byte_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * BT, BTS, BTR, BTC, BSF, BSR, SETcc, TEST.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40348_generic_processor_features_bit_byte_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* BT, BTS, BTR, BTC, BSF, BSR, SETcc, TEST */
 	if (bt_checking()) {
 		chk++;
 	}
@@ -1028,28 +1132,69 @@ static __unused void hsi_rqmid_40348_generic_processor_features_general_purpose_
 	if (test_checking()) {
 		chk++;
 	}
-	report("%s", (chk == 15), __FUNCTION__);
+
+	report("%s", (chk == 8), __FUNCTION__);
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_005
+ * @brief case name: HSI_Generic_Processor_Features_Unconditional_Control_Transfer_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * JMP, CALL, JNE, JO.
+ * JMP, CALL.
  * execution results are all correct and no exception occurs.
  */
-static __unused void hsi_rqmid_40349_generic_processor_features_general_purpose_instructions_005(void)
+static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_control_transfer_001(void)
 {
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* JMP, CALL, JNE, JO */
+	/* JMP, CALL */
 	if (jmp_checking()) {
 		chk++;
 	}
 	if (call_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Uncondation_Control_Transfer_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * JMP, RET.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41102_generic_processor_features_uncondition_control_transfer_002(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/*  CMOVAE, CMOVNE, OR, SHL, JMP, RET */
+	if (jmp_pro_checking()) {
+		chk++;
+	}
+	if (ret_pro_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Condition_Control_Transfe_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * JNE, JO.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40349_generic_processor_features_condition_control_transfer_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* JNE, JO */
 	if (jne_checking()) {
 		chk++;
 	}
@@ -1057,34 +1202,85 @@ static __unused void hsi_rqmid_40349_generic_processor_features_general_purpose_
 		chk++;
 	}
 
-	report("%s", (chk == 4), __FUNCTION__);
+	report("%s", (chk == 2), __FUNCTION__);
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_006
+ * @brief case name: HSI_Generic_Processor_Features_String_Move_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * MOVS, STOS, LEAVE, CLD, LEA, CPUID, NOP.
+ * MOVS, STOS.
  * execution results are all correct and no exception occurs.
  */
-static __unused void hsi_rqmid_40614_generic_processor_features_general_purpose_instructions_006(void)
+static __unused void hsi_rqmid_41103_generic_processor_features_string_move_001(void)
 {
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* MOVS, STOS, LEAVE, CLD, LEA, CPUID, NOP */
+	/* MOVS, STOS */
 	if (movs_checking()) {
 		chk++;
 	}
 	if (stos_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Enter_Leave_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * LEAVE.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41104_generic_processor_features_enter_leave_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* LEAVE */
 	if (leave_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Flag_Control_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * CLD.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41105_generic_processor_features_flag_control_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* CLD */
 	if (cld_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Miscellaneous_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * LEA, CPUID, NOP.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40614_generic_processor_features_miscellaneous_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* LEA, CPUID, NOP */
 	if (lea_checking()) {
 		chk++;
 	}
@@ -1095,34 +1291,64 @@ static __unused void hsi_rqmid_40614_generic_processor_features_general_purpose_
 		chk++;
 	}
 
-	report("%s", (chk == 7), __FUNCTION__);
+	report("%s", (chk == 3), __FUNCTION__);
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_General_Purpose_Instructions_007
+ * @brief case name: HSI_Generic_Processor_Features_Data_Move_002
  *
  * Summary: Under protect mode on native board, execute following instructions:
- * CMOVAE, CMOVNE, OR, SHL, JMP, RET.
+ * CMOVAE, CMOVNE.
  * execution results are all correct and no exception occurs.
  */
-static __unused void hsi_rqmid_40615_generic_processor_features_general_purpose_instructions_007(void)
+static __unused void hsi_rqmid_41106_generic_processor_features_data_move_002(void)
 {
 	u16 chk = 0;
 
 	/* execute the following instruction in protect mode */
-	/*  CMOVAE, CMOVNE, OR, SHL, JMP, RET */
+	/*  CMOVAE, CMOVNE */
 	if (cmovae_pro_checking()) {
 		chk++;
 	}
 	if (cmovne_pro_checking()) {
 		chk++;
 	}
+
+	report("%s", (chk == 2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Logical_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * OR.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41107_generic_processor_features_logical_002(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/* OR */
 	if (or_pro_checking()) {
 		chk++;
 	}
-	if (shl_pro_checking()) {
-		chk++;
-	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Uncondition_Control_Transfer_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * JMP, RET.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_40615_generic_processor_features_uncondition_control_transfer_002(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/* JMP, RET */
 	if (jmp_pro_checking()) {
 		chk++;
 	}
@@ -1130,7 +1356,7 @@ static __unused void hsi_rqmid_40615_generic_processor_features_general_purpose_
 		chk++;
 	}
 
-	report("%s", (chk == 6), __FUNCTION__);
+	report("%s", (chk == 2), __FUNCTION__);
 }
 
 static void print_case_list(void)
@@ -1140,22 +1366,46 @@ static void print_case_list(void)
 #ifdef IN_NATIVE
 #ifdef __x86_64__
 	printf("\t Case ID: %d Case name: %s\n\r", 35956u, "HSI generic processor features " \
-		"general purpose instructions 001");
+		"data move 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41095u, "HSI generic processor features " \
+		"data exchange 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 35959u, "HSI generic processor features " \
-		"general purpose instructions 002");
+		"stack manipulation 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41096u, "HSI generic processor features " \
+		"type conversion 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 40347u, "HSI generic processor features " \
-		"general purpose instructions 003");
+		"binary arithmetic 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41097u, "HSI generic processor features " \
+		"comparision 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41098u, "HSI generic processor features " \
+		"logical 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41099u, "HSI generic processor features " \
+		"shift rotate 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 40348u, "HSI generic processor features " \
-		"general purpose instructions 004");
+		"bit byte 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41101u, "HSI generic processor features " \
+		"uncondition control transfer 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 40349u, "HSI generic processor features " \
-		"general purpose instructions 005");
+		"condition control transfer 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41103u, "HSI generic processor features " \
+		"string move 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41104u, "HSI generic processor features " \
+		"enter leave 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41105u, "HSI generic processor features " \
+		"flag control 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 40614u, "HSI generic processor features " \
-		"general purpose instructions 006");
+		"miscellaneous 001");
 
 #endif
 #ifdef __i386__
+	printf("\t Case ID: %d Case name: %s\n\r", 41100u, "HSI generic processor features " \
+		"shift rotate 002");
+	printf("\t Case ID: %d Case name: %s\n\r", 41102u, "HSI generic processor features " \
+		"uncondition control transfe 002");
+	printf("\t Case ID: %d Case name: %s\n\r", 41106u, "HSI generic processor features " \
+		"data move 002");
 	printf("\t Case ID: %d Case name: %s\n\r", 40615u, "HSI generic processor features " \
-		"general purpose instructions 007");
+		"uncondition control transfer 002");
 #endif
 #endif
 	printf("\t \n\r \n\r");
@@ -1173,14 +1423,26 @@ int main(void)
 
 #ifdef IN_NATIVE
 #ifdef __x86_64__
-	hsi_rqmid_35956_generic_processor_features_general_purpose_instructions_001();
-	hsi_rqmid_35959_generic_processor_features_general_purpose_instructions_002();
-	hsi_rqmid_40347_generic_processor_features_general_purpose_instructions_003();
-	hsi_rqmid_40348_generic_processor_features_general_purpose_instructions_004();
-	hsi_rqmid_40349_generic_processor_features_general_purpose_instructions_005();
-	hsi_rqmid_40614_generic_processor_features_general_purpose_instructions_006();
+	hsi_rqmid_35956_generic_processor_features_data_move_001();
+	hsi_rqmid_41095_generic_processor_features_data_exchange_001();
+	hsi_rqmid_35959_generic_processor_features_stack_manipulation_001();
+	hsi_rqmid_41096_generic_processor_features_type_conversion_001();
+	hsi_rqmid_40347_generic_processor_features_binary_arithmetic_001();
+	hsi_rqmid_41097_generic_processor_features_comparision_001();
+	hsi_rqmid_41098_generic_processor_features_logical_001();
+	hsi_rqmid_41099_generic_processor_features_shift_rotate_001();
+	hsi_rqmid_40348_generic_processor_features_bit_byte_001();
+	hsi_rqmid_41101_generic_processor_features_uncondition_control_transfer_001();
+	hsi_rqmid_40349_generic_processor_features_condition_control_transfer_001();
+	hsi_rqmid_41103_generic_processor_features_string_move_001();
+	hsi_rqmid_41105_generic_processor_features_flag_control_001();
+	hsi_rqmid_40614_generic_processor_features_miscellaneous_001();
 #elif __i386__
-	hsi_rqmid_40615_generic_processor_features_general_purpose_instructions_007();
+	hsi_rqmid_41100_generic_processor_features_shift_rotate_002();
+	hsi_rqmid_41102_generic_processor_features_uncondition_control_transfer_002();
+	hsi_rqmid_41106_generic_processor_features_data_move_002();
+	hsi_rqmid_41107_generic_processor_features_logical_002();
+	hsi_rqmid_40615_generic_processor_features_uncondition_control_transfer_002();
 #endif
 #endif
 	return report_summary();
