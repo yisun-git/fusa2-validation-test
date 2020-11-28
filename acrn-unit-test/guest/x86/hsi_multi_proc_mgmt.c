@@ -9,7 +9,7 @@
  * Date :                       2020/10/13
  *
  */
-#define USE_DEBUG
+//#define USE_DEBUG
 #include "processor.h"
 #include "libcflat.h"
 #include "desc.h"
