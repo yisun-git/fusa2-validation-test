@@ -137,11 +137,13 @@ start:
 	mov $stacktop, %esp
 
 /* get BP EIP starup value */
+#ifdef IN_MULTIBOOT_TEST
 #ifdef IN_SAFETY_VM
 	call 11f
 11:
 	pop %edx
 	mov %edx, (0x6004)
+#endif
 #endif
 
 	setup_percpu_area

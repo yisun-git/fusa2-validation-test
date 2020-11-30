@@ -179,6 +179,7 @@ $(TEST_DIR)/local_apic.o: $(TEST_DIR)/local_apic.c
 
 $(TEST_DIR)/multiboot.o:CFLAGS += -DAP_INIT_CHECK=\"init_startup_multiboot_init.S\"
 $(TEST_DIR)/multiboot.o:CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_multiboot_startup.S\"
+$(TEST_DIR)/multiboot.o:CFLAGS += -DIN_MULTIBOOT_TEST
 $(TEST_DIR)/multiboot.o:$(TEST_DIR)/multiboot.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
