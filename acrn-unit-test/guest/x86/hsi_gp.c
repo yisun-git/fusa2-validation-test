@@ -660,7 +660,10 @@ static bool movs_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 12));
 }
 
-/* store the byte from register al to the memory which address is in register rdi */
+/*
+ * store the byte from register al to the memory which address is in register rdi
+ * repeat it the number of times specified in the register rcx
+ */
 static bool stos_checking(void)
 {
 	u64 op = 0;
@@ -678,6 +681,7 @@ static bool stos_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x1010101));
 }
 
+/* release the stack frame set up before, restore the register RBP and RSP */
 static bool leave_checking(void)
 {
 	u64 op = 0;
@@ -741,8 +745,8 @@ static bool lea_checking(void)
 static bool cpuid_checking(void)
 {
 	u32 op = 0;
-	u32 op2 = 12;
-	u32 op3 = 12;
+	u32 op2 = 0;
+	u32 op3 = 0;
 	asm volatile(
 		"mov $0, %%eax\n\t"
 		ASM_TRY("1f")
@@ -759,6 +763,7 @@ static bool cpuid_checking(void)
 			(op2 ==  0x49656E69) && (op3 == 0x6C65746E));
 }
 
+/* no operation */
 static bool nop_checking(void)
 {
 	u64 op = 0;
@@ -772,6 +777,7 @@ static bool nop_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 3));
 }
 
+/* CF = 0,It will move */
 static bool cmovae_pro_checking(void)
 {
 	u16 op = 0;
@@ -779,7 +785,6 @@ static bool cmovae_pro_checking(void)
 		"mov $0,  %0\n\t"
 		"mov $0xff12, %%bx\n\t"
 		ASM_TRY("1f")
-		/* CF = 0,It will move */
 		"cmovae %%bx, %0\n"
 		"1:"
 		: "=r" (op)
@@ -789,6 +794,7 @@ static bool cmovae_pro_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0xff12));
 }
 
+/* ZF = 0,It will move */
 static bool cmovne_pro_checking(void)
 {
 	u32 op = 0;
@@ -796,7 +802,6 @@ static bool cmovne_pro_checking(void)
 		"mov $0,  %0\n\t"
 		"mov $0xff12, %%ebx\n\t"
 		ASM_TRY("1f")
-		/* ZF = 0,It will move */
 		"cmovne %%ebx, %0\n"
 		"1:"
 		: "=r" (op)
@@ -838,9 +843,10 @@ static bool jmp_pro_checking(void)
 	u16 op = 0;
 	asm volatile(
 		"mov $0x8, %0\n"
+		"3:nop\n"
 		ASM_TRY("1f")
 		"jmp 2f\n"
-		"mov $0xf, %0\n"
+		".= 3b+128\n"
 		"2: \n"
 		"1:"
 		: "=r"(op)
@@ -848,6 +854,7 @@ static bool jmp_pro_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
 
+/* jump to original code block successfully */
 static bool ret_pro_checking(void)
 {
 	u32 op = 0;
@@ -1015,7 +1022,7 @@ static __unused void hsi_rqmid_41097_generic_processor_features_comparision_001(
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* CMP, XOR, NOT, SHR, BT, BTS, BTR, BTC, BSF, BSR, SETcc, TEST */
+	/* CMP */
 	if (cmp_1_checking()) {
 		chk++;
 	}
@@ -1153,29 +1160,6 @@ static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_cont
 		chk++;
 	}
 	if (call_checking()) {
-		chk++;
-	}
-
-	report("%s", (chk == 2), __FUNCTION__);
-}
-
-/*
- * @brief case name: HSI_Generic_Processor_Features_Uncondation_Control_Transfer_002
- *
- * Summary: Under protect mode on native board, execute following instructions:
- * JMP, RET.
- * execution results are all correct and no exception occurs.
- */
-static __unused void hsi_rqmid_41102_generic_processor_features_uncondition_control_transfer_002(void)
-{
-	u16 chk = 0;
-
-	/* execute the following instruction in protect mode */
-	/*  CMOVAE, CMOVNE, OR, SHL, JMP, RET */
-	if (jmp_pro_checking()) {
-		chk++;
-	}
-	if (ret_pro_checking()) {
 		chk++;
 	}
 
@@ -1400,10 +1384,10 @@ static void print_case_list(void)
 #ifdef __i386__
 	printf("\t Case ID: %d Case name: %s\n\r", 41100u, "HSI generic processor features " \
 		"shift rotate 002");
-	printf("\t Case ID: %d Case name: %s\n\r", 41102u, "HSI generic processor features " \
-		"uncondition control transfe 002");
 	printf("\t Case ID: %d Case name: %s\n\r", 41106u, "HSI generic processor features " \
 		"data move 002");
+	printf("\t Case ID: %d Case name: %s\n\r", 41107u, "HSI generic processor features " \
+		"logical 002");
 	printf("\t Case ID: %d Case name: %s\n\r", 40615u, "HSI generic processor features " \
 		"uncondition control transfer 002");
 #endif
@@ -1435,11 +1419,11 @@ int main(void)
 	hsi_rqmid_41101_generic_processor_features_uncondition_control_transfer_001();
 	hsi_rqmid_40349_generic_processor_features_condition_control_transfer_001();
 	hsi_rqmid_41103_generic_processor_features_string_move_001();
+	hsi_rqmid_41104_generic_processor_features_enter_leave_001();
 	hsi_rqmid_41105_generic_processor_features_flag_control_001();
 	hsi_rqmid_40614_generic_processor_features_miscellaneous_001();
 #elif __i386__
 	hsi_rqmid_41100_generic_processor_features_shift_rotate_002();
-	hsi_rqmid_41102_generic_processor_features_uncondition_control_transfer_002();
 	hsi_rqmid_41106_generic_processor_features_data_move_002();
 	hsi_rqmid_41107_generic_processor_features_logical_002();
 	hsi_rqmid_40615_generic_processor_features_uncondition_control_transfer_002();
