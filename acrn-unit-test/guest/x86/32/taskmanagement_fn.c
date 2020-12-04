@@ -157,6 +157,7 @@ void __unused cond_13_desc_tss_not_page(void)
 		PAGE_PTE, 0, 0, true);
 }
 
+
 static __unused void cond_3_iret_desc_type(void)
 {
 	gdt32[TSS_INTR>>3].access &= 0xf0;
@@ -2497,6 +2498,46 @@ static void taskm_id_26023_tr_selector_start_up(void)
 	report("%s", tr_sel == 0, __func__);
 }
 
+/* cond 14 */
+unsigned char *cond_14_tss_not_page(void)
+{
+	unsigned char *linear_addr;
+
+	linear_addr = (unsigned char *)malloc(PAGE_SIZE);
+	memcpy((void *)linear_addr, (void *)(&tss_intr), sizeof(tss_intr));
+	set_gdt_entry(TSS_INTR, (u32)linear_addr, sizeof(tss_intr) - 1, 0x89, 0x0f);
+
+	set_page_control_bit((void *)((ulong)(linear_addr)),
+		PAGE_PTE, 0, 0, true);
+
+	return linear_addr;
+}
+
+/**
+ * @brief case name: Exception checking skip target_001
+ *
+ * Summary: When a vCPU attempts to do task switch and task switch sanity checks pass,
+ * the physical platform shall generate a VM exit due to task switch without checking
+ * validity of the linear address of the target TSS.
+ */
+static void taskm_id_38866_task_switch_page_not_present(void)
+{
+	unsigned char *tmp_tss;
+
+	tmp_tss = cond_14_tss_not_page();
+
+	asm volatile(ASM_TRY("1f")
+		"lcall $" xstr(TASK_GATE_SEL) ", $0xf4f4f4f4\n\t"
+		"1:":::);
+
+	report("%s", (exception_vector() == GP_VECTOR), __func__);
+
+	/* resume environment */
+	setup_tss32();
+	set_page_control_bit((void *)((ulong)(tmp_tss)), PAGE_PTE, 0, 1, true);
+	free((void *)tmp_tss);
+}
+
 #endif /* defined(IN_NON_SAFETY_VM) || defined(IN_SAFETY_VM) */
 
 #if defined(IN_NON_SAFETY_VM)
@@ -2996,6 +3037,7 @@ const struct {
 
 	/* Expose Task Switch Support: Task Switch in protect mode */
 	{
+
 		true, 23761, taskm_id_23761_protect,
 		"Task switch in protect mode_001"
 	},
@@ -3217,6 +3259,15 @@ const struct {
 	{
 		true, 26061, taskm_id_26061_task_gate_tss_desc_limit_2BH,
 		"Exception_Checking_on_Task_gate_011"
+	},
+
+	/**
+	 * Task Management Application constraint:
+	 * Exception checking skip target TSS
+	 */
+	{
+		true, 38866, taskm_id_38866_task_switch_page_not_present,
+		"Exception checking skip target TSS_001"
 	}
 #endif
 };
