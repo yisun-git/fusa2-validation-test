@@ -37,13 +37,7 @@
 // sub $0xffffffffffffff80(0x80 sign-extension), %%rax
 #define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"
 
-static int call_cnt = 0;
 bool eflags_cf_to_1(void);
-
-static void test_call_instr(void)
-{
-	call_cnt++;
-}
 
 static bool cmovnc_8_checking(void)
 {
@@ -81,6 +75,7 @@ static bool cmovnc_8_ncf_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0));
 }
 
+/* move $10 to variable op */
 static bool mov_checking(void)
 {
 	u32 op = 0;
@@ -595,17 +590,76 @@ static bool jmp_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
 
-/* execute instruction CALL to jump to another code block and return */
+/*
 static bool call_checking(void)
 {
-	asm volatile(ASM_TRY("1f")
-		"call *%[fn]\n"
+	asm volatile(
+		MK_INSN(call_far1,  "lcallw *(%ebx)\n\t");
+		ASM_TRY("1f")
+		exec_in_big_real_mode(&insn_ret_imm);
 		"1:"
-		: : [fn]"r"(test_call_instr)
+		: 
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (call_cnt == 1));
 }
+*/
 
+/* sent 0xff to port 0xe0, recieve from it */
+static bool out_in_1_checking(void)
+{
+	u8 op = 0;
+	asm volatile(
+		"mov $0xff, %%al\n"
+		"out %%al, $0xe0\n"
+		ASM_TRY("1f")
+		"in $0xe0, %%al\n"
+		"mov $0, %0\n"
+		"mov %%al, %0\n"
+		"1:"
+		: "=r" (op)
+		: : "rax"
+	);
+
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0xff));
+}
+
+/* sent 0xffff to port 0xe0, recieve from it */
+static bool out_in_2_checking(void)
+{
+	u16 op = 0;
+	asm volatile(
+		"mov $0xffff, %%ax\n"
+		"out %%ax, $0xe0\n"
+		ASM_TRY("1f")
+		"in $0xe0, %%ax\n"
+		"mov $0, %0\n"
+		"mov %%ax, %0\n"
+		"1:"
+		: "=r" (op)
+		: : "rax"
+	);
+
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0xffff));
+}
+
+/* sent 0xffffffff to port 0xe0, recieve from it */
+static bool out_in_4_checking(void)
+{
+	u32 op = 0;
+	asm volatile(
+		"mov $0xffffffff, %%eax\n"
+		"out %%eax, $0xe0\n"
+		ASM_TRY("1f")
+		"in $0xe0, %%eax\n"
+		"mov $0, %0\n"
+		"mov %%eax, %0\n"
+		"1:"
+		: "=r" (op)
+		: : "rax"
+	);
+
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0xffffffff));
+}
 static bool jne_checking(void)
 {
 	u16 op = 0;
@@ -621,7 +675,7 @@ static bool jne_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
 
-/* adding $0x3 to $0xff can make OF flag to 1 */
+/* adding $0x8 to $0x7f can make OF flag to 1 */
 static bool jo_checking(void)
 {
 	u16 op = 0;
@@ -721,6 +775,25 @@ static bool cld_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 12));
 }
 
+/* move $0x10 to segment FS */
+static bool mov_segment_checking(void)
+{
+	u16 op = 0x8;
+	asm volatile(
+		"mov %%fs, %%bx\n"
+		ASM_TRY("1f")
+		"mov $0x10, %%cx\n\t"
+		"mov %%cx, %%fs\n"
+		"mov %%fs, %0\n"
+		"mov %%bx, %%fs\n"
+		"1:"
+		: "=r" (op)
+		: : "ebx", "ecx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
+}
+
+/* get the effective address of variable data and store it in register RBX */
 static bool lea_checking(void)
 {
 	u64 op = 0;
@@ -870,6 +943,45 @@ static bool ret_pro_checking(void)
 		: "=r" (op)
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (op == 2));
+}
+
+/* CLI instruction make the rflags.IF to 0 */
+static bool cli_pro_checking(void)
+{
+	u32 op = 1;
+	asm volatile(
+		"pushf\n"
+		"pop %%ebx\n\t"
+		ASM_TRY("1f")
+		"cli\n\t"
+		"pushf\n"
+		"pop %0\n"
+		"push %%ebx\n"
+		"popf\n"
+		"and $0x100, %0\n"
+		"1:"
+		: "+r" (op)
+		: : "ebx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0));
+}
+
+/* move $0x10 to segment FS */
+static bool mov_pro_checking(void)
+{
+	u16 op = 0x8;
+	asm volatile(
+		"mov %%fs, %%bx\n"
+		ASM_TRY("1f")
+		"mov $0x10, %%cx\n\t"
+		"mov %%cx, %%fs\n"
+		"mov %%fs, %0\n"
+		"mov %%bx, %%fs\n"
+		"1:"
+		: "=r" (op)
+		: : "ebx", "ecx"
+	);
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
 }
 
 /*
@@ -1159,11 +1271,13 @@ static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_cont
 	if (jmp_checking()) {
 		chk++;
 	}
+	/*
 	if (call_checking()) {
 		chk++;
 	}
+*/
 
-	report("%s", (chk == 2), __FUNCTION__);
+	report("%s", (chk == 1), __FUNCTION__);
 }
 
 /*
@@ -1253,6 +1367,26 @@ static __unused void hsi_rqmid_41105_generic_processor_features_flag_control_001
 }
 
 /*
+ * @brief case name: HSI_Generic_Processor_Features_Segment_Register_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * MOV.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41941_generic_processor_features_segment_register_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* MOV */
+	if (mov_segment_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
  * @brief case name: HSI_Generic_Processor_Features_Miscellaneous_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
@@ -1272,6 +1406,32 @@ static __unused void hsi_rqmid_40614_generic_processor_features_miscellaneous_00
 		chk++;
 	}
 	if (nop_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 3), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Output_Input_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * IN, OUT.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41178_generic_processor_features_output_input_001(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in IA-32e mode */
+	/* OUT, IN */
+	if (out_in_1_checking()) {
+		chk++;
+	}
+	if (out_in_2_checking()) {
+		chk++;
+	}
+	if (out_in_4_checking()) {
 		chk++;
 	}
 
@@ -1320,6 +1480,47 @@ static __unused void hsi_rqmid_41107_generic_processor_features_logical_002(void
 
 	report("%s", (chk == 1), __FUNCTION__);
 }
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Flag_Control_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * CLI.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41179_generic_processor_features_flag_control_002(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/* CLI */
+	if (cli_pro_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Segment_Register_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * MOV.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41180_generic_processor_features_segment_register_002(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/* MOV */
+	if (mov_pro_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
 /*
  * @brief case name: HSI_Generic_Processor_Features_Uncondition_Control_Transfer_002
  *
@@ -1379,6 +1580,10 @@ static void print_case_list(void)
 		"flag control 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 40614u, "HSI generic processor features " \
 		"miscellaneous 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41178u, "HSI generic processor features " \
+		"output input 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 41941u, "HSI generic processor features " \
+		"segment register 001");
 
 #endif
 #ifdef __i386__
@@ -1388,6 +1593,10 @@ static void print_case_list(void)
 		"data move 002");
 	printf("\t Case ID: %d Case name: %s\n\r", 41107u, "HSI generic processor features " \
 		"logical 002");
+	printf("\t Case ID: %d Case name: %s\n\r", 41179u, "HSI generic processor features " \
+		"flag control 002");
+	printf("\t Case ID: %d Case name: %s\n\r", 41180u, "HSI generic processor features " \
+		"segment register 002");
 	printf("\t Case ID: %d Case name: %s\n\r", 40615u, "HSI generic processor features " \
 		"uncondition control transfer 002");
 #endif
@@ -1422,10 +1631,14 @@ int main(void)
 	hsi_rqmid_41104_generic_processor_features_enter_leave_001();
 	hsi_rqmid_41105_generic_processor_features_flag_control_001();
 	hsi_rqmid_40614_generic_processor_features_miscellaneous_001();
+	hsi_rqmid_41178_generic_processor_features_output_input_001();
+	hsi_rqmid_41941_generic_processor_features_segment_register_001();
 #elif __i386__
 	hsi_rqmid_41100_generic_processor_features_shift_rotate_002();
 	hsi_rqmid_41106_generic_processor_features_data_move_002();
 	hsi_rqmid_41107_generic_processor_features_logical_002();
+	hsi_rqmid_41179_generic_processor_features_flag_control_002();
+	hsi_rqmid_41180_generic_processor_features_segment_register_002();
 	hsi_rqmid_40615_generic_processor_features_uncondition_control_transfer_002();
 #endif
 #endif
