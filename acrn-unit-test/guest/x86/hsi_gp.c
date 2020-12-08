@@ -590,20 +590,6 @@ static bool jmp_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
 
-/*
-static bool call_checking(void)
-{
-	asm volatile(
-		MK_INSN(call_far1,  "lcallw *(%ebx)\n\t");
-		ASM_TRY("1f")
-		exec_in_big_real_mode(&insn_ret_imm);
-		"1:"
-		: 
-	);
-	return ((exception_vector() == NO_EXCEPTION) && (call_cnt == 1));
-}
-*/
-
 /* sent 0xff to port 0xe0, recieve from it */
 static bool out_in_1_checking(void)
 {
@@ -1271,11 +1257,6 @@ static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_cont
 	if (jmp_checking()) {
 		chk++;
 	}
-	/*
-	if (call_checking()) {
-		chk++;
-	}
-*/
 
 	report("%s", (chk == 1), __FUNCTION__);
 }
