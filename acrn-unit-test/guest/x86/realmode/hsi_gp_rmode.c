@@ -114,7 +114,7 @@ static void hsi_rqmid_41190_generic_processor_features_logical_003(void)
 
 	if (and_checking()) {
 		chk++;
-        }
+	}
 
 	report("hsi_rqmid_41190_generic_processor_features_logical_003", (chk == 1));
 	print_serial("\r\n");
