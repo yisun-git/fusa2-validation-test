@@ -597,6 +597,7 @@ static bool out_in_1_checking(void)
 	asm volatile(
 		"mov $0xff, %%al\n"
 		"out %%al, $0xe0\n"
+		"mov $0x0, %%al\n"
 		ASM_TRY("1f")
 		"in $0xe0, %%al\n"
 		"mov $0, %0\n"
@@ -616,6 +617,7 @@ static bool out_in_2_checking(void)
 	asm volatile(
 		"mov $0xffff, %%ax\n"
 		"out %%ax, $0xe0\n"
+		"mov $0x0, %%ax\n"
 		ASM_TRY("1f")
 		"in $0xe0, %%ax\n"
 		"mov $0, %0\n"
@@ -635,6 +637,7 @@ static bool out_in_4_checking(void)
 	asm volatile(
 		"mov $0xffffffff, %%eax\n"
 		"out %%eax, $0xe0\n"
+		"mov $0x0, %%eax\n"
 		ASM_TRY("1f")
 		"in $0xe0, %%eax\n"
 		"mov $0, %0\n"
@@ -944,7 +947,7 @@ static bool cli_pro_checking(void)
 		"pop %0\n"
 		"push %%ebx\n"
 		"popf\n"
-		"and $0x100, %0\n"
+		"and $0x200, %0\n"
 		"1:"
 		: "+r" (op)
 		: : "ebx"

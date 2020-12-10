@@ -7,7 +7,6 @@ static u8 cmove_checking(void)
 {
 	u16 op = 2;
 	asm volatile(
-		"mov $1, %ax\n"
 		"xor %bx, %bx\n"
 		ASM_TRY("1f"));
 	asm volatile(
@@ -15,7 +14,7 @@ static u8 cmove_checking(void)
 		"1:"
 		: "=r" (op)
 		:
-		: "ax", "bx"
+		: "bx"
 	);
 
 	return ((exception_vector() == 0) && (op == 0));
@@ -63,7 +62,7 @@ static u8 cli_checking(void)
 }
 
 /* move $0x10 to segment FS */
-static u8 mov_checking(void)
+static u8 mov_real_checking(void)
 {
 	u16 op = 0x8;
 	asm volatile(
@@ -150,7 +149,7 @@ static void hsi_rqmid_41942_generic_processor_features_segment_register_003(void
 {
 	u16 chk = 0;
 
-	if (mov_checking()) {
+	if (mov_real_checking()) {
 		chk++;
 	}
 
