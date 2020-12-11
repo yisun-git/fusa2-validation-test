@@ -78,6 +78,8 @@
 ### 2. Run in QEMU
     
     Compile hypervisor (see ### 4). Add compile option QEMU=1.
+    e.g. 
+    $make RELEASE=0 QEMU=1
     Compile unit-test (see ### 5).
 
     1) Run acrn-unit-test on hypervisor
