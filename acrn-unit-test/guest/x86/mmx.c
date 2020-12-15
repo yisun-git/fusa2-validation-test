@@ -12,7 +12,58 @@
 
 #define CPUID_1_EDX_MMX_SUPPROT	(1UL << 23)
 
+#ifdef IN_NATIVE
+#define CR0_BIT_EM					2
+static unsigned mmx_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"movq %%rax, %%mm0\n\t"
+		"1:"
+		:
+		:
+		:);
 
+	return exception_vector();
+}
+
+
+/*  @brief case name: Physical Platform Shall Support MMX Technology_001
+ *
+ *	Summary: MMX general support shall be available on the physical platform.
+ */
+static void mmx_rqmid_35194_physical_platform_shall_support_MMX_technology_001(void)
+{
+	int result = 0;
+	if (!(cpuid(1).d & CPUID_1_EDX_MMX_SUPPROT)) {
+		report("%s", false, __FUNCTION__);
+		return;
+	}
+
+	if ((read_cr0() & (1UL << CR0_BIT_EM)) != 0) {
+		report("%s", false, __FUNCTION__);
+		return;
+	}
+
+	if (mmx_checking() == UD_VECTOR) {
+		report("%s", false, __FUNCTION__);
+		return;
+	}
+
+	asm volatile("movq %%rax, %%mm0\n"
+				 "movq %%mm0, %%rbx\n"
+				 "cmp  %%rax, %%rbx\n"
+				 "je 1f\n"
+				 "movl $0, %0\n"
+				 "jmp 2f\n"
+				 "1:\n"
+				 "movl $1, %0\n"
+				 "2:\n"
+				 : "=a"(result)
+				);
+
+	report("%s", result, __FUNCTION__);
+}
+#else
 #ifdef __x86_64__
 /*
  * @brief case name: General support_64 bit Mode_PADDSW_#PF_001
@@ -244,17 +295,32 @@ static void mmx_rqmid_31117_acrn_general_support_protected_mode_movd_nm_001(cons
 
 }
 #endif
+#endif
+static void print_case_list(void)
+{
+	printf("MMX feature case list:\n\r");
+#ifdef IN_NATIVE
+	printf("\t Case ID:%d case name:%s\n\r", 335194, "Physical Platform Shall Support MMX Technology_001.");
+#endif
+}
 
 int main()
 {
 	setup_vm();
 	setup_idt();
 	setup_ring_env();
+	print_case_list();
 
+#ifdef IN_NATIVE
+#ifdef __x86_64__
+	mmx_rqmid_35194_physical_platform_shall_support_MMX_technology_001();
+#endif
+#else
 	if (!(cpuid(1).d & CPUID_1_EDX_MMX_SUPPROT)) {
 		report_skip("%s", "MMX feature not supported\n\r");
 		return -1;
 	}
+
 
 	write_cr0(read_cr0() & ~0x4);/*clear EM*/
 
@@ -278,6 +344,7 @@ int main()
 	write_cr0(read_cr0() | 0x8);/*set TS*/
 	do_at_ring1(mmx_rqmid_31117_acrn_general_support_protected_mode_movd_nm_001, "");
 	write_cr0(read_cr0() & ~0x8);/*clear TS*/
+#endif
 #endif
 	return report_summary();
 }
