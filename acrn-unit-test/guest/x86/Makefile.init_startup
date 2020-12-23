@@ -219,3 +219,9 @@ $(TEST_DIR)/segmentation.o: $(TEST_DIR)/segmentation.c $(TEST_DIR)/../lib/x86/se
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/mp_initialization.o: CFLAGS += -DAP_INIT_CHECK=\"mp_initialization_init.S\"
+$(TEST_DIR)/mp_initialization.o: $(TEST_DIR)/mp_initialization.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
