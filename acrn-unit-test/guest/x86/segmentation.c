@@ -281,7 +281,11 @@ static void verify_bp_dump_info(void)
 	report("Test Case: 29065", (u16)dump[GDTR_BASE + 3] == 0);
 
 	//for GDTR test cases, verify its base and limit
+	#if defined(__x86_64__)
 	u32 *p_base = (u32 *)(u64)(gdtr32->base);
+	#else
+	u32 *p_base = (u32 *)(gdtr32->base);
+	#endif
 	u32 orig_base_val = *p_base;
 	*p_base = 0x55AAAA55;
 	report("Test Case: 29512", (*p_base == 0x55AAAA55) && (gdtr32->limit == 0x1F)); //on ACRN it is 0x1F

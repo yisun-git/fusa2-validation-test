@@ -208,8 +208,14 @@ $(TEST_DIR)/misc_cpuid.o: $(TEST_DIR)/misc_cpuid.c
 
 $(TEST_DIR)/sse.o: CFLAGS += -DAP_INIT_CHECK=\"sse_init.S\"
 $(TEST_DIR)/sse.o: CFLAGS += -DBP_STARTUP_CHECK=\"sse_startup.S\"
-
 $(TEST_DIR)/sse.o: $(TEST_DIR)/sse.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/segmentation.o: CFLAGS += -DAP_INIT_CHECK=\"Segmentation_AP_Init.S\"
+$(TEST_DIR)/segmentation.o: CFLAGS += -DBP_STARTUP_CHECK=\"Segmentation_BP_Init.S\"
+$(TEST_DIR)/segmentation.o: $(TEST_DIR)/segmentation.c $(TEST_DIR)/../lib/x86/segmentation.h
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

@@ -53,3 +53,9 @@ $(TEST_DIR)/sse.o: $(TEST_DIR)/sse.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/segmentation.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/segmentation.o: $(TEST_DIR)/segmentation.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
