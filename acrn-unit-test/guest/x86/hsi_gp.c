@@ -24,6 +24,11 @@
 #include "asm/page.h"
 #include "x86/vm.h"
 
+#include "instruction_common.h"
+#include "xsave.h"
+#include "regdump.h"
+
+
 #define USE_DEBUG
 #ifdef USE_DEBUG
 #define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
@@ -36,9 +41,19 @@
 
 // sub $0xffffffffffffff80(0x80 sign-extension), %%rax
 #define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"
+#define MAIN_TSS_SEL (FIRST_SPARE_SEL + 24)
+#define USING_APS                   3
+#define    HOST_GDT_RING0_DATA_SEL        (0x0010U)
 
-bool eflags_cf_to_1(void);
+static char intr_alt_stack[4][4096];
+static volatile int start_run_id = 0;
 
+#ifdef __x86_64__
+static atomic_t ret_sim;
+static atomic_t ap_sim;
+#endif
+
+#ifdef __x86_64__
 static bool cmovnc_8_checking(void)
 {
 	u64 op = 0;
@@ -764,24 +779,6 @@ static bool cld_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 12));
 }
 
-/* move $0x10 to segment FS */
-static bool mov_segment_checking(void)
-{
-	u16 op = 0x8;
-	asm volatile(
-		"mov %%fs, %%bx\n"
-		ASM_TRY("1f")
-		"mov $0x10, %%cx\n\t"
-		"mov %%cx, %%fs\n"
-		"mov %%fs, %0\n"
-		"mov %%bx, %%fs\n"
-		"1:"
-		: "=r" (op)
-		: : "ebx", "ecx"
-	);
-	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
-}
-
 /* get the effective address of variable data and store it in register RBX */
 static bool lea_checking(void)
 {
@@ -839,6 +836,100 @@ static bool nop_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 3));
 }
 
+/* Description: BP will control 2 APs to start/end, and check result */
+static void test_bp()
+{
+	u16 val = 0;
+	u16 desc_size = sizeof(tss64_t);
+	tss64_t main_tss;
+	/* tell AP to start */
+	while (atomic_read(&ap_sim) != USING_APS) {}
+
+	/* create TSS descriptor */
+	main_tss.ist1 = (u64)intr_alt_stack + 4096;
+	main_tss.iomap_base = (u16)desc_size;
+	set_gdt64_entry(MAIN_TSS_SEL, (u64)&main_tss, desc_size - 1, 0x89, 0x0f);
+	ltr(MAIN_TSS_SEL);
+	asm volatile(ASM_TRY("1f")
+		"str %%ax\n\t"
+		"mov %%ax,%0\n\t"
+		"1:"
+		: "=m"(val)
+	);
+	if (val == MAIN_TSS_SEL) {
+		atomic_inc(&ret_sim);
+	}
+}
+
+/* Description: 2 APs will test concurrently */
+static __unused void test_ap(int index)
+{
+	u16 val = 0;
+	u16 desc_size = sizeof(tss64_t);
+	tss64_t ap_tss;
+
+	/* create TSS descriptor */
+	ap_tss.ist1 = (u64)intr_alt_stack[index / 2] + 4096;
+	ap_tss.iomap_base = (u16)desc_size;
+	set_gdt64_entry((MAIN_TSS_SEL+index*8), (u64)&ap_tss, desc_size - 1, 0x89, 0x0f);
+	ltr(MAIN_TSS_SEL + index*8);
+	asm volatile(ASM_TRY("1f")
+		"str %%ax\n\t"
+		"mov %%ax,%0\n\t"
+		"1:"
+		: "=m"(val)
+	);
+	if (val == (MAIN_TSS_SEL + index*8)) {
+		atomic_inc(&ret_sim);
+	}
+	atomic_inc(&ap_sim);
+
+	return;
+}
+
+static bool rdtsc_checking(void)
+{
+	unsigned a, d;
+
+	asm volatile(
+		ASM_TRY("1f")
+		"rdtsc\n\t"
+		"1:"
+		: "=a"(a), "=d"(d)
+	);
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+static bool rdtscp_checking(void)
+{
+	unsigned a, d;
+
+	asm volatile(
+		ASM_TRY("1f")
+		"rdtscp\n\t"
+		"1:"
+		: "=a"(a), "=d"(d)
+	);
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+static bool verw_checking(void)
+{
+	u16 ds = HOST_GDT_RING0_DATA_SEL;
+
+	asm volatile(
+		ASM_TRY("1f")
+		"verw %[ds]\n\t"
+		"1:"
+		: : [ds] "m" (ds) : "cc"
+	);
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+#elif __i386__
 /* CF = 0,It will move */
 static bool cmovae_pro_checking(void)
 {
@@ -954,9 +1045,10 @@ static bool cli_pro_checking(void)
 	);
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0));
 }
+#endif
 
 /* move $0x10 to segment FS */
-static bool mov_pro_checking(void)
+static bool mov_segment_checking(void)
 {
 	u16 op = 0x8;
 	asm volatile(
@@ -973,6 +1065,21 @@ static bool mov_pro_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
 }
 
+/* read and write TSC msr */
+static bool msr_checking(void)
+{
+	u64 tsc;
+	u64 op = 0;
+
+	tsc = rdmsr(MSR_IA32_TSC);
+	tsc += 1000;
+	wrmsr(MSR_IA32_TSC, tsc);
+	op  = rdmsr(MSR_IA32_TSC);
+
+	return ((exception_vector() == NO_EXCEPTION) && (op > tsc));
+}
+
+#ifdef __x86_64__
 /*
  * @brief case name: HSI_Generic_Processor_Features_Data_Move_001
  *
@@ -1177,26 +1284,6 @@ static __unused void hsi_rqmid_41099_generic_processor_features_shift_rotate_001
 	/* execute the following instruction in IA-32e mode */
 	/* SHR */
 	if (shr_checking()) {
-		chk++;
-	}
-
-	report("%s", (chk == 1), __FUNCTION__);
-}
-
-/*
- * @brief case name: HSI_Generic_Processor_Features_Shift_Rotate_002
- *
- * Summary: Under protect mode on native board, execute following instructions:
- * SHL.
- * execution results are all correct and no exception occurs.
- */
-static __unused void hsi_rqmid_41100_generic_processor_features_shift_rotate_002(void)
-{
-	u16 chk = 0;
-
-	/* execute the following instruction in protect mode */
-	/* SHL */
-	if (shl_pro_checking()) {
 		chk++;
 	}
 
@@ -1423,6 +1510,132 @@ static __unused void hsi_rqmid_41178_generic_processor_features_output_input_001
 }
 
 /*
+ * @brief case name: HSI_Generic_Processor_Features_Microcode_update_signature_001
+ *
+ * Summary: Under 64 bit mode on native board, read IA32_BIOS_SIGN_ID MSR should get
+ * information of the microcode update signature successfully.
+ */
+static __unused void hsi_rqmid_35971_generic_processor_features_microcode_update_signature_001(void)
+{
+	u16 chk = 0;
+	u64 msr = 0;
+
+	/* enumerate CPUID before */
+	cpuid(0);
+
+	/* read IA32_BIOS_SIGN_ID */
+	msr = rdmsr(IA32_BIOS_SIGN_ID);
+	msr = msr >> 32;
+	if (msr != 0) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Task_Management_001
+ *
+ * Summary: Under 64 bit mode on native board.
+ * create TSS descriptor in GDT, execute LTR instruction on each physical processor.
+ * to load the TSS structure into task register, the load operation is successful.
+ */
+static __unused void hsi_rqmid_42227_generic_processor_features_task_management_001(void)
+{
+	u16 chk = 0;
+
+	atomic_set(&ret_sim, 0);
+	atomic_set(&ap_sim, 0);
+
+	/* test AP */
+	start_run_id = 42227;
+
+	/* test BP */
+	test_bp();
+	if (atomic_read(&ret_sim) == (USING_APS + 1)) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Msr_001
+ *
+ * Summary: Under 64 bit mode on native board.
+ * read from and write to the TSC_MSR successfully.
+ */
+static __unused void hsi_rqmid_42228_generic_processor_features_msr_001(void)
+{
+	u16 chk = 0;
+
+	if (msr_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Time_Stamp_Counter_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * RDTSC, RDTSCP.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_42229_generic_processor_features_time_stamp_counter_001(void)
+{
+	u16 chk = 0;
+
+	if (rdtsc_checking()) {
+		chk++;
+	}
+	if (rdtscp_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 2), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Clean_Cpu_Internal_Buffer_001
+ *
+ * Summary: Under 64 bit mode on native board, execute following instructions:
+ * VERW.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_42230_generic_processor_features_clean_cpu_internal_buffer_001(void)
+{
+	u16 chk = 0;
+
+	if (verw_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+#elif __i386__
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Shift_Rotate_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * SHL.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_41100_generic_processor_features_shift_rotate_002(void)
+{
+	u16 chk = 0;
+
+	/* execute the following instruction in protect mode */
+	/* SHL */
+	if (shl_pro_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+/*
  * @brief case name: HSI_Generic_Processor_Features_Data_Move_002
  *
  * Summary: Under protect mode on native board, execute following instructions:
@@ -1498,7 +1711,7 @@ static __unused void hsi_rqmid_41180_generic_processor_features_segment_register
 
 	/* execute the following instruction in protect mode */
 	/* MOV */
-	if (mov_pro_checking()) {
+	if (mov_segment_checking()) {
 		chk++;
 	}
 
@@ -1527,6 +1740,61 @@ static __unused void hsi_rqmid_40615_generic_processor_features_uncondition_cont
 
 	report("%s", (chk == 2), __FUNCTION__);
 }
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Task_Management_002
+ *
+ * Summary: Under protect mode on native board, execute following instructions:
+ * STR.
+ * execution results are all correct and no exception occurs.
+ */
+static __unused void hsi_rqmid_42231_generic_processor_features_task_management_002(void)
+{
+	u16 chk = 0;
+	u16 val = 0;
+	u16 desc_size = sizeof(tss32_t);
+	tss32_t tss_intr;
+
+	tss_intr.cr3 = read_cr3();
+	tss_intr.ss0 = tss_intr.ss1 = tss_intr.ss2 = 0x10;
+	tss_intr.esp = tss_intr.esp0 = tss_intr.esp1 = tss_intr.esp2 =
+					(u32)intr_alt_stack + 4096;
+	tss_intr.cs = 0x08;
+	tss_intr.ds = tss_intr.es = tss_intr.fs = tss_intr.gs = tss_intr.ss = 0x10;
+	tss_intr.iomap_base = (u16)desc_size;
+	set_gdt_entry(MAIN_TSS_SEL, (u32)&tss_intr, desc_size - 1, 0x89, 0x0f);
+	ltr(MAIN_TSS_SEL);
+	asm volatile(ASM_TRY("1f")
+		"str %%ax\n\t"
+		"mov %%ax,%0\n\t"
+		"1:"
+		: "=m"(val)
+	);
+	if (val == MAIN_TSS_SEL) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Msr_001
+ *
+ * Summary: Under protect mode on native board.
+ * read from and write to the TSC_MSR successfully.
+ */
+static __unused void hsi_rqmid_42232_generic_processor_features_msr_002(void)
+{
+	u16 chk = 0;
+
+	if (msr_checking()) {
+		chk++;
+	}
+
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+#endif
 
 static void print_case_list(void)
 {
@@ -1568,9 +1836,18 @@ static void print_case_list(void)
 		"output input 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 41941u, "HSI generic processor features " \
 		"segment register 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 35971u, "HSI generic processor features " \
+		"microcode update signature 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 42227u, "HSI generic processor features " \
+		"task management 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 42228u, "HSI generic processor features " \
+		"msr 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 42229u, "HSI generic processor features " \
+		"time stamp counter 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 42230u, "HSI generic processor features " \
+		"clean cpu internal buffer 001");
 
-#endif
-#ifdef __i386__
+#elif __i386__
 	printf("\t Case ID: %d Case name: %s\n\r", 41100u, "HSI generic processor features " \
 		"shift rotate 002");
 	printf("\t Case ID: %d Case name: %s\n\r", 41106u, "HSI generic processor features " \
@@ -1583,9 +1860,37 @@ static void print_case_list(void)
 		"segment register 002");
 	printf("\t Case ID: %d Case name: %s\n\r", 40615u, "HSI generic processor features " \
 		"uncondition control transfer 002");
+	printf("\t Case ID: %d Case name: %s\n\r", 42231u, "HSI generic processor features " \
+		"task management 002");
+	printf("\t Case ID: %d Case name: %s\n\r", 42232u, "HSI generic processor features " \
+		"msr 002");
 #endif
 #endif
 	printf("\t \n\r \n\r");
+}
+
+int ap_main(void)
+{
+#ifdef IN_NATIVE
+#ifdef __x86_64__
+	/***********************************/
+	debug_print("ap %d starts running \n", get_lapic_id());
+	while (start_run_id == 0) {
+		test_delay(5);
+	}
+
+	/* ap test */
+	while (start_run_id != 42227) {
+		test_delay(5);
+	}
+	if (get_lapic_id() == 4 || get_lapic_id() == 2 || get_lapic_id() == 6) {
+		test_ap(get_lapic_id());
+	}
+
+
+#endif
+#endif
+	return 0;
 }
 
 int main(void)
@@ -1617,6 +1922,11 @@ int main(void)
 	hsi_rqmid_40614_generic_processor_features_miscellaneous_001();
 	hsi_rqmid_41178_generic_processor_features_output_input_001();
 	hsi_rqmid_41941_generic_processor_features_segment_register_001();
+	hsi_rqmid_35971_generic_processor_features_microcode_update_signature_001();
+	hsi_rqmid_42227_generic_processor_features_task_management_001();
+	hsi_rqmid_42228_generic_processor_features_msr_001();
+	hsi_rqmid_42229_generic_processor_features_time_stamp_counter_001();
+	hsi_rqmid_42230_generic_processor_features_clean_cpu_internal_buffer_001();
 #elif __i386__
 	hsi_rqmid_41100_generic_processor_features_shift_rotate_002();
 	hsi_rqmid_41106_generic_processor_features_data_move_002();
@@ -1624,6 +1934,8 @@ int main(void)
 	hsi_rqmid_41179_generic_processor_features_flag_control_002();
 	hsi_rqmid_41180_generic_processor_features_segment_register_002();
 	hsi_rqmid_40615_generic_processor_features_uncondition_control_transfer_002();
+	hsi_rqmid_42231_generic_processor_features_task_management_002();
+	hsi_rqmid_42232_generic_processor_features_msr_002();
 #endif
 #endif
 	return report_summary();

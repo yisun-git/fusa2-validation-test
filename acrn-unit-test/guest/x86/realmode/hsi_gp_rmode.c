@@ -2,6 +2,24 @@
 asm(".code16gcc");
 #include "rmode_lib.h"
 
+#define MSR_IA32_TSC			0x00000010
+typedef unsigned long long u64;
+typedef unsigned int u32;
+
+
+static inline u64 rdmsr(u32 index)
+{
+	u32 a, d;
+	asm volatile ("rdmsr" : "=a"(a), "=d"(d) : "c"(index) : "memory");
+	return a | ((u64)d << 32);
+}
+
+static inline void wrmsr(u32 index, u64 val)
+{
+	u32 a = val, d = val >> 32;
+	asm volatile ("wrmsr" : : "a"(a), "d"(d), "c"(index) : "memory");
+}
+
 /* ZF = 1,It will move */
 static u8 cmove_checking(void)
 {
@@ -157,12 +175,38 @@ static void hsi_rqmid_41942_generic_processor_features_segment_register_003(void
 	print_serial("\r\n");
 }
 
+/*
+ * @brief case name: HSI_Generic_Processor_Features_Msr_003
+ *
+ * Summary: Under Real Address Mode,
+ * read from and write to the TSC_MSR successfully.
+ */
+static void hsi_rqmid_42233_generic_processor_features_msr_003(void)
+{
+	u16 chk = 0;
+	u64 tsc;
+	u64 op = 0;
+
+	tsc = rdmsr(MSR_IA32_TSC);
+	tsc += 1000;
+	wrmsr(MSR_IA32_TSC, tsc);
+	op  = rdmsr(MSR_IA32_TSC);
+
+	if (op > tsc) {
+		chk++;
+	}
+
+	report("hsi_rqmid_42233_generic_processor_features_msr_003", (chk == 1));
+	print_serial("\r\n");
+}
+
 void main()
 {
 	hsi_rqmid_41189_generic_processor_features_data_move_003();
 	hsi_rqmid_41190_generic_processor_features_logical_003();
 	hsi_rqmid_41191_generic_processor_features_flag_control_003();
 	hsi_rqmid_41942_generic_processor_features_segment_register_003();
+	hsi_rqmid_42233_generic_processor_features_msr_003();
 	report_summary();
 	print_serial("\r\n");
 }
