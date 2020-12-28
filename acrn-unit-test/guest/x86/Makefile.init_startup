@@ -224,3 +224,10 @@ $(TEST_DIR)/mp_initialization.o: $(TEST_DIR)/mp_initialization.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/smx.o: CFLAGS += -DAP_INIT_CHECK=\"smx_init.S\"
+$(TEST_DIR)/smx.o: CFLAGS += -DBP_STARTUP_CHECK=\"smx_startup.S\"
+$(TEST_DIR)/smx.o: $(TEST_DIR)/smx.c $(TEST_DIR)/smx.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

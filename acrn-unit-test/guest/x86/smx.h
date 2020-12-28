@@ -7,9 +7,11 @@
 #define SMX_SENTER_LOCAL_FUNCTON_ENABLE		0x7f00ul
 #define SMX_SENTER_GLOBAL_ENABLE		(1UL << 15)
 
-struct emulate_register {
-	u32 a, b, c, d;
-};
+#define INIT_IA32_FEATURE_CONTROL	0x6004ULL
+#define STARTUP_IA32_FEATURE_CONTROL	0x6008ULL
+
+#define INIT_CR4_ADDR		0x7004ULL
+#define STARTUP_CR4_ADDR	0x7008ULL
 
 #endif
 
