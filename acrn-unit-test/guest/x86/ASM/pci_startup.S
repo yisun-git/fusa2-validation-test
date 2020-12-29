@@ -1,96 +1,153 @@
 #include "../pci_check.h"
 #include "../../lib/e1000_def.h"
 #include "../../lib/e1000_regs.h"
+#include "../../lib/pci_regs.h"
 #define PCI_CONFIG_ADDR		0xCF8U
 #define PCI_CONFIG_DATA		0xCFCU
+// USB BDF=00:1.0
+#define USB_BDF_ENABLE		0x80000800U
+// NET BDF=00:1.0
+#define NET_BDF_ENABLE		0x80000800U
 
-/*test PCI port address*/
+// test PCI port address
 mov $(PCI_CONFIG_ADDR), %edx
 inl (%dx), %eax
 mov %eax, (BP_IO_PORT_ADDR)
 
-/*Read Net device 00:1f.06 interrupt line.*/
-mov $0x8000FE3C, %eax
+// Passthrough Ethernet to safet VM
+#ifdef IN_SAFETY_VM
+// Read Net device interrupt line
+// Format address BDF + offset
+mov $(NET_BDF_ENABLE), %eax
+add $(PCI_INTERRUPT_LINE), %eax
+// Write port address
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inb (%dx), %al
-/*Save pci device config register value*/
+// Save pci device config register value
 mov %eax, (BP_NET_INTERRUP_LINE_ADDR)
+#endif
 
-/*Read USB device 00:14.00 interrupt line.*/
-mov $0x8000A03C, %eax
+// Passthrough USB to non-safet VM
+#ifdef IN_NON_SAFETY_VM
+// Read USB device interrupt line
+// Format address BDF + offset
+mov $(USB_BDF_ENABLE), %eax
+add $(PCI_INTERRUPT_LINE), %eax
+// Write port address
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inb (%dx), %al
-/*Save pci device config register value*/
+// Save pci device config register value
 mov %eax, (BP_USB_INTERRUP_LINE_ADDR)
+#endif
 
-/*Read Net device 00:1f.06 BAR0*/
-mov $0x8000FE10, %eax
+#ifdef IN_SAFETY_VM
+// Read Net device BAR0
+mov $NET_BDF_ENABLE, %eax
+add $(PCI_BASE_ADDRESS_0), %eax
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inl (%dx), %eax
 mov %eax, (BP_NET_BAR0_ADDR)
 
-/*Read Device CTRL Register*/
+// Read Device CTRL Register in BAR0 space by MMIO
 and $0xFFFFFFF0, %eax
 add $0x8, %eax
 mov (%eax), %ecx
 mov %ecx, (BP_NET_DEVICE_STATUS_ADDR)
+#endif
 
-/*Read USB device 00:14.00 BAR0*/
-mov $0x8000A010, %eax
+#ifdef IN_NON_SAFETY_VM
+// Read USB device BAR0
+mov $(USB_BDF_ENABLE), %eax
+add $(PCI_BASE_ADDRESS_0), %eax
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inl (%dx), %eax
 mov %eax, (BP_USB_BAR0_ADDR)
-/*Read USB HCIVERSION*/
+// Read USB HCIVERSION in BAR0 space
 and $0xFFFFFFF0, %eax
 add $(HCIVERSION), %eax
 mov (%eax), %cx
 mov %ecx, (BP_USB_DEVICE_HCIVERSION_ADDR)
+#endif
 
-/*Read Net device 00:1f.06 MSI FlAG*/
-mov $0x8000FED0, %eax
+#ifdef IN_SAFETY_VM
+// Read Net device MSI FlAG
+mov $(NET_BDF_ENABLE), %eax
+add $0xD0, %eax
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inl (%dx), %eax
 mov %eax, (BP_NET_MSI_CTRL_ADDR)
+#endif
 
-/*Read USB device 00:14.00 MSI FLAG*/
-mov $0x8000A080, %eax
+#ifdef IN_NON_SAFETY_VM
+// Read USB device MSI FLAG
+mov $(USB_BDF_ENABLE), %eax
+add $0x80, %eax
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inl (%dx), %eax
 mov %eax, (BP_USB_MSI_CTRL_ADDR)
+#endif
 
-/*Read Net device 00:1f.06 Status and Command*/
-mov $0x8000FE04, %eax
+#ifdef IN_SAFETY_VM
+// Read Net device Status and Command
+mov $(NET_BDF_ENABLE), %eax
+add $(PCI_COMMAND), %eax
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inl (%dx), %eax
 mov %eax, (BP_NET_STATUS_COMMAND_ADDR)
-
-/*Read USB device 00:14.00 Status and Command*/
-mov $0x8000A004, %eax
+// Write command.master|command.memory to cammand register
+mov $(NET_BDF_ENABLE), %eax
+add $(PCI_COMMAND), %eax
 mov $(PCI_CONFIG_ADDR), %edx
 outl %eax, (%dx)
-/*Read PCI_CFG_DATA*/
+// Read PCI_CFG_DATA
+mov $(PCI_CONFIG_DATA), %edx
+mov (BP_NET_STATUS_COMMAND_ADDR), %eax
+or $0x0406, %ax
+outw %eax, (%dx)
+#endif
+
+
+#ifdef IN_SAFETY_VM
+// Read Net device Status and Command
+mov $(NET_BDF_ENABLE), %eax
+add $(PCI_COMMAND), %eax
+mov $(PCI_CONFIG_ADDR), %edx
+outl %eax, (%dx)
+// Read PCI_CFG_DATA
+mov $(PCI_CONFIG_DATA), %edx
+inl (%dx), %eax
+mov %eax, (BP_NET_STATUS_COMMAND_ADDR)
+#endif
+
+#ifdef IN_NON_SAFETY_VM
+// Read USB device  Status and Command
+mov $(USB_BDF_ENABLE), %eax
+add $(PCI_COMMAND), %eax
+mov $(PCI_CONFIG_ADDR), %edx
+outl %eax, (%dx)
+// Read PCI_CFG_DATA
 mov $(PCI_CONFIG_DATA), %edx
 inl (%dx), %eax
 mov %eax, (BP_USB_STATUS_COMMAND_ADDR)
-
+#endif

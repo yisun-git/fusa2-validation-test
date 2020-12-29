@@ -71,4 +71,12 @@ $ cp -r ../acrn-unit-test/* acrn-unit-test/
 $ cd acrn-unit-test/guest/
 $ make codescan
 
+###PCI
+1.please run get_native_pci_config.sh on test machine, 
+a C header file pci_native_config.h will be generated,
+please copy the pci_native_config.h into acrn-unit-test/guest/x86/
+as follows:
 
+On test machine:
+$./get_native_pci_config.sh
+$scp pci_native_config.h admin@xxx.xxx.xxx.xxx:/home/acrn-unit-test/guest/x86/
