@@ -8,9 +8,6 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 
 #ifdef USE_SERIAL
-#include "asm/spinlock.h"
-
-static struct spinlock lock;
 static u16 serial_iobase = 0x3f8;
 static u16 serial_inited;
 
@@ -76,7 +73,6 @@ static void serial_init(void)
 
 static void serial_print(const char *buf, int len)
 {
-	spin_lock(&lock);
 	if (!serial_inited) {
 		serial_init();
 		serial_inited = 1;
@@ -84,7 +80,6 @@ static void serial_print(const char *buf, int len)
 
 	for (int i = 0; i < len; i++)
 		serial_put(buf[i]);
-	spin_unlock(&lock);
 }
 #else
 static void serial_print(const char *buf, int len)
@@ -134,7 +129,7 @@ static u32 fill_dec(char *buf, u32 num)
 	return fill_str(buf, ptr);
 }
 
-/* only %%, %u, %x and %s are supported. */
+/* only %%, %d, %u, %x and %s are supported. */
 static void vprint(const char *fmt, va_list va)
 {
 	#define MAX_BUF_LEN 256
@@ -149,6 +144,7 @@ static void vprint(const char *fmt, va_list va)
 			case '%':
 				*buf++ = '%';
 				break;
+			case 'd':
 			case 'u':
 				buf += fill_dec(buf, va_arg(va, u32));
 				break;
@@ -178,13 +174,14 @@ end:
 #ifndef PRINT_NAME
 #define PRINT_NAME printf
 #endif
-void PRINT_NAME(const char *fmt, ...)
+int PRINT_NAME(const char *fmt, ...)
 {
 	va_list va;
 
 	va_start(va, fmt);
 	vprint(fmt, va);
 	va_end(va);
+	return 0;
 }
 
 #endif

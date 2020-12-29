@@ -231,3 +231,10 @@ $(TEST_DIR)/smx.o: $(TEST_DIR)/smx.c $(TEST_DIR)/smx.h
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/v8086_protect.o: CFLAGS += -DAP_INIT_CHECK=\"v8086_init.S\"
+$(TEST_DIR)/v8086_protect.o: CFLAGS += -DBP_STARTUP_CHECK=\"v8086_startup.S\"
+$(TEST_DIR)/v8086_protect.o: $(TEST_DIR)/v8086_protect.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

@@ -13,6 +13,27 @@ struct descriptor_table_ptr {
 	u32 base;
 } __attribute__((packed));
 
+typedef struct {
+	u16 limit_low;
+	u16 base_low;
+	u8 base_middle;
+	u8 access;
+	u8 granularity;
+	u8 base_high;
+} gdt_entry_t;
+
+typedef struct {
+	u16 offset0;
+	u16 selector;
+	u16 ist : 3;
+	u16 resv1 : 5;
+	u16 type : 4;
+	u16 resv2 : 1;
+	u16 dpl : 2;
+	u16 p : 1;
+	u16 offset1;
+} idt_entry_t;
+
 static inline void lgdt(const struct descriptor_table_ptr *ptr)
 {
 	asm volatile ("lgdt %0" : : "m"(*ptr));
@@ -101,9 +122,14 @@ static inline void invlpg(volatile void *va)
 	asm volatile("invlpg (%0)" ::"r" (va) : "memory");
 }
 
-void printf(const char *fmt, ...);
+void *memset(void *s, int c, u32 n);
+int printf(const char *fmt, ...);
 void setup_idt(void);
 void set_idt_entry(int vec, void *addr, int dpl);
+void set_idt_entry_ex(int vec, void *addr, int dpl, u16 sel, u16 type);
+void set_gdt_entry(int sel, u32 base,  u32 limit, u8 access, u8 gran);
+void set_idt_task_gate(int vec, u16 sel, int dpl);
+void v8086_enter(void);
 u32 register_int(u32 irq, u32 handler);
 void unregister_int(u32 irqidx);
 

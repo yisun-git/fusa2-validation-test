@@ -49,8 +49,10 @@ void inner_report(u16 pass, const char *func_name, const char *fmt, ...)
 	printf("%s: ", (pass ? "PASS" : "FAIL"));
 	if (func_name) {
 		printf("%s()", func_name);
-		if (!pass)
+		if (!pass) {
+			printf("\n      ");
 			vprint(fmt, va);
+		}
 	} else {
 		vprint(fmt, va);
 	}
@@ -90,7 +92,7 @@ void send_cmd(enum func_id fid)
 	);
 }
 
-u16 request_irq(u8 irq, irq_handler_t handler)
+u16 request_irq(u32 irq, irq_handler_t handler)
 {
 	struct v8086_irq virq = {
 		.irq = irq,
@@ -120,4 +122,40 @@ void write_cr(u32 fid, u32 val)
 	send_cmd(fid);
 }
 
+#if 0
+jmp_buf jmpbuf;
+__noinline void irq_handler(void)
+{
+	longjmp(jmpbuf, MAGIC_WORD);
+}
+
+u16 request_irq_ex(u32 irq, irq_handler_ex_t handler,
+	void *data, const char *func_name)
+{
+	u16 irqidx = request_irq(irq, &irq_handler);
+
+	if (RET_FAILURE == irqidx) {
+		if (func_name)
+			inner_report(0, func_name, "request_irq() returns 0x%x", irqidx);
+		return RET_FAILURE;
+	}
+	write_v8086_esp(); /* restore esp for longjmp */
+	int result = setjmp(jmpbuf);
+
+	if (0 == result) {
+		asm("movl $"xstr(NO_EXCEPTION)", %gs:"xstr(EXCEPTION_ADDR));
+		handler(data);
+	}
+	clear_v8086_esp();
+	free_irq(irqidx);
+
+	if (MAGIC_WORD != result) {
+		if (func_name)
+			inner_report(0, func_name, "no exception (setjmp result = 0x%x)", result);
+		return RET_FAILURE;
+	}
+
+	return RET_SUCCESS;
+}
+#endif
 #endif

@@ -4,8 +4,12 @@
 #include "libcflat.h"
 #include "setjmp.h"
 
+#include "types.h"
 #define xstr(s...) xxstr(s)
 #define xxstr(s...) #s
+#define nullptr     ((void *)0)
+#define __unused    __attribute__((__unused__))
+#define __noinline  __attribute__((__noinline__))
 
 /* Because the first page is used for AP startup,
  * save the exception vector rflags error code to page 16 (this page is not used)
@@ -14,6 +18,7 @@
 #define EXCEPTION_VECTOR_ADDR	EXCEPTION_ADDR
 #define EXCEPTION_RFLAGS_ADDR	0xF005
 #define EXCEPTION_ECODE_ADDR	0xF006
+
 #define NO_EXCEPTION	0xFF
 
 #define ASM_TRY(catch)				\
@@ -23,6 +28,21 @@
 	".word 1111f," catch "\n\t"		\
 	".popsection \n\t"			\
 	"1111:"
+
+#define print_serial_u32(val) printf("%u", val)
+#define print_serial(val) printf(val)
+
+/* Just for compatibility */
+#define report(fmt, pass, ...) \
+	inner_report((pass), nullptr, fmt, ##__VA_ARGS__)
+
+/* Recommend this new format report, print the reason if it fails */
+#define report_ex(fmt, pass, ...) \
+	inner_report((pass), __func__, fmt, ##__VA_ARGS__)
+
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned u32;
 
 struct excp_record {
 	u16 ip;
@@ -40,17 +60,15 @@ struct excp_regs {
 };
 
 typedef void (*handler)(struct excp_regs *regs);
+void *memset(void *s, int c, u32 n);
 void *memcpy(void *dest, const void *src, size_t n);
-void print_serial(const char *buf);
-void print_serial_u32(u32 value);
-int report_summary(void);
 u8 exception_vector(void);
 u16 exception_error_code(void);
 void unhandled_r_exception(struct excp_regs *regs);
 handler handle_exception(u8 v, handler fn);
 bool test_for_r_exception(unsigned int ex, void (*trigger_func)(void *data),
 	void *data);
-
+void inner_report(u16 pass, const char *func_name, const char *fmt, ...);
 void __set_r_exception_jmpbuf(jmp_buf *addr);
 #define set_r_exception_jmpbuf(jmpbuf) \
 	(setjmp(jmpbuf) ? : (__set_r_exception_jmpbuf(&(jmpbuf)), 0))
@@ -143,6 +161,10 @@ static inline void write_rflags(unsigned long f)
 	asm volatile ("push %0; popf\n\t" : : "rm"(f));
 }
 
+static inline void write_fs(unsigned val)
+{
+	asm volatile ("mov %0, %%fs" : : "rm"(val) : "memory");
+}
 
 struct cpuid { u32 a, b, c, d; };
 
@@ -168,5 +190,4 @@ static inline struct cpuid cpuid(u32 function)
 {
 	return cpuid_indexed(function, 0);
 }
-
 #endif

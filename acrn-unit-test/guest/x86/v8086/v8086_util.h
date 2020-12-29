@@ -32,8 +32,13 @@
 #define X86_EFLAGS_IF     0x00000200
 #define X86_EFLAGS_DF     0x00000400
 #define X86_EFLAGS_OF     0x00000800
-#define X86_EFLAGS_IOPL   0x00003000
+#define X86_EFLAGS_IOPL0  0x00000000
+#define X86_EFLAGS_IOPL1  0x00001000
+#define X86_EFLAGS_IOPL2  0x00002000
+#define X86_EFLAGS_IOPL3  0x00003000
 #define X86_EFLAGS_NT     0x00004000
+#define X86_EFLAGS_RF     0x00010000
+#define X86_EFLAGS_VM     0x00020000
 #define X86_EFLAGS_AC     0x00040000
 
 #define X86_EFLAGS_ALU    (X86_EFLAGS_CF | X86_EFLAGS_PF | X86_EFLAGS_AF | \
@@ -42,16 +47,43 @@
 #define X86_IA32_EFER     0xc0000080
 #define X86_EFER_LMA      (1UL << 8)
 
+#define SEGMENT_PRESENT_SET                                 0x80
+#define DESCRIPTOR_PRIVILEGE_LEVEL_0                        0x00
+#define DESCRIPTOR_PRIVILEGE_LEVEL_1                        0x20
+#define DESCRIPTOR_PRIVILEGE_LEVEL_2                        0x40
+#define DESCRIPTOR_PRIVILEGE_LEVEL_3                        0x60
+#define DESCRIPTOR_TYPE_CODE_OR_DATA                        0x10
+#define SEGMENT_TYPE_CODE_EXE_READ_ACCESSED                 0xB
+#define SEGMENT_TYPE_CODE_EXE_READ_ONLY_CONFORMING_ACCESSED 0xF
+#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TASKGATE      0x5
+#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TSSG          0xB
+#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_INTERGATE     0xE
+#define SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TRAPGATE      0xF
+#define DEFAULT_OPERATION_SIZE_32BIT_SEGMENT                0x40
+#define GRANULARITY_SET                                     0x80
+
+#define V8086_TSS_SEL    0x58
 /* Used for handling the registered interrupts from v8086 mode */
-#define V8086_REG_INT     254
+#define V8086_REG_INT     253
+#define V8086_REG_INT_E   254
 /* Used for communication between protected and v8086 mode */
 #define V8086_COMM_INT    255
 #define NO_EXCEPTION      0xff
 #define EXCEPTION_ADDR    (shared_data + 0x00)
+#define EXCEPTION_ECODE_ADDR (shared_data + 0x02)
 #define FUNC_ID_ADDR      (shared_data + 0x04)
 #define RET_INS_ADDR      (shared_data + 0x08)
 #define FUNC_INPUT_ADDR   (shared_data + 0x10)
 #define FUNC_OUTPUT_ADDR  (shared_data + 0x20)
+#define V8086_ESP_ADDR    (shared_data + 0x30)
+#define TEMP_VALUE_ADDR   (shared_data + 0x34)
+
+#define PAGE_FAULT_ADDR	  0xf000
+#define INVALID_CASE_ID   0xffff
+#define MAGIC_DWORD       0xfeedbabe
+#define MAGIC_WORD        0xcafe
+
+#define RET_SUCCESS       0x0000
 #define RET_FAILURE       0xffff
 
 #define DPL_0             0
@@ -79,6 +111,12 @@ enum func_id {
 	FUNC_WRITE_CR3,
 	FUNC_READ_CR4,
 	FUNC_WRITE_CR4,
+	FUNC_SET_IOPL,
+	FUNC_SET_IOMAP,
+	FUNC_CLR_IOMAP,
+	FUNC_SET_IGDT,
+	FUNC_SET_PAGE,
+	FUNC_SET_PAGE_P,
 	FUNC_ID_MAX
 };
 
@@ -88,13 +126,26 @@ struct far_pointer32 {
 } __attribute__((packed));
 
 struct v8086_irq {
-	u8 irq;
+	u32 irq;
 	u32 handler;
+};
+
+struct int_regs {
+	u32 cs;
+	u32 eflags;
+	u32 esp;
+	u32 ss;
+	u32 es;
+	u32 ds;
+	u32 fs;
+	u32 gs;
 };
 
 struct cpuid { u32 a, b, c, d; };
 
 extern u8 shared_data[];
+extern u32 *temp_value;
+
 static inline struct cpuid raw_cpuid(u32 function, u32 index)
 {
 	struct cpuid r;
@@ -197,6 +248,14 @@ static inline u16 read_ss(void)
 	return val;
 }
 
+static inline u32 read_flags(void)
+{
+	u32 flags;
+
+	asm volatile ("pushf; pop %0\n\t" : "=rm"(flags));
+	return flags;
+}
+
 static inline void write_ds(u32 val)
 {
 	asm volatile ("mov %0, %%ds" : : "rm"(val) : "memory");
@@ -234,7 +293,6 @@ static inline void write_func_id(u32 val)
 {
 	asm volatile ("movl %0, %%gs:"xstr(FUNC_ID_ADDR) : : "r"(val) : "memory");
 }
-
 
 static inline u32 read_input_val(void)
 {
@@ -275,12 +333,30 @@ static inline void write_ret_ins_addr(u32 val)
 	asm volatile ("movl %0, %%gs:"xstr(RET_INS_ADDR) : : "r"(val) : "memory");
 }
 
+static inline u32 read_v8086_esp(void)
+{
+	u32 val;
+
+	asm volatile ("movl %%gs:"xstr(V8086_ESP_ADDR)", %0" : "=r"(val));
+	return val;
+}
+
+static inline void write_v8086_esp(void)
+{
+	asm volatile ("movl %%esp, %%gs:"xstr(V8086_ESP_ADDR) : : : "memory");
+}
+
+static inline void clear_v8086_esp(void)
+{
+	asm volatile ("movl $0, %%gs:"xstr(V8086_ESP_ADDR) : : : "memory");
+}
+
 static inline struct v8086_irq read_irq(void)
 {
 	struct v8086_irq val;
 
 	asm volatile (
-		"movb %%gs:"xstr(FUNC_INPUT_ADDR)", %0\n"
+		"movl %%gs:"xstr(FUNC_INPUT_ADDR)", %0\n"
 		"movl %%gs:"xstr(FUNC_INPUT_ADDR + 4)", %1\n"
 		: "=r"(val.irq), "=r"(val.handler));
 	return val;
@@ -289,7 +365,7 @@ static inline struct v8086_irq read_irq(void)
 static inline void write_irq(struct v8086_irq *val)
 {
 	asm volatile (
-		"movb %0, %%gs:"xstr(FUNC_INPUT_ADDR)"\n"
+		"movl %0, %%gs:"xstr(FUNC_INPUT_ADDR)"\n"
 		"movl %1, %%gs:"xstr(FUNC_INPUT_ADDR + 4)"\n"
 		:: "r"(val->irq), "r"(val->handler)
 		: "memory"
@@ -313,6 +389,9 @@ static inline void write_rflags(unsigned long f)
 	asm volatile ("push %0; popf\n\t" : : "rm"(f));
 }
 
-#define PAGE_FAULT_ADDR	(0xF000)
+static inline void write_exception_data(u32 val)
+{
+	asm("mov %0, %%gs:" xstr(EXCEPTION_ADDR) "" : : "r"(val));
+}
 
 #endif

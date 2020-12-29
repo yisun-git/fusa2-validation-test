@@ -4,9 +4,12 @@
 .globl prepare_v8086
 .globl v8086_iopl
 .globl shared_data
+.globl ring0stacktop
+.globl ptl2
+.globl pt
 
 max_cpus = 1
-stack_size = 4096
+stack_size = 0x1400
 ipi_vector = 0x20
 
 .data
@@ -24,8 +27,9 @@ v8086_stacktop:
 
 v8086_iopl:
 	.long 0x23246
+
 shared_data:
-	.fill 64,1,0x00
+	.fill 128,1,0x00
 
 .align 4096
 ptl2:
@@ -37,10 +41,10 @@ ptl2:
 
 .align 4096
 pt:
-	.long 0x177 + ptl2
+	.long 0x177 + ptl2      //4K page
 	i = 1
 	.rept 1023
-	.long 0x1e7 | (i << 22)
+	.long 0x1e7 | (i << 22) //4M pages
 	i = i + 1
 	.endr
 

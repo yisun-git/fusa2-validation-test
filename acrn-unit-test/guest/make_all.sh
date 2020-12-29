@@ -9,9 +9,9 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
-	segmentation interrupt_triple_fault"
-BUILD_REAL_MODE_FEATURE=""
-BUILD_V8086_FEATURE="v8086_main"
+	segmentation interrupt_triple_fault v8086_protect"
+BUILD_REAL_MODE_FEATURE="rmode_v8086"
+BUILD_V8086_FEATURE="v8086_part1 v8086_part2 v8086_part3"
 
 BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
 	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order misc_cpuid tsx locked_atomic \
@@ -35,7 +35,7 @@ RESULT=0
 for i in $BUILD_32BIT_FEATURE;
 do
         echo "start build $i protected mode file"
-        ./make32_and_real_mode_non_safety.sh $i 32;
+        ./make32_non_safety.sh $i 32;
         make_result=$?
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
@@ -55,7 +55,7 @@ done
 for i in $BUILD_REAL_MODE_FEATURE;
 do
         echo "start build $i real mode file"
-        ./make32_and_real_mode_non_safety.sh $i real_mode;
+        ./make32_real_mode_non_safety.sh $i;
         make_result=$?
         if [ $make_result -ne 0 ]; then
             RESULT=$make_result
