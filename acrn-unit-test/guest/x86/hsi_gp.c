@@ -1904,7 +1904,7 @@ static __unused void hsi_rqmid_35960_generic_processor_features_xsave_sse_001(vo
 	u32 r_eax;
 	u64 states = STATE_X87 | STATE_SSE | STATE_AVX;
 	u32 i = 0;
-	char * p = (char *)&unsigned_128;
+	char *p = (char *)&unsigned_128;
 
 	/* check XSAVE general support */
 	if ((cpuid(1).c & CPUID_1_ECX_XSAVE) != 0) {
@@ -1968,7 +1968,7 @@ static __unused void hsi_rqmid_35960_generic_processor_features_xsave_sse_001(vo
  * to modify AVX data register YMM0, execute XSAVE instruction, AVX state field
  * of XSAVE Area should be changed, clear YMM register, execute XRSTORS
  * instruction, the YMM register value should be restored from memory.
-*/
+ */
 static __unused void hsi_rqmid_35961_generic_processor_features_xsave_avx_001(void)
 {
 	u32 chk = 0;
@@ -1977,7 +1977,7 @@ static __unused void hsi_rqmid_35961_generic_processor_features_xsave_avx_001(vo
 	u32 r_eax;
 	u64 states = STATE_X87 | STATE_SSE | STATE_AVX;
 	u32 i = 0;
-	char * p = (char *)&unsigned_256;
+	char *p = (char *)&unsigned_256;
 
 	/* check XSAVE general support */
 	if ((cpuid(1).c & CPUID_1_ECX_XSAVE) != 0) {
