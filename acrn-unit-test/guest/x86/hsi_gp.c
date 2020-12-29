@@ -51,9 +51,31 @@ static volatile int start_run_id = 0;
 #ifdef __x86_64__
 static atomic_t ret_sim;
 static atomic_t ap_sim;
+static int XSAVE_AREA_ST0_POS = 32;
+#define XSAVE_AREA_XMM0_POS 160
+__attribute__((aligned(64))) xsave_area_t st_xsave_area;
+
+typedef unsigned __attribute__((vector_size(16))) unsigned_128_bit;
+typedef union {
+	unsigned_128_bit sse ALIGNED(16);
+	unsigned m[4] ALIGNED(16);
+} union_unsigned_128;
+static union_unsigned_128 unsigned_128;
+
+typedef unsigned __attribute__((vector_size(32))) unsigned_256_bit;
+typedef union {
+	unsigned_128_bit sse ALIGNED(32);
+	unsigned m[4] ALIGNED(32);
+} union_unsigned_256;
+static union_unsigned_256 unsigned_256;
 #endif
 
 #ifdef __x86_64__
+static void test_iret(const char *fun_name)
+{
+	return;
+}
+
 static bool cmovnc_8_checking(void)
 {
 	u64 op = 0;
@@ -602,7 +624,61 @@ static bool jmp_checking(void)
 		"1:"
 		: "=r"(op)
 	);
+
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
+}
+
+/* execute the iret instruction to return to the interrupt entry */
+static bool iret_far_checking(void (*fn)(const char *), const char *arg)
+{
+	static unsigned char user_stack[4096];
+	int ret;
+
+	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
+		"mov %%dx, %%ds\n\t"
+		"mov %%dx, %%es\n\t"
+		"mov %%dx, %%fs\n\t"
+		"mov %%dx, %%gs\n\t"
+		"mov %%" R "sp, %%" R "cx\n\t"
+		"push" W " %%" R "dx \n\t"
+		"lea %[user_stack_top], %%" R "dx \n\t"
+		"push" W " %%" R "dx \n\t"
+		"pushf" W "\n\t"
+		"push" W " %[user_cs] \n\t"
+		"push" W " $1f \n\t"
+		ASM_TRY("1f")
+		"iret" W "\n"
+		"1: \n\t"
+		/* save kernel SP */
+		"push %%" R "cx\n\t"
+		"call *%[fn]\n\t"
+
+		"pop %%" R "cx\n\t"
+		"mov $1f, %%" R "dx\n\t"
+		"int %[kernel_entry_vector]\n\t"
+		".section .text.entry \n\t"
+		".globl kernel_entry\n\t"
+		"kernel_entry: \n\t"
+		"mov %%" R "cx, %%" R "sp \n\t"
+		"mov %[kernel_ds], %%cx\n\t"
+		"mov %%cx, %%ds\n\t"
+		"mov %%cx, %%es\n\t"
+		"mov %%cx, %%fs\n\t"
+		"mov %%cx, %%gs\n\t"
+		"jmp *%%" R "dx \n\t"
+		".section .text\n\t"
+		"1:\n\t"
+		: [ret] "=&a" (ret)
+		: [user_ds] "i" (USER_DS),
+		[user_cs] "i" (USER_CS),
+		[user_stack_top]"m"(user_stack[sizeof user_stack]),
+		[fn]"r"(fn),
+		[arg]"D"(arg),
+		[kernel_ds]"i"(KERNEL_DS),
+		[kernel_entry_vector]"i"(0x23)
+		: "rcx", "rdx");
+
+	return (exception_vector() == NO_EXCEPTION);
 }
 
 /* sent 0xff to port 0xe0, recieve from it */
@@ -927,6 +1003,122 @@ static bool verw_checking(void)
 	);
 
 	return (exception_vector() == NO_EXCEPTION);
+}
+
+static __unused int xrstors_checking(xsave_area_t *xsave_array, u64 xcr0)
+{
+	u32 eax = xcr0;
+	u32 edx = xcr0 >> 32;
+
+	asm volatile(ASM_TRY("1f")
+		"xrstors %[addr]\n\t" /* xrstors */
+		"1:"
+		: : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
+		: "memory");
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+static int xsetbv_checking(u32 index, u64 value)
+{
+	u32 eax = value;
+	u32 edx = value >> 32;
+
+	asm volatile(ASM_TRY("1f")
+		"xsetbv\n\t" /* xsetbv */
+		"1:"
+		: : "a" (eax), "d" (edx), "c" (index));
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+static void fpu_add(float *p, float *q)
+{
+	asm volatile(
+		"fninit\n"
+		"fld %0\n"   // push to fpu register stack
+		"fld %1\n"
+		"fadd %%st(1), %%st(0)\n"
+		"fst %0\n"  // copy st(0), don't pop stack
+		: "+m"(*p)
+		: "m"(*q) : "memory"
+	);
+}
+
+/* Description: Execute x87 instruction */
+static void execute_x87_test()
+{
+	/* MP, EM, TS */
+	write_cr0(read_cr0() & ~0xe);
+	/* OSFXSR */
+	write_cr4(read_cr4() | 0x600);
+
+	float f = 30.00f;
+	float f1 = 60.00f;
+
+	fpu_add(&f, &f1);
+}
+
+static __unused int xsaves_checking(xsave_area_t *xsave_array, u64 xcr0)
+{
+	u32 eax = xcr0;
+	u32 edx = xcr0 >> 32;
+
+	asm volatile(ASM_TRY("1f")
+		"xsaves %[addr]\n\t"
+		"1:"
+		: : [addr]"m"(*xsave_array), "a"(eax), "d"(edx)
+		: "memory");
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+/* Description: Execute SSE instruction */
+static __attribute__((target("sse")))
+void execute_sse_test(unsigned sse_data)
+{
+	sse_union sse;
+
+	sse.u[0] = sse_data;
+	sse.u[1] = sse_data + 1;
+	sse.u[2] = sse_data + 2;
+	sse.u[3] = sse_data + 3;
+
+	write_cr0(read_cr0() & ~6);
+	write_cr4(read_cr4() | 0x200);
+
+	asm volatile("movapd %0, %%xmm0" : : "m"(sse));
+}
+
+static int vmovapd_check(avx_union *avx_data)
+{
+	asm volatile(ASM_TRY("1f")
+		"vmovapd %0, %%ymm0\n\t"
+		"1:" : : "m" (*avx_data));
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+/* Description: Execute AVX instruction */
+static __attribute__((target("avx"))) int execute_avx_test()
+{
+	ALIGNED(32) avx_union avx1;
+
+	/* EM, TS */
+	write_cr0(read_cr0() & ~6);
+	/* OSFXSR */
+	write_cr4(read_cr4() | 0x600);
+
+	avx1.m[0] = 1.0f;
+	avx1.m[1] = 2.0f;
+	avx1.m[2] = 3.0f;
+	avx1.m[3] = 4.0f;
+	avx1.m[4] = 5.0f;
+	avx1.m[5] = 6.0f;
+	avx1.m[6] = 7.0f;
+	avx1.m[7] = 8.0f;
+
+	return vmovapd_check(&avx1);
 }
 
 #elif __i386__
@@ -1335,7 +1527,7 @@ static __unused void hsi_rqmid_40348_generic_processor_features_bit_byte_001(voi
  * @brief case name: HSI_Generic_Processor_Features_Unconditional_Control_Transfer_001
  *
  * Summary: Under 64 bit mode on native board, execute following instructions:
- * JMP, CALL.
+ * JMP, IRET.
  * execution results are all correct and no exception occurs.
  */
 static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_control_transfer_001(void)
@@ -1343,12 +1535,17 @@ static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_cont
 	u16 chk = 0;
 
 	/* execute the following instruction in IA-32e mode */
-	/* JMP, CALL */
+	/* JMP, IRET */
 	if (jmp_checking()) {
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	cr0_am_to_0();
+	if (iret_far_checking(test_iret, __FUNCTION__)) {
+		chk++;
+	}
+
+	report("%s", (chk == 2), __FUNCTION__);
 }
 
 /*
@@ -1615,6 +1812,229 @@ static __unused void hsi_rqmid_42230_generic_processor_features_clean_cpu_intern
 	report("%s", (chk == 1), __FUNCTION__);
 }
 
+/*
+ * @brief case name: HSI_Generic_Processor_Features_XSAVE_X87_001
+ *
+ * Summary: Under 64 bit mode on native board, execute fpu instruction to
+ * modify x87 data register ST0, execute XSAVES instruction, x87 state field
+ * of XSAVE Area should be changed, clear st0 register, execute xrstors
+ * instructions, the st0 register value should be restored from memory.
+ */
+static __unused void hsi_rqmid_35957_generic_processor_features_xsave_x87_001(void)
+{
+	u16 chk = 0;
+	u16 op = 1;
+	u32 st = 0;
+
+	struct cpuid r;
+	u32 r_eax;
+	//u64 states = STATE_X87 | STATE_SSE | STATE_AVX;
+	u64 states = STATE_X87;
+	u32 i = 0;
+
+	/* check XSAVE general support */
+	if ((cpuid(1).c & CPUID_1_ECX_XSAVE) != 0) {
+		chk++;
+	}
+
+	/* check XSAVE - x87, SSE, AVX - support */
+	r = cpuid_indexed(0xd, 0);
+	debug_print("eax 0x%x, ebx 0x%x, ecx 0x%x, edx 0x%x\n", r.a, r.b, r.c, r.d);
+	r_eax = r.a;
+	if ((r_eax & states) == states) {
+		chk++;
+	}
+
+	/* set CR4.OSXSAVE to 1 */
+	write_cr4(read_cr4() | X86_CR4_OSXSAVE);
+
+	/* xsetbv XCR0 to X87|SSE|AVX */
+	if (xsetbv_checking(XCR0_MASK, states)) {
+		chk++;
+	}
+
+	/* test using XSAVE state component to manage x87 state */
+	execute_x87_test();
+	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
+	if (xsaves_checking(&st_xsave_area, states)) {
+		chk++;
+	}
+
+	/* check st0 is stored into x87 state component */
+	for (i = XSAVE_AREA_ST0_POS; i < (XSAVE_AREA_ST0_POS + 10); i++) {
+		if (st_xsave_area.fpu_sse[i] != 0) {
+			chk++;
+			debug_print("Test XSAVE manage x87 state pass.\n");
+			break;
+		}
+	}
+
+	/* clear st0 register */
+	asm volatile(ASM_TRY("1f")
+		"rex.w\n\t"
+		"fild %0\n\t"
+		"1:"
+		: : "m" (st));
+
+	if (xrstors_checking(&st_xsave_area, states)) {
+		chk++;
+	}
+	asm volatile("fist %0\n" : : "m"(op) :);
+
+	if ( op != 0) {
+		chk++;
+	}
+
+	report("%s", (chk == 7), __FUNCTION__);
+}
+
+/*
+ * @brief case name: HSI_Generic_Processor_Features_XSAVE_SSE_001
+ *
+ * Summary: Under 64 bit mode on native board, execute SSE instruction
+ * to modify SSE data register XMM0, execute XSAVE instruction, SSE state field
+ * of XSAVE Area should be changed, clear XMM register, execute XRSTORS
+ * instruction, the XMM register value shold be restored from memory.
+ */
+static __unused void hsi_rqmid_35960_generic_processor_features_xsave_sse_001(void)
+{
+	u32 chk = 0;
+
+	struct cpuid r;
+	u32 r_eax;
+	u64 states = STATE_X87 | STATE_SSE | STATE_AVX;
+	u32 i = 0;
+	char * p=(char*)&unsigned_128;
+
+	/* check XSAVE general support */
+	if ((cpuid(1).c & CPUID_1_ECX_XSAVE) != 0) {
+		chk++;
+	}
+
+	/* check XSAVE - x87, SSE, AVX - support */
+	r = cpuid_indexed(0xd, 0);
+	debug_print("eax 0x%x, ebx 0x%x, ecx 0x%x, edx 0x%x\n", r.a, r.b, r.c, r.d);
+	r_eax = r.a;
+	if ((r_eax & states) == states) {
+		chk++;
+	}
+
+	/* set CR4.OSXSAVE to 1 */
+	write_cr4(read_cr4() | X86_CR4_OSXSAVE);
+
+	/* xsetbv XCR0 to X87|SSE|AVX */
+	if (xsetbv_checking(XCR0_MASK, states)) {
+		chk++;
+	}
+
+	/* test using XSAVE state component to manage SSE state */
+	execute_sse_test(1);
+	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
+	if (xsaves_checking(&st_xsave_area, states)) {
+		chk++;
+	}
+
+	/* check xmm0 is stored into SSE state component */
+	for (i = XSAVE_AREA_XMM0_POS; i < (XSAVE_AREA_XMM0_POS + 16); i++) {
+		if (st_xsave_area.fpu_sse[i] != 0) {
+			chk++;
+			debug_print("Test XSAVE manage SSE state pass.\n");
+			break;
+		}
+	}
+
+	/* clear XMM register */
+	memset(&unsigned_128, 0x00, sizeof(unsigned_128));
+	asm("movdqu %[input_1], %%xmm0\n" : : [input_1] "m" (unsigned_128) : "memory");
+	if (xrstors_checking(&st_xsave_area, states)) {
+		chk++;
+	}
+
+	asm("movdqu %%xmm0, %[input_1]\n" : [input_1] "=m" (unsigned_128) : : "memory");
+	for( i = 0; i < sizeof(unsigned_128); i++) {
+		if(p[i] != 0) {
+			chk++;
+			break;
+		}
+	}
+
+	report("%s", (chk == 7), __FUNCTION__);
+}
+
+ /*
+ * @brief case name: HSI_Generic_Processor_Features_XSAVE_AVX_001
+ *
+ * Summary: Under 64 bit mode on native board, execute AVX instruction
+ * to modify AVX data register YMM0, execute XSAVE instruction, AVX state field
+ * of XSAVE Area should be changed, clear YMM register, execute XRSTORS
+ * instruction, the YMM register value should be restored from memory.
+ */
+static __unused void hsi_rqmid_35961_generic_processor_features_xsave_avx_001(void)
+{
+	u32 chk = 0;
+
+	struct cpuid r;
+	u32 r_eax;
+	u64 states = STATE_X87 | STATE_SSE | STATE_AVX;
+	u32 i = 0;
+	char * p=(char*)&unsigned_256;
+
+	/* check XSAVE general support */
+	if ((cpuid(1).c & CPUID_1_ECX_XSAVE) != 0) {
+		chk++;
+	}
+
+	/* check XSAVE - x87, SSE, AVX - support */
+	r = cpuid_indexed(0xd, 0);
+	debug_print("eax 0x%x, ebx 0x%x, ecx 0x%x, edx 0x%x\n", r.a, r.b, r.c, r.d);
+	r_eax = r.a;
+	if ((r_eax & states) == states) {
+		chk++;
+	}
+
+	/* set CR4.OSXSAVE to 1 */
+	write_cr4(read_cr4() | X86_CR4_OSXSAVE);
+
+	/* xsetbv XCR0 to X87|SSE|AVX */
+	if (xsetbv_checking(XCR0_MASK, states)) {
+		chk++;
+	}
+
+	/* test using XSAVE state component to manage AVX state */
+	execute_avx_test();
+	memset(&st_xsave_area, 0, sizeof(st_xsave_area));
+	if (xsaves_checking(&st_xsave_area, states)) {
+		chk++;
+	}
+
+	/* check ymm0 is stored into AVX state component */
+	for (i = 0; i < 16; i++) {
+		if (st_xsave_area.ymm[i] != 0) {
+			chk++;
+			debug_print("Test XSAVE manage AVX state pass.\n");
+			break;
+		}
+	}
+
+	/* clear YMM register */
+	memset(&unsigned_256, 0x00, sizeof(unsigned_256));
+	asm("vmovdqu %[input_1], %%ymm0\n" : : [input_1] "m" (unsigned_256) : "memory");
+	if (xrstors_checking(&st_xsave_area, states)) {
+		chk++;
+	}
+
+
+	asm("vmovdqu %%ymm0, %[input_1]\n" : [input_1] "=m" (unsigned_256) : : "memory");
+	for( i = 0; i < sizeof(unsigned_256); i++) {
+		if(p[i] != 0) {
+			chk++;
+			break;
+		}
+	}
+
+	report("%s", (chk == 7), __FUNCTION__);
+}
+
 #elif __i386__
 /*
  * @brief case name: HSI_Generic_Processor_Features_Shift_Rotate_002
@@ -1846,6 +2266,12 @@ static void print_case_list(void)
 		"time stamp counter 001");
 	printf("\t Case ID: %d Case name: %s\n\r", 42230u, "HSI generic processor features " \
 		"clean cpu internal buffer 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 35957u, "HSI generic processor features " \
+		"xsave x87 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 35960u, "HSI generic processor features " \
+		"xsave sse 001");
+	printf("\t Case ID: %d Case name: %s\n\r", 35961u, "HSI generic processor features " \
+		"xsave avx 001");
 
 #elif __i386__
 	printf("\t Case ID: %d Case name: %s\n\r", 41100u, "HSI generic processor features " \
@@ -1899,6 +2325,7 @@ int main(void)
 	setup_idt();
 	//set_idt_entry(0x20, &kernel_entry, 3);
 	setup_vm();
+	setup_ring_env();
 
 	print_case_list();
 
@@ -1927,6 +2354,9 @@ int main(void)
 	hsi_rqmid_42228_generic_processor_features_msr_001();
 	hsi_rqmid_42229_generic_processor_features_time_stamp_counter_001();
 	hsi_rqmid_42230_generic_processor_features_clean_cpu_internal_buffer_001();
+	hsi_rqmid_35957_generic_processor_features_xsave_x87_001();
+	hsi_rqmid_35960_generic_processor_features_xsave_sse_001();
+	hsi_rqmid_35961_generic_processor_features_xsave_avx_001();
 #elif __i386__
 	hsi_rqmid_41100_generic_processor_features_shift_rotate_002();
 	hsi_rqmid_41106_generic_processor_features_data_move_002();

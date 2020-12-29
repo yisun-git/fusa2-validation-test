@@ -42,6 +42,12 @@ $(TEST_DIR)/hsi_multi_proc_mgmt.o: $(TEST_DIR)/hsi_multi_proc_mgmt.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/hsi_gp.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/hsi_gp.o: $(TEST_DIR)/hsi_gp.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
 $(TEST_DIR)/hsi_local_apic.o: CFLAGS += -DAP_USE_MAIN
 $(TEST_DIR)/hsi_local_apic.o: $(TEST_DIR)/hsi_local_apic.c
 	@rm -rf $(cstart.o)
