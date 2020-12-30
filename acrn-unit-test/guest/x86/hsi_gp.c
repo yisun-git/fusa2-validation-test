@@ -1568,7 +1568,6 @@ static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_cont
 		chk++;
 	}
 
-	cr0_am_to_0();
 	if (iret_far_checking(test_iret, __FUNCTION__)) {
 		chk++;
 	}
