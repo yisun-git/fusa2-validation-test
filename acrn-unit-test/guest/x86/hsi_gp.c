@@ -54,20 +54,6 @@ static atomic_t ap_sim;
 static int XSAVE_AREA_ST0_POS = 32;
 #define XSAVE_AREA_XMM0_POS 160
 __attribute__((aligned(64))) xsave_area_t st_xsave_area;
-
-typedef unsigned __attribute__((vector_size(16))) unsigned_128_bit;
-typedef union {
-	unsigned_128_bit sse ALIGNED(16);
-	unsigned m[4] ALIGNED(16);
-} union_unsigned_128;
-static union_unsigned_128 unsigned_128;
-
-typedef unsigned __attribute__((vector_size(32))) unsigned_256_bit;
-typedef union {
-	unsigned_128_bit sse ALIGNED(32);
-	unsigned m[4] ALIGNED(32);
-} union_unsigned_256;
-static union_unsigned_256 unsigned_256;
 #endif
 
 #ifdef __x86_64__
@@ -1073,6 +1059,17 @@ static __unused int xsaves_checking(xsave_area_t *xsave_array, u64 xcr0)
 	return (exception_vector() == NO_EXCEPTION);
 }
 
+static int movapd_input(sse_union *sse_data)
+{
+	asm volatile(ASM_TRY("1f")
+		"movapd %0, %%xmm0\n\t"
+		"1:"
+		: : "m" (*sse_data)
+		: "memory");
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
 /* Description: Execute SSE instruction */
 static __attribute__((target("sse")))
 void execute_sse_test(unsigned sse_data)
@@ -1087,7 +1084,38 @@ void execute_sse_test(unsigned sse_data)
 	write_cr0(read_cr0() & ~6);
 	write_cr4(read_cr4() | 0x200);
 
-	asm volatile("movapd %0, %%xmm0" : : "m"(sse));
+	movapd_input(&sse);
+}
+
+static int movapd_output(sse_union *sse_data)
+{
+	asm volatile(ASM_TRY("1f")
+		"movapd %%xmm0, %0\n\t"
+		"1:"
+		: "=m" (*sse_data) :
+		: "memory");
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+static int vmovdqu_input(avx_union *avx_data)
+{
+	asm volatile(ASM_TRY("1f")
+		"vmovdqu %0, %%ymm0\n\t"
+		"1:" : : "m" (*avx_data)
+		: "memory");
+
+	return (exception_vector() == NO_EXCEPTION);
+}
+
+static int vmovdqu_output(avx_union *avx_data)
+{
+	asm volatile(ASM_TRY("1f")
+		"vmovdqu %%ymm0, %0\n\t"
+		"1:" : "=m" (*avx_data) :
+		: "memory");
+
+	return (exception_vector() == NO_EXCEPTION);
 }
 
 static int vmovapd_check(avx_union *avx_data)
@@ -1823,7 +1851,7 @@ static __unused void hsi_rqmid_42230_generic_processor_features_clean_cpu_intern
 static __unused void hsi_rqmid_35957_generic_processor_features_xsave_x87_001(void)
 {
 	u16 chk = 0;
-	u16 op = 1;
+	u16 op = 0;
 	u32 st = 0;
 
 	struct cpuid r;
@@ -1870,10 +1898,9 @@ static __unused void hsi_rqmid_35957_generic_processor_features_xsave_x87_001(vo
 	}
 
 	/* clear st0 register */
-	asm volatile(ASM_TRY("1f")
+	asm volatile(
 		"rex.w\n\t"
 		"fild %0\n\t"
-		"1:"
 		: : "m" (st));
 
 	if (xrstors_checking(&st_xsave_area, states)) {
@@ -1892,7 +1919,7 @@ static __unused void hsi_rqmid_35957_generic_processor_features_xsave_x87_001(vo
  * @brief case name: HSI_Generic_Processor_Features_XSAVE_SSE_001
  *
  * Summary: Under 64 bit mode on native board, execute SSE instruction
- * to modify SSE data register XMM0, execute XSAVE instruction, SSE state field
+ * to modify SSE data register XMM0, execute XSAVES instruction, SSE state field
  * of XSAVE Area should be changed, clear XMM register, execute XRSTORS
  * instruction, the XMM register value shold be restored from memory.
  */
@@ -1904,7 +1931,8 @@ static __unused void hsi_rqmid_35960_generic_processor_features_xsave_sse_001(vo
 	u32 r_eax;
 	u64 states = STATE_X87 | STATE_SSE | STATE_AVX;
 	u32 i = 0;
-	char *p = (char *)&unsigned_128;
+	sse_union xmm0_data;
+	char *p = (char *)&xmm0_data;
 
 	/* check XSAVE general support */
 	if ((cpuid(1).c & CPUID_1_ECX_XSAVE) != 0) {
@@ -1944,14 +1972,14 @@ static __unused void hsi_rqmid_35960_generic_processor_features_xsave_sse_001(vo
 	}
 
 	/* clear XMM register */
-	memset(&unsigned_128, 0x00, sizeof(unsigned_128));
-	asm("movdqu %[input_1], %%xmm0\n" : : [input_1] "m" (unsigned_128) : "memory");
+	memset(&xmm0_data, 0x00, sizeof(xmm0_data));
+	movapd_input(&xmm0_data);
 	if (xrstors_checking(&st_xsave_area, states)) {
 		chk++;
 	}
 
-	asm("movdqu %%xmm0, %[input_1]\n" : [input_1] "=m" (unsigned_128) : : "memory");
-	for (i = 0; i < sizeof(unsigned_128); i++) {
+	movapd_output(&xmm0_data);
+	for (i = 0; i < sizeof(xmm0_data); i++) {
 		if (p[i] != 0) {
 			chk++;
 			break;
@@ -1965,7 +1993,7 @@ static __unused void hsi_rqmid_35960_generic_processor_features_xsave_sse_001(vo
  * @brief case name: HSI_Generic_Processor_Features_XSAVE_AVX_001
  *
  * Summary: Under 64 bit mode on native board, execute AVX instruction
- * to modify AVX data register YMM0, execute XSAVE instruction, AVX state field
+ * to modify AVX data register YMM0, execute XSAVES instruction, AVX state field
  * of XSAVE Area should be changed, clear YMM register, execute XRSTORS
  * instruction, the YMM register value should be restored from memory.
  */
@@ -1977,7 +2005,8 @@ static __unused void hsi_rqmid_35961_generic_processor_features_xsave_avx_001(vo
 	u32 r_eax;
 	u64 states = STATE_X87 | STATE_SSE | STATE_AVX;
 	u32 i = 0;
-	char *p = (char *)&unsigned_256;
+	avx_union ymm0_data;
+	char *p = (char *)&ymm0_data;
 
 	/* check XSAVE general support */
 	if ((cpuid(1).c & CPUID_1_ECX_XSAVE) != 0) {
@@ -2017,15 +2046,14 @@ static __unused void hsi_rqmid_35961_generic_processor_features_xsave_avx_001(vo
 	}
 
 	/* clear YMM register */
-	memset(&unsigned_256, 0x00, sizeof(unsigned_256));
-	asm("vmovdqu %[input_1], %%ymm0\n" : : [input_1] "m" (unsigned_256) : "memory");
+	memset(&ymm0_data, 0x00, sizeof(ymm0_data));
+	vmovdqu_input(&ymm0_data);
 	if (xrstors_checking(&st_xsave_area, states)) {
 		chk++;
 	}
 
-
-	asm("vmovdqu %%ymm0, %[input_1]\n" : [input_1] "=m" (unsigned_256) : : "memory");
-	for (i = 0; i < sizeof(unsigned_256); i++) {
+	vmovdqu_output(&ymm0_data);
+	for (i = 0; i < sizeof(ymm0_data); i++) {
 		if (p[i] != 0) {
 			chk++;
 			break;
