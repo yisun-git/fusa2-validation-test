@@ -212,11 +212,9 @@ static void debug_features_rqmid_27450_inject_gp_when_running_int1_on_guest_001(
 
 	level = read_cs() & 0x3;
 	asm volatile(
-		"mov %%ax,%0\n\t"
 		ASM_TRY("1f")
-		".byte 0xf1; ring0_int1:\n\t"/*int1*/
-		"mov %%ax, %%ax\n"
-		"1:":"=m"(level));
+		".byte 0xf1\n\t"/*int1*/
+		"1:" :);
 
 	vec = exception_vector();
 	err_code = exception_error_code();
