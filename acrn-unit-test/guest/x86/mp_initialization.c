@@ -221,12 +221,10 @@ static void MP_initialization_rqmid_33850_ap(void)
 
 	printf("ap send INIT to bsp\n");
 	/* send INIT to BSP */
-	//temporarily comment it !!!!
-	//apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_BSP);
-	//temporarily comment it !!!!
-	//apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP);
 	/* send SIPI to BSP */
-	//apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	test_delay(5);
@@ -243,8 +241,8 @@ static void MP_initialization_rqmid_38919_ap(void)
 
 	/* send INIT to BSP */
 	printf("ap send SIPI to bsp\n");
-	//apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT , MP_APIC_ID_BSP);
-	//apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP); //bug:bp receive INIT ipi cause bp reboot
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP);
 	test_delay(10);
 	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | 0xE0, MP_APIC_ID_BSP);
 	test_delay(5);
@@ -347,8 +345,7 @@ static void MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001(void)
 	bp_sync();
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
-	//report("\t\t %s", bsp_is_running == 0, __FUNCTION__);
-	report("\t\t %s", false, __FUNCTION__); //bug: BP receive init IPI from AP lead to BP reboot !!!!!!
+	report("\t\t %s", bsp_is_running == 0, __FUNCTION__);
 }
 
 static void ipi_isr_for_exit_halt_state(isr_regs_t *regs)
@@ -375,11 +372,11 @@ static void MP_initialization_rqmid_38919_bsp_in_HALT_ignore_INIT_001(void)
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*restart ap*/
 	reset_ap(MP_APIC_ID_AP);
-	//asm volatile ("hlt"); "BP that is in halt receive init IPI will lead to reboot, it is a bug, comment it "
+	asm volatile ("hlt");
 	bp_sync();
 
 	printf("bp resume !!!!!\n");
-	report("\t\t %s", false, __FUNCTION__);
+	report("\t\t %s", true, __FUNCTION__);
 }
 
 
@@ -723,7 +720,6 @@ static void __unused test_MP_list(void)
 	MP_initialization_rqmid_33849_ap_in_normal_handle_INIT_001();
 	MP_initialization_rqmid_26996_bsp_in_normal_ignore_SIPI_001();
 	//test_delay(5);
-	MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001();//146058
 	MP_initialization_rqmid_39037_ap_transits_from_HALT_state_001();//228991
 	MP_initialization_rqmid_39038_ap_halt_init_wait_sipi_001();//228987
 	MP_initialization_rqmid_39039_ap_halt_sipi_001();//228988
@@ -734,8 +730,9 @@ static void __unused test_MP_list(void)
 	MP_initialization_rqmid_39405_execute_AP_code_at_first_sipi_vector();
 	MP_initialization_rqmid_39473_execute_AP_code_at_first_sipi_vector();
 	MP_initialization_rqmid_39474_set_CS_base_to_a_specific_value_001();
-	MP_initialization_rqmid_38919_bsp_in_HALT_ignore_INIT_001();//228993
 	MP_initialization_rqmid_38925_bsp_in_HALT_ignore_SIPI_001();//228992
+	MP_initialization_rqmid_38919_bsp_in_HALT_ignore_INIT_001();//228993
+	MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001();//146058
 }
 
 static void print_case_list(void)
