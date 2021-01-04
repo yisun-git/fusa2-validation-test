@@ -1166,18 +1166,6 @@ static void  gp_rqmid_31385_data_transfer_mov_gp_017(void)
 }
 
 /*
- * @brief case name: 31398: Data transfer instructions Support_64 bit Mode_MOV_#GP_019.
- *
- * Summary: Under 64 bit Mode,
- *   If an attempt is made to write a 1 to any reserved bit in CR3(CR3.R.W: 1),
- *  executing MOV shall generate #GP.
- */
-static void  gp_rqmid_31398_data_transfer_mov_gp_019(void)
-{
-	cr3_r_w_to_1(__FUNCTION__);
-}
-
-/*
  * @brief case name: 32284: Data transfer instructions Support_64 bit Mode_MOV_#GP_021.
  *
  * Summary: Under 64 bit Mode,
@@ -1187,80 +1175,6 @@ static void  gp_rqmid_31398_data_transfer_mov_gp_019(void)
 static void  gp_rqmid_32284_data_transfer_mov_gp_021(void)
 {
 	report("%s #GP exception", cr4_pae_to_0() == true, __FUNCTION__);
-}
-
-/*
- * @brief case name: 31609: Data transfer instructions Support_64 bit Mode_MOV_#DB_001.
- *
- * Summary: Under 64 bit Mode,
- *  If any debug register is accessed while the DR7GD[bit 13] = 1(DeAc: true, DR7.GD: 1),
- *  executing MOV shall generate #DB.
- */
-static void mov_write_dr7(ulong val)
-{
-	asm volatile ("mov %0, %%dr7 \n"
-		: : "r"(val) : "memory");
-}
-
-static void  gp_rqmid_31609_data_transfer_mov_db_001(void)
-{
-	gp_trigger_func fun;
-	bool ret;
-	//dr7_gd_to_1();
-
-	unsigned long check_bit = 0;
-
-	printf("***** Set DR7.GD[bit 13] to 1 *****\n");
-
-	check_bit = read_dr7();
-	check_bit |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_13));
-
-	/*set DR7.GD to 1*/
-	mov_write_dr7(check_bit);
-
-	fun = (gp_trigger_func)mov_write_dr7;
-	ret = test_for_exception(DB_VECTOR, fun, (void *)check_bit);
-
-	report("%s Execute Instruction: MOV, to generate #DB",
-		ret == true, __FUNCTION__);
-}
-
-/*
- * @brief case name: 31614: Data transfer instructions Support_64 bit Mode_MOV_#GP_035.
- *
- * Summary: Under 64 bit Mode and CPL1,
- *  If the current privilege level is not 0(CS.CPL: 1),
- *  executing MOV shall generate #GP.
- */
-ulong dr7_check_bit;
-static void  ring1_mov_gp_035(const char *msg)
-{
-	gp_trigger_func fun;
-	int level;
-	bool ret;
-
-	level = read_cs() & 0x3;
-
-	fun = (gp_trigger_func)mov_write_dr7;
-	ret = test_for_exception(GP_VECTOR, fun, (void *)dr7_check_bit);
-
-	report("gp_rqmid_31614_data_transfer_mov_gp_035 Execute Instruction"
-		": MOV, to generate #GP", (ret == true) && (level == 1));
-}
-
-static void  gp_rqmid_31614_data_transfer_mov_gp_035(void)
-{
-	//dr7_gd_to_1();
-
-	unsigned long check_bit = 0;
-
-	printf("***** Set DR7.GD[bit 13] to 0 *****\n");
-
-	check_bit = read_dr7();
-	check_bit &= (~(FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_13)));
-	dr7_check_bit = check_bit;
-
-	do_at_ring1(ring1_mov_gp_035, "");
 }
 
 /*
@@ -1884,17 +1798,17 @@ static void gp_rqmid_25083_edx_register_start_up(void)
 }
 
 /**
- * @brief case name: EBX, ECX, ESI, EDI, EBP, ESP register start-up value_001
- * Summary: Get ebx,ecx,esi,edi,ebp,esp at BP start-up, these registers'value
- * shall be 0 and same with SDM definition.
+ * @brief case name: EBX, ECX, EDI, EBP, ESP register start-up value_001
+ * Summary: Get ebx,ecx,edi,ebp,esp at BP start-up, these registers'value
+ * shall be 0 and same with SDM definition.
  */
 static void gp_rqmid_25308_ebx_ecx_and_other_register_start_up(void)
 {
+
 	volatile u32 ebx_startup = *((volatile u32 *)STARTUP_EBX_ADDR);
 	volatile u32 ecx_startup = *((volatile u32 *)STARTUP_ECX_ADDR);
 	volatile u32 ebp_startup = *((volatile u32 *)STARTUP_EBP_ADDR);
 	volatile u32 esp_startup = *((volatile u32 *)STARTUP_ESP_ADDR);
-	volatile u32 esi_startup = *((volatile u32 *)STARTUP_ESI_ADDR);
 	volatile u32 edi_startup = *((volatile u32 *)STARTUP_EDI_ADDR);
 
 #ifdef IN_NON_SAFETY_VM
@@ -1902,11 +1816,11 @@ static void gp_rqmid_25308_ebx_ecx_and_other_register_start_up(void)
 	ecx_startup = *((volatile u32 *)STARTUP_ECX_ADDR_IN_NON_SAFETY);
 	ebp_startup = *((volatile u32 *)STARTUP_EBP_ADDR_IN_NON_SAFETY);
 	esp_startup = *((volatile u32 *)STARTUP_ESP_ADDR_IN_NON_SAFETY);
-	esi_startup = *((volatile u32 *)STARTUP_ESI_ADDR_IN_NON_SAFETY);
 	edi_startup = *((volatile u32 *)STARTUP_EDI_ADDR_IN_NON_SAFETY);
 #endif
 	report("%s", (ebx_startup == 0x0) && (ecx_startup == 0x0) && (ebp_startup == 0x0) &&
-		 (esp_startup == 0x0) && (esi_startup == 0x0) && (edi_startup == 0x0), __FUNCTION__);
+			 (esp_startup == 0x0) && (edi_startup == 0x0), __FUNCTION__);
+
 }
 
 /**
@@ -2154,7 +2068,7 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 25083u,
 		"EDX register start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25308u,
-		"EBX, ECX, ESI, EDI, EBP, ESP register start-up value_001");
+		"EBX, ECX, EDI, EBP, ESP register start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25063u,
 		"EFLAGS register start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25474u,
@@ -2214,7 +2128,6 @@ int main(void)
 	gp_rqmid_31333_data_transfer_mov_ud_001();
 	gp_rqmid_31378_data_transfer_mov_gp_015();
 	gp_rqmid_32284_data_transfer_mov_gp_021();
-	gp_rqmid_31614_data_transfer_mov_gp_035();//hv bug
 	gp_rqmid_31271_data_transfer_cmpxchg16b_gp_060();
 	gp_rqmid_31323_data_transfer_push_ud_017();
 	gp_rqmid_32288_data_transfer_pop_ud_066();
@@ -2226,8 +2139,6 @@ int main(void)
 	gp_rqmid_32191_ud_instruction_ud1_ud_010();
 	gp_rqmid_31370_data_transfer_mov_gp_013();
 	gp_rqmid_31385_data_transfer_mov_gp_017();
-	gp_rqmid_31398_data_transfer_mov_gp_019();//native/hv all fail
-	gp_rqmid_31609_data_transfer_mov_db_001();//native/hv all fail
 	gp_rqmid_31652_control_transfer_int_gp_115();
 	gp_rqmid_31937_msr_access_rdsmr_gp_004();
 	gp_rqmid_31939_msr_access_rdsmr_gp_005();

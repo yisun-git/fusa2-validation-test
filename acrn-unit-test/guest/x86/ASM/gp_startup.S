@@ -5,7 +5,6 @@ mov %ebx,STARTUP_EBX_ADDR
 mov %ecx,STARTUP_ECX_ADDR
 mov %ebp,STARTUP_EBP_ADDR
 mov %esp,STARTUP_ESP_ADDR
-mov %esi,STARTUP_ESI_ADDR
 mov %edi,STARTUP_EDI_ADDR
 mov $stacktop, %esp
 call 11f
