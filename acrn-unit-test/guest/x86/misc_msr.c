@@ -1228,6 +1228,15 @@ static void misc_msr_rqmid_38736_change_IA32_MISC_ENABLE_bit34_invalidate_tlb(vo
 		return;
 	}
 
+	/*make sure that the old guest IA32_MISC_ENABLE [bit 34] is 0H*/
+	if (rdmsr(IA32_MISC_ENABLE) & MSR_IA32_MISC_ENABLE_XD_DISABLE) {
+		wrmsr(IA32_MISC_ENABLE, rdmsr(IA32_MISC_ENABLE) ^ MSR_IA32_MISC_ENABLE_XD_DISABLE);
+	}
+	/*make sure that the old guest IA32_EFER.NXE is 1H*/
+	if ((rdmsr(IA32_EFER) & IA32_EFER_NXE) == 0) {
+		wrmsr(IA32_EFER, rdmsr(IA32_EFER) | IA32_EFER_NXE);
+	}
+
 	*gva = 0x12;
 	set_page_control_bit((void *)gva, PAGE_PTE, PAGE_P_FLAG, 0, false);
 	if (*gva == 0x12) {
@@ -1262,6 +1271,16 @@ static void misc_msr_rqmid_38742_change_IA32_MISC_ENABLE_bit34_invalidate_paging
 	u8 result = 0;
 	//u64 msr_ia32_misc_enable;
 	ALIGNED(4096)u8 *gva = malloc(sizeof(u8)*64);
+
+	/*make sure that the old guest IA32_MISC_ENABLE [bit 34] is 0H*/
+	if (rdmsr(IA32_MISC_ENABLE) & MSR_IA32_MISC_ENABLE_XD_DISABLE) {
+		wrmsr(IA32_MISC_ENABLE, rdmsr(IA32_MISC_ENABLE) ^ MSR_IA32_MISC_ENABLE_XD_DISABLE);
+	}
+
+	/*make sure that the old guest IA32_EFER.NXE is 1H*/
+	if ((rdmsr(IA32_EFER) & IA32_EFER_NXE) == 0) {
+		wrmsr(IA32_EFER, rdmsr(IA32_EFER) | IA32_EFER_NXE);
+	}
 
 	u8 *gva1 = gva;
 	u8 *gva2 = gva+1;
