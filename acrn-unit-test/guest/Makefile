@@ -19,6 +19,8 @@ ifneq ($(FILE_NAME_HSI), )
 	export START_A = 0x11000800 + SIZEOF_HEADERS
 endif
 
+FILE_NAME_GP = $(shell echo $(FILE_NAME) | grep "general_purpose")
+
 ifeq ($(VM), safety)
     export ENTRY_OFFSET = 0x100000
     export START_A = 1M
@@ -57,6 +59,10 @@ else ifeq ($(NATIVE), yes)
 	CFLAGS += -DIN_NATIVE
 else ifeq ($(QEMU), 1)
 	CFLAGS += -DQEMU
+endif
+
+ifneq ($(FILE_NAME_GP), )
+	CFLAGS += -DIN_GP_TEST
 endif
 
 libgcc := $(shell $(CC) --print-libgcc-file-name)
