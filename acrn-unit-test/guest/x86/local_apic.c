@@ -3260,8 +3260,6 @@ void local_apic_rqmid_39308_x2apic_ipi_delivery_in_self_all_including_all_exclud
  *  be issued as a 1. Write this bit on native will be ignored. Keep the behavior the
  *  same with the native.
  *
- *	Set level bit 14 of APIC ICR register as 0. Read the register and verify that bit 14 keeps 1,
- * which means the write is ignored.
  * @param None
  *
  * @retval None
@@ -3269,13 +3267,13 @@ void local_apic_rqmid_39308_x2apic_ipi_delivery_in_self_all_including_all_exclud
  */
 void local_apic_rqmid_27716_ignore_icr_write_of_level_bit(void)
 {
-	u32 val;
+	u32 val0;
+	u32 val1;
 
-	val = apic_read(APIC_ICR);
-	val &= ~(1U << 14);
-	apic_icr_write(val, 0);
-
-	report("%s", apic_read(APIC_ICR) & (1U << 14), __FUNCTION__);
+	val0 = apic_read(APIC_ICR);
+	apic_icr_write((val0 ^ (1U << 14)), 0);
+	val1 = apic_read(APIC_ICR);
+	report("%s", val0 == val1, __FUNCTION__);
 }
 
 /**
