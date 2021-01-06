@@ -111,6 +111,7 @@ static void paging_rqmid_32346_check_linear_address_width()
 	report("%s", is_pass, __FUNCTION__);
 }
 
+#ifdef IN_NON_SAFETY_VM
 /**
  * @brief case name: IA32 EFER.NXE state following INIT_001
  *
@@ -263,10 +264,18 @@ static void paging_rqmid_32302_cr2_init()
  */
 static void paging_rqmid_32300_cr3_init()
 {
-	volatile u64 cr3 = *((volatile u64 *)INIT_CR3_ADDR);
+	volatile u32 cr3_l;
+	volatile u64 cr3_64bit;
+	u64 cr3_h = 0;
+	u64 cr3;
 
-	report("%s", ((cr3 & ~(0xfffull)) == 0), __FUNCTION__);
+	cr3_l = *((volatile u32 *)INIT_CR3_ADDR);
+	cr3_64bit = *((volatile u64 *)INIT_64BIT_CR3_ADDR);
+	cr3_h = cr3_64bit >> 32;
+	cr3 = (cr3_h << 32) | cr3_l;
+	report("%s", ((cr3 & (~(0xfffull))) == 0), __FUNCTION__);
 }
+#endif
 
 /**
  * @brief case name: IA32 EFER.NXE state following start-up_001
@@ -384,9 +393,19 @@ static void paging_rqmid_32295_cr4_pae_start_up()
  */
 static void paging_rqmid_32298_cr3_start_up()
 {
-	volatile u64 cr3 = *((volatile u64 *)STARTUP_CR3_ADDR);
+	u64 cr3;
+	volatile u32 cr3_l = *((volatile u32 *)STARTUP_CR3_ADDR);
+	volatile u64 cr3_64bit = *((volatile u64 *)STARTUP_64BIT_CR3_ADDR);
+	volatile u64 cr3_h = 0;
 
-	report("%s", (cr3 & ~0xfffull) == 0, __FUNCTION__);
+	cr3_h = cr3_64bit >> 32;
+	cr3 = (cr3_h << 32) | cr3_l;
+
+#ifdef IN_NON_SAFETY_VM
+	cr3_l = *((volatile u32 *)STARTUP_32BIT_CR3_ADDR_IN_NON_SAFETY);
+	cr3 = (cr3_h << 32) | cr3_l;
+#endif
+	report("%s", (cr3 & (~0xfffull)) == 0, __FUNCTION__);
 }
 
 /**

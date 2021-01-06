@@ -5,6 +5,9 @@
 #ifdef IN_GP_TEST
 #include "general_purpose.h"
 #endif
+#ifdef IN_PAGING_TEST
+#include "paging.h"
+#endif
 
 #define MEM_1K             0x400
 #define MEM_2K             (2 * MEM_1K)
@@ -82,6 +85,10 @@ start:
 	mov %ebp,STARTUP_EBP_ADDR_IN_NON_SAFETY
 	mov %esp,STARTUP_ESP_ADDR_IN_NON_SAFETY
 	mov %edi,STARTUP_EDI_ADDR_IN_NON_SAFETY
+#endif
+#ifdef IN_PAGING_TEST
+	mov %cr3, %eax
+	mov %eax, STARTUP_32BIT_CR3_ADDR_IN_NON_SAFETY
 #endif
 #endif
 	mov	$0xa0000, %esp

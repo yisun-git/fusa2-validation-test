@@ -1,4 +1,5 @@
 // suite 356
+#ifdef IN_NON_SAFETY_VM
 {
 	.suit_id = 356,
 	.case_id = 32265,
@@ -77,6 +78,7 @@
 	.name = "CR3 state following INIT",
 	.fn = paging_rqmid_32300_cr3_init
 },
+#endif
 {
 	.suit_id = 356,
 	.case_id = 32264,

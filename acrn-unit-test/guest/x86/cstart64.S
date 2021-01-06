@@ -1,4 +1,7 @@
 #include "apic-defs.h"
+#ifdef IN_PAGING_TEST
+#include "paging.h"
+#endif
 
 .globl boot_idt
 
@@ -243,6 +246,10 @@ ap_start32:
 
 .code64
 ap_start64:
+#ifdef IN_PAGING_TEST
+	mov %cr3, %rax
+	mov %rax, (INIT_64BIT_CR3_ADDR)
+#endif
 	call enable_apic
 	call load_tss
 #ifdef AP_UNCHANGED_CHECK
@@ -258,6 +265,10 @@ ap_start64:
 	jmp 1b
 
 start64:
+#ifdef IN_PAGING_TEST
+	mov %cr3, %rax
+	movq %rax, (STARTUP_64BIT_CR3_ADDR)
+#endif
 	call bss_init
 	call enable_apic
 	call load_tss
