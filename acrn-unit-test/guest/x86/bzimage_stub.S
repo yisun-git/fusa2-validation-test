@@ -76,6 +76,7 @@
 
 	/* Entry of the stub. Shall be the third sector in the bzimage. */
 start:
+
 #ifdef IN_NON_SAFETY_VM
 #ifdef IN_GP_TEST
 	mov %eax,STARTUP_EAX_ADDR_IN_NON_SAFETY
@@ -86,6 +87,7 @@ start:
 	mov %esp,STARTUP_ESP_ADDR_IN_NON_SAFETY
 	mov %edi,STARTUP_EDI_ADDR_IN_NON_SAFETY
 #endif
+
 #ifdef IN_PAGING_TEST
 	mov %cr3, %eax
 	mov %eax, STARTUP_32BIT_CR3_ADDR_IN_NON_SAFETY
@@ -94,7 +96,7 @@ start:
 	mov	$0xa0000, %esp
 
 /* get BP EIP starup value */
-#ifdef IN_NON_SAFETY_VM
+#if defined(IN_NON_SAFETY_VM) && !defined(REAL_MODE) && !defined(V8086_CODE)
 	call 11f
 11:
 	pop %edx

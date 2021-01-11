@@ -1,4 +1,5 @@
 #include "common.h"
+#include "page.h"
 
 /**
  * print functions
@@ -311,3 +312,42 @@ asm (".pushsection .text\n\t"
 	"iretl\n\t"
 	".popsection"
 );
+
+
+void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32 value, bool is_invalidate)
+{
+	if (gva == NULL) {
+		printf("this address is NULL!\n");
+		return;
+	}
+
+	u32 cr3 = read_cr3();
+	u32 pde_offset = PGDIR_OFFSET((u32)gva, PAGE_PDE);
+	u32 pte_offset = PGDIR_OFFSET((u32)gva, PAGE_PTE);
+	pteval_t *pde = (pteval_t *)cr3;
+	pteval_t *pte;
+
+	if ((pde[pde_offset] & (1 << PAGE_PS_FLAG)) && (level == PAGE_PTE)) {
+		level = PAGE_PDE;
+	} else {
+		pte = (pteval_t *)(pde[pde_offset] & PAGE_MASK);
+	}
+
+	if (level == PAGE_PDE) {
+		if (value == 1) {
+			pde[pde_offset] |= (1u << bit);
+		} else {
+			pde[pde_offset] &= ~(1u << bit);
+		}
+	} else {
+		if (value == 1) {
+			pte[pte_offset] |= (1u << bit);
+		} else {
+			pte[pte_offset] &= ~(1u << bit);
+		}
+	}
+	if (is_invalidate) {
+		invlpg(gva);
+	}
+
+}

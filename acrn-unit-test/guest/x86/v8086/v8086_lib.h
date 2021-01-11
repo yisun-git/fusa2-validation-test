@@ -84,4 +84,5 @@ static inline void write_cr4(u32 cr0)
 	return write_cr(FUNC_WRITE_CR4, cr0);
 }
 
+#define PAGE_FAULT_ADDR	(0xF000)
 #endif

@@ -3,6 +3,7 @@
 
 #include "v8086_util.h"
 #include "msr.h"
+#include "page.h"
 
 typedef void (*v8086_func)(void);
 typedef unsigned long long u64;
@@ -95,10 +96,17 @@ static inline void write_cr4(u32 val)
 	asm volatile ("mov %0, %%cr4" : : "r"(val) : "memory");
 }
 
+static inline void invlpg(volatile void *va)
+{
+	asm volatile("invlpg (%0)" ::"r" (va) : "memory");
+}
+
 void printf(const char *fmt, ...);
 void setup_idt(void);
 void set_idt_entry(int vec, void *addr, int dpl);
 u32 register_int(u32 irq, u32 handler);
 void unregister_int(u32 irqidx);
+
+void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32 value, bool is_invalidate);
 
 #endif

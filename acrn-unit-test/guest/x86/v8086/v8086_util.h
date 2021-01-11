@@ -301,4 +301,18 @@ static inline void call_int(u8 val)
 	asm volatile("int %0" : : "i"(val) : "memory");
 }
 
+static inline unsigned long read_rflags(void)
+{
+	unsigned long f;
+	asm volatile ("pushf; pop %0\n\t" : "=rm"(f));
+	return f;
+}
+
+static inline void write_rflags(unsigned long f)
+{
+	asm volatile ("push %0; popf\n\t" : : "rm"(f));
+}
+
+#define PAGE_FAULT_ADDR	(0xF000)
+
 #endif

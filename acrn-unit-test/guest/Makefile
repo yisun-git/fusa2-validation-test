@@ -172,6 +172,13 @@ install: standalone
 
 clean: arch_clean
 	$(RM) lib/.*.d $(libcflat) $(cflatobjs)
+ifeq ($(TEST_DIR), x86)
+	$(RM) $(TEST_DIR)/realmode/.*.d
+	$(RM) $(TEST_DIR)/realmode/*.o
+	$(RM) $(TEST_DIR)/realmode/*.elf
+	$(RM) $(TEST_DIR)/realmode/*.raw
+	$(RM) $(TEST_DIR)/realmode/*.bzimage
+endif
 
 libfdt_clean:
 	$(RM) $(LIBFDT_archive) \

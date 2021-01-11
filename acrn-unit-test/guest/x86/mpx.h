@@ -17,8 +17,4 @@
 #ifdef __x86_64__
 extern struct descriptor_table_ptr gdt64_desc;
 #endif
-static __unused int check_cpuid_1_ecx(unsigned int bit)
-{
-	return (cpuid(1).c & bit) != 0;
-}
 #endif

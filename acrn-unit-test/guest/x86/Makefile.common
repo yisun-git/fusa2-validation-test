@@ -127,6 +127,14 @@ $(TEST_DIR)/%_prelink.o: $(TEST_DIR)/%.o
 
 $(TEST_DIR)/%.o: CFLAGS += -std=gnu99 -ffreestanding -I $(SRCDIR)/lib -I $(SRCDIR)/lib/x86 -I lib
 
+ifeq ($(REAL_MODE), yes)
+CFLAGS += -DREAL_MODE
+endif
+
+ifneq ($(PHASE_N), )
+CFLAGS += -D$(PHASE_N)
+endif
+
 ifeq ($(V8086), v8086_mode)
 CFLAGS += -DV8086_CODE
 v8086_objs := $(V8086_DIR)/main.o
@@ -142,7 +150,7 @@ endif
 
 $(TEST_DIR)/realmode.raw: ENTRY_OFFSET = 0x4000
 $(TEST_DIR)/realmode.elf: $(TEST_DIR)/realmode.o
-	$(CC) -m32 -nostdlib -o $@ -Wl,-T,$(SRCDIR)/$(TEST_DIR)/realmode.lds $^
+	$(CC) $(CFLAGS) -m32 -nostdlib -o $@ -Wl,-T,$(SRCDIR)/$(TEST_DIR)/realmode.lds $^
 
 $(TEST_DIR)/realmode.o: bits = 32
 
@@ -159,6 +167,8 @@ $(TEST_DIR)/vmx_prelink.o: $(TEST_DIR)/vmx.o
 $(TEST_DIR)/realmode/%.raw: ENTRY_OFFSET = 0x4000
 $(TEST_DIR)/realmode/%.bzimage: ENTRY_OFFSET = 0x4000
 $(TEST_DIR)/realmode/%.elf: $(TEST_DIR)/realmode/rmode_cstart.o $(TEST_DIR)/realmode/rmode_entry.o $(TEST_DIR)/realmode/apic.o \
+	$(TEST_DIR)/realmode/printf.o \
+	$(TEST_DIR)/realmode/setjmp16.o \
 	$(TEST_DIR)/realmode/%.o $(TEST_DIR)/realmode/rmode_flat.lds
 	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/realmode/rmode_flat.lds \
 		 $(filter %.o, $^)

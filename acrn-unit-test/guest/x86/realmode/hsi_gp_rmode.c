@@ -24,10 +24,8 @@ static inline void wrmsr(u32 index, u64 val)
 static u8 cmove_checking(void)
 {
 	u16 op = 2;
-	asm volatile(
-		"xor %bx, %bx\n"
-		ASM_TRY("1f"));
-	asm volatile(
+	asm volatile("xor %bx, %bx\n");
+	asm volatile(ASM_TRY("1f")
 		"cmove %%bx, %0\n"
 		"1:"
 		: "=r" (op)
@@ -42,9 +40,8 @@ static u8 cmove_checking(void)
 static u8 and_checking(void)
 {
 	u8 op = 2;
-	asm volatile("mov $0x11, %al\n"
-		ASM_TRY("1f"));
-	asm volatile(
+	asm volatile("mov $0x11, %al\n");
+	asm volatile(ASM_TRY("1f")
 		"and $0x10, %%al\n"
 		"mov %%al, %0\n"
 		"1:"
@@ -62,9 +59,8 @@ static u8 cli_checking(void)
 	u16 op = 1;
 	asm volatile(
 		"pushf\n"
-		"pop %bx\n\t"
-		ASM_TRY("1f"));
-	asm volatile(
+		"pop %bx\n\t");
+	asm volatile(ASM_TRY("1f")
 		"cli\n\t"
 		"pushf\n"
 		"pop %0\n"
@@ -83,10 +79,8 @@ static u8 cli_checking(void)
 static u8 mov_real_checking(void)
 {
 	u16 op = 0x8;
-	asm volatile(
-		"mov %fs, %bx\n"
-		ASM_TRY("1f"));
-	asm volatile(
+	asm volatile("mov %fs, %bx\n");
+	asm volatile(ASM_TRY("1f")
 		"mov $0x10, %%cx\n\t"
 		"mov %%cx, %%fs\n"
 		"mov %%fs, %0\n"

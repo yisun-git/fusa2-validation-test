@@ -1,7 +1,6 @@
 
 asm(".code16gcc");
 #include "rmode_lib.h"
-#define NO_EXCEPTION	0x0
 
 typedef unsigned long long u64;
 
@@ -12,8 +11,7 @@ struct gdt_table_descr {
 
 static u8 lgdt_real_checking(const struct gdt_table_descr *ptr)
 {
-	asm volatile(ASM_TRY("1f"));
-	asm volatile(
+	asm volatile(ASM_TRY("1f")
 		"lgdt %0\n"
 		"1:"
 		: : "m" (*ptr) :
@@ -23,8 +21,7 @@ static u8 lgdt_real_checking(const struct gdt_table_descr *ptr)
 
 static u8 sgdt_real_checking(struct gdt_table_descr *ptr)
 {
-	asm volatile(ASM_TRY("1f"));
-	asm volatile(
+	asm volatile(ASM_TRY("1f")
 		"sgdt %0\n"
 		"1:"
 		: "=m" (*ptr) : : "memory"

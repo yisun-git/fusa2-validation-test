@@ -416,6 +416,9 @@ rmode_excp:
 	.word excp_page_fault
 	.word 0
 
+	.word 0
+	.word 0
+
 	.word excp_float_error
 	.word 0
 
@@ -430,6 +433,11 @@ rmode_excp:
 
 	.word excp_virtualization
 	.word 0
+
+	.rept 235
+	.word 0
+	.word 0
+	.endr
 excp_end:
 /*
 *

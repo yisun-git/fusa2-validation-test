@@ -1,5 +1,6 @@
 asm(".code16gcc");
 #include "rmode_lib.h"
+#include "setjmp.h"
 #ifndef USE_SERIAL
 #define USE_SERIAL
 #endif
@@ -136,9 +137,6 @@ void print_serial_u32(u32 value)
 	print_serial(p);
 }
 
-static u16 failed;
-static u16 tests;
-
 void rmode_exit(int code)
 {
 	while (1);
@@ -146,49 +144,94 @@ void rmode_exit(int code)
 	ap_end_life = 1;
 }
 
-void report(const char *name, _Bool ok)
+static u16 t = 0;
+static u16 f = 0;
+static u16 x = 0;
+static u16 s = 0;
+
+#define puts(x) print_serial(x)
+
+void va_report(const char *msg_fmt,
+		bool pass, bool xfail, bool skip, va_list va)
 {
-	print_serial(ok ? "PASS: " : "FAIL: ");
-	print_serial(name);
-	print_serial("\n");
-	if (!ok) {
-		failed++;
+	const char *prefix = skip ? "SKIP"
+				  : xfail ? (pass ? "XPASS" : "XFAIL")
+					  : (pass ? "PASS"  : "FAIL");
+	t++;
+	printf("%s: ", prefix);
+	vprintf(msg_fmt, va);
+	puts("\r\n");
+	if (skip) {
+		s++;
 	}
-	tests++;
-}
-void report_summary(void)
-{
-	print_serial("SUMMERY: ");
-	print_serial_u32(tests);
-	print_serial(" tests");
-	print_serial("\n");
-	if (failed) {
-		print_serial(", ");
-		print_serial_u32(failed);
-		print_serial(" unexpected failures");
-		print_serial("\n");
+	else if (xfail && !pass) {
+		x++;
+	}
+	else if (xfail || !pass) {
+		f++;
 	}
 }
 
-__attribute__ ((regparm(1)))
-void handle_rmode_excp(struct excp_regs *regs)
+void report(const char *msg_fmt, bool pass, ...)
 {
-	struct excp_record *ex;
+	va_list va;
+	va_start(va, pass);
+	va_report(msg_fmt, pass, 0, 0, va);
+	va_end(va);
+}
+
+int report_summary(void)
+{
+	short ret = 0;
+	printf("SUMMARY: %d tests", t);
+	if (f) {
+		printf(", %d unexpected failures", f);
+	}
+	if (x) {
+		printf(", %d expected failures", x);
+	}
+	if (s) {
+		printf(", %d skipped", s);
+	}
+	printf("\r\n");
+
+	if (t == s) {
+		/* Blame AUTOTOOLS for using 77 for skipped test and QEMU for
+		 * mangling error codes in a way that gets 77 if we ...
+		 */
+		return 77 >> 1;
+	}
+
+	ret = (f > 0) ? 1 : 0;
+	return ret;
+}
+
+
+static handler exception_r_handlers[32] = {0};
+handler handle_exception(u8 v, handler fn)
+{
+	handler old;
+
+	old = exception_r_handlers[v];
+	if (v < 32) {
+		exception_r_handlers[v] = fn;
+	}
+	return old;
+}
+
+void do_r_handle_exception(struct excp_regs *regs)
+{
+	if ((regs->vector < 32) && (exception_r_handlers[regs->vector])) {
+		exception_r_handlers[regs->vector](regs);
+		return;
+	}
+	unhandled_r_exception(regs);
+}
+
+void unhandled_r_exception(struct excp_regs *regs)
+{
 	u16 vector;
-	u16 error_code;
-
 	vector = regs->vector;
-	error_code = regs->error_code;
-	asm volatile("mov %0, %%gs:"xstr(EXCEPTION_VECTOR_ADDR)"" : : "r"(vector));
-	asm volatile("mov %0, %%gs:"xstr(EXCEPTION_ECODE_ADDR)"" : : "r"(error_code));
-
-	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
-		if (ex->ip == regs->ip) {
-			regs->ip = ex->handler;
-			return;
-		}
-	}
-
 	print_serial("\n\rUnhandled exception:");
 	print_serial_u32(vector);
 	print_serial("!!! ");
@@ -203,7 +246,101 @@ void handle_rmode_excp(struct excp_regs *regs)
 	print_serial("\t cx:");
 	print_serial_u32(regs->cx);
 	print_serial("\t dx:");
+	print_serial_u32(regs->dx);
+	print_serial("\n\rbp:");
+	print_serial_u32(regs->bp);
+	print_serial("\t si:");
+	print_serial_u32(regs->si);
+	print_serial("\t di:");
+	print_serial_u32(regs->di);
+	print_serial("\t cs:");
+	print_serial_u32(regs->cs);
+	print_serial("\t rflags:");
+	print_serial_u32(regs->rflags);
+	print_serial("\n\r");
+	rmode_exit(0);
+}
+
+
+u16 execption_inc_len = 0;
+
+void common_exception_handler(struct excp_regs *regs)
+{
+	struct excp_record *ex;
+	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
+		if (ex->ip == regs->ip) {
+			regs->ip = ex->handler;
+			return;
+		}
+	}
+	if (execption_inc_len == 0) {
+		unhandled_r_exception(regs);
+	} else {
+		regs->ip += execption_inc_len;
+	}
+}
+
+void set_handle_exception(void)
+{
+	handle_exception(DE_VECTOR, &common_exception_handler);
+	handle_exception(DB_VECTOR, &common_exception_handler);
+	handle_exception(NMI_VECTOR, &common_exception_handler);
+	handle_exception(BP_VECTOR, &common_exception_handler);
+	handle_exception(OF_VECTOR, &common_exception_handler);
+	handle_exception(BR_VECTOR, &common_exception_handler);
+	handle_exception(UD_VECTOR, &common_exception_handler);
+	handle_exception(NM_VECTOR, &common_exception_handler);
+	handle_exception(DF_VECTOR, &common_exception_handler);
+	handle_exception(TS_VECTOR, &common_exception_handler);
+	handle_exception(NP_VECTOR, &common_exception_handler);
+	handle_exception(SS_VECTOR, &common_exception_handler);
+	handle_exception(GP_VECTOR, &common_exception_handler);
+	handle_exception(PF_VECTOR, &common_exception_handler);
+	handle_exception(MF_VECTOR, &common_exception_handler);
+	handle_exception(AC_VECTOR, &common_exception_handler);
+	handle_exception(MC_VECTOR, &common_exception_handler);
+	handle_exception(XM_VECTOR, &common_exception_handler);
+}
+
+__attribute__ ((regparm(1)))
+void handle_rmode_excp(struct excp_regs *regs)
+{
+	u16 vector;
+	u16 error_code;
+	vector = regs->vector;
+	error_code = regs->error_code;
+	asm volatile("movw %0, %%gs:"xstr(EXCEPTION_VECTOR_ADDR)"" : : "r"(vector));
+	asm volatile("movw %0, %%gs:"xstr(EXCEPTION_ECODE_ADDR)"" : : "r"(error_code));
+//#define EXCEPTION_DEBUG
+#ifndef EXCEPTION_DEBUG
+	if ((regs->vector < 32) && (exception_r_handlers[regs->vector])) {
+		exception_r_handlers[regs->vector](regs);
+		return;
+	}
+	unhandled_r_exception(regs);
+#else
+	struct excp_record *ex = NULL;
+	for (ex = &exception_table_start; ex != &exception_table_end; ++ex) {
+		if (ex->ip == regs->ip) {
+			regs->ip = ex->handler;
+			return;
+		}
+	}
+	print_serial("\n\rUnhandled exception:");
+	print_serial_u32(vector);
+	print_serial("!!! ");
+	print_serial(exception_mnemonic(regs->vector));
+	print_serial(" at ip: ");
+	print_serial_u32(regs->ip);
+	print_serial("\n\r");
+	print_serial("ax:");
+	print_serial_u32(regs->ax);
+	print_serial("\t bx:");
+	print_serial_u32(regs->bx);
+	print_serial("\t cx:");
 	print_serial_u32(regs->cx);
+	print_serial("\t dx:");
+	print_serial_u32(regs->dx);
 	print_serial("\n\rbp:");
 	print_serial_u32(regs->bp);
 	print_serial("\t si:");
@@ -212,9 +349,14 @@ void handle_rmode_excp(struct excp_regs *regs)
 	print_serial_u32(regs->di);
 	print_serial("\t rflags:");
 	print_serial_u32(regs->rflags);
+	print_serial("\t cs:");
+	print_serial_u32(regs->cs);
 	print_serial("\n\r");
 	rmode_exit(0);
+#endif
 }
+
+
 u8 exception_vector(void)
 {
 	u8 vector;
@@ -224,9 +366,9 @@ u8 exception_vector(void)
 
 u16 exception_error_code(void)
 {
-	u16 vector;
-	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=q"(vector));
-	return vector;
+	u16 err_code;
+	asm("mov %%gs:"xstr(EXCEPTION_ECODE_ADDR)", %0" : "=q"(err_code));
+	return err_code;
 }
 
 asm (
@@ -243,11 +385,76 @@ asm (
 	".byte 0xcf\n\t"
 );
 
+extern char bss_start;
+extern char edata;
+void bss_init(void)
+{
+	memset(&bss_start, 0, &edata - &bss_start);
+}
+
 void rmode_start()
 {
+	bss_init();
 	main();
 	rmode_exit(0);
-
 	while (1);
+}
+
+static bool r_exception;
+static jmp_buf *r_exception_jmpbuf;
+
+void r_exception_handler_longjmp(void)
+{
+	longjmp(*r_exception_jmpbuf, 1);
+}
+
+static void r_exception_handler(struct excp_regs *regs)
+{
+	/* longjmp must happen after iret, so do not do it now.  */
+	r_exception = true;
+	regs->ip = (u16)(u32)&r_exception_handler_longjmp;
+	/*read_cs() get Ring0's CS, but the return EIP could be Ring3, so can't modify it.*/
+	//regs->cs = read_cs();
+}
+
+bool test_for_r_exception(unsigned int ex, void (*trigger_func)(void *data),
+	void *data)
+{
+	handler old;
+	jmp_buf jmpbuf;
+	int ret;
+
+	old = handle_exception(ex, r_exception_handler);
+	ret = set_r_exception_jmpbuf(jmpbuf);
+	if (ret == 0) {
+		/* set vector to no exception*/
+		asm("movl $"xstr(NO_EXCEPTION)", %gs:"xstr(EXCEPTION_ADDR)"");
+		trigger_func(data);
+	}
+	handle_exception(ex, old);
+	return ret;
+}
+
+void __set_r_exception_jmpbuf(jmp_buf *addr)
+{
+	r_exception_jmpbuf = addr;
+}
+
+void set_idt_entry(int vec, void *addr)
+{
+	*(u32 *)(vec * 4) = (u32)addr;
+}
+
+void *memcpy(void *dest, const void *src, size_t n)
+{
+	size_t i;
+	char *a = dest;
+	const char *b = src;
+
+	for (i = 0; i < n; ++i) {
+		a[i] = b[i];
+	}
+
+	return dest;
 }
 

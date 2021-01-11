@@ -66,6 +66,12 @@ __noinline void v8_write_cr4(void)
 	write_cr4(read_input_val());
 }
 
+__noinline void set_default_page_pf(void)
+{
+	void *addr = (void *)(PAGE_FAULT_ADDR);
+	set_page_control_bit((void *)addr, PAGE_PTE, PAGE_P_FLAG, 0, 1);
+}
+
 const v8086_func v8086_funcs[FUNC_ID_MAX] = {
 	[FUNC_V8086_EXIT] = v8086_exit,
 	[FUNC_REG_INT]    = v8_reg_int,
@@ -80,6 +86,7 @@ const v8086_func v8086_funcs[FUNC_ID_MAX] = {
 
 int main(int argc, char **argv)
 {
+	set_default_page_pf();
 	setup_idt();
 	v8086_enter();
 	return 0;
