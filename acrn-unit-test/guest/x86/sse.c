@@ -949,8 +949,11 @@ static __unused void sse_rqmid_30916_SSE2_instructions_support_Protected_Mode_PS
 static void sse_get_64bit_xsave_value_for_startup(void)
 {
 	volatile fxsave_64bit_t *sse_64bit_start;
+
+	cr4_osfxsr_to_1();/* enable cr4.OSFXSR[9] for SSE, refer to sdm vol1 10.5.1.2*/
 	sse_64bit_start = (volatile fxsave_64bit_t *)STARTUP_SSE64BIT_XSAVE_ADDR;
 	asm volatile("fxsave %0" : "=m"(*sse_64bit_start));
+	cr4_osfxsr_to_0();
 }
 
 static __unused void print_case_list(void)
