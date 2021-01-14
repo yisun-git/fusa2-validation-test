@@ -27,11 +27,13 @@
 #include "instruction_common.h"
 #include "xsave.h"
 #include "regdump.h"
-
+#include "msr.h"
+#include "string.h"
 
 #define USE_DEBUG
 #ifdef USE_DEBUG
-#define debug_print(fmt, args...)	printf("[%s:%s] line=%d "fmt"", __FILE__, __func__, __LINE__,  ##args)
+#define debug_print(fmt, args...) \
+	printf("[%s:%s] line=%d core=%d"fmt"", __FILE__, __func__, __LINE__, get_lapic_id(),  ##args)
 #else
 #define debug_print(fmt, args...)
 #endif
@@ -41,12 +43,13 @@
 
 // sub $0xffffffffffffff80(0x80 sign-extension), %%rax
 #define SUB_SIGN ".byte 0x48, 0x83, 0xe8, 0x80\n\t"
-#define MAIN_TSS_SEL (FIRST_SPARE_SEL + 24)
+#define MAIN_TSS_SEL (FIRST_SPARE_SEL)
 #define USING_APS                   3
 #define    HOST_GDT_RING0_DATA_SEL        (0x0010U)
-
+#define RFLAG_CF_BIT					(1UL << 0U)
 static char intr_alt_stack[4][4096];
 static volatile int start_run_id = 0;
+#define X86_CR0_NE (1UL << 5U)
 
 #ifdef __x86_64__
 static atomic_t ret_sim;
@@ -54,16 +57,92 @@ static atomic_t ap_sim;
 static int XSAVE_AREA_ST0_POS = 32;
 #define XSAVE_AREA_XMM0_POS 160
 __attribute__((aligned(64))) xsave_area_t st_xsave_area;
+static u32 ap_run_again = 0;
+enum {
+	MODE_VMX_OFF = 0,
+	MODE_VMX_ON,
+	MODE_VMX_BUFF,
+};
+enum {
+	CASE_ID_35956,
+	CASE_ID_41095,
+	CASE_ID_35959,
+	CASE_ID_41096,
+	CASE_ID_40347,
+	CASE_ID_40348,
+	CASE_ID_41097,
+	CASE_ID_41098,
+	CASE_ID_41099,
+	CASE_ID_40349,
+	CASE_ID_41101,
+	CASE_ID_41103,
+	CASE_ID_41104,
+	CASE_ID_41105,
+	CASE_ID_40614,
+	CASE_ID_41178,
+	CASE_ID_41941,
+	CASE_ID_35971,
+	CASE_ID_42227,
+	CASE_ID_42228,
+	CASE_ID_42229,
+	CASE_ID_42230,
+	CASE_ID_35957,
+	CASE_ID_35960,
+	CASE_ID_35961,
+	CASE_ID_BUTT,
+};
+
+enum {
+	CASE_FAIL = 0,
+	CASE_PASS,
+};
+typedef struct {
+	/* record whether is vmx on */
+	u8 is_vmx_on;
+	/* record the case whether is pass on vmx off mode */
+	u8 is_vmx_off_pass[CASE_ID_BUTT];
+} st_case_result;
+st_case_result gp_case_result;
+
+#define REPORT_CASE_RESULT(_chk_value, _case_id) \
+	if (gp_case_result.is_vmx_on == MODE_VMX_OFF) { \
+		if (chk == _chk_value) { \
+			gp_case_result.is_vmx_off_pass[CASE_ID_##_case_id] = CASE_PASS; \
+		} \
+	} else { \
+		report("%s", (chk == _chk_value) && \
+			(gp_case_result.is_vmx_off_pass[CASE_ID_##_case_id] == CASE_PASS), __FUNCTION__); \
+	}
+
 #endif
 
 #ifdef __x86_64__
-static void test_iret(const char *fun_name)
+static u8 is_exe_flag;
+void iretq_test_func(const char *msg)
 {
+	is_exe_flag = 1;
 	return;
 }
 
+extern gdt_entry_t gdt64[];
+/* According Figure 7-3. TSS Descriptor */
+#define TSS_DES_BUSY_BIT (1U << 1U)
+static void resume_tss(u16 tss_sel)
+{
+	/* get tss default gdt */
+	struct segment_desc64 *entry = (struct segment_desc64 *)&gdt64[tss_sel >> 3];
+
+	/* claer busy bit for resume tss environment */
+	entry->type &= ~TSS_DES_BUSY_BIT;
+
+	ltr(tss_sel);
+}
 static bool cmovnc_8_checking(void)
 {
+	/* make sure RFLAG.CF is 0 */
+	if (read_rflags() & RFLAG_CF_BIT) {
+		asm volatile("clc");
+	}
 	u64 op = 0;
 	asm volatile(
 		"mov $0,  %0\n\t"
@@ -614,57 +693,34 @@ static bool jmp_checking(void)
 	return ((exception_vector() == NO_EXCEPTION) && (op == 8));
 }
 
-/* execute the iret instruction to return to the interrupt entry */
-static bool iret_far_checking(void (*fn)(const char *), const char *arg)
+void lcall_test_func(void)
 {
-	static unsigned char user_stack[4096];
-	int ret;
+	is_exe_flag = 1;
+}
 
-	asm volatile ("mov %[user_ds], %%" R "dx\n\t"
-		"mov %%dx, %%ds\n\t"
-		"mov %%dx, %%es\n\t"
-		"mov %%dx, %%fs\n\t"
-		"mov %%dx, %%gs\n\t"
-		"mov %%" R "sp, %%" R "cx\n\t"
-		"push" W " %%" R "dx \n\t"
-		"lea %[user_stack_top], %%" R "dx \n\t"
-		"push" W " %%" R "dx \n\t"
-		"pushf" W "\n\t"
-		"push" W " %[user_cs] \n\t"
-		"push" W " $1f \n\t"
-		ASM_TRY("1f")
-		"iret" W "\n"
-		"1: \n\t"
-		/* save kernel SP */
-		"push %%" R "cx\n\t"
-		"call *%[fn]\n\t"
+bool far_call_check(void)
+{
+	is_exe_flag = 0;
+	struct lseg_st64 lcs;
 
-		"pop %%" R "cx\n\t"
-		"mov $1f, %%" R "dx\n\t"
-		"int %[kernel_entry_vector]\n\t"
-		".section .text.entry \n\t"
-		".globl kernel_entry\n\t"
-		"kernel_entry: \n\t"
-		"mov %%" R "cx, %%" R "sp \n\t"
-		"mov %[kernel_ds], %%cx\n\t"
-		"mov %%cx, %%ds\n\t"
-		"mov %%cx, %%es\n\t"
-		"mov %%cx, %%fs\n\t"
-		"mov %%cx, %%gs\n\t"
-		"jmp *%%" R "dx \n\t"
-		".section .text\n\t"
-		"1:\n\t"
-		: [ret] "=&a" (ret)
-		: [user_ds] "i" (USER_DS),
-		[user_cs] "i" (USER_CS),
-		[user_stack_top]"m"(user_stack[sizeof user_stack]),
-		[fn]"r"(fn),
-		[arg]"D"(arg),
-		[kernel_ds]"i"(KERNEL_DS),
-		[kernel_entry_vector]"i"(0x23)
-		: "rcx", "rdx");
+	lcs.offset = (u64)lcall_test_func;
+	lcs.selector = (KERNEL_CS);
 
-	return (exception_vector() == NO_EXCEPTION);
+	asm volatile(ASM_TRY("1f")
+		"rex.W\n\t" "lcall *%0\n\t"
+		"1:"
+		: : "m"(lcs) : );
+
+	return ((exception_vector() == NO_EXCEPTION) && (is_exe_flag == 1));
+}
+
+/* execute the iret instruction to return to the interrupt entry */
+bool iret_far_checking()
+{
+	is_exe_flag = 0;
+	do_at_ring3(iretq_test_func, "");
+
+	return (is_exe_flag == 1);
 }
 
 /* sent 0xff to port 0xe0, recieve from it */
@@ -904,12 +960,14 @@ static void test_bp()
 	u16 val = 0;
 	u16 desc_size = sizeof(tss64_t);
 	tss64_t main_tss;
+	u16 old_tss = str();
 	/* tell AP to start */
 	while (atomic_read(&ap_sim) != USING_APS) {}
 
 	/* create TSS descriptor */
 	main_tss.ist1 = (u64)intr_alt_stack + 4096;
 	main_tss.iomap_base = (u16)desc_size;
+	/* use gdt index 10 for bp tss */
 	set_gdt64_entry(MAIN_TSS_SEL, (u64)&main_tss, desc_size - 1, 0x89, 0x0f);
 	ltr(MAIN_TSS_SEL);
 	asm volatile(ASM_TRY("1f")
@@ -921,6 +979,7 @@ static void test_bp()
 	if (val == MAIN_TSS_SEL) {
 		atomic_inc(&ret_sim);
 	}
+	resume_tss(old_tss);
 }
 
 /* Description: 2 APs will test concurrently */
@@ -929,22 +988,26 @@ static __unused void test_ap(int index)
 	u16 val = 0;
 	u16 desc_size = sizeof(tss64_t);
 	tss64_t ap_tss;
+	u16 old_tss = str();
 
 	/* create TSS descriptor */
 	ap_tss.ist1 = (u64)intr_alt_stack[index / 2] + 4096;
 	ap_tss.iomap_base = (u16)desc_size;
-	set_gdt64_entry((MAIN_TSS_SEL+index*8), (u64)&ap_tss, desc_size - 1, 0x89, 0x0f);
-	ltr(MAIN_TSS_SEL + index*8);
+	/* use gdt index 11 12 13 for ap1 ap2 ap3 */
+	u16 ap_tss_sel = MAIN_TSS_SEL + ((index / 2) * 8);
+	set_gdt64_entry(ap_tss_sel, (u64)&ap_tss, desc_size - 1, 0x89, 0x0f);
+	ltr(ap_tss_sel);
 	asm volatile(ASM_TRY("1f")
 		"str %%ax\n\t"
 		"mov %%ax,%0\n\t"
 		"1:"
 		: "=m"(val)
 	);
-	if (val == (MAIN_TSS_SEL + index*8)) {
+	if (val == ap_tss_sel) {
 		atomic_inc(&ret_sim);
 	}
 	atomic_inc(&ap_sim);
+	resume_tss(old_tss);
 
 	return;
 }
@@ -1325,7 +1388,7 @@ static __unused void hsi_rqmid_35956_generic_processor_features_data_move_001(vo
 		chk++;
 	}
 
-	report("%s", (chk == 3), __FUNCTION__);
+	REPORT_CASE_RESULT(3, 35956);
 }
 
 /*
@@ -1348,7 +1411,7 @@ static __unused void hsi_rqmid_41095_generic_processor_features_data_exchange_00
 		chk++;
 	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	REPORT_CASE_RESULT(2, 41095);
 }
 
 /*
@@ -1371,7 +1434,7 @@ static __unused void hsi_rqmid_35959_generic_processor_features_stack_manipulati
 		chk++;
 	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	REPORT_CASE_RESULT(2, 35959);
 }
 
 /*
@@ -1397,7 +1460,7 @@ static __unused void hsi_rqmid_41096_generic_processor_features_type_conversion_
 		chk++;
 	}
 
-	report("%s", (chk == 3), __FUNCTION__);
+	REPORT_CASE_RESULT(3, 41096);
 }
 
 /*
@@ -1435,7 +1498,7 @@ static __unused void hsi_rqmid_40347_generic_processor_features_binary_arithmeti
 		chk++;
 	}
 
-	report("%s", (chk == 7), __FUNCTION__);
+	REPORT_CASE_RESULT(7, 40347);
 }
 
 /*
@@ -1464,7 +1527,7 @@ static __unused void hsi_rqmid_41097_generic_processor_features_comparision_001(
 		chk++;
 	}
 
-	report("%s", (chk == 4), __FUNCTION__);
+	REPORT_CASE_RESULT(4, 41097);
 }
 
 /*
@@ -1487,7 +1550,7 @@ static __unused void hsi_rqmid_41098_generic_processor_features_logical_001(void
 		chk++;
 	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	REPORT_CASE_RESULT(2, 41098);
 }
 
 /*
@@ -1507,7 +1570,7 @@ static __unused void hsi_rqmid_41099_generic_processor_features_shift_rotate_001
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 41099);
 }
 
 /*
@@ -1548,7 +1611,7 @@ static __unused void hsi_rqmid_40348_generic_processor_features_bit_byte_001(voi
 		chk++;
 	}
 
-	report("%s", (chk == 8), __FUNCTION__);
+	REPORT_CASE_RESULT(8, 40348);
 }
 
 /*
@@ -1568,11 +1631,14 @@ static __unused void hsi_rqmid_41101_generic_processor_features_uncondition_cont
 		chk++;
 	}
 
-	if (iret_far_checking(test_iret, __FUNCTION__)) {
+	if (iret_far_checking()) {
 		chk++;
 	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	if (far_call_check()) {
+		chk++;
+	}
+	REPORT_CASE_RESULT(3, 41101);
 }
 
 /*
@@ -1595,7 +1661,7 @@ static __unused void hsi_rqmid_40349_generic_processor_features_condition_contro
 		chk++;
 	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	REPORT_CASE_RESULT(2, 40349);
 }
 
 /*
@@ -1618,7 +1684,7 @@ static __unused void hsi_rqmid_41103_generic_processor_features_string_move_001(
 		chk++;
 	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	REPORT_CASE_RESULT(2, 41103);
 }
 
 /*
@@ -1638,7 +1704,7 @@ static __unused void hsi_rqmid_41104_generic_processor_features_enter_leave_001(
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 41104);
 }
 
 /*
@@ -1658,7 +1724,7 @@ static __unused void hsi_rqmid_41105_generic_processor_features_flag_control_001
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 41105);
 }
 
 /*
@@ -1678,7 +1744,7 @@ static __unused void hsi_rqmid_41941_generic_processor_features_segment_register
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 41941);
 }
 
 /*
@@ -1704,7 +1770,7 @@ static __unused void hsi_rqmid_40614_generic_processor_features_miscellaneous_00
 		chk++;
 	}
 
-	report("%s", (chk == 3), __FUNCTION__);
+	REPORT_CASE_RESULT(3, 40614);
 }
 
 /*
@@ -1730,7 +1796,7 @@ static __unused void hsi_rqmid_41178_generic_processor_features_output_input_001
 		chk++;
 	}
 
-	report("%s", (chk == 3), __FUNCTION__);
+	REPORT_CASE_RESULT(3, 41178);
 }
 
 /*
@@ -1754,7 +1820,7 @@ static __unused void hsi_rqmid_35971_generic_processor_features_microcode_update
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 35971);
 }
 
 /*
@@ -1772,7 +1838,11 @@ static __unused void hsi_rqmid_42227_generic_processor_features_task_management_
 	atomic_set(&ap_sim, 0);
 
 	/* test AP */
-	start_run_id = 42227;
+	if (ap_run_again) {
+		start_run_id = 10001;
+	} else {
+		start_run_id = 42227;
+	}
 
 	/* test BP */
 	test_bp();
@@ -1780,7 +1850,7 @@ static __unused void hsi_rqmid_42227_generic_processor_features_task_management_
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 42227);
 }
 
 /*
@@ -1797,7 +1867,7 @@ static __unused void hsi_rqmid_42228_generic_processor_features_msr_001(void)
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 42228);
 }
 
 /*
@@ -1818,7 +1888,7 @@ static __unused void hsi_rqmid_42229_generic_processor_features_time_stamp_count
 		chk++;
 	}
 
-	report("%s", (chk == 2), __FUNCTION__);
+	REPORT_CASE_RESULT(2, 42229);
 }
 
 /*
@@ -1836,7 +1906,7 @@ static __unused void hsi_rqmid_42230_generic_processor_features_clean_cpu_intern
 		chk++;
 	}
 
-	report("%s", (chk == 1), __FUNCTION__);
+	REPORT_CASE_RESULT(1, 42230);
 }
 
 /*
@@ -1911,7 +1981,7 @@ static __unused void hsi_rqmid_35957_generic_processor_features_xsave_x87_001(vo
 		chk++;
 	}
 
-	report("%s", (chk == 7), __FUNCTION__);
+	REPORT_CASE_RESULT(7, 35957);
 }
 
 /*
@@ -1985,7 +2055,7 @@ static __unused void hsi_rqmid_35960_generic_processor_features_xsave_sse_001(vo
 		}
 	}
 
-	report("%s", (chk == 7), __FUNCTION__);
+	REPORT_CASE_RESULT(7, 35960);
 }
 
 /*
@@ -2059,7 +2129,7 @@ static __unused void hsi_rqmid_35961_generic_processor_features_xsave_avx_001(vo
 		}
 	}
 
-	report("%s", (chk == 7), __FUNCTION__);
+	REPORT_CASE_RESULT(7, 35961);
 }
 
 #elif __i386__
@@ -2300,6 +2370,7 @@ static void print_case_list(void)
 	printf("\t Case ID: %d Case name: %s\n\r", 35961u, "HSI generic processor features " \
 		"xsave avx 001");
 
+
 #elif __i386__
 	printf("\t Case ID: %d Case name: %s\n\r", 41100u, "HSI generic processor features " \
 		"shift rotate 002");
@@ -2340,50 +2411,95 @@ int ap_main(void)
 		test_ap(get_lapic_id());
 	}
 
+	/* ap test vmx_on again */
+	while (start_run_id != 10001) {
+		test_delay(5);
+	}
+	if (get_lapic_id() == 4 || get_lapic_id() == 2 || get_lapic_id() == 6) {
+		test_ap(get_lapic_id());
+	}
 
 #endif
 #endif
 	return 0;
 }
 
+#ifdef __x86_64__
+typedef struct {
+	void (*func)(void);
+} st_case_func;
+static st_case_func case_fun[] = {
+	{hsi_rqmid_35956_generic_processor_features_data_move_001},
+	{hsi_rqmid_41095_generic_processor_features_data_exchange_001},
+	{hsi_rqmid_35959_generic_processor_features_stack_manipulation_001},
+	{hsi_rqmid_41096_generic_processor_features_type_conversion_001},
+	{hsi_rqmid_40347_generic_processor_features_binary_arithmetic_001},
+	{hsi_rqmid_41097_generic_processor_features_comparision_001},
+	{hsi_rqmid_41098_generic_processor_features_logical_001},
+	{hsi_rqmid_41099_generic_processor_features_shift_rotate_001},
+	{hsi_rqmid_40348_generic_processor_features_bit_byte_001},
+	{hsi_rqmid_41101_generic_processor_features_uncondition_control_transfer_001},
+	{hsi_rqmid_40349_generic_processor_features_condition_control_transfer_001},
+	{hsi_rqmid_41103_generic_processor_features_string_move_001},
+	{hsi_rqmid_41104_generic_processor_features_enter_leave_001},
+	{hsi_rqmid_41105_generic_processor_features_flag_control_001},
+	{hsi_rqmid_40614_generic_processor_features_miscellaneous_001},
+	{hsi_rqmid_41178_generic_processor_features_output_input_001},
+	{hsi_rqmid_41941_generic_processor_features_segment_register_001},
+	{hsi_rqmid_35971_generic_processor_features_microcode_update_signature_001},
+	{hsi_rqmid_42227_generic_processor_features_task_management_001},
+	{hsi_rqmid_42228_generic_processor_features_msr_001},
+	{hsi_rqmid_42229_generic_processor_features_time_stamp_counter_001},
+	{hsi_rqmid_42230_generic_processor_features_clean_cpu_internal_buffer_001},
+	{hsi_rqmid_35957_generic_processor_features_xsave_x87_001},
+	{hsi_rqmid_35960_generic_processor_features_xsave_sse_001},
+	{hsi_rqmid_35961_generic_processor_features_xsave_avx_001},
+};
+
+__unused static void vmx_on(void)
+{
+	static u8 vmxon_region[PAGE_SIZE];
+	/* define vmcs data */
+	u32 vmx_basic = (u32)rdmsr(MSR_IA32_VMX_BASIC);
+	memset((void *)vmxon_region, 0, PAGE_SIZE);
+	/* copy basic to vmcs */
+	memcpy((void *)vmxon_region, &vmx_basic, sizeof(u32));
+	/* Enables the native (internal) mechanism for reporting x87 FPU errors */
+	write_cr0(read_cr0() | X86_CR0_NE);
+	/* enable vmx feature */
+	write_cr4(read_cr4() | X86_CR4_VMXE);
+	debug_print("vmx_on---------------- \n");
+	asm volatile("vmxon %0\n" : : "m"(vmxon_region) : "cc", "memory");
+	gp_case_result.is_vmx_on = MODE_VMX_ON;
+}
+
+static void run_hsi_gp_64bit_case()
+{
+	u32 i;
+	for (i = 0; i < ARRAY_SIZE(case_fun); i++) {
+		case_fun[i].func();
+	}
+}
+#endif
 int main(void)
 {
-	//extern unsigned char kernel_entry;
 	setup_idt();
-	//set_idt_entry(0x20, &kernel_entry, 3);
 	setup_vm();
 	setup_ring_env();
-
 	print_case_list();
-
 
 #ifdef IN_NATIVE
 #ifdef __x86_64__
-	hsi_rqmid_35956_generic_processor_features_data_move_001();
-	hsi_rqmid_41095_generic_processor_features_data_exchange_001();
-	hsi_rqmid_35959_generic_processor_features_stack_manipulation_001();
-	hsi_rqmid_41096_generic_processor_features_type_conversion_001();
-	hsi_rqmid_40347_generic_processor_features_binary_arithmetic_001();
-	hsi_rqmid_41097_generic_processor_features_comparision_001();
-	hsi_rqmid_41098_generic_processor_features_logical_001();
-	hsi_rqmid_41099_generic_processor_features_shift_rotate_001();
-	hsi_rqmid_40348_generic_processor_features_bit_byte_001();
-	hsi_rqmid_41101_generic_processor_features_uncondition_control_transfer_001();
-	hsi_rqmid_40349_generic_processor_features_condition_control_transfer_001();
-	hsi_rqmid_41103_generic_processor_features_string_move_001();
-	hsi_rqmid_41104_generic_processor_features_enter_leave_001();
-	hsi_rqmid_41105_generic_processor_features_flag_control_001();
-	hsi_rqmid_40614_generic_processor_features_miscellaneous_001();
-	hsi_rqmid_41178_generic_processor_features_output_input_001();
-	hsi_rqmid_41941_generic_processor_features_segment_register_001();
-	hsi_rqmid_35971_generic_processor_features_microcode_update_signature_001();
-	hsi_rqmid_42227_generic_processor_features_task_management_001();
-	hsi_rqmid_42228_generic_processor_features_msr_001();
-	hsi_rqmid_42229_generic_processor_features_time_stamp_counter_001();
-	hsi_rqmid_42230_generic_processor_features_clean_cpu_internal_buffer_001();
-	hsi_rqmid_35957_generic_processor_features_xsave_x87_001();
-	hsi_rqmid_35960_generic_processor_features_xsave_sse_001();
-	hsi_rqmid_35961_generic_processor_features_xsave_avx_001();
+	/* init data */
+	memset((void *)&gp_case_result, 0, sizeof(st_case_result));
+	gp_case_result.is_vmx_on = MODE_VMX_OFF;
+	run_hsi_gp_64bit_case();
+
+	/* run 42227 case at ap */
+	ap_run_again = 1;
+	vmx_on();
+	run_hsi_gp_64bit_case();
+
 #elif __i386__
 	hsi_rqmid_41100_generic_processor_features_shift_rotate_002();
 	hsi_rqmid_41106_generic_processor_features_data_move_002();
