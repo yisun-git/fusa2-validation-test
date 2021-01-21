@@ -541,6 +541,7 @@ static void debug_features_rqmid_38225_initialize_cr4_de_following_startup(void)
 	report("%s", (*(u64 *)CR4_STARTUP_ADDR & X86_CR4_DE) == 0, __FUNCTION__);
 }
 
+#ifdef IN_NON_SAFETY_VM
 /**
  * @brief case name:Initialize CR4.DE following init
  *
@@ -557,6 +558,7 @@ static void debug_features_rqmid_38226_initialize_cr4_de_following_INIT(void)
 {
 	report("%s", (*(u64 *)CR4_INIT_ADDR & X86_CR4_DE) == 0, __FUNCTION__);
 }
+#endif
 
 /**
  * @brief case name Inject #GP(0) when single-step debug exception
@@ -724,10 +726,14 @@ int main(int ac, char **av)
 	debug_features_rqmid_38153_return_0_when_mov_from_dr0_dr1_dr2_dr3_003();
 	debug_features_rqmid_38154_return_0_when_mov_from_dr0_dr1_dr2_dr3_004();
 	debug_features_rqmid_38225_initialize_cr4_de_following_startup();
+#ifdef IN_NON_SAFETY_VM
 	debug_features_rqmid_38226_initialize_cr4_de_following_INIT();
-	debug_features_rqmid_38228_inject_gp0_when_single_step_debug_exception();
+#endif
+	debug_features_rqmid_38241_write_1h_to_cr4_de();
 	debug_features_rqmid_38230_read_cr4_de();
 	debug_features_rqmid_38241_write_1h_to_cr4_de();
+	debug_features_rqmid_38228_inject_gp0_when_single_step_debug_exception();
+
 #endif
 	return report_summary();
 }
