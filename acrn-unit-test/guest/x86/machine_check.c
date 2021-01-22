@@ -618,7 +618,7 @@ static void MCA_rqmid_24456_set_IA32_FEATURE_CONTROL_LMCE_ON_following_startup_0
  */
 static void MCA_rqmid_24551_set_IA32_MCG_CAP_following_startup_001()
 {
-	report("%s", (*(volatile uint64_t *)STARTUP_IA32_MCG_CAP) == 0, __FUNCTION__);
+	report("%s", (*(volatile uint32_t *)STARTUP_IA32_MCG_CAP) == 0, __FUNCTION__);
 }
 
 /*
@@ -654,7 +654,7 @@ static void MCA_rqmid_24531_set_IA32_MCG_STATUS_following_init_001()
  */
 static void MCA_rqmid_24533_set_IA32_MCG_STATUS_following_startup_001()
 {
-	report("%s", (*(volatile uint64_t *)STARTUP_IA32_MCG_STATUS) == 0, __FUNCTION__);
+	report("%s", (*(volatile uint32_t *)STARTUP_IA32_MCG_STATUS) == 0, __FUNCTION__);
 }
 
 /*
@@ -789,13 +789,6 @@ static void MCA_rqmid_36880_write_1H_to_CR4_MCE_for_non_safety_VM_001(void)
 
 	/* write 1H to CR4.MCE and check */
 	if ((write_cr4_checking(cr4 | CR4_MCE) != GP_VECTOR) || (exception_error_code() != 0)) {
-		report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
-		return;
-	}
-
-	/* restore CR4.MCE and check */
-	if ((write_cr4_checking(cr4) != GP_VECTOR) || (exception_error_code() != 0)) {
-
 		report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
 		return;
 	}
@@ -964,6 +957,19 @@ static void MCA_rqmid_24477_set_IA32_P5_MC_TYPE_following_startup_001()
 }
 
 /*
+ * @brief case name: MCA_rqmid_24477_set_IA32_P5_MC_ADDR_following_startup_001
+ *
+ *Summary:
+ *	 ACRN hypervisor shall set initial guest MSR IA32_P5_MC_ADDR to 0 following start-up.
+ *
+ */
+static void MCA_rqmid_24476_set_IA32_P5_MC_ADDR_following_startup_001()
+{
+	report("%s", (*(volatile uint64_t *)STARTUP_IA32_P5_MC_ADDR_LOW_ADDR) == 0, __FUNCTION__);
+}
+
+#ifdef IN_NON_SAFETY_VM
+/*
  * @brief case name: MCA_rqmid_24478_set_IA32_P5_MC_TYPE_following_init_001
  *
  *Summary:
@@ -976,17 +982,6 @@ static void MCA_rqmid_24478_set_IA32_P5_MC_TYPE_following_init_001()
 }
 
 
-/*
- * @brief case name: MCA_rqmid_24477_set_IA32_P5_MC_ADDR_following_startup_001
- *
- *Summary:
- *	 ACRN hypervisor shall set initial guest MSR IA32_P5_MC_ADDR to 0 following start-up.
- *
- */
-static void MCA_rqmid_24476_set_IA32_P5_MC_ADDR_following_startup_001()
-{
-	report("%s", (*(volatile uint64_t *)STARTUP_IA32_P5_MC_ADDR_LOW_ADDR) == 0, __FUNCTION__);
-}
 
 /*
  * @brief case name: MCA_rqmid_24473_set_IA32_P5_MC_ADDR_following_init_001
@@ -1011,6 +1006,7 @@ static void MCA_rqmid_27737_set_CR4_MCE_following_init_001()
 {
 	report("%s", ((*(volatile uint32_t *)INIT_CR4_REG_ADDR) & CR4_MCE) == 0, __FUNCTION__);
 }
+#endif
 
 /*
  * @brief case name: MCA_rqmid_27736_set_CR4_MCE_following_startup_001
@@ -1339,8 +1335,8 @@ static void MCA_rqmid_37648_expose_MC_common_MSRs_001()
 		return;
 	}
 
-	val = 1;
-	if ((wrmsr_checking(MSR_IA32_MCG_STATUS, val) == GP_VECTOR) || (exception_error_code() != 0)) {
+	val = 1; /*MCG_STATUS write non-zero generate GP(0)*/
+	if ((wrmsr_checking(MSR_IA32_MCG_STATUS, val) != GP_VECTOR) || (exception_error_code() != 0)) {
 		report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
 		return;
 	}
@@ -1871,10 +1867,12 @@ void test_mca(void)
 	test_mca_non_safety_vm();
 	test_mca_safety_vm();
 	MCA_rqmid_24477_set_IA32_P5_MC_TYPE_following_startup_001();
-	MCA_rqmid_24478_set_IA32_P5_MC_TYPE_following_init_001();
 	MCA_rqmid_24476_set_IA32_P5_MC_ADDR_following_startup_001();
+#ifdef IN_NON_SAFETY_VM
+	MCA_rqmid_24478_set_IA32_P5_MC_TYPE_following_init_001();
 	MCA_rqmid_24473_set_IA32_P5_MC_ADDR_following_init_001();
 	MCA_rqmid_27737_set_CR4_MCE_following_init_001();
+#endif
 	MCA_rqmid_27736_set_CR4_MCE_following_startup_001();
 	MCA_rqmid_24604_hide_IA32_MCG_CTL_001();
 	MCA_rqmid_25084_inject_GP_if_write_IA32_MCG_STATUS_with_non_zero_001();
