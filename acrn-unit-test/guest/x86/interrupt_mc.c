@@ -116,12 +116,6 @@ static void handled_exception(struct ex_regs *regs)
 	}
 }
 
-
-static void ap_handled_exception(struct ex_regs *regs)
-{
-	printf("%s!!\r\n", __func__);
-}
-
 static volatile  u64 current_rip;
 void get_current_rip_function(void)
 {
@@ -340,8 +334,6 @@ void ap_main(void)
 {
 	/* Enable CR4.MCE for AP*/
 	write_cr4(read_cr4() | X86_CR4_MCE);
-	/* prepare the interrupt handler of #MC. */
-	handle_exception(MC_VECTOR, &ap_handled_exception);
 }
 
 int main(void)
