@@ -473,11 +473,15 @@ static __unused void sse_rqmid_27813_SSE2_instructions_support_004(void)
 	int cnt = 0;
 	/*Get RFLAG.ID to check it.*/
 	check_bit = read_rflags();
-	if (check_bit & (1UL << FEATURE_INFORMATION_21)) {
+
+	/*eflag bit 21:The ability of a program to set or clear this flag indicates support for the CPUID instruction*/
+	write_rflags(check_bit ^ (1UL << FEATURE_INFORMATION_21));
+	if (check_bit !=  read_rflags()) {
 		cnt++;
 	} else {
-		sse_debug("\nEFLAG.ID[bit21] should be 1 \n");
+		sse_debug("\nEFLAG.ID[bit21] should be modified \n");
 	}
+
 	if (cpuid_sse_to_1() == true) {
 		cnt++;
 	} else {
