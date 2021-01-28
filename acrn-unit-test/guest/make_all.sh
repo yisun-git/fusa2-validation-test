@@ -5,7 +5,7 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 	device_passthrough mmx locked_atomic machine_check vmx fpu info_leakage idle_block sse \
 	taskmanagement interrupt pt pci power_thermal avx mpx segmentation \
 	safety_analysis_high_direct safety_analysis_high_dma safety_analysis_low_direct safety_analysis_low_dma debug_features \
-	misc_msr interrupt_mc misc_cpuid tsx"
+	misc_msr interrupt_mc misc_cpuid tsx multiboot_low"
 
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \

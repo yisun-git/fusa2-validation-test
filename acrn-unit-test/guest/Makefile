@@ -19,6 +19,12 @@ ifneq ($(FILE_NAME_HSI), )
 	export START_A = 0x11000800 + SIZEOF_HEADERS
 endif
 
+FILE_NAME_MULTIBOOT = $(shell echo $(FILE_NAME) | grep "multiboot_low")
+ifneq ($(FILE_NAME_MULTIBOOT), )
+    export ENTRY_OFFSET = 0x11000800
+    export START_A = 0x11000800 + SIZEOF_HEADERS
+endif
+
 FILE_NAME_GP = $(shell echo $(FILE_NAME) | grep "general_purpose")
 FILE_NAME_PAGING = $(shell echo $(FILE_NAME) | grep "paging")
 

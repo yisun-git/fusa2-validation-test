@@ -99,7 +99,7 @@
 #define CONFIG_MAX_PCPU_NUM 4U
 
 #define XSDT_SIZE					0x2C
-#define MADT_SIZE					0x2C
+#define MADT_SIZE					0x44
 
 #define __packed        __attribute__((packed))
 

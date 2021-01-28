@@ -219,7 +219,6 @@ static int read_write_exec_test(unsigned long start, unsigned long end, int is_e
 	unsigned char *point;
 	int i;
 	int ret;
-	unsigned char value = 0xFF;
 	test_fun_p fun_p;
 
 	debug_print("test start:%lx, end:%lx\n", start, end);
@@ -228,18 +227,11 @@ static int read_write_exec_test(unsigned long start, unsigned long end, int is_e
 	fun_p = test_fun;
 
 	for (i = 0; i < len; i += 4096) {
-		/*test read*/
-		value = point[i];
-		if ((point[i] != 0xFF) && (value != point[i])) {
-			printf("read error\n");
-			return -1;
-		}
-
-		/*test write*/
+		/* test read and write*/
 		point[i] = 0xFE;
 		if (point[i] != 0xFE) {
 			printf("write test error\n");
-			return -2;
+			return -1;
 		}
 
 		if (is_exec) {
@@ -248,7 +240,7 @@ static int read_write_exec_test(unsigned long start, unsigned long end, int is_e
 			ret = fun_p(i);
 			if (ret != (i+1)) {
 				printf("exec error ret=%d, i=%d\n", ret, i);
-				return -3;
+				return -2;
 			}
 		}
 	}
@@ -944,18 +936,18 @@ static void __unused multiboot_rqmid_34126_512M_memory_region_map_001(void)
 	memory_512M_check(__FUNCTION__);
 }
 
-static void memory_1G_check(const char *fun_name)
+static void memory_256M_to_1G_check(const char *fun_name)
 {
 	int ret = 0;
 	unsigned long start;
 	unsigned long end;
 
 	start = 0x10000000;	//256M
-	end = 0x1FEFFFFF;	//less 512M
+	end = 0x3FFFFFFF;
 	ret = read_write_exec_test(start, end, 1);
 
 	//acrn-unit-test only has 512M memory, unable to test 1G memory access
-	report("%s %d", false, fun_name, ret);
+	report("%s %d", ret == 0, fun_name, ret);
 }
 
 /**
@@ -963,33 +955,87 @@ static void memory_1G_check(const char *fun_name)
  *
  * Summary: On 64 bit Mode, when testing memory region rights&map,
  * select a memory unit in each 4K page to test the read-write and executable.
+ *This case and case 42697 construct 1G's check.
  */
 static void __unused multiboot_rqmid_34127_1G_memory_region_rights_001()
 {
-	memory_1G_check(__FUNCTION__);
+	memory_256M_to_1G_check(__FUNCTION__);
+}
+
+int read_write_test(unsigned long start, unsigned long end)
+{
+	unsigned long len;
+	unsigned char *point;
+	int i;
+
+	debug_print("test start:%lx, end:%lx\n", start, end);
+	len = end-start;
+	point = (unsigned char *) start;
+
+	for (i = 0; i < len; i += 4096) {
+		asm volatile (ASM_TRY("1f")
+				"mov %0, %%eax\n\t"
+				"1:"
+				: : "m"(point[i]) : "memory");
+		if (exception_vector() != PF_VECTOR) {
+			return -1;
+		}
+	}
+
+	for (i = 0; i < len; i += 4096) {
+		asm volatile ("mov $0xFF, %%eax\n\t"
+				ASM_TRY("1f")
+				"mov %%eax, %0\n\t"
+				"1:"
+				: "=m"(point[i]) : : "memory");
+		if (exception_vector() != PF_VECTOR) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int memory_1G_above_map_check()
+{
+	int ret = 0;
+	unsigned long start;
+	unsigned long end;
+
+	start = 0x40000000;
+	end = 0x40100000;
+	ret = read_write_test(start, end);
+	return ret;
 }
 
 /**
  * @brief case name:1G memory region map_001
  *
  * Summary: On 64 bit Mode, when testing memory region rights&map,
- * select a memory unit in each 4K page to test the read-write and executable.
+ * select a memory unit in each 4K page to test the read-write.
+ * Only check 1G above area,1M below have special purpose.
  */
 static void __unused multiboot_rqmid_34128_1G_memory_region_map_001(void)
 {
-	memory_1G_check(__FUNCTION__);
+	int ret = 0;
+	struct _zeropage *pZeropage;
+
+	pZeropage = get_zero_page(0);
+	memory_1G_above_map_check();
+	report("%s", (ret == 0) && (pZeropage->e820[2].baseaddr == 0x100000) && (pZeropage->e820[2].length ==
+	 0x3FF00000), __FUNCTION__);
 }
 
 /**
  * @brief case name:Command line value to non-safety VM_001
  *
  * Summary: On 64 bit Mode, obtain the command line value through ACRN's unit test API,
- * which should contain "root=/dev/sda3 rw rootwait noxsave nohpet no_timer_check x2apic_phys noapic".
+ * which should contain "root=/dev/sda3 rw rootwait nohpet no_timer_check x2apic_phys noapic intel_iommu=off".
  */
 static void __unused multiboot_rqmid_27266_command_line_value_to_non_safety_001(void)
 {
 	bool ret = false;
-	const char *boot = "root=/dev/sda3 rw rootwait noxsave nohpet no_timer_check x2apic_phys noapic";
+	const char *boot = "root=/dev/sda3 rw rootwait nohpet no_timer_check x2apic_phys noapic intel_iommu=off";
+
 	struct _zeropage *zeropage = NULL;
 
 	zeropage = get_zero_page(0);
@@ -1385,8 +1431,7 @@ static void __unused multiboot_rqmid_34103_expose_multiple_apic_001(void)
 		ret = true;
 	}
 
-	report("%s len=%x, revision=%x", ret == true, __FUNCTION__,
-	madt->header.length, madt->header.revision);
+	report("%s ", ret == true, __FUNCTION__);
 }
 
 /**
@@ -2181,6 +2226,8 @@ static void test_multiboot_list(void)
 
 int main(int ac, char **av)
 {
+	setup_idt();
+	setup_vm();
 	print_case_list();
 	test_multiboot_list();
 	return report_summary();
