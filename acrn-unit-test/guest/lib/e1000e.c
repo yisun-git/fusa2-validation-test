@@ -296,12 +296,22 @@ void e1000e_msi_config(uint64_t msi_msg_addr, uint32_t msi_msg_data)
 	return;
 }
 
+#define CPU_FREQ_INFO_LEAF 0x16U
+u64 cpu_base_freq_khz = 2100000U;
+void cpu_base_freq_init(void)
+{
+	struct cpuid id = cpuid(CPU_FREQ_INFO_LEAF);
+	u64 base_freq_mhz = id.a;
+	cpu_base_freq_khz = base_freq_mhz * 1000;
+}
+
 int e1000e_init(union pci_bdf bdf)
 {
 	int ret = 0;
 	uint32_t size = 0;
 	P_E1000E_DEV p_e1000e_dev = (P_E1000E_DEV)&e1000e_dev;
 	struct pci_dev *pdev = &(e1000e_dev.pci_obj);
+	cpu_base_freq_init();
 	pdev->bdf = bdf;
 	set_log_level(E1000_DEBUG_LEVEL);
 	ret = pci_card_detect(p_e1000e_dev);
@@ -411,13 +421,14 @@ uint64_t msi_int_cnt_get(void)
 	return p_e1000e_dev->int_cnt;
 }
 
+/**
+ * The empty loop implementation will cause an unexpected delay in HV,
+ * so implement it by reading TSC here.
+ **/
 int delay_loop_ms(uint32_t ms)
 {
-	volatile unsigned int i, j;
-	for (i = 0; i < ms; i++) {
-		for (j = 0; j < 0x40000; j++) {
-		}
-	}
+	u64 tsc = rdtsc() + ((u64)ms * cpu_base_freq_khz);
+	while (rdtsc() < tsc);
 	return 0;
 }
 
