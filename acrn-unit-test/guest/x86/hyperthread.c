@@ -94,13 +94,12 @@ static __unused void hyper_rqmid_37658_cpuid_eax0B_ecx2_001(void)
 /*
  * @brief case name: read CPUID.(EAX=0BH,ECX>1H) EBX[bit 15:0]_001
  *
- * Summary: When a vCPU attempts to read CPUID.(EAX=0BH,ECX>1H), ACRN hypervisor shall write 3H to EBX[bit 15:0].
+ * Summary: When a vCPU attempts to read CPUID.(EAX=0BH,ECX>1H), ACRN hypervisor shall write 0H to EBX[bit 15:0].
 
  */
 static __unused void hyper_rqmid_37662_cpuid_eax0B_ecx2_001(void)
 {
-	printf("%s:cpuid_indexed(0x0B, 0x02).b=%#x\n", __FUNCTION__, cpuid_indexed(0x0B, 0x02).b);
-	report("%s", (((cpuid_indexed(0x0B, 0x02).b) & 0xFFFF) == 0x03), __FUNCTION__);
+	report("%s", (((cpuid_indexed(0x0B, 0x02).b) & 0xFFFF) == 0x0), __FUNCTION__);
 }
 
 
@@ -193,14 +192,13 @@ static __unused void hyper_rqmid_37642_cpuid(void)
 }
 
 /*
- * @brief case name:Read CPUID.(EAX=4H,ECX=0H) EAX[bit 31:16]_001
+ * @brief case name:Read CPUID.(EAX=4H,ECX=0H) EAX[bit 31:26]_001
  *
- * Summary: When a vCPU attempts to read CPUID.(EAX=4H,ECX=0H), ACRN hypervisor shall write 7H to EAX[bit 31:16].
+ * Summary: When a vCPU attempts to read CPUID.(EAX=4H,ECX=0H), ACRN hypervisor shall write 7H to EAX[bit 31:26].
  */
 static __unused void hyper_rqmid_37645_cpuid_eax04_ecx0_001()
 {
-	printf("%s:cpuid(0x4).a=%#x\n", __FUNCTION__, cpuid(0x4).a);
-	report("%s", ((((cpuid(0x4).a) & 0xFFFF0000) >> 16) == 0x7), __FUNCTION__);
+	report("%s", ((((cpuid(0x4).a) & 0xFC000000) >> 26) == 0x7), __FUNCTION__);
 }
 
 /*
@@ -268,7 +266,7 @@ static void print_case_list(void)
 	EBX[bit 15:0]_001");
 #endif
 	printf("\t Case ID:%d case name:%s\n\r", 37642u, "Read CPUID.1H:EBX[bit 23:16]_001");
-	printf("\t Case ID:%d case name:%s\n\r", 37645u, "Read CPUID.(EAX=4H,ECX=0H) EAX[bit 31:16]_001");
+	printf("\t Case ID:%d case name:%s\n\r", 37645u, "Read CPUID.(EAX=4H,ECX=0H) EAX[bit 31:26]_001");
 	printf("\t Case ID:%d case name:%s\n\r", 37646u, "Read CPUID.(EAX=0BH,ECX=0H) EBX[bit 15:0]_001");
 	printf("\t Case ID:%d case name:%s\n\r", 37654u, "read CPUID.(EAX=0BH,ECX=0H) EAX[bit 4:0]_001");
 	printf("\t Case ID:%d case name:%s\n\r", 37655u, "read CPUID.(EAX=0BH,ECX>1H) EAX[bit 4:0]_001");

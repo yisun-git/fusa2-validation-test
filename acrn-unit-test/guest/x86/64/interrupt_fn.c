@@ -2818,11 +2818,12 @@ static void interrupt_rqmid_38460_expose_instruction_breakpoints_004(void)
  * @brief case name:Set EFLAGS.RF_001
  *
  * Summary: At 64bit mode, when a vCPU attempts to call a handler for a NMI,
- * ACRN hypervisor shall guarantee that the EFLAGS.RF on the current guest stack is 1H.
+ * ACRN hypervisor shall guarantee that the EFLAGS.RF on the current guest stack is is unchanged.
  */
 static void interrupt_rqmid_39087_set_eflags_rf_001(void)
 {
 	bool check = false;
+	ulong save_rflags0;
 
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
@@ -2838,7 +2839,9 @@ static void interrupt_rqmid_39087_set_eflags_rf_001(void)
 	/* step 4 generate #NMI */
 	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, APIC_ID_BSP);
 
-	if (save_rflags1 & RFLAG_RF_BIT) {
+	save_rflags0 = read_rflags();
+
+	if ((save_rflags1 & RFLAG_RF_BIT) == (save_rflags0 & RFLAG_RF_BIT)) {
 		check = true;
 	}
 
