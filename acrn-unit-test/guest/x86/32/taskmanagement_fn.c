@@ -2654,7 +2654,7 @@ static void taskm_id_38864_limit_check_tss_desc_limit_2BH(void)
  *
  *	This test case set S bit and clear P bit of the TSS descriptor,
  *	also set limit of TSS descriptor to 0x66 (G = 0),
- *	it would generate #GP (Error code = 0)
+ *	it would generate #NP (Error code = TSS_INTR & 0xF8)
  *	when executing a CALL to TSS_INTR
  *
  *	Note:  Check S bit before P bit of the TSS descriptor and G bit and
@@ -2676,8 +2676,8 @@ static void taskm_id_37691_checks_on_TSS_descriptor_S_bit_set(void)
 	 * Note: from native test,
 	 * below exception is 11(NP) and 0x20, instead of 13(GP) and 0
 	 */
-	report("%s", ((exception_vector() == GP_VECTOR)
-		&& (exception_error_code() == 0)), __func__);
+	report("%s", ((exception_vector() == NP_VECTOR)
+		&& (exception_error_code() == (TSS_INTR & 0xF8))), __func__);
 }
 
 /**

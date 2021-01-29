@@ -3457,9 +3457,7 @@ int main(void)
 	xsave_rqmid_22846_x87_support();
 	xsave_rqmid_22830_check_xsave_area_offset();
 	xsave_rqmid_22825_supervisor_state_components_001();
-
-	/* !!! 22793 will trigger #GP in hypervisor due to hypervisor bugs !!! */
-	// xsave_rqmid_22793_general_support_003_set_xcr0();
+	xsave_rqmid_22793_general_support_003_set_xcr0();
 #endif
 
 	return report_summary();
