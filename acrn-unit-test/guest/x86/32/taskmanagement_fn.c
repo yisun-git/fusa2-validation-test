@@ -11,7 +11,6 @@ struct descriptor_table_ptr new_gdt_desc;
 #define debug_print(fmt, args...)
 #endif
 
-
 bool eflags_nt_to_1(void)
 {
 	unsigned long check_bit = 0;
@@ -246,14 +245,15 @@ static void test_str_mem_for_exception(const char *data)
 	report("%s", ret, data);
 }
 
-static void trigger_NMI(void)
+static void trigger_NMI(void *data)
 {
 	u32 val = APIC_DEST_PHYSICAL | APIC_DM_NMI | APIC_INT_ASSERT;
 	u32 dest = 0;
 
-	asm volatile(ASM_TRY("1f")"wrmsr\n\t1:"::"a"(val),\
+	asm volatile("wrmsr\n\t"::"a"(val),\
 		"d"(dest), "c"(APIC_BASE_MSR + APIC_ICR/16));
 }
+
 
 /**
  * @brief case name:
@@ -285,7 +285,7 @@ static void taskm_id_25205_nmi_gate_p_bit(void)
 
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate), sizeof(gate));
 
-	trigger_NMI();
+	test_for_exception(NP_VECTOR, trigger_NMI, NULL);
 
 	//resume environment
 	memcpy((void *)(&boot_idt[2]), (void *)&bak, sizeof(idt_entry_t));
@@ -322,8 +322,7 @@ static void taskm_id_25206_nmi_null_selector(void)
 	gate.p = 1;
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate), sizeof(gate));
 
-	trigger_NMI();
-
+	test_for_exception(GP_VECTOR, trigger_NMI, NULL);
 	report("%s", (exception_vector() == GP_VECTOR) &&
 		(exception_error_code() == 0x1), __func__);
 
@@ -358,8 +357,7 @@ static void taskm_id_25207_nmi_TI_flag_set(void)
 	gate.p = 1;
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate),	sizeof(gate));
 
-	trigger_NMI();
-
+	test_for_exception(GP_VECTOR, trigger_NMI, NULL);
 	report("%s", (exception_vector() == GP_VECTOR) &&
 		(exception_error_code() == ((TSS_INTR & 0xF8) | 0x5)),
 		__func__);
@@ -396,8 +394,7 @@ static void taskm_id_25208_nmi_gdt_limit_overflow(void)
 	gate.p = 1;
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate),	sizeof(gate));
 
-	trigger_NMI();
-
+	test_for_exception(GP_VECTOR, trigger_NMI, NULL);
 	report("%s", (exception_vector() == GP_VECTOR) &&
 		(exception_error_code() == ((gate.selector & 0xFFF8) | 0x1)),
 		__func__);
@@ -448,7 +445,7 @@ static void taskm_id_26173_nmi_tss_desc_page_fault(void)
 	set_page_control_bit((void *)((ulong)(linear_addr + PAGE_SIZE)),
 		PAGE_PTE, 0, 0, true);
 
-	trigger_NMI();
+	test_for_exception(PF_VECTOR, trigger_NMI, NULL);
 
 	report("%s", (exception_vector() == PF_VECTOR), __func__);
 
@@ -488,8 +485,7 @@ static void taskm_id_25209_nmi_tss_desc_busy(void)
 	gate.p = 1;
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate),	sizeof(gate));
 
-	trigger_NMI();
-
+	test_for_exception(GP_VECTOR, trigger_NMI, NULL);
 	report("%s", (exception_vector() == GP_VECTOR) &&
 		(exception_error_code() == ((TSS_INTR & 0xF8) | 0x1)),
 		__func__);
@@ -527,8 +523,7 @@ static void taskm_id_25210_nmi_tss_desc_not_present(void)
 	gate.p = 1;
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate),	sizeof(gate));
 
-	trigger_NMI();
-
+	test_for_exception(NP_VECTOR, trigger_NMI, NULL);
 	report("%s", (exception_vector() == NP_VECTOR) &&
 		(exception_error_code() == ((TSS_INTR & 0xF8) | 0x1)),
 		__func__);
@@ -566,8 +561,7 @@ static void taskm_id_25211_nmi_tss_desc_limit_67H(void)
 	gate.p = 1;
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate),	sizeof(gate));
 
-	trigger_NMI();
-
+	test_for_exception(TS_VECTOR, trigger_NMI, NULL);
 	report("%s", (exception_vector() == TS_VECTOR) &&
 		(exception_error_code() == ((TSS_INTR & 0xF8) | 0x1)),
 		__func__);
@@ -607,8 +601,7 @@ static void taskm_id_26093_nmi_tss_desc_limit_2BH(void)
 	gate.p = 1;
 	memcpy((void *)(&boot_idt[2]), (void *)(&gate),	sizeof(gate));
 
-	trigger_NMI();
-
+	test_for_exception(TS_VECTOR, trigger_NMI, NULL);
 	report("%s", (exception_vector() == TS_VECTOR) &&
 		(exception_error_code() == ((TSS_INTR & 0xF8) | 0x1)),
 		__func__);
@@ -1955,7 +1948,6 @@ static void taskm_id_23835_cr0_ts_unchanged_call(void)
 static void taskm_id_23836_cr0_ts_unchanged_call(void)
 {
 #define INTR_VEC 35
-
 	ulong ts_val1 = 0;
 	ulong ts_val2 = 0;
 
@@ -1981,7 +1973,9 @@ static void taskm_id_23836_cr0_ts_unchanged_call(void)
 
 	ts_val1 = (read_cr0()>>3) & 1;
 
-	asm volatile ("int $35\n\t");
+	asm volatile(ASM_TRY("1f")
+			"int $35\n\t"
+			"1:":::);
 
 	ts_val2 = (read_cr0()>>3) & 1;
 
@@ -3027,7 +3021,7 @@ const struct {
 		"guest CR0.TS keeps unchanged in task switch attempts_002"
 	},
 	{
-		false, 23836, taskm_id_23836_cr0_ts_unchanged_call,
+		true, 23836, taskm_id_23836_cr0_ts_unchanged_call,
 		"guest CR0.TS keeps unchanged in task switch attempts_003"
 	},
 	{
@@ -3046,7 +3040,7 @@ const struct {
 		"Task switch in protect mode_002"
 	},
 	{
-		false, 23763, taskm_id_23763_protect,
+		true, 23763, taskm_id_23763_protect,
 		"Task switch in protect mode_003"
 	},
 	{

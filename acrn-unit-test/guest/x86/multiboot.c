@@ -615,8 +615,13 @@ static void __unused multiboot_rqmid_34245_other_fields_of_setup_header_001(void
 		printf("payload_length error 0x%x\n", zeropage->hdr1.payload_length);
 		ret = false;
 	}
-	if (zeropage->hdr1.pref_addr != 0xFFF000) {
-		printf("pref_addr error 0x%lx\n", zeropage->hdr1.pref_addr);
+
+	/*
+	 *SSR-187079 The pref_address field of zero-page of non-safety VM kernel image shall be
+	 *1000000H other than 0xFFF000
+	 */
+	if (zeropage->hdr1.pref_addr != 0x1000000) {
+		printf("!pref_addr error 0x%lx\n", zeropage->hdr1.pref_addr);
 		ret = false;
 	}
 
@@ -656,9 +661,12 @@ static void __unused multiboot_rqmid_34245_other_fields_of_setup_header_001(void
 		ret = false;
 	}
 
+	/*
+	 *Keep the same value as the kernel image of the VM in the pref_addr field at address FFF258H
+	 */
 	start = 0xFFF258;
 	size = 8;
-	if (read_test_value(start, start + size, 0xFFF000, size) != true) {
+	if (read_test_value(start, start + size, 0x1000000, size) != true) {
 		ret = false;
 	}
 
