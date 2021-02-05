@@ -65,8 +65,12 @@ paging_rqmid_35156_4way_set_associative_data_tlb_32entries_2M4M_AC_001()
 	u32 i;
 	int found = 0;
 
+	/*
+	 * 0x63:Data TLB: 2 MByte or 4 MByte pages, 4-way set associative, 32 entries and a separate array
+	 * with 1 GByte pages,4-way set associative, 4 entries
+	 */
 	for (i = 0; i < 4; i++) {
-		if (check_value_is_exist(cpuid_value[i], 0xc4)) {
+		if (check_value_is_exist(cpuid_value[i], 0x63)) {
 			found = 1;
 			break;
 		}
@@ -83,8 +87,12 @@ paging_rqmid_35157_4way_set_associative_data_tlb_4entries_1GB_page_AC_001()
 	u32 i;
 	int found = 0;
 
+	/*
+	 * 0x63:Data TLB: 2 MByte or 4 MByte pages, 4-way set associative, 32 entries and a separate array
+	 * with 1 GByte pages,4-way set associative, 4 entries
+	 */
 	for (i = 0; i < 4; i++) {
-		if (check_value_is_exist(cpuid_value[i], 0x6d)) {
+		if (check_value_is_exist(cpuid_value[i], 0x63)) {
 			found = 1;
 			break;
 		}
@@ -119,8 +127,11 @@ paging_rqmid_35159_4way_set_associative_level1_data_tlb_64entries_4K_AC_001()
 	u32 i;
 	int found = 0;
 
+	/*
+	 * 0x03: Data TLB: 4 KByte pages, 4-way set associative, 64 entries
+	 */
 	for (i = 0; i < 4; i++) {
-		if (check_value_is_exist(cpuid_value[i], 0xba)) {
+		if (check_value_is_exist(cpuid_value[i], 0x03)) {
 			found = 1;
 			break;
 		}
