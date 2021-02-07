@@ -21,6 +21,74 @@
 #include "instruction_common.h"
 #include "memory_type.h"
 #include "debug_print.h"
+#include "fwcfg.h"
+#include "delay.h"
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int ap_start_count = 0;
+
+volatile uint64_t spec_ctrl_0 = 0;
+volatile uint64_t spec_ctrl_1 = 0;
+volatile uint64_t spec_ctrl_2 = 0;
+
+#ifdef IN_NON_SAFETY_VM
+static void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+#endif
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+static void infoleak_ap_unchanged_case_33870()
+{
+	if (ap_start_count == 0) {
+		spec_ctrl_0 = rdmsr(IA32_SPEC_CTRL_MSR);
+		wrmsr(IA32_SPEC_CTRL_MSR, spec_ctrl_0 ^ 1u);
+		spec_ctrl_1 = rdmsr(IA32_SPEC_CTRL_MSR);
+		ap_start_count++;
+		wait_ap = 1;
+	} else if (ap_start_count == 1) {
+		spec_ctrl_2 = rdmsr(IA32_SPEC_CTRL_MSR);
+		ap_start_count++;
+		wait_ap = 1;
+	} else if (ap_start_count == 2) {
+		/*restore IA32_SPEC_CTRL_MSR register to init value*/
+		wrmsr(IA32_SPEC_CTRL_MSR, spec_ctrl_0);
+		wait_ap = 1;
+	}
+}
+
+
+void ap_main(void)
+{
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	while (1) {
+		switch (cur_case_id) {
+		case 33870:
+			infoleak_ap_unchanged_case_33870();
+			cur_case_id = 0;
+			break;
+		default:
+			asm volatile ("nop\n\t" :::"memory");
+		}
+	}
+}
+#endif
 
 bool check_cpuid(u32 basic, u32 leaf, u32 bit)
 {
@@ -551,20 +619,6 @@ void infoleak_rqmid_33871_MDS_mitigation_mechnism_expose_001(void)
 	MDS_mitigation_mechnism(__FUNCTION__);
 }
 
-static u32 ap_eax_ia32_spec_ctrl = 0xff;
-void read_ap_init(void)
-{
-	//ia32_spec_ctrl
-
-	uint32_t *ap_spec_ctrl_addr = (uint32_t *)AP_IA32_SPEC_CTRL_SIPI_ADDR;
-	asm ("mov %1, %%eax\n\t"
-		"mov %%eax, %0\n\t"
-		"mov $0xff, %%eax\n\t"
-		"mov %%eax, %1\n\t"
-		: "=m"(ap_eax_ia32_spec_ctrl), "=m"(*ap_spec_ctrl_addr));
-}
-
-
 #ifdef IN_NON_SAFETY_VM
 /**
  * @brief Case name: IA32_SPEC_CTRL INIT_001
@@ -575,29 +629,20 @@ void read_ap_init(void)
  */
 void infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001(void)
 {
-	uint32_t spec_ctrl_1 = 0;
-	uint32_t spec_ctrl_2 = 0;
-
-	read_ap_init();
-	spec_ctrl_1 = ap_eax_ia32_spec_ctrl;
-
+	cur_case_id = 33870;/*trigger ap_main function entering switch  33870*/
+	wait_ap_ready();
+	/*send sipi to ap  trigger ap_main function was called to get spec_ctrl again.*/
 	send_sipi();
-
-	read_ap_init();
-
-	do
-	{
-		spec_ctrl_2 = ap_eax_ia32_spec_ctrl;
-	} while (spec_ctrl_2 == 0xff);
-
-	if (spec_ctrl_1 == spec_ctrl_2)
-	{
-		report("\t\t %s", 1, __FUNCTION__);
-	}
-	else
-	{
-		report("\t\t %s", 0, __FUNCTION__);
-	}
+	cur_case_id = 33870;
+	wait_ap_ready();
+	/*
+	 *spec_ctrl_2 is the second init AP value,it should be equal with spec_ctrl_1.
+	 */
+	report("\t\t%s", spec_ctrl_1 == spec_ctrl_2, __FUNCTION__);
+	/*send sipi to ap again for restoring ymm init value*/
+	send_sipi();
+	cur_case_id = 33870;
+	wait_ap_ready();
 }
 
 /**
@@ -740,8 +785,8 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 33874u, "IBPB expose_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38261u, "IBPB expose_002");
 #ifdef IN_NON_SAFETY_VM
-	printf("\t\t Case ID:%d case name:%s\n\r", 33870u, "IA32_SPEC_CTRL INIT_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 37018u, "IA32_SPEC_CTRL INIT_002");
+	printf("\t\t Case ID:%d case name:%s\n\r", 33870u, "IA32_SPEC_CTRL INIT_001");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 33619u, "mitigate the L1TF variant affecting VMM_benchmark_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 33617u, "mitigate the L1TF variant affecting VMM_benchmark_002");
@@ -773,8 +818,8 @@ int main(int ac, char **av)
 	infoleak_rqmid_33874_IBPB_expose_001();
 	infoleak_rqmid_38261_IBPB_expose_002();
 #ifdef IN_NON_SAFETY_VM
-	infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001();
 	infoleak_rqmid_37018_IA32_SPEC_CTRL_INIT_002();
+	infoleak_rqmid_33870_IA32_SPEC_CTRL_INIT_001();
 #endif
 	infoleak_rqmid_33619_mitigate_L1TF_variant_affecting_VMM_benchmark_001();
 	infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_benchmark_002();
