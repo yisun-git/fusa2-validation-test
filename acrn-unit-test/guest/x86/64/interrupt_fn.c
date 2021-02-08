@@ -1591,9 +1591,6 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
 
-	/* length of the instruction that generated the exception */
-	execption_inc_len = 2;
-
 	/* step 2 prepare the interrupt handler of #NMI. */
 	handle_exception(NMI_VECTOR, &handled_exception);
 
@@ -1648,8 +1645,8 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	 * the modified register. In this case,
 	 * this code must be put in the final test
 	 */
-	/* 5 is call get_current_rip instruction len, 2 is 'wrmsr' instruction len */
-	current_rip -= (5 + 2);
+	/* 5 is call get_current_rip instruction len */
+	current_rip -= 5;
 
 	debug_print("%x %x %lx %lx\n", irqcounter_query(NMI_VECTOR), check,
 		current_rip, rip[2]);
@@ -1659,8 +1656,6 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	report("%s", ((irqcounter_query(NMI_VECTOR) == 6) && (check == 0)
 		&& (current_rip == rip[2])), __FUNCTION__);
 
-	/* resume environment */
-	execption_inc_len = 0;
 }
 
 /**
@@ -1678,9 +1673,6 @@ static void interrupt_rqmid_38176_expose_exception_nmi_002(void)
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
 
-	/* length of the instruction that generated the exception */
-	execption_inc_len = 2;
-
 	/* step 2 prepare the interrupt handler of #NMI. */
 	handle_exception(NMI_VECTOR, &handled_exception);
 
@@ -1695,8 +1687,6 @@ static void interrupt_rqmid_38176_expose_exception_nmi_002(void)
 	/* step 5 check #NMI exception and rflag*/
 	report("%s", ((irqcounter_query(NMI_VECTOR) == 1) && (check == 0)), __FUNCTION__);
 
-	/* resume environment */
-	execption_inc_len = 0;
 }
 
 /**
@@ -2828,9 +2818,6 @@ static void interrupt_rqmid_39087_set_eflags_rf_001(void)
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
 
-	/* length of the instruction that generated the exception */
-	execption_inc_len = 2;
-
 	/* step 2 prepare the interrupt handler of #NMI. */
 	handle_exception(NMI_VECTOR, &handled_exception);
 
@@ -2848,8 +2835,6 @@ static void interrupt_rqmid_39087_set_eflags_rf_001(void)
 	/* step 5 check #NMI exception and rflag*/
 	report("%s", ((irqcounter_query(NMI_VECTOR) == 1) && (check == true)), __FUNCTION__);
 
-	/* resume environment */
-	execption_inc_len = 0;
 }
 
 //test fail test result: first #PF, second interrupt
