@@ -78,3 +78,8 @@ $(TEST_DIR)/info_leakage.o: $(TEST_DIR)/info_leakage.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/hsi_virtual_spec.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/hsi_virtual_spec.o: $(TEST_DIR)/hsi_virtual_spec.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

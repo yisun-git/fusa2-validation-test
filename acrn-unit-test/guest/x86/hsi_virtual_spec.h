@@ -14,6 +14,8 @@
 /* define area */
 #define ALIGNED(x) __attribute__((aligned(x)))
 #define VM_EXIT_REASON_DEFAULT_VALUE 0xffffU
+#define INVALID_EXIT_QUALIFICATION_VALUE (0xFFFFFFFFUL)
+
 #define APIC_TPR_VAL2 0xFFU
 #define APIC_TPR_VAL1 (1U << 4U)
 #define VMX_VIRTUAL_APIC_PAGE_ADDR_FULL 0x00002012U
@@ -133,6 +135,102 @@
  * @brief Address of MSR bitmaps control field in the VMCS.
  */
 #define VMX_MSR_BITMAP_FULL          0x00002004U
+/* use a unused address offset is 448M memory */
+#define GUEST_PHYSICAL_ADDRESS_TEST (448 * 1024 * 1024UL)
+
+/* use a unused address offset is 480M memory for change memory mapping */
+#define HOST_PHYSICAL_ADDRESS_OFFSET (480 * 1024 * 1024UL)
+/* magic number for test invept */
+#define INIT_MAGIC_NUMBER (0x1122334455667788ULL)
+
+#define MSR_IA32_TSC_AUX              0xC0000103U
+#define TSC_AUX_VALUE1 0U
+#define TSC_AUX_VALUE2 1U
+#define BP_TSC_AUX_VALUE3 0xffU
+#define MSR_CACHE_TYPE_WB_VALUE 0x0000000001040506ULL
+
+/**
+ * @brief Address of VM exit control field in the VMCS.
+ */
+#define VMX_EXIT_CONTROLS              0x0000400cU
+/**
+ * @brief Address of VM exit MSR store count control field in the VMCS.
+ */
+#define VMX_EXIT_MSR_STORE_COUNT       0x0000400eU
+/**
+ * @brief Address of VM exit MSR load count control field in the VMCS.
+ */
+#define VMX_EXIT_MSR_LOAD_COUNT        0x00004010U
+/**
+ * @brief Address of VM entry control field in the VMCS.
+ */
+#define VMX_ENTRY_CONTROLS             0x00004012U
+/**
+ * @brief Address of VM entry MSR load count control field in the VMCS.
+ */
+#define VMX_ENTRY_MSR_LOAD_COUNT       0x00004014U
+/**
+ * @brief Address of VM-exit MSR-load address control field in the VMCS.
+ */
+#define VMX_EXIT_MSR_LOAD_ADDR_FULL  0x00002008U
+/**
+ * @brief Address of VM-entry MSR-load address control field in the VMCS.
+ */
+#define VMX_ENTRY_MSR_LOAD_ADDR_FULL 0x0000200aU
+/**
+ * @brief Address of VM entry interruption information field in the VMCS.
+ */
+#define VMX_ENTRY_INT_INFO_FIELD       0x00004016U
+/**
+ * @brief Bit field in VM exit interrupt information that indicates
+ * this interrupt information is valid.
+ */
+#define VMX_INT_INFO_VALID          (1U << 31U)
+/**
+ * @brief Interrupt type in VM exit interrupt information indicates this is a hardware exception.
+ */
+#define VMX_INT_TYPE_HW_EXP         3U
+/**
+ * @brief Undefined/Invalid Opcode vector in the Interrupt Descriptor Table (IDT).
+ */
+#define IDT_UD  6U
+#define VMX_PREEMPTION_TIMER                 0x0000482EU
+
+/**
+ * @brief Single context INVVPID type which indicates only specified VPID's mappings will be invalidated.
+ */
+#define VMX_VPID_TYPE_SINGLE_CONTEXT 1UL
+/**
+ * @brief Single context INVVPID type which indicates all VPIDs' mappings will be invalidated.
+ */
+#define VMX_VPID_TYPE_ALL_CONTEXT    2UL
+
+#define TSC_OFFSET_DEFAULT_VALUE (0x100000000000ULL)
+/**
+ * @brief Address of TSC offset control field in the VMCS.
+ */
+#define VMX_TSC_OFFSET_FULL          0x00002010U
+#define TSC_SCALING_DEFAULT_VALUE 4
+/**
+ * @brief Address of TSC multiplier control field in the VMCS.
+ */
+#define VMX_TSC_MULTIPLIER_FULL          0x00002032U
+/**
+ * @brief The register address of IA32_TIME_STAMP_COUNTER MSR.
+ */
+#define MSR_IA32_TIME_STAMP_COUNTER 0x00000010U
+/**
+ * @brief Address of VM-exit MSR-store address control field in the VMCS.
+ */
+#define VMX_EXIT_MSR_STORE_ADDR_FULL 0x00002006U
+#define UD_HANDLER_CALL_ONE_TIMES 1
+#define HIGH_MSR_START_ADDR			0xc0000000U
+enum {
+	MSR_READ,
+	MSR_WRITE,
+	MSR_READ_WRITE,
+	MSR_BUTT,
+};
 
 #define GET_CASE_INFO(_condition, _case_id_, _case_fun_, _case_name_) \
 { \
@@ -157,7 +255,7 @@ static void _func_##_condition(__unused struct st_vcpu *vcpu) \
 { \
 	/* set or clear bit */ \
 	exec_vmwrite32_bit(_vmcs_field_, _vmcs_bit, _is_set_bit); \
-	DBG_INFO("PIN_CONTROLS:0x%x\n", exec_vmread32(_vmcs_field_)); \
+	DBG_INFO("EXE_CONTROLS:0x%x\n", exec_vmread32(_vmcs_field_)); \
 }
 
 /* common function */
@@ -169,6 +267,9 @@ extern void set_exit_reason(u32 exit_reason);
 extern u32 get_exit_reason(void);
 extern void exec_vmwrite32_bit(u32 field, u32 bitmap, u32 is_bit_set);
 extern void set_vmcs(u32 condition);
+void set_io_bitmap(uint8_t *io_bitmap, uint32_t port_io, uint32_t is_bit_set, uint32_t bytes);
+void set_msr_bitmap(uint8_t *msr_bitmap, uint32_t msr,
+	uint32_t is_bit_set, uint8_t is_rd_wt);
 
 
 static inline u64 hva2hpa(const void *hva)
@@ -272,17 +373,57 @@ typedef enum {
 	CON_CPU_CTRL1_IRQ_WIN,
 	CON_CPU_CTRL1_TPR_SHADOW,
 	CON_CPU_CTRL1_HLT_EXIT,
+	CON_CPU_CTRL1_INVLPG,
+	CON_CPU_CTRL1_TSC_OFFSETTING,
+	CON_CPU_CTRL1_MWAIT,
+	CON_CPU_CTRL1_RDPMC,
+	CON_CPU_CTRL1_RDTSC,
+	CON_CPU_CTRL1_CR3_LOAD,
+	CON_CPU_CTRL1_CR3_STORE,
+	CON_CPU_CTRL1_CR8_LOAD,
+	CON_CPU_CTRL1_CR8_STORE,
+	CON_CPU_CTRL1_NMI_WIN,
+	CON_CPU_CTRL1_MOV_DR,
+	CON_CPU_CTRL1_UNCONDITIONAL_IO,
+	CON_CPU_CTRL1_USE_IO_BITMAP,
+	CON_CPU_CTRL1_MONITOR_TRP_FLAG,
+	CON_CPU_CTRL1_USE_MSR_BITMAP_READ,
+	CON_CPU_CTRL1_USE_MSR_BITMAP_WRITE,
+	CON_CPU_CTRL1_MONITOR,
+	CON_CPU_CTRL1_PAUSE,
+	CON_CPU_CTRL1_ACTIVATE_SECOND_CONTROL,
+	CON_CPU_CTRL1_PREEMPTION_TIMER,
 	CON_CPU_CTRL2_ENABLE_EPT,
 	CON_CPU_CTRL2_ENABLE_VPID,
 	CON_CPU_CTRL2_PAUSE_LOOP,
 	CON_CPU_CTRL2_ENABLE_VM_FUNC,
 	CON_CPU_CTRL2_EPT_VIOLATION,
 	CON_CPU_CTRL2_EPT_EXE_CONTRL,
+	CON_CPU_CTRL2_VIRTUAL_APIC,
+	CON_CPU_CTRL2_DESC_TABLE,
+	CON_CPU_CTRL2_ENABLE_RDTSCP,
+	CON_CPU_CTRL2_VIRTUAL_X2APIC,
+	CON_CPU_CTRL2_WBINVD,
+	CON_CPU_CTRL2_UNRESTRICTED_GUEST,
+	CON_CPU_CTRL2_APIC_REG_VIRTUAL,
+	CON_CPU_CTRL2_VIRTUAL_INTER_DELIVERY,
+	CON_CPU_CTRL2_RDRAND,
+	CON_CPU_CTRL2_VMCS_SHADOWING,
+	CON_CPU_CTRL2_RDSEED,
+	CON_CPU_CTRL2_ENABLE_PML,
+	CON_CPU_CTRL2_ENABLE_XSAVES_XRSTORS,
+	CON_CPU_CTRL2_USE_TSC_SCALING,
 	CON_EXIT_SAVE_DEBUG,
 	CON_ENTRY_LOAD_PERF,
 	CON_CR0_MASK,
 	CON_MSR_BITMAP,
 	CON_EPT_CONSTRUCT,
+	CON_VPID_INVALID,
+	CON_ENTRY_GUEST_MSR_CONTRL,
+	CON_EXIT_HOST_MSR_CONTRL,
+	CON_EXIT_GUEST_MSR_STORE,
+	CON_TSC_OFFSET_MULTI,
+	CON_VM_EXIT_INFO,
 	CON_BUFF,
 } U_VMX_CONDITION;
 
@@ -290,6 +431,13 @@ typedef enum {
 	CON_SECOND_CHECK_EPT_ENABLE = VMCALL_EXIT_SECOND,
 	CON_SECOND_VM_EXIT_ENTRY,
 	CON_SECOND_CHECK_DEBUG_REG,
+	CON_CHANGE_MEMORY_MAPPING,
+	CON_INVEPT,
+	CON_INVVPID,
+	CON_CHANGE_GUEST_MSR_AREA,
+	CON_CHECK_TSC_AUX_VALUE,
+	CON_CHECK_TSC_AUX_GUEST_VMCS_FIELD,
+	CON_ENTRY_EVENT_INJECT,
 	CON_SECOND_BUFF,
 } U_VM_EXIT_SECOND;
 
@@ -373,11 +521,58 @@ struct hsi_vlapic {
 	struct lapic_regs apic_page;
 } ALIGNED(PAGE_SIZE);
 
+/* Intel SDM 24.8.2, the address must be 16-byte aligned */
+struct msr_store_entry {
+	uint32_t msr_index;
+	uint64_t value;
+} ALIGNED(16);
+
+enum {
+	MSR_AREA_TSC_AUX = 0,
+	MSR_AREA_COUNT,
+};
+
+struct msr_store_area {
+	struct msr_store_entry guest[MSR_AREA_COUNT];
+	struct msr_store_entry host[MSR_AREA_COUNT];
+};
+
+enum {
+	io_byte1 = 0,
+	io_byte2,
+	io_byte4,
+	io_byte_buff,
+};
+/* Use PCI config read register port number1 test */
+#define IO_BITMAP_TEST_PORT_NUM1 0xCFCUL
+/* Use PCI config register port number2 test */
+#define IO_BITMAP_TEST_PORT_NUM2 0xCF8UL
+/**
+ * @brief Address of I/O bitmap A control field in the VMCS for each I/O port in the range 0 through 0x7FFF.
+ */
+#define VMX_IO_BITMAP_A_FULL         0x00002000U
+/**
+ * @brief Address of I/O bitmap B control field in the VMCS for each I/O port in the range 0x8000 through 0xFFFF.
+ */
+#define VMX_IO_BITMAP_B_FULL         0x00002002U
+
+enum {
+	IO_ACCESS_SIZE_1BYTE = 0,
+	IO_ACCESS_SIZE_2BYTE = 1,
+	IO_ACCESS_SIZE_4BYTE = 3,
+};
+enum {
+	INS_TYPE_OUT = 0,
+	INS_TYPE_IN = 1,
+};
+
 struct vcpu_arch {
 	/* vmcs region for this vcpu, MUST be 4KB-aligned */
 	u8 vmcs[PAGE_SIZE];
 	/* MSR bitmap region for this vcpu, MUST be 4-Kbyte aligned */
 	u8 msr_bitmap[PAGE_SIZE];
+	/* the I/O bitmap of vcpu */
+	u8 io_bitmap[PAGE_SIZE * 2U];
 	/**
 	 * @brief per vcpu lapic
 	 */
@@ -391,6 +586,8 @@ struct vcpu_arch {
 	u32 exit_qualification;
 	u32 guest_ins_len;
 	u32 exit_reason;
+	/* List of MSRS to be stored and loaded on VM exits or VM entries */
+	struct msr_store_area msr_area;
 } ALIGNED(PAGE_SIZE);
 struct st_vcpu {
 	struct vcpu_arch arch;
@@ -462,8 +659,13 @@ typedef struct {
 	u64 exit_reason;
 	/* special vm exit reason recorded */
 	u64 exit_reason_special;
-//	/* record for vm exit information case */
-//	uint64_t exit_reason_val;
+	/* record execute IN instruction whether cause vm exit */
+	uint8_t is_io_ins_exit;
+	/* record INL for port io number1 vm exit */
+	uint8_t is_io_num1_exit;
+	/* record INL for port io number2 vm exit */
+	uint8_t is_io_num2_exit;
+
 	u32 exit_qualification;
 	/* record ept mapping whether is right */
 	u8 ept_map_flag;
@@ -473,13 +675,19 @@ typedef struct {
 	u64 result;
 	/* record execute RDMSR/WRMSR instruction whether cause vm exit */
 	uint8_t is_msr_ins_exit;
+	/* record WRMSR for special MSR_IA32_EXT_APIC_ICR vm exit */
+	uint8_t is_wrmsr_apic_icr_exit;
 	/* record VM exit array */
 	uint8_t is_vm_exit[VM_EXIT_RECORD_BUTT];
 } st_vm_exit_info;
 
+/* define check some result at host */
 enum {
 	RET_BUFF,
 	RET_EXIT_SAVE_DEBUG,
+	RET_CHECK_EPT_CONSTRUCT,
+	RET_CHECK_TSC_AUX,
+	RET_CHECK_GUEST_TSC_AUX_VMCS,
 };
 typedef struct {
 	u8 exit_reason;
@@ -865,6 +1073,7 @@ enum Ctrl_pin {
 
 enum Ctrl0 {
 	CPU_INTR_WINDOW		= 1ul << 2,
+	CPU_TSC_OFFSET		= 1ul << 3,
 	CPU_HLT			= 1ul << 7,
 	CPU_INVLPG		= 1ul << 9,
 	CPU_MWAIT		= 1ul << 10,
@@ -879,6 +1088,7 @@ enum Ctrl0 {
 	CPU_IO			= 1ul << 24,
 	CPU_MOV_DR		= 1ul << 23,
 	CPU_IO_BITMAP		= 1ul << 25,
+	CPU_MONITOR_TRAP_FLAG = 1ul << 27,
 	CPU_MSR_BITMAP		= 1ul << 28,
 	CPU_MONITOR		= 1ul << 29,
 	CPU_PAUSE		= 1ul << 30,
@@ -905,6 +1115,7 @@ enum Ctrl1 {
 	CPU_EPT_VIOLATION	= 1ul << 18,
 	CPU_XSAVES_XRSTORS	= 1ul << 20,
 	CPU_MODE_BASE_EXE_CON_FOR_EPT = 1ul << 22,
+	CPU_TSC_SCALLING	= 1ul << 25,
 };
 
 enum Intr_type {

@@ -1,3 +1,4 @@
+
 int vm_exec_init(struct vmcs *vmcs);
 void ept_gpa2hpa_map(struct st_vcpu *vcpu, u64 hpa, u64 gpa,
 		u32 size, u64 permission, bool is_clear);
@@ -653,6 +654,186 @@ __unused static void hsi_rqmid_41085_virtualization_specific_features_vm_exe_con
 	report("%s", (chk == 2), __func__);
 }
 
+/**
+ * @brief Case name:HSI_Virtualization_Specific_Features_EPT_Construct_001
+ *
+ * Summary: IN root operation, alloc host address EPTP pointed to 4k memory
+ * map memory form gpa to hpa with the EPTP, then execute VMWRITE set the EPTP
+ * to VMCS, check instructions execution with no exception
+ * and value read from VMCS is EPTP.
+ */
+__unused static void hsi_rqmid_42209_virtualization_specific_features_ept_construct_001()
+{
+	/* check the ept construct config right */
+	report("%s", (vm_exit_info.result == RET_CHECK_EPT_CONSTRUCT), __func__);
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Invalid_001
+ *
+ * Summary: IN root operation, map memory from GPA to HPA1 in the EPT,
+ * switch to non-root operation,
+ * Write magic number to the 8bytes memory which pointed by GPA,
+ * switch to root operation,
+ * change the mapping from GPA to HPA2 in the EPT
+ * switch to non-root operatoin,
+ * check the 8bytes memory should be the magic number,
+ * switch to root operation again,
+ * execute invept instruction,
+ * check the 8bytes memory should not be the magic number, because the old ept TLB is invalid.
+ */
+__unused static void hsi_rqmid_42224_virtualization_specific_features_ept_invalid_001()
+{
+	u8 chk = 0;
+	/* vm one one mapping, so gva is gpa */
+	u64 *gva = (u64 *)GUEST_PHYSICAL_ADDRESS_TEST;
+	*gva = INIT_MAGIC_NUMBER;
+
+	/* change memory mapping from gpa to hpa in host */
+	vmx_set_test_condition(CON_CHANGE_MEMORY_MAPPING);
+	vmcall();
+
+	/* check the value not change */
+	if (*gva == INIT_MAGIC_NUMBER) {
+		chk++;
+	}
+	DBG_INFO(" change mapping gva value:%lx", *gva);
+
+	/* invalid ept in host */
+	vmx_set_test_condition(CON_INVEPT);
+	vmcall();
+
+	/* check memory mapping are changed because invept executed in host */
+	if (*gva != INIT_MAGIC_NUMBER) {
+		chk++;
+	}
+	DBG_INFO(" after invept value:0x%lx", *gva);
+
+	report("%s", (chk == 2), __func__);
+
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_VPID_Invalid_001
+ *
+ * Summary: IN root operation, set Secondary Processor-Based VM-Execution Controls
+ * enable VPID bit5 to 1, set VPID to 1 with VMX VPID field.
+ * switch to non-root operation,
+ * Define a new address GVA points to 8bytes memory, cache the TLB for this GVA,
+ * clear the P flag for this page table.
+ * switch to root operation and do nothing at host,
+ * swith to non-root operation,
+ * write GVA pointed memory, there is no exception,
+ * swith to root operation,
+ * execute INVVPID instruction,
+ * swith to non-root operation,
+ * write GVA pointed memory, there is #PF exception,
+ * becasue the cached VPID mappings is invalidated.
+ */
+__unused static void hsi_rqmid_42226_virtualization_specific_features_vpid_invalid_001()
+{
+	int chk = 0;
+	int result1, result2;
+	u64 *gva = (u64 *)malloc(sizeof(u64));
+
+	/* cache Page Table to TLB */
+	*gva = 1;
+	/* Clear PML4 P flag in memory */
+	pteval_t *pml4 = (pteval_t *)read_cr3();
+	u32 pml4_offset = PGDIR_OFFSET((uintptr_t)gva, PAGE_PML4);
+	pml4[pml4_offset] &= ~PT_PRESENT_MASK;
+
+	/* Call vmcall, cause vm exit and entry */
+	vmx_set_test_condition(CON_SECOND_VM_EXIT_ENTRY);
+	vmcall();
+
+	/* because guest TLBS is unchage, gva is still can access */
+	result1 = write_mem_check((void *)gva);
+	if (result1 == NO_EXCEPTION) {
+		chk++;
+	}
+
+	/* Call vmcall, vm exit to invalid VPID in host */
+	vmx_set_test_condition(CON_INVVPID);
+	vmcall();
+
+	/* page fault , because TLB is invalid */
+	result2 = write_mem_check((void *)gva);
+	if (result2 == PF_VECTOR) {
+		chk++;
+	}
+
+	DBG_INFO("\n result1:%d result2:%d \n", result1, result2);
+	/* resume environment */
+	pml4[pml4_offset] |= PT_PRESENT_MASK;
+	free((void *)gva);
+
+	report("%s", (chk == 2), __func__);
+}
+
+/**
+ * @brief Case name:HSI_Virtualization_Specific_Features_VM_Entry_MSR_Control_Guest_Load_001
+ *
+ * Summary: IN root operation, initialize 16 bytes memory guest msr area,
+ * write IA32_TSC_AUX value to msr index, write 0 to the msr,
+ * execute VMWRITE set msr cout to 1 with VM entry MSR load count control field in the VMCS,
+ * execute VMWRITE set msr addr to guest msr area address with VM-entry MSR-load address control field in the VMCS,
+ * switch to non-root operation which means VM-entry occurs,
+ * check IA32_TSC_AUX value should be 0 loaded by processor.
+ * swith to root operation,
+ * set guest IA32_TSC_AUX to 1 with guest msr area,
+ * switch to non-root operation which means VM-entry occurs,
+ * check IA32_TSC_AUX value should be 1 loaded by processor.
+ */
+__unused static void hsi_rqmid_42236_virtualization_specific_features_entry_guest_msr_control_001()
+{
+	int chk = 0;
+	u64 tsc_aux1, tsc_aux2;
+
+	tsc_aux1 = rdmsr(MSR_IA32_TSC_AUX);
+	/* check guest msr load first time */
+	if (tsc_aux1 == TSC_AUX_VALUE1) {
+		chk++;
+	}
+
+	/* enter host set entry guest msr area */
+	vmx_set_test_condition(CON_CHANGE_GUEST_MSR_AREA);
+	vmcall();
+
+	tsc_aux2 = rdmsr(MSR_IA32_TSC_AUX);
+	/* check guest msr load second time */
+	if (tsc_aux2 == TSC_AUX_VALUE2) {
+		chk++;
+	}
+
+	DBG_INFO("tsc_aux1:%lx tsc_aux2:%lx", tsc_aux1, tsc_aux2);
+	report("%s", (chk == 2), __func__);
+}
+
+/**
+ * @brief Case name:HSI_Virtualization_Specific_Features_VM_Execution_Controls_TSC_Offsetting_Multiplier_001
+ *
+ * Summary: IN root operation, set primary Processor-Based VM-Execution Controls
+ * use TSC offsetting bit3 to 1 and RDTSC exiting bit12 to 0,
+ * clear second Processor-Base VM-Execution controls use TSC scaling bit25 to 0,
+ * set TSC offsetting to a big value 0x100000000000, clear physical TSC to 0,
+ * set TSC scailng value to 4.
+ * switch to non-root operation,
+ * execute RDTSC read TSC immediately, check the TSC value should more than
+ * the TSC offsetting 0x100000000000 and much less than 4*0x100000000000
+ */
+__unused static void hsi_rqmid_42201_virtualization_specific_features_tsc_offset_multi_001()
+{
+	u64 guest_tsc = (u64)rdtsc();
+	u8 chk = 0;
+	/* make sure TSC offset are used in guest and multiplier are not used */
+	if ((guest_tsc > TSC_OFFSET_DEFAULT_VALUE) &&
+		(guest_tsc < ((TSC_OFFSET_DEFAULT_VALUE) * (TSC_SCALING_DEFAULT_VALUE / 2)))) {
+		chk++;
+	}
+	report("%s", (chk == 1), __func__);
+}
+
 void vcpu_retain_rip(struct st_vcpu *vcpu)
 {
 	vcpu->arch.guest_ins_len = 0;
@@ -662,7 +843,6 @@ static void handler_exit_common(struct st_vcpu *vcpu)
 {
 	set_exit_reason(vcpu->arch.exit_reason);
 
-	vmcs_write(GUEST_RIP, vcpu->arch.guest_rip + vcpu->arch.guest_ins_len);
 	DBG_INFO("VMX_EXTINT exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
 		vcpu->arch.exit_reason,\
 		vcpu->arch.guest_rip,
@@ -691,7 +871,6 @@ static void handler_exit_ept_violation(struct st_vcpu *vcpu)
 		break;
 	}
 
-	vmcs_write(GUEST_RIP, vcpu->arch.guest_rip + vcpu->arch.guest_ins_len);
 	DBG_INFO("<ept violation>exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
 		vcpu->arch.exit_reason,\
 		vcpu->arch.guest_rip,
@@ -707,7 +886,6 @@ static void handler_exit_ept_violation(struct st_vcpu *vcpu)
 static void handler_exit_cr_access(struct st_vcpu *vcpu)
 {
 	set_exit_reason(vcpu->arch.exit_reason);
-	vmcs_write(GUEST_RIP, vcpu->arch.guest_rip + vcpu->arch.guest_ins_len);
 	DBG_INFO("exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
 		vcpu->arch.exit_reason,\
 		vcpu->arch.guest_rip,
@@ -787,7 +965,6 @@ static void handler_exit_cr_access(struct st_vcpu *vcpu)
 __unused static void handler_exit_read_msr(struct st_vcpu *vcpu)
 {
 	set_exit_reason(vcpu->arch.exit_reason);
-	vmcs_write(GUEST_RIP, vcpu->arch.guest_rip + vcpu->arch.guest_ins_len);
 	DBG_INFO("exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
 		vcpu->arch.exit_reason,\
 		vcpu->arch.guest_rip,
@@ -820,6 +997,75 @@ __unused static void handler_exit_read_msr(struct st_vcpu *vcpu)
 		break;
 	default:
 		break;
+	}
+}
+
+__unused static void handler_exit_write_msr(struct st_vcpu *vcpu)
+{
+	set_exit_reason(vcpu->arch.exit_reason);
+	DBG_INFO("exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
+		vcpu->arch.exit_reason,\
+		vcpu->arch.guest_rip,
+		vcpu->arch.guest_ins_len,
+		vcpu->arch.exit_qualification);
+
+	/* Read the msr value */
+	/**
+	 * Set 'msr' to the return value of '(uint32_t)vcpu_get_gpreg(vcpu, CPU_REG_RCX)',
+	 * which is the contents of ECX register associated with \a vcpu and
+	 * it specifies the MSR to be write from.
+	 */
+	uint32_t msr = (uint32_t)vcpu_get_gpreg(CPU_REG_RCX);
+	if (msr == TEST_MSR_BITMAP_MSR) {
+		DBG_INFO("write msr TEST_MSR_BITMAP_MSR!");
+		vm_exit_info.is_msr_ins_exit = VM_EXIT_OCCURS;
+	} else if (msr == MSR_IA32_EXT_APIC_ICR) {
+		DBG_INFO("write msr TEST_MSR_BITMAP_MSR!");
+		vm_exit_info.is_wrmsr_apic_icr_exit = VM_EXIT_OCCURS;
+	}
+
+}
+
+/* vm exit handler hook function */
+__unused static void handler_exit_pio_instruction(struct st_vcpu *vcpu)
+{
+	DBG_INFO("exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
+		vcpu->arch.exit_reason,\
+		vcpu->arch.guest_rip,
+		vcpu->arch.guest_ins_len,
+		vcpu->arch.exit_qualification);
+
+	/* save exit information for test */
+	vm_exit_info.exit_qualification = vcpu->arch.exit_qualification;
+	set_exit_reason(vcpu->arch.exit_reason);
+	/* According SDM:
+	 * Table 27-5. Exit Qualification for I/O Instructions
+	 * bit[2:0]: Size of access:
+	 *			 0 = 1-byte
+	 *			 1 = 2-byte
+	 *			 3 = 4-byte
+	 *			 Other values not used
+	 * bit[3]: Direction of the attempted access (0 = OUT, 1 = IN)
+	 * bit[31:16]: Port number (as specified in DX or in an immediate operand)
+	 */
+	uint64_t access_port_num = hsi_vm_exit_io_access_port_num(vm_exit_info.exit_qualification);
+	uint8_t access_size = (vm_exit_info.exit_qualification & 0x7);
+	uint8_t access_type = ((vm_exit_info.exit_qualification >> 3) & 0x1);
+	if ((access_size == IO_ACCESS_SIZE_4BYTE) &&
+		(access_type == INS_TYPE_IN)) {
+		switch (access_port_num) {
+		case IN_BYTE_TEST_PORT_ID:
+			vm_exit_info.is_io_ins_exit = VM_EXIT_OCCURS;
+			break;
+		case IO_BITMAP_TEST_PORT_NUM1:
+			vm_exit_info.is_io_num1_exit = VM_EXIT_OCCURS;
+			break;
+		case IO_BITMAP_TEST_PORT_NUM2:
+			vm_exit_info.is_io_num2_exit = VM_EXIT_OCCURS;
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -1102,6 +1348,84 @@ static void msr_bitmap_condition(__unused struct st_vcpu *vcpu)
 
 }
 
+static void ept_construct_condition(__unused struct st_vcpu *vcpu)
+{
+	u64 start_hpa = HOST_PHY_ADDR_START;
+	u64 start_gpa = GUEST_PHYSICAL_ADDRESS_START;
+	u32 size = GUEST_MEMORY_MAP_SIZE;
+	vm_exit_info.result = RET_BUFF;
+
+	ept_gpa2hpa_map(vcpu, start_hpa, start_gpa, size,
+		EPT_RA | EPT_WA | EPT_EA, true);
+
+	/* According SDM Table 24-8. Format of Extended-Page-Table Pointer.
+	 * set eptp to vmcs, WB memory type.
+	 */
+	u64 eptp = hva2hpa(vcpu->arch.pml4) | (3UL << 3U) | 6UL;
+	vmcs_write(EPTP, eptp);
+
+	/* check EPTP in VMCS */
+	if (vmcs_read(EPTP) == eptp) {
+		vm_exit_info.result = RET_CHECK_EPT_CONSTRUCT;
+	}
+
+}
+
+static void vpid_invalid_condition(__unused struct st_vcpu *vcpu)
+{
+	/* Set init VPID(value is 1) to VMCS */
+	vmcs_write(VPID, vcpu->arch.vpid);
+	DBG_INFO("vpid:%d", vcpu->arch.vpid);
+}
+
+static void entry_guest_msr_control_condition(__unused struct st_vcpu *vcpu)
+{
+	/**
+	 * Set vcpu->arch.msr_area.guest[MSR_AREA_TSC_AUX].msr_index to MSR_IA32_TSC_AUX, which is the MSR index
+	 * in the MSR Entry to be loaded on VM entry
+	 */
+	vcpu->arch.msr_area.guest[MSR_AREA_TSC_AUX].msr_index = MSR_IA32_TSC_AUX;
+	/**
+	 * Set vcpu->arch.msr_area.guest[MSR_AREA_TSC_AUX].value to TSC_AUX_VALUE1, which is the virtual CPU ID
+	 * associated with \a vcpu and the MSR data in the MSR Entry to be loaded on VM entry
+	 */
+	vcpu->arch.msr_area.guest[MSR_AREA_TSC_AUX].value = TSC_AUX_VALUE1;
+
+	/* Set up VMX entry MSR load count - pg 2908 24.8.2 Tells the number of
+	 * MSRs on load from memory on VM entry from mem address provided by
+	 * VM-entry MSR load address field
+	 */
+	vmcs_write(VMX_ENTRY_MSR_LOAD_COUNT, MSR_AREA_COUNT);
+	vmcs_write(VMX_ENTRY_MSR_LOAD_ADDR_FULL, hva2hpa((void *)vcpu->arch.msr_area.guest));
+	DBG_INFO(" set vm-entry guest msr");
+}
+
+static void tsc_offset_multi_condition(__unused struct st_vcpu *vcpu)
+{
+	/* Disable RDTSC exiting in primary processor-based */
+	exec_vmwrite32_bit(CPU_EXEC_CTRL0,
+		CPU_RDTSC, BIT_TYPE_CLEAR);
+
+	/* Enable use TSC offset in primary processor-based */
+	exec_vmwrite32_bit(CPU_EXEC_CTRL0,
+		CPU_TSC_OFFSET, BIT_TYPE_SET);
+	DBG_INFO("CPU_EXEC_CTRL0:0x%x\n", exec_vmread32(CPU_EXEC_CTRL0));
+
+	/* set TSC offset */
+	vmcs_write(VMX_TSC_OFFSET_FULL, TSC_OFFSET_DEFAULT_VALUE);
+
+	/* Disable Use TSC scaling at second processor-based */
+	vmcs_clear_bits(CPU_EXEC_CTRL1, CPU_TSC_SCALLING);
+	DBG_INFO("CPU_EXEC_CTRL1:0x%x\n", exec_vmread32(CPU_EXEC_CTRL1));
+
+	/* set TSC scaling */
+	vmcs_write(VMX_TSC_MULTIPLIER_FULL, TSC_SCALING_DEFAULT_VALUE);
+
+	/* clear real TSC to 0 */
+	wrmsr(MSR_IA32_TIME_STAMP_COUNTER, 0);
+
+}
+
 /* at host check ept mapping right */
 static void ept_enable_check(__unused struct st_vcpu *vcpu)
 {
@@ -1137,6 +1461,36 @@ static void exit_save_debug_check(__unused struct st_vcpu *vcpu)
 static void vm_exit_entry_do_nothing(__unused struct st_vcpu *vcpu)
 {
 	DBG_INFO("do nothing!");
+}
+
+static void hypercall_change_mem_mapping(__unused struct st_vcpu *vcpu)
+{
+	/* map gpa(448M) to hpa(480M)*/
+	ept_gpa2hpa_map(vcpu,
+		HOST_PHYSICAL_ADDRESS_OFFSET,
+		GUEST_PHYSICAL_ADDRESS_TEST,
+		GUEST_MEMORY_MAP_SIZE,
+		EPT_RA | EPT_WA | EPT_EA,
+		false);
+}
+
+static void hypercall_invept(__unused struct st_vcpu *vcpu)
+{
+	invept(INVEPT_TYPE_ALL_CONTEXTS, vcpu->arch.eptp);
+}
+
+static void hypercall_invvpid(__unused struct st_vcpu *vcpu)
+{
+	invvpid(VMX_VPID_TYPE_ALL_CONTEXT, vcpu->arch.vpid, 0);
+}
+
+static void hypercall_change_guest_msr_area(__unused struct st_vcpu *vcpu)
+{
+	/*
+	 * Set guest msr tsc_aux value in vmcs for vm-entry load.
+	 */
+	vcpu->arch.msr_area.guest[MSR_AREA_TSC_AUX].value = TSC_AUX_VALUE2;
+	DBG_INFO("set guest msr for vm-entry load\n");
 }
 
 static void ap1_virt_nmi_test(void)
@@ -1187,14 +1541,38 @@ st_vm_exit vm_exit[VMX_EXIT_REASON_NUM] = {
 		.exit_func = handler_exit_common},
 	[VMX_PAUSE] = {
 		.exit_func = handler_exit_common},
+	[VMX_INVLPG] = {
+		.exit_func = handler_exit_common},
+	[VMX_MWAIT] = {
+		.exit_func = handler_exit_common},
+	[VMX_RDTSC] = {
+		.exit_func = handler_exit_common},
+	[VMX_RDPMC] = {
+		.exit_func = handler_exit_common},
+	[VMX_DR] = {
+		.exit_func = handler_exit_common},
+	[VMX_MONITOR] = {
+		.exit_func = handler_exit_common},
+	[VMX_NMI_WINDOW] = {
+		.exit_func = handler_exit_common},
+	[VMX_PREEMPT] = {
+		.exit_func = handler_exit_common},
+	[VMX_MTF] = {
+		.exit_func = handler_exit_common},
+
 	[VMX_EPT_VIOLATION] = {
 		.exit_func = handler_exit_ept_violation},
 	[VMX_CR] = {
 		.exit_func = handler_exit_cr_access},
 	[VMX_RDMSR] = {
 		.exit_func = handler_exit_read_msr},
+	[VMX_WRMSR] = {
+		.exit_func = handler_exit_write_msr},
+	[VMX_IO] = {
+		.exit_func = handler_exit_pio_instruction},
 };
 
+/* define for make test condition in root operation mode */
 st_vm_exit vmcall_exit[] = {
 	[CON_PIN_CLEAR_EXTER_INTER_BIT] = {
 		.exit_func = exter_inter_condition},
@@ -1206,6 +1584,48 @@ st_vm_exit vmcall_exit[] = {
 		.exit_func = use_tpr_condition},
 	[CON_CPU_CTRL1_HLT_EXIT] = {
 		.exit_func = hlt_exit_condition},
+	[CON_CPU_CTRL1_INVLPG] = {
+		.exit_func = invlpg_exit_condition},
+	[CON_CPU_CTRL1_MWAIT] = {
+		.exit_func = mwait_exit_condition},
+	[CON_CPU_CTRL1_RDTSC] = {
+		.exit_func = rdtsc_exit_condition},
+	[CON_CPU_CTRL1_RDPMC] = {
+		.exit_func = rdpmc_exit_condition},
+	[CON_CPU_CTRL1_MOV_DR] = {
+		.exit_func = mov_dr_exit_condition},
+	[CON_CPU_CTRL1_UNCONDITIONAL_IO] = {
+		.exit_func = unconditional_io_exit_condition},
+	[CON_CPU_CTRL1_USE_IO_BITMAP] = {
+		.exit_func = io_bitmap_exit_condition},
+	[CON_CPU_CTRL1_USE_MSR_BITMAP_READ] = {
+		.exit_func = msr_bitmap_rdmsr_exit_condition},
+	[CON_CPU_CTRL1_USE_MSR_BITMAP_WRITE] = {
+		.exit_func = msr_bitmap_wrmsr_exit_condition},
+	[CON_CPU_CTRL1_ACTIVATE_SECOND_CONTROL] = {
+		.exit_func = activate_secon_con_condition},
+	[CON_CPU_CTRL1_NMI_WIN] = {
+		.exit_func = nmi_window_condition},
+	[CON_CPU_CTRL1_PREEMPTION_TIMER] = {
+		.exit_func = active_preemption_timer_condition},
+	[CON_CPU_CTRL1_MONITOR_TRP_FLAG] = {
+		.exit_func = monitor_trap_flag_condition},
+	[CON_CPU_CTRL1_TSC_OFFSETTING] = {
+		.exit_func = use_tsc_offset_condition},
+
+	[CON_CPU_CTRL1_CR8_STORE] = {
+		.exit_func = cr8_store_exit_condition},
+	[CON_CPU_CTRL1_CR8_LOAD] = {
+		.exit_func = cr8_load_exit_condition},
+	[CON_CPU_CTRL1_CR3_STORE] = {
+		.exit_func = cr3_store_exit_condition},
+	[CON_CPU_CTRL1_CR3_LOAD] = {
+		.exit_func = cr3_load_exit_condition},
+	[CON_CPU_CTRL1_PAUSE] = {
+		.exit_func = pause_exit_condition},
+	[CON_CPU_CTRL1_MONITOR] = {
+		.exit_func = monitor_exit_condition},
+
 	[CON_PIN_POST_INTER] = {
 		.exit_func = posted_inter_condition},
 	[CON_PIN_VIRT_NMI] = {
@@ -1230,8 +1650,24 @@ st_vm_exit vmcall_exit[] = {
 		.exit_func = cr0_mask_condition},
 	[CON_MSR_BITMAP] = {
 		.exit_func = msr_bitmap_condition},
+	[CON_EPT_CONSTRUCT] = {
+		.exit_func = ept_construct_condition},
+	[CON_VPID_INVALID] = {
+		.exit_func = vpid_invalid_condition},
+	[CON_ENTRY_GUEST_MSR_CONTRL] = {
+		.exit_func = entry_guest_msr_control_condition},
+	[CON_EXIT_GUEST_MSR_STORE] = {
+		.exit_func = exit_guest_msr_store_condition},
+	[CON_EXIT_HOST_MSR_CONTRL] = {
+		.exit_func = exit_host_msr_control_condition},
+	[CON_TSC_OFFSET_MULTI] = {
+		.exit_func = tsc_offset_multi_condition},
+	[CON_VM_EXIT_INFO] = {
+		.exit_func = vm_exit_info_condition},
 };
 
+
+/* define for check result or make other test second condition */
 st_vm_exit vmcall_exit_second[] = {
 	[(CON_SECOND_CHECK_EPT_ENABLE & ~VMCALL_EXIT_SECOND)] = {
 		.exit_func = ept_enable_check},
@@ -1239,6 +1675,20 @@ st_vm_exit vmcall_exit_second[] = {
 		.exit_func = vm_exit_entry_do_nothing},
 	[(CON_SECOND_CHECK_DEBUG_REG & ~VMCALL_EXIT_SECOND)] = {
 		.exit_func = exit_save_debug_check},
+	[(CON_CHANGE_MEMORY_MAPPING & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_change_mem_mapping},
+	[(CON_INVEPT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_invept},
+	[(CON_INVVPID & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_invvpid},
+	[(CON_CHANGE_GUEST_MSR_AREA & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_change_guest_msr_area},
+	[(CON_CHECK_TSC_AUX_GUEST_VMCS_FIELD & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_guest_tsc_aux_vmcs},
+	[(CON_CHECK_TSC_AUX_VALUE & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_tsc_aux_load},
+	[(CON_ENTRY_EVENT_INJECT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_entry_event_inject},
 };
 st_case_suit case_suit[] = {
 	{
@@ -1255,6 +1705,27 @@ st_case_suit case_suit[] = {
 	GET_CASE_INFO(CON_PIN_CLEAR_NMI_EXIT_BIT, 40369, nmi_inter, NMI_Interrupt),
 	GET_CASE_INFO(CON_CPU_CTRL1_TPR_SHADOW, 41089, use_tpr_shadow, Use_TRP_Shadow),
 	GET_CASE_INFO(CON_CPU_CTRL1_HLT_EXIT, 40394, hlt, HLT),
+	GET_CASE_INFO(CON_CPU_CTRL1_INVLPG, 40361, invlpg, INVLPG),
+	GET_CASE_INFO(CON_CPU_CTRL1_MWAIT, 40395, mwait, MWAIT),
+	GET_CASE_INFO(CON_CPU_CTRL1_RDTSC, 40465, rdtsc, RDTSC),
+	GET_CASE_INFO(CON_CPU_CTRL1_RDPMC, 40466, rdpmc, RDPMC),
+	GET_CASE_INFO(CON_CPU_CTRL1_MOV_DR, 40467, mov_dr, MOV_DR),
+	GET_CASE_INFO(CON_CPU_CTRL1_CR8_STORE, 40485, cr8_store, CR8_STORE),
+	GET_CASE_INFO(CON_CPU_CTRL1_CR8_LOAD, 40486, cr8_load, CR8_LOAD),
+	GET_CASE_INFO(CON_CPU_CTRL1_CR3_STORE, 40488, cr3_store, CR3_STORE),
+	GET_CASE_INFO(CON_CPU_CTRL1_CR3_LOAD, 40487, cr3_load, CR3_LOAD),
+	GET_CASE_INFO(CON_CPU_CTRL1_PAUSE, 40519, pause, PAUSE),
+	GET_CASE_INFO(CON_CPU_CTRL1_MONITOR, 40521, monitor, MONITOR),
+	GET_CASE_INFO(CON_CPU_CTRL1_UNCONDITIONAL_IO, 40492, unconditional_io, Unconditional_IO),
+	GET_CASE_INFO(CON_CPU_CTRL1_USE_IO_BITMAP, 40495, io_bitmap, IO_Bitmap),
+	GET_CASE_INFO(CON_CPU_CTRL1_USE_MSR_BITMAP_READ, 40501, msr_bitmap_rdmsr, MSR_Bitmap_RDMSR),
+	GET_CASE_INFO(CON_CPU_CTRL1_USE_MSR_BITMAP_WRITE, 40503, msr_bitmap_wrmsr, MSR_Bitmap_WRMSR),
+	GET_CASE_INFO(CON_CPU_CTRL1_ACTIVATE_SECOND_CONTROL, 40621, activate_secon_con, Activate_Secondary_Controls),
+	GET_CASE_INFO(CON_CPU_CTRL1_NMI_WIN, 41088, nmi_window, NMI_Window_Exiting),
+	GET_CASE_INFO(CON_CPU_CTRL1_PREEMPTION_TIMER, 41091, active_preemption_timer, Activate_VMX_Preemption_Timer),
+	GET_CASE_INFO(CON_CPU_CTRL1_MONITOR_TRP_FLAG, 41121, monitor_trap_flag, Monitor_Trap_Flag),
+	GET_CASE_INFO(CON_CPU_CTRL1_TSC_OFFSETTING, 41175, use_tsc_offset, Use_TSC_Offsetting),
+
 	GET_CASE_INFO(CON_PIN_POST_INTER, 41181, posted_inter, Process_Posted_interrupts),
 	GET_CASE_INFO(CON_PIN_VIRT_NMI, 42244, virt_nmis, Virtual_NMIS),
 };
@@ -1264,16 +1735,32 @@ st_case_suit case_mem_suit[] = {
 	GET_CASE_INFO(CON_CPU_CTRL2_ENABLE_VPID, 40638, enable_vpid, Enable_VPID),
 	GET_CASE_INFO(CON_CPU_CTRL2_EPT_EXE_CONTRL, 41113, excute_for_ept, Mode-based_Execute_Control_For_EPT),
 	GET_CASE_INFO(CON_CPU_CTRL2_EPT_VIOLATION, 41110, ept_violation, EPT_Violation),
+	GET_CASE_INFO_GENERAL(CON_EPT_CONSTRUCT, 42209, ept_construct, EPT_Construct),
+	GET_CASE_INFO_GENERAL(CON_BUFF, 42224, ept_invalid, EPT_Invalid),
+	GET_CASE_INFO_GENERAL(CON_VPID_INVALID, 42226, vpid_invalid, VPID_Invalid),
 };
 
 st_case_suit case_exit_entry[] = {
 	GET_CASE_INFO_GENERAL(CON_EXIT_SAVE_DEBUG, 42176, save_debug_exit, VM_Exit_Control_Save_Debug),
 	GET_CASE_INFO_GENERAL(CON_ENTRY_LOAD_PERF, 42179, entry_load_perf, VM_Entry_Control_Load_IA32_PERF),
+	GET_CASE_INFO_GENERAL(CON_ENTRY_GUEST_MSR_CONTRL, 42236, \
+		entry_guest_msr_control, VM_Entry_MSR_Control_Guest_Load),
+	GET_CASE_INFO_GENERAL(CON_EXIT_HOST_MSR_CONTRL, 42237, \
+		exit_host_msr_load, VM_Exit_MSR_Control_Host_Load),
+	GET_CASE_INFO_GENERAL(CON_EXIT_GUEST_MSR_STORE, 42238, \
+		exit_guest_msr_store, VM_Exit_MSR_Control_Guest_Store),
 };
 
 st_case_suit case_general[] = {
 	GET_CASE_INFO_GENERAL(CON_CR0_MASK, 41946, cr0_masks, Guest_Host_Masks_For_CR0),
 	GET_CASE_INFO(CON_MSR_BITMAP, 41085, bitmap_msr, MSR_Bitmap),
+	GET_CASE_INFO_GENERAL(CON_TSC_OFFSET_MULTI, 42201,\
+		tsc_offset_multi, TSC_Offsetting_Multiplier),
+	GET_CASE_INFO_GENERAL(CON_VM_EXIT_INFO, 42242,\
+		vm_exit_info, VM_Exit_Information),
+	GET_CASE_INFO_GENERAL(CON_BUFF, 42250,\
+		entry_event_inject, VM_Entry_Control_For_Event_Injection),
+
 };
 
 typedef struct {
@@ -1293,6 +1780,9 @@ void print_case_list()
 	int i, j;
 	st_case_suit *pcase;
 	u32 size;
+	printf("\t Case ID: %d Case name: %s\n\r", 40291U,
+		"HSI_Virtualization_Specific_Features_VMX_Instruction_001");
+
 	for (j = 0; j < ARRAY_SIZE(case_list); j++) {
 		pcase = case_list[j].plist;
 		size = case_list[j].size;
@@ -1346,6 +1836,8 @@ static int vm_exec_con_host_exit_handler(void)
 	default:
 		if ((reason < VMX_EXIT_REASON_NUM) && (vm_exit[reason].exit_func != NULL)) {
 			vm_exit[reason].exit_func(vcpu);
+			/* skip guest rip */
+			vmcs_write(GUEST_RIP, vcpu->arch.guest_rip + vcpu->arch.guest_ins_len);
 			return VMX_TEST_RESUME;
 		}
 		debug_print("Unknown exit reason, %ld", reason);

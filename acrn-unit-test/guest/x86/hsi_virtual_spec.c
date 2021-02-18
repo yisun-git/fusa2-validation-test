@@ -45,8 +45,9 @@
 #include "pci_log.h"
 
 #if defined(IN_NATIVE)
+#include "hsi_vmx_exe_contrl0.c"
+#include "hsi_vmx_general2.c"
 #include "hsi_vmx_general.c"
-__unused void hsi_rqmid_40291_virtualization_specific_features_VMX_instruction_001();
 struct st_vcpu vcpu_bp;
 
 u64 *vmxon_region;
@@ -596,17 +597,6 @@ static void init_vmx(void)
 	memset(guest_syscall_stack, 0, PAGE_SIZE);
 }
 
-static int test_vmxon(void)
-{
-	int ret;
-
-	/* and finally a valid region */
-	*vmxon_region = basic.revision;
-	ret = vmx_on();
-
-	return ret;
-}
-
 /* This function can only be called in guest */
 static void __attribute__((__used__)) hypercall(u32 hypercall_no)
 {
@@ -811,19 +801,6 @@ static int test_run(struct vmx_test *test)
 {
 	int r;
 
-	/* Validate V2 interface. */
-	if (test->v2) {
-		int ret = 0;
-		if (test->init || test->guest_main || test->exit_handler ||
-		    test->syscall_handler) {
-			report("V2 test cannot specify V1 callbacks.", 0);
-			ret = 1;
-		}
-		if (ret) {
-			return ret;
-		}
-	}
-
 	if (test->name == NULL) {
 		test->name = "(no name)";
 	}
@@ -856,11 +833,7 @@ static int test_run(struct vmx_test *test)
 		goto out;
 	}
 
-	if (test->v2) {
-		test->v2();
-	} else {
-		vmx_run();
-	}
+	vmx_run();
 
 	while (teardown_count > 0) {
 		run_teardown_step(&teardown_steps[--teardown_count]);
@@ -1150,12 +1123,6 @@ int main(__unused int argc, __unused const char *argv[])
 	init_vmx();
 
 	hsi_rqmid_40291_virtualization_specific_features_VMX_instruction_001();
-
-	/* Enables VMX */
-	test_vmxon();
-
-	/* Balance vmxon from test_vmxon. */
-	vmx_off();
 
 	for (i = 0; vmx_tests[i].name != NULL; i++) {
 		if (test_run(&vmx_tests[i])) {
