@@ -951,7 +951,7 @@ static void handler_exit_cr_access(struct st_vcpu *vcpu)
 		if (reg & X86_CR4_SMEP) {
 			/* record the vm exit */
 			vm_exit_info.is_vm_exit[VM_EXIT_WRITE_CR4_SMEP] = VM_EXIT_OCCURS;
-			debug_print("set cr0.CD reg:0x%lx\n", reg);
+			DBG_INFO("set cr4.smep reg:0x%lx\n", reg);
 		} else if (reg & X86_CR4_PVI) {
 			vm_exit_info.is_vm_exit[VM_EXIT_WRITE_CR4_PVI] = VM_EXIT_OCCURS;
 		}
@@ -1020,7 +1020,7 @@ __unused static void handler_exit_write_msr(struct st_vcpu *vcpu)
 		DBG_INFO("write msr TEST_MSR_BITMAP_MSR!");
 		vm_exit_info.is_msr_ins_exit = VM_EXIT_OCCURS;
 	} else if (msr == MSR_IA32_EXT_APIC_ICR) {
-		DBG_INFO("write msr TEST_MSR_BITMAP_MSR!");
+		DBG_INFO("write msr MSR_IA32_EXT_APIC_ICR!");
 		vm_exit_info.is_wrmsr_apic_icr_exit = VM_EXIT_OCCURS;
 	}
 
@@ -1034,6 +1034,7 @@ __unused static void handler_exit_pio_instruction(struct st_vcpu *vcpu)
 		vcpu->arch.guest_rip,
 		vcpu->arch.guest_ins_len,
 		vcpu->arch.exit_qualification);
+	set_exit_reason(vcpu->arch.exit_reason);
 
 	/* save exit information for test */
 	vm_exit_info.exit_qualification = vcpu->arch.exit_qualification;
@@ -1066,6 +1067,70 @@ __unused static void handler_exit_pio_instruction(struct st_vcpu *vcpu)
 		default:
 			break;
 		}
+	}
+}
+
+
+static void handler_exit_exnter_inter(struct st_vcpu *vcpu)
+{
+	DBG_INFO("exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
+		vcpu->arch.exit_reason,\
+		vcpu->arch.guest_rip,
+		vcpu->arch.guest_ins_len,
+		vcpu->arch.exit_qualification);
+	set_exit_reason(vcpu->arch.exit_reason);
+
+	uint32_t intr_info;
+	intr_info = exec_vmread32(VMX_EXIT_INT_INFO);
+
+	/* According SDM table 24-15: Format of the VM-Exit Interruption-Information Field
+	 * bit[7:0] is vector of interrupt or exception.
+	 * bit31 is Valid
+	 */
+	/* Acknowledge interrupt on exit control affects VM exits due to external interrupts:
+	 * 1) If such a VM exit occurs and this control is 1,
+	 * the logical processor acknowledges the interrupt controller,
+	 * acquiring the interrupt's vector. The vector is stored
+	 * in the VM-exit interruption-information field,
+	 * which is marked valid.
+	 */
+	if (((intr_info & VMX_INT_INFO_VALID) != 0) &&
+		((intr_info & 0xFF) == EXTEND_INTERRUPT_80)) {
+		vm_exit_info.is_vm_exit[VM_EXIT_EXTER_INTER_VALID] = EXTERNAL_INTER_VALID;
+
+		/* clear apic eoi bit */
+		wrmsr(MSR_IA32_EXT_APIC_EOI, 0U);
+		/* resume guest rip */
+		vcpu_retain_rip(vcpu);
+		DBG_INFO("external interrupt 0x80 is valid:0x%x", intr_info);
+	}
+
+}
+
+
+static void handler_exit_inter_and_exception(struct st_vcpu *vcpu)
+{
+	DBG_INFO("exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
+		vcpu->arch.exit_reason,\
+		vcpu->arch.guest_rip,
+		vcpu->arch.guest_ins_len,
+		vcpu->arch.exit_qualification);
+	set_exit_reason(vcpu->arch.exit_reason);
+
+	/* According SDM table 24-15: Format of the VM-Exit Interruption-Information Field
+	 * bit[7:0] is vector of interrupt or exception.
+	 */
+	uint32_t exception_vector = (exec_vmread32(VMX_EXIT_INT_INFO) & 0xFF);
+	DBG_INFO("exception_vector:0x%x", exception_vector);
+	switch (exception_vector) {
+	case DB_VECTOR:
+		vm_exit_info.is_exception_db_exit = VM_EXIT_OCCURS;
+		break;
+	case GP_VECTOR:
+		vm_exit_info.is_exception_gp_exit = VM_EXIT_OCCURS;
+		break;
+	default:
+		break;
 	}
 }
 
@@ -1531,11 +1596,11 @@ int ap_main(void)
 }
 
 st_vm_exit vm_exit[VMX_EXIT_REASON_NUM] = {
-	[VMX_EXTINT] = {
-		.exit_func = handler_exit_common},
-	[VMX_INTR_WINDOW] = {
-		.exit_func = handler_exit_common},
 	[VMX_EXC_NMI] = {
+		.exit_func = handler_exit_inter_and_exception},
+	[VMX_EXTINT] = {
+		.exit_func = handler_exit_exnter_inter},
+	[VMX_INTR_WINDOW] = {
 		.exit_func = handler_exit_common},
 	[VMX_HLT] = {
 		.exit_func = handler_exit_common},
@@ -1558,6 +1623,24 @@ st_vm_exit vm_exit[VMX_EXIT_REASON_NUM] = {
 	[VMX_PREEMPT] = {
 		.exit_func = handler_exit_common},
 	[VMX_MTF] = {
+		.exit_func = handler_exit_common},
+	[VMX_RDRAND] = {
+		.exit_func = handler_exit_common},
+	[VMX_GDTR_IDTR] = {
+		.exit_func = handler_exit_common},
+	[VMX_XSAVES] = {
+		.exit_func = handler_exit_common},
+	[VMX_XRSTORS] = {
+		.exit_func = handler_exit_common},
+	[VMX_RDSEED] = {
+		.exit_func = handler_exit_common},
+	[VMX_ENCLS] = {
+		.exit_func = handler_exit_common},
+	[VMX_VMREAD] = {
+		.exit_func = handler_exit_common},
+	[VMX_WBINVD] = {
+		.exit_func = handler_exit_common},
+	[VMX_PML_FULL] = {
 		.exit_func = handler_exit_common},
 
 	[VMX_EPT_VIOLATION] = {
@@ -1642,6 +1725,36 @@ st_vm_exit vmcall_exit[] = {
 		.exit_func = ept_violation_condition},
 	[CON_CPU_CTRL2_EPT_EXE_CONTRL] = {
 		.exit_func = ept_exe_contrl_condition},
+
+	[CON_CPU_CTRL2_ENABLE_RDTSCP] = {
+		.exit_func = enable_rdtscp_condition},
+	[CON_CPU_CTRL2_DESC_TABLE] = {
+		.exit_func = descriptor_table_condition},
+	[CON_CPU_CTRL2_RDRAND] = {
+		.exit_func = rdrand_condition},
+	[CON_CPU_CTRL2_RDSEED] = {
+		.exit_func = rdseed_condition},
+	[CON_CPU_CTRL2_ENABLE_XSAVES_XRSTORS] = {
+		.exit_func = xsaves_condition},
+	[CON_CPU_CTRL2_WBINVD] = {
+		.exit_func = wbinvd_condition},
+	[CON_CPU_CTRL2_ENABLE_INVPCID] = {
+		.exit_func = enable_invpcid_condition},
+	[CON_CPU_CTRL2_VMCS_SHADOWING] = {
+		.exit_func = vmcs_shadowing_condition},
+	[CON_CPU_CTRL2_ENABLE_PML] = {
+		.exit_func = enable_pml_condition},
+	[CON_CPU_CTRL2_VIRTUAL_APIC] = {
+		.exit_func = virt_apic_access_condition},
+	[CON_CPU_CTRL2_VIRTUAL_X2APIC] = {
+		.exit_func = virt_x2apic_mode_condition},
+	[CON_CPU_CTRL2_APIC_REG_VIRTUAL] = {
+		.exit_func = apic_reg_virt_condition},
+	[CON_CPU_CTRL2_VIRTUAL_INTER_DELIVERY] = {
+		.exit_func = virt_inter_delivery_condition},
+	[CON_CPU_CTRL2_USE_TSC_SCALING] = {
+		.exit_func = use_tsc_scaling_condition},
+
 	[CON_EXIT_SAVE_DEBUG] = {
 		.exit_func = vm_exit_save_debug_condition},
 	[CON_ENTRY_LOAD_PERF] = {
@@ -1664,8 +1777,46 @@ st_vm_exit vmcall_exit[] = {
 		.exit_func = tsc_offset_multi_condition},
 	[CON_VM_EXIT_INFO] = {
 		.exit_func = vm_exit_info_condition},
-};
 
+	[CON_EXIT_IA32_PAT] = {
+		.exit_func = ia32_pat_exit_condition},
+	[CON_ENTRY_IA32_PAT] = {
+		.exit_func = ia32_pat_entry_condition},
+	[CON_EXIT_IA32_EFER] = {
+		.exit_func = ia32_efer_exit_condition},
+	[CON_ENTRY_IA32_EFER] = {
+		.exit_func = ia32_efer_entry_condition},
+	[CON_ENTRY_DEBUG_CONTROL] = {
+		.exit_func = debug_controls_entry_condition},
+	[CON_EXIT_IA32_PERF] = {
+		.exit_func = exit_load_perf_condition},
+	[CON_ENTRY_LOAD_BNDCFGS] = {
+		.exit_func = entry_load_bndcfgs_condition},
+	[CON_EXIT_CLEAR_BNDCFGS] = {
+		.exit_func = exit_clear_bndcfgs_condition},
+	[CON_EXIT_ACK_INTER] = {
+		.exit_func = exit_ack_inter_condition},
+	[CON_EXIT_SAVE_PREEM_TIME] = {
+		.exit_func = exit_save_pree_timer_condition},
+	[CON_EXIT_HOST_ADDR64] = {
+		.exit_func = exit_host_addr64_condition},
+	[CON_ENTRY_IA32_MODE_GUEST] = {
+		.exit_func = entry_ia32_mode_guest_condition},
+	[CON_ENTRY_TO_SMM] = {
+		.exit_func = entry_to_smm_condition},
+
+	[CON_IO_BITMAP] = {
+		.exit_func = bitmap_io_condition},
+	[CON_EXCEPTION_BITMAP] = {
+		.exit_func = bitmap_exception_condition},
+	[CON_CR0_READ_SHADOW] = {
+		.exit_func = cr0_read_shadow_condition},
+	[CON_CR4_MASK] = {
+		.exit_func = cr4_masks_condition},
+	[CON_CR4_READ_SHADOW] = {
+		.exit_func = cr4_read_shadow_condition},
+
+};
 
 /* define for check result or make other test second condition */
 st_vm_exit vmcall_exit_second[] = {
@@ -1689,6 +1840,28 @@ st_vm_exit vmcall_exit_second[] = {
 		.exit_func = hypercall_check_tsc_aux_load},
 	[(CON_ENTRY_EVENT_INJECT & ~VMCALL_EXIT_SECOND)] = {
 		.exit_func = hypercall_entry_event_inject},
+	[(CON_GET_PML_INDEX & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_get_pml_index},
+	[(CON_42066_GET_RESULT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_ia32_pat_value},
+	[(CON_CHANGE_GUEST_MSR_PAT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_change_guest_msr_pat},
+	[(CON_42174_GET_RESULT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_ia32_efer_value},
+	[(CON_CHANGE_GUEST_MSR_EFER & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_change_guest_msr_efer},
+	[(CON_42178_GET_RESULT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_ia32_perf_value},
+	[(CON_42183_GET_RESULT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_ia32_bndcfgs_value},
+	[(CON_42189_GET_PREEM_TIME & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_preem_time},
+	[(CON_42192_GET_RESULT & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_check_host_addr64},
+	[(CON_42022_SET_CR0_READ_SHADOW & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_clear_cr0_read_shadow},
+	[(CON_42029_SET_CR4_READ_SHADOW & ~VMCALL_EXIT_SECOND)] = {
+		.exit_func = hypercall_clear_cr4_read_shadow},
 };
 st_case_suit case_suit[] = {
 	{
@@ -1698,6 +1871,8 @@ st_case_suit case_suit[] = {
 		.case_id = 41182,
 		.pname = "HSI_Virtualization_Specific_Features_VMX_Instruction_002",
 	},
+	GET_CASE_INFO(CON_CPU_CTRL2_USE_TSC_SCALING, 41176, use_tsc_scaling, Use_TSC_Scanling),
+
 	GET_CASE_INFO(CON_CPU_CTRL2_ENABLE_VM_FUNC, 41081, enable_vm_func, Enable_VM_Functions),
 	GET_CASE_INFO(CON_CPU_CTRL2_PAUSE_LOOP, 41078, pause_loop, PAUSE_Loop),
 	GET_CASE_INFO(CON_PIN_CLEAR_EXTER_INTER_BIT, 40364, external_inter, External_Interrupt),
@@ -1726,8 +1901,22 @@ st_case_suit case_suit[] = {
 	GET_CASE_INFO(CON_CPU_CTRL1_MONITOR_TRP_FLAG, 41121, monitor_trap_flag, Monitor_Trap_Flag),
 	GET_CASE_INFO(CON_CPU_CTRL1_TSC_OFFSETTING, 41175, use_tsc_offset, Use_TSC_Offsetting),
 
+	GET_CASE_INFO(CON_CPU_CTRL2_DESC_TABLE, 40625, descriptor_table, Descriptor_Table),
+	GET_CASE_INFO(CON_CPU_CTRL2_ENABLE_RDTSCP, 40622, enable_rdtscp, Enable_RDTSCP),
+	GET_CASE_INFO(CON_CPU_CTRL2_RDRAND, 40626, rdrand, RDRAND_Exiting),
+	GET_CASE_INFO(CON_CPU_CTRL2_RDSEED, 40627, rdseed, RDSEED_Exiting),
+	GET_CASE_INFO(CON_CPU_CTRL2_ENABLE_XSAVES_XRSTORS, 40628, xsaves, Enable_XSAVES_XRSTORS),
+	GET_CASE_INFO(CON_CPU_CTRL2_WBINVD, 40636, wbinvd, WBINVD_Exiting),
+	GET_CASE_INFO(CON_CPU_CTRL2_ENABLE_INVPCID, 41079, enable_invpcid, Enable_INVPCID),
+	GET_CASE_INFO(CON_CPU_CTRL2_VMCS_SHADOWING, 41084, vmcs_shadowing, VMCS_Shadowing),
+	GET_CASE_INFO(CON_CPU_CTRL2_ENABLE_PML, 41094, enable_pml, Enable_PML),
+	GET_CASE_INFO(CON_CPU_CTRL2_VIRTUAL_APIC, 41122, virt_apic_access, Virturalize_APIC_Accesses),
+
 	GET_CASE_INFO(CON_PIN_POST_INTER, 41181, posted_inter, Process_Posted_interrupts),
 	GET_CASE_INFO(CON_PIN_VIRT_NMI, 42244, virt_nmis, Virtual_NMIS),
+	GET_CASE_INFO(CON_CPU_CTRL2_VIRTUAL_X2APIC, 41123, virt_x2apic_mode, Virtualize_X2APIC_Mode),
+	GET_CASE_INFO(CON_CPU_CTRL2_APIC_REG_VIRTUAL, 41124, apic_reg_virt, APIC-register_virtualization),
+	GET_CASE_INFO(CON_CPU_CTRL2_VIRTUAL_INTER_DELIVERY, 41173, virt_inter_delivery, Virtual-interrupt_Delivery),
 };
 
 st_case_suit case_mem_suit[] = {
@@ -1741,8 +1930,24 @@ st_case_suit case_mem_suit[] = {
 };
 
 st_case_suit case_exit_entry[] = {
+	GET_CASE_INFO_GENERAL(CON_EXIT_IA32_PAT, 42066, ia32_pat_exit, VM_Exit_Control_Save_Load_IA32_PAT),
+	GET_CASE_INFO_GENERAL(CON_ENTRY_IA32_PAT, 42116, ia32_pat_entry, VM_Entry_Control_Load_IA32_PAT),
+	GET_CASE_INFO_GENERAL(CON_EXIT_IA32_EFER, 42174, ia32_efer_exit, VM_Exit_Control_Save_Load_IA32_EFER),
+	GET_CASE_INFO_GENERAL(CON_ENTRY_IA32_EFER, 42175, ia32_efer_entry, VM_Entry_Control_Load_IA32_EFER),
 	GET_CASE_INFO_GENERAL(CON_EXIT_SAVE_DEBUG, 42176, save_debug_exit, VM_Exit_Control_Save_Debug),
+	GET_CASE_INFO_GENERAL(CON_ENTRY_DEBUG_CONTROL, 42177,\
+		debug_controls_entry, VM_Entry_Control_Load_Debug_Controls),
+	GET_CASE_INFO_GENERAL(CON_EXIT_IA32_PERF, 42178, exit_load_perf, VM_Exit_Control_Load_IA32_PERF),
 	GET_CASE_INFO_GENERAL(CON_ENTRY_LOAD_PERF, 42179, entry_load_perf, VM_Entry_Control_Load_IA32_PERF),
+	GET_CASE_INFO_GENERAL(CON_ENTRY_LOAD_BNDCFGS, 42182, entry_load_bndcfgs, VM_Entry_Control_Load_IA32_BNDCFGS),
+	GET_CASE_INFO_GENERAL(CON_EXIT_CLEAR_BNDCFGS, 42183, exit_clear_bndcfgs, VM_Exit_Control_Clear_IA32_BNDCFGS),
+	GET_CASE_INFO_GENERAL(CON_EXIT_ACK_INTER, 42186, exit_ack_inter, VM_Exit_Control_Ack_Inter),
+	GET_CASE_INFO_GENERAL(CON_EXIT_SAVE_PREEM_TIME, 42189, exit_save_pree_timer, VM_Exit_Control_Save_Pree_Timer),
+	GET_CASE_INFO_GENERAL(CON_EXIT_HOST_ADDR64, 42192, exit_host_addr64, VM_Exit_Control_Host_Address_Space_Size),
+	GET_CASE_INFO_GENERAL(CON_ENTRY_IA32_MODE_GUEST, 42223, \
+		entry_ia32_mode_guest, VM_Entry_Control_IA32E_Mode_Guest),
+	GET_CASE_INFO_GENERAL(CON_ENTRY_TO_SMM, 42271, entry_to_smm, VM_Entry_Control_to_SMM),
+
 	GET_CASE_INFO_GENERAL(CON_ENTRY_GUEST_MSR_CONTRL, 42236, \
 		entry_guest_msr_control, VM_Entry_MSR_Control_Guest_Load),
 	GET_CASE_INFO_GENERAL(CON_EXIT_HOST_MSR_CONTRL, 42237, \
@@ -1753,14 +1958,18 @@ st_case_suit case_exit_entry[] = {
 
 st_case_suit case_general[] = {
 	GET_CASE_INFO_GENERAL(CON_CR0_MASK, 41946, cr0_masks, Guest_Host_Masks_For_CR0),
+	GET_CASE_INFO_GENERAL(CON_CR0_READ_SHADOW, 42022, cr0_shadow, Read_Shadow_For_CR0),
+	GET_CASE_INFO_GENERAL(CON_CR4_MASK, 42028, cr4_masks, Guest_Host_Masks_For_CR4),
+	GET_CASE_INFO_GENERAL(CON_CR4_READ_SHADOW, 42029, cr4_shadow, Read_Shadow_For_CR4),
 	GET_CASE_INFO(CON_MSR_BITMAP, 41085, bitmap_msr, MSR_Bitmap),
+	GET_CASE_INFO(CON_IO_BITMAP, 41086, bitmap_io, Bitmap_IO),
+	GET_CASE_INFO(CON_EXCEPTION_BITMAP, 41183, bitmap_exception, Bitmap_Exception),
 	GET_CASE_INFO_GENERAL(CON_TSC_OFFSET_MULTI, 42201,\
 		tsc_offset_multi, TSC_Offsetting_Multiplier),
 	GET_CASE_INFO_GENERAL(CON_VM_EXIT_INFO, 42242,\
 		vm_exit_info, VM_Exit_Information),
 	GET_CASE_INFO_GENERAL(CON_BUFF, 42250,\
 		entry_event_inject, VM_Entry_Control_For_Event_Injection),
-
 };
 
 typedef struct {
@@ -1780,6 +1989,8 @@ void print_case_list()
 	int i, j;
 	st_case_suit *pcase;
 	u32 size;
+	printf("\t Case ID: %d Case name: %s\n\r", 42243U,
+		"HSI_Virtualization_Specific_Features_Unrestricted_Guests_001");
 	printf("\t Case ID: %d Case name: %s\n\r", 40291U,
 		"HSI_Virtualization_Specific_Features_VMX_Instruction_001");
 
@@ -1854,6 +2065,8 @@ BUILD_GUEST_MAIN_FUNC(vmx_general, case_general);
 
 /* name/init/guest_main/exit_handler/syscall_handler/guest_regs */
 static struct vmx_test vmx_tests[] = {
+	{ "VMX unrestricted guest", vmx_exec_urg_init, vmx_general_guest_main,
+		vm_unrestricted_guest_exit_handler, NULL, {0} },
 	{ "VMX general", vm_exec_init, vmx_general_guest_main,
 		vm_exec_con_host_exit_handler, NULL, {0} },
 	{ "VMX exit entry contrl", vm_exec_init, vmx_exit_entry_guest_main,

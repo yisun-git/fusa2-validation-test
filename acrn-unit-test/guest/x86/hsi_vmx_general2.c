@@ -251,4 +251,347 @@ __unused static void hsi_rqmid_42250_virtualization_specific_features_entry_even
 	report("%s", (chk == 1), __func__);
 }
 
+static void bitmap_io_condition(__unused struct st_vcpu *vcpu)
+{
+	/*
+	 * Enable VM_EXIT for test condition.
+	 */
+	exec_vmwrite32_bit(CPU_EXEC_CTRL0, CPU_IO_BITMAP, BIT_TYPE_SET);
+	DBG_INFO("CPU_EXEC_CTRL0:0x%x", exec_vmread32(CPU_EXEC_CTRL0));
+
+	uint8_t *io_bitmap_a = vcpu->arch.io_bitmap;
+	/* Set up IO bitmap register A for bit[0xCFC~0xCFF] to 1, enable io access vm exit */
+	set_io_bitmap(io_bitmap_a, IO_BITMAP_TEST_PORT_NUM1, BIT_TYPE_SET, io_byte4);
+
+	/* Set IO bitmap register A for bit[0xCF8~0xCFB] to 1, enable io access vm exit */
+	set_io_bitmap(io_bitmap_a, IO_BITMAP_TEST_PORT_NUM2, BIT_TYPE_SET, io_byte4);
+
+	uint64_t value64 = hva2hpa((void *)io_bitmap_a);
+	vmcs_write(VMX_IO_BITMAP_A_FULL, value64);
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_VM_Execution_Controls_Bitmap_IO_001
+ *
+ * Summary: IN root operation, set Processor-Based VM-Execution Controls
+ * use I/O bitmaps exiting bit25 to 1, set I/O-bitmap A bit[0xCFC~0xCFF] to 1 enable vm exit,
+ * set I/O-bitmap A bit[0xCF8~0xCFB] to 1, enable vm exit.
+ * switch to non-root operation,
+ * execute instructoin [INL 0xCFC], check vm-exit handler are called for
+ * this action in root operation.
+ * execute instructoin [INL 0xCF8], check vm-exit handler are called for
+ * this action in root operation.
+ */
+__unused static void hsi_rqmid_41086_virtualization_specific_features_vm_exe_con_bitmap_io_001()
+{
+	u8 chk = 0;
+	vm_exit_info.is_io_num1_exit = VM_EXIT_NOT_OCCURS;
+	vm_exit_info.is_io_num2_exit = VM_EXIT_NOT_OCCURS;
+
+	inl(IO_BITMAP_TEST_PORT_NUM1);
+
+	inl(IO_BITMAP_TEST_PORT_NUM2);
+
+	if (get_exit_reason() == VMX_IO) {
+		chk++;
+	}
+	barrier();
+	/* Make sure read port num1 vm exit are called */
+	if (vm_exit_info.is_io_num1_exit == VM_EXIT_OCCURS) {
+		chk++;
+	}
+
+	/* Make sure read port num2 vm exit are called */
+	if (vm_exit_info.is_io_num2_exit == VM_EXIT_OCCURS) {
+		chk++;
+	}
+	report("%s", (chk == 3), __func__);
+
+}
+
+static void bitmap_exception_condition(__unused struct st_vcpu *vcpu)
+{
+	/* Set up guest exception mask bitmap setting a bit * causes a VM exit
+	 * on corresponding guest * exception - pg 2902 24.6.3
+	 * enable VM exit on DB, disable VM exit on GP
+	 */
+	uint32_t value32 = (1U << DB_VECTOR) & ~(1U << GP_VECTOR);
+	exec_vmwrite32(VMX_EXCEPTION_BITMAP, value32);
+	DBG_INFO("VMX_EXCEPTION_BITMAP:0x%x", exec_vmread32(VMX_EXCEPTION_BITMAP));
+
+	/* disable MOV-DR exiting for trigger a #DB exception in guest */
+	vmcs_clear_bits(CPU_EXEC_CTRL0, CPU_MOV_DR);
+	DBG_INFO("CPU_EXEC_CTRL0:0x%x", exec_vmread32(CPU_EXEC_CTRL0));
+}
+
+static void mov_cr4_trigger_GP(void)
+{
+	ulong cr4 = read_cr4();
+	write_cr4(cr4 | CR4_RESERVED_BIT23);
+}
+
+static void mov_write_dr7_trigger_DB(ulong val)
+{
+	asm volatile ("mov %0, %%dr7 \n"
+		: : "r"(val) : "memory");
+}
+
+typedef void (*trigger_func)(void *data);
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_VM_Execution_Controls_Bitmap_Exception_001
+ *
+ * Summary: IN root operation, set VMX exception bitmaps DB exception bit1 to 1
+ * GP exception bit13 to 0.
+ * switch to non-root operation,
+ * trigger a #DB exception, check excetpion or NMI vm-exit handler are called for
+ * #DB exception.
+ * trigger a #GP exception, check excetpion or NMI vm-exit handler are not called for
+ * #GP exception.
+ */
+__unused static void hsi_rqmid_41183_virtualization_specific_features_vm_exe_con_bitmap_exception_001()
+{
+	u8 chk = 0;
+	vm_exit_info.is_exception_db_exit = VM_EXIT_NOT_OCCURS;
+	vm_exit_info.is_exception_gp_exit = VM_EXIT_NOT_OCCURS;
+
+	trigger_func func;
+	bool ret_gp = false;
+	func = (trigger_func)mov_cr4_trigger_GP;
+	ret_gp = test_for_exception(GP_VECTOR, func, NULL);
+
+	unsigned long check_bit = 0;
+
+	DBG_INFO("***** Set DR7.GD[bit 13] to 1 *****");
+
+	check_bit = read_dr7();
+	check_bit |= (1UL << 13);
+
+	/*set DR7.GD to 1*/
+	mov_write_dr7_trigger_DB(check_bit);
+
+	/*
+	 * any debug register is accessed while the DR7GD[bit 13] = 1(DeAc: true, DR7.GD: 1),
+	 * executing MOV shall generate #DB.
+	 * because DB will cause vm exit, host wil skip this #DB exception instruction.
+	 */
+	mov_write_dr7_trigger_DB(check_bit);
+
+	barrier();
+	/* Make sure #DB exception vm exit are called */
+	if (vm_exit_info.is_exception_db_exit == VM_EXIT_OCCURS) {
+		chk++;
+	}
+
+	/* Make sure #GP exception vm exit are not called */
+	if (ret_gp && (vm_exit_info.is_exception_gp_exit == VM_EXIT_NOT_OCCURS)) {
+		chk++;
+	}
+
+	report("%s", (chk == 2), __func__);
+}
+
+static void cr0_read_shadow_condition(__unused struct st_vcpu *vcpu)
+{
+	/*
+	 * Set CR0.CD CR0.NW to 1 and clear CR0.MP to 0
+	 * in Guest/Host masks for CR0 for test condition.
+	 */
+	uint64_t default_mask = vmcs_read(VMX_CR0_GUEST_HOST_MASK);
+	default_mask = (default_mask | CR0_CD | CR0_NW) & ~CR0_MP;
+	vmcs_write(VMX_CR0_GUEST_HOST_MASK, default_mask);
+	DBG_INFO("VMX_CR0_GUEST_HOST_MASK:0x%lx", vmcs_read(VMX_CR0_GUEST_HOST_MASK));
+
+	/* set CR0.CD, CR0.NW, CR0.MP,in read shadow for CR0 */
+	uint64_t default_shadow = vmcs_read(VMX_CR0_READ_SHADOW);
+	default_shadow = (default_shadow | CR0_CD | CR0_NW | CR0_MP);
+	vmcs_write(VMX_CR0_READ_SHADOW, default_shadow);
+	DBG_INFO("VMX_CR0_READ_SHADOW:0x%lx", vmcs_read(VMX_CR0_READ_SHADOW));
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_Read_Shadow_For_CR0_001
+ *
+ * Summary: IN root operation, set CR0's guest/host masks which set CR0.CD CR0.NW to 1
+ * CR0.MP to 0, set CR0's read shadow CR0.CD,CR0.NW,CR0.MP to 1.
+ * switch to non-root operation,
+ * check CR0.CD CR0.NW should be 1, save CR0.MP to old_cr0_mp,
+ * execute VMCALL enter host, set CR0's read shadow CR0.CD,CR0.NW,CR0.MP to 0.
+ * check CR0.CD CR0.NW should be 0, check CR0.MP should be old_cr0_mp unchanged
+ * even if change CR0.MP read shadow value.
+ */
+__unused static void hsi_rqmid_42022_virtualization_specific_features_cr0_shadow_001()
+{
+	int chk = 0;
+	ulong old_cr0 = read_cr0();
+	/* because CR0.CD CR0.NW is owned by host, host set this bit */
+	if ((old_cr0 & (X86_CR0_CD | X86_CR0_NW)) == (X86_CR0_CD | X86_CR0_NW)) {
+		chk++;
+	}
+	/* CR0.MP is owned by guest, so save MP value*/
+	ulong cr0_mp = old_cr0 & X86_CR0_MP;
+
+	DBG_INFO(" old_cr0:0x%lx", old_cr0);
+
+	/* VMCALL exit clear read shadow special bit */
+	vmx_set_test_condition(CON_42022_SET_CR0_READ_SHADOW);
+	vmcall();
+
+	ulong new_cr0 = read_cr0();
+	/* because CR0.CD CR0.NW is owned by host, host clear this bit */
+	if ((new_cr0 & (X86_CR0_CD | X86_CR0_NW)) == 0) {
+		chk++;
+	}
+
+	/* CR0.MP owned by guest,
+	 * so it value not change even host change read shadow.
+	 */
+	if (!(cr0_mp ^ (new_cr0 & X86_CR0_MP))) {
+		chk++;
+	}
+	DBG_INFO("new_cr0:0x%lx", new_cr0);
+	report("%s", (chk == 3), __func__);
+}
+
+static void hypercall_clear_cr0_read_shadow(__unused struct st_vcpu *vcpu)
+{
+	u64 temp;
+	/* clear CR0.CD, CR0.NW, CR0.MP in read shadow for CR0 */
+	temp = vmcs_read(VMX_CR0_READ_SHADOW);
+	temp = (temp & ~CR0_CD) & ~CR0_NW & ~CR0_NW;
+	vmcs_write(VMX_CR0_READ_SHADOW, temp);
+	DBG_INFO("VMX_CR0_READ_SHADOW:0x%lx", vmcs_read(VMX_CR0_READ_SHADOW));
+}
+
+static void cr4_masks_condition(__unused struct st_vcpu *vcpu)
+{
+	/*
+	 * Set CR4.SMEP to 1 and clear CR4.PVI to 0
+	 * in Guest/Host masks for CR4 for test condition.
+	 */
+	uint64_t default_mask = vmcs_read(VMX_CR4_GUEST_HOST_MASK);
+	default_mask = (default_mask | CR4_SMEP) & ~CR4_PVI;
+	vmcs_write(VMX_CR4_GUEST_HOST_MASK, default_mask);
+	DBG_INFO("VMX_CR4_GUEST_HOST_MASK:0x%lx", vmcs_read(VMX_CR4_GUEST_HOST_MASK));
+
+	/* clear CR4.SMEP, CR4.PVI in read shadow for CR4 */
+	uint64_t default_shadow = vmcs_read(VMX_CR4_READ_SHADOW);
+	default_shadow = (default_shadow & ~CR4_SMEP) & ~CR4_PVI;
+	vmcs_write(VMX_CR4_READ_SHADOW, default_shadow);
+	DBG_INFO("VMX_CR4_READ_SHADOW:0x%lx", vmcs_read(VMX_CR4_READ_SHADOW));
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_Guest_Host_Masks_For_CR4_001
+ *
+ * Summary: IN root operation, set CR4's guest/host masks which set CR4.SMEP to 1
+ * CR4.PVI to 0, clear CR4's read shadow CR4.SMEP and CR4.PVI to 0.
+ * switch to non-root operation,
+ * execute MOV set CR4.SMEP from 0 to 1, check vm-exit handler are called for
+ * this action in root operation because CR4.SMEP owned by host.
+ * execute MOV set CR4.PVI from 0 to 1, check vm-exit handler are not called for
+ * this action in root operation becasue CR4.PVI owned by guest.
+ */
+__unused static void hsi_rqmid_42028_virtualization_specific_features_cr4_masks_001()
+{
+	u8 chk = 0;
+	vm_exit_info.is_vm_exit[VM_EXIT_WRITE_CR4_SMEP] = VM_EXIT_NOT_OCCURS;
+	vm_exit_info.is_vm_exit[VM_EXIT_WRITE_CR4_PVI] = VM_EXIT_NOT_OCCURS;
+
+	/*
+	 * Because CR4.SMEP shadow is 0, so set to 1
+	 */
+	write_cr4(read_cr4() | CR4_SMEP);
+
+	/*
+	 * Because CR4.PVI shadow is 0, so set to 1
+	 */
+	write_cr4(read_cr4() | CR4_PVI);
+	DBG_INFO("cr4:%lx", read_cr4());
+
+	/* Make sure write CR4.SMEP vm-exit are called */
+	if (vm_exit_info.is_vm_exit[VM_EXIT_WRITE_CR4_SMEP] == VM_EXIT_OCCURS) {
+		chk++;
+	}
+
+	/* Make sure write CR4.PVI vm-exit are not called */
+	if (vm_exit_info.is_vm_exit[VM_EXIT_WRITE_CR4_PVI] == VM_EXIT_NOT_OCCURS) {
+		chk++;
+	}
+
+	report("%s", (chk == 2), __func__);
+}
+
+static void cr4_read_shadow_condition(__unused struct st_vcpu *vcpu)
+{
+	/*
+	 * Set CR4.SMEP to 1 and clear CR4.PVI to 0
+	 * in Guest/Host masks for CR4 for test condition.
+	 */
+	uint64_t default_mask = vmcs_read(VMX_CR4_GUEST_HOST_MASK);
+	default_mask = (default_mask | CR4_SMEP) & ~CR4_PVI;
+	vmcs_write(VMX_CR4_GUEST_HOST_MASK, default_mask);
+	DBG_INFO("VMX_CR4_GUEST_HOST_MASK:0x%lx", vmcs_read(VMX_CR4_GUEST_HOST_MASK));
+
+	/* set CR4.SMEP, CR4.PVI,in read shadow for CR4 */
+	uint64_t default_shadow = vmcs_read(VMX_CR4_READ_SHADOW);
+	default_shadow = (default_shadow | CR4_SMEP | CR4_PVI);
+	vmcs_write(VMX_CR4_READ_SHADOW, default_shadow);
+	DBG_INFO("VMX_CR4_READ_SHADOW:0x%lx", vmcs_read(VMX_CR4_READ_SHADOW));
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_Read_Shadow_For_CR4_001
+ *
+ * Summary: IN root operation, set CR4's guest/host masks which set CR4.SMEP to 1
+ * CR4.PVI to 0, set CR4's read shadow CR4.SMEP CR4.PVI to 1.
+ * switch to non-root operation,
+ * check CR4.SMEP should be 1, save CR4.PVI to cr4_pvi,
+ * execute VMCALL enter host, set CR4's read shadow CR4.SMEP CR4.PVI to 0.
+ * check CR4.SMEP should be 0, check CR4.PVI should be cr4_pvi unchanged
+ * even if change CR4.PVI read shadow value.
+ */
+__unused static void hsi_rqmid_42029_virtualization_specific_features_cr4_shadow_001()
+{
+	int chk = 0;
+	ulong old_cr4 = read_cr4();
+	/* because CR0.SMEP is owned by host, host set this bit */
+	if ((old_cr4 & CR4_SMEP) == CR4_SMEP) {
+		chk++;
+	}
+	/* CR4.PVI is owned by guest, so save PVI value*/
+	ulong cr4_pvi = old_cr4 & CR4_PVI;
+
+	printf("\n old_cr4:0x%lx\n", old_cr4);
+
+	/* VMCALL exit clear read shadow special bit */
+	vmx_set_test_condition(CON_42029_SET_CR4_READ_SHADOW);
+	vmcall();
+
+	ulong new_cr4 = read_cr4();
+	/* because CR4.SMEP is owned by host, host clear this bit */
+	if ((new_cr4 & CR4_SMEP) == 0) {
+		chk++;
+	}
+
+	/* CR4.PVI owned by guest,
+	 * so it value not change even host change read shadow.
+	 */
+	if (!(cr4_pvi ^ (new_cr4 & CR4_PVI))) {
+		chk++;
+	}
+	DBG_INFO("new_cr4:0x%lx", new_cr4);
+	report("%s", (chk == 3), __func__);
+}
+
+static void hypercall_clear_cr4_read_shadow(__unused struct st_vcpu *vcpu)
+{
+	u64 temp;
+	/* clear CR4.SMEP CR4.PVI in read shadow for CR4 */
+	temp = vmcs_read(VMX_CR4_READ_SHADOW);
+	temp = (temp & ~CR4_SMEP) & ~CR4_PVI;
+	vmcs_write(VMX_CR4_READ_SHADOW, temp);
+	DBG_INFO("VMX_CR4_READ_SHADOW:0x%lx", vmcs_read(VMX_CR4_READ_SHADOW));
+
+}
 

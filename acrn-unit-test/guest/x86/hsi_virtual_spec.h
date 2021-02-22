@@ -131,6 +131,84 @@
 #define APIC_TPR_VAL1 (1U << 4U)
 #define PREEMPTION_TIME_VALUE 1000
 #define APIC_MMIO_BASE_ADDR (0xfee00000UL)
+#define MSR_APIC_ICR_VALUE 0U
+#define ILLEGAL_VIRTUAL_APIC_PAGE_ADDR (0xFFFFFFFFFFFFFFFFULL)
+
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * IA32_PAT MSR is saved on VM exit.
+ */
+#define VMX_EXIT_CTLS_SAVE_PAT    (1U << 18U)
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * IA32_PAT MSR is loaded on VM exit.
+ */
+#define VMX_EXIT_CTLS_LOAD_PAT    (1U << 19U)
+/**
+ * @brief Address of guest IA32_PAT control field in the VMCS.
+ */
+#define VMX_GUEST_IA32_PAT_FULL      0x00002804U
+/**
+ * @brief Address of host IA32_PAT control field in the VMCS.
+ */
+#define VMX_HOST_IA32_PAT_FULL  0x00002C00U
+/* use for set ia32_pat value which diff form IA32_PAT_HOST_VMCS_VALUE */
+#define IA32_PAT_VALUE1 0x0000000070406ULL
+#define IA32_PAT_HOST_VMCS_INIT_VALUE 0x7040600070406ULL
+#define IA32_PAT_GUEST_VMCS_INIT_VALUE 0x7040600070406ULL
+#define IA32_PAT_VALUE2 0x0000000001040506ULL
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * IA32_EFER MSR is saved on VM exit.
+ */
+#define VMX_EXIT_CTLS_SAVE_EFER   (1U << 20U)
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * IA32_EFER MSR is loaded on VM exit.
+ */
+#define VMX_EXIT_CTLS_LOAD_EFER   (1U << 21U)
+/**
+ * @brief Address of guest IA32_EFER control field in the VMCS.
+ */
+#define VMX_GUEST_IA32_EFER_FULL     0x00002806U
+
+/**
+ * @brief Address of host IA32_EFER control field in the VMCS.
+ */
+#define VMX_HOST_IA32_EFER_FULL 0x00002C02U
+
+#define IA32_EFER_VALUE1 0x500
+#define IA32_EFER_HOST_VMCS_INIT_VALUE 0xD00
+#define IA32_EFER_GUEST_VMCS_INIT_VALUE 0xD00
+#define IA32_EFER_VALUE2 0xD00
+#define IA32_EFER_HOST_PYHSICAL_VALUE 0xD01
+#define MSR_IA32_EFER                 0xC0000080U
+#define MSR_IA32_EXT_APIC_EOI			0x0000080BU
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * the value of the VMX-preemption timer is saved on VM exit.
+ */
+#define VMX_EXIT_CTLS_SAVE_PREE_TIMER (1U << 22U)
+
+/**
+ * @brief Bit field in the IA32_VMX_ENTRY_CTLS MSR that determines whether
+ * the IA32_EFER MSR is loaded on VM entry.
+ */
+#define VMX_ENTRY_CTLS_LOAD_EFER  (1U << 15U)
+/**
+ * @brief Bit field in the IA32_VMX_ENTRY_CTLS MSR that determines whether
+ * the IA32_PERF_GLOBAL_CTRL MSR is loaded on VM exit.
+ */
+#define VMX_EXIT_CTLS_LOAD_PERF_GLOBAL_CTRL (1U << 12U)
+#define IA32_BNDCFGS_VALUE1 0U
+/* Enable MPX in supervisor mode */
+#define IA32_BNDCFGS_VALUE2 (1UL << 0)
+/**
+ * @brief Bit field in the IA32_VMX_ENTRY_CTLS MSR that determines whether
+ * the IA32_BNDCFGS is loaded on VM entry.
+ */
+#define VMX_ENTRY_CTLS_LOAD_BNDCFGS (1U << 16U)
+
 /**
  * @brief Address of MSR bitmaps control field in the VMCS.
  */
@@ -195,6 +273,54 @@
  */
 #define IDT_UD  6U
 #define VMX_PREEMPTION_TIMER                 0x0000482EU
+/* define for test save preemption timer on vm-exit */
+#define SAVE_PREEMPTION_TIME_VALUE (0x10000000UL)
+#define IA32_EFER_LME	(1ULL << 8U)
+
+/**
+ * @brief Address of secondary processor-based control field in the VMCS.
+ */
+#define HSI_VMX_PROC_VM_EXEC_CONTROLS2     0x0000401EU
+/**
+ * page-modification log address
+ */
+#define VMX_PAGE_MODIFICATION_LOG_ADDRESS 0x0000200EU
+/**
+ * page-modification log index feild
+ */
+#define VMX_PAGE_MODIFICATION_LOG_INDEX 0x0000812U
+
+#define DEFAULT_PML_ENTRY 511U
+/**
+ * @brief Bit field in the IA32_VMX_ENTRY_CTLS MSR that determines whether
+ * the IA32_PAT MSR is loaded on VM entry.
+ */
+#define VMX_ENTRY_CTLS_LOAD_PAT   (1U << 14U)
+
+/**
+ * @brief Bit field in the IA32_VMX_ENTRY_CTLS MSR that determines whether
+ * the DR7 and the IA32_DEBUGCTL MSR is loaded on VM entry.
+ */
+#define VMX_ENTRY_CTLS_LOAD_DEBUG_REG  (1U << 2U)
+#define MSR_IA32_BNDCFGS		0x00000d90
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * the IA32_BNDCFGS is cleared on VM exit.
+ */
+#define VMX_EXIT_CTLS_CLEAR_BNDCFGS (1U << 23U)
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * a logical processor acknowledge the external interrupt on VM exit.
+ */
+#define VMX_EXIT_CTLS_ACK_IRQ     (1U << 15U)
+
+#define EXTEND_INTERRUPT_80				0x80
+#define EXTERNAL_INTER_VALID 1U
+#define EXTERNAL_INTER_INVALID 0U
+/**
+ * @brief Address of VM exit interruption information field in the VMCS.
+ */
+#define VMX_EXIT_INT_INFO       0x00004404U
 
 /**
  * @brief Single context INVVPID type which indicates only specified VPID's mappings will be invalidated.
@@ -225,6 +351,59 @@
 #define VMX_EXIT_MSR_STORE_ADDR_FULL 0x00002006U
 #define UD_HANDLER_CALL_ONE_TIMES 1
 #define HIGH_MSR_START_ADDR			0xc0000000U
+
+/**
+ * @brief Bit field in the IA32_VMX_EXIT_CTLS MSR that determines whether
+ * a logical processor is in 64-bit mode after the next VM exit.
+ */
+#define VMX_EXIT_CTLS_HOST_ADDR64 (1U << 9U)
+/**
+ * @brief The LME bit of IA32_EFER.
+ *
+ * IA32e mode enable.
+ * Enables IA-32e mode operation.
+ */
+#define MSR_IA32_EFER_LME_BIT (1UL << 8U)
+/**
+ * @brief The LMA bit of IA32_EFER.
+ *
+ * IA32e mode active.
+ * Indicates IA-32e mode is active when set.
+ */
+#define MSR_IA32_EFER_LMA_BIT (1UL << 10U)
+#define CS_L_BIT (1ULL << 53U)
+/**
+ * @brief Bit field in the IA32_VMX_ENTRY_CTLS MSR that determines whether
+ * a logical processor is in IA-32e mode after VM entry.
+ */
+#define VMX_ENTRY_CTLS_IA32E_MODE (1U << 9U)
+/**
+ * @brief Bit field in the IA32_VMX_ENTRY_CTLS MSR that determines whether
+ * whether the logical processor is in system management mode (SMM)
+ * after VM entry.
+ */
+#define VMX_ENTRY_CTLS_ENTRY_TO_SMM (1U << 10U)
+/**
+ * @brief Address of exception bitmap control field in the VMCS.
+ */
+#define VMX_EXCEPTION_BITMAP           0x00004004U
+#define CR4_RESERVED_BIT23				(1<<23)
+/**
+ * @brief CR0 cache disable bit.
+ */
+#define CR0_CD (1UL << 30U)
+/**
+ * @brief CR0 monitor coprocessor bit.
+ */
+#define CR0_MP (1UL << 1U)
+/**
+ * @brief CR0 not write through bit.
+ */
+#define CR0_NW (1UL << 29U)
+#define X86_CR0_NW (1UL << 29)
+#define CR4_SMEP (1UL << 20U)
+#define CR4_PVI (1UL << 1U)
+
 enum {
 	MSR_READ,
 	MSR_WRITE,
@@ -255,57 +434,7 @@ static void _func_##_condition(__unused struct st_vcpu *vcpu) \
 { \
 	/* set or clear bit */ \
 	exec_vmwrite32_bit(_vmcs_field_, _vmcs_bit, _is_set_bit); \
-	DBG_INFO("EXE_CONTROLS:0x%x\n", exec_vmread32(_vmcs_field_)); \
-}
-
-/* common function */
-extern struct st_vcpu *get_bp_vcpu(void);
-extern u64 vcpu_get_gpreg(u8 idx);
-extern void vmx_set_test_condition(u32 s);
-extern u32 vmx_get_test_condition(void);
-extern void set_exit_reason(u32 exit_reason);
-extern u32 get_exit_reason(void);
-extern void exec_vmwrite32_bit(u32 field, u32 bitmap, u32 is_bit_set);
-extern void set_vmcs(u32 condition);
-void set_io_bitmap(uint8_t *io_bitmap, uint32_t port_io, uint32_t is_bit_set, uint32_t bytes);
-void set_msr_bitmap(uint8_t *msr_bitmap, uint32_t msr,
-	uint32_t is_bit_set, uint8_t is_rd_wt);
-
-
-static inline u64 hva2hpa(const void *hva)
-{
-	return (u64)hva;
-}
-
-static inline void vmcall(void)
-{
-	asm volatile("vmcall");
-}
-
-__unused static inline uint64_t hsi_vm_exit_qualification_bit_mask(uint64_t exit_qual, uint32_t msb, uint32_t lsb)
-{
-	return (exit_qual & (((1UL << (msb + 1U)) - 1UL) - ((1UL << lsb) - 1UL)));
-}
-
-/* access Control-Register Info using exit qualification field */
-__unused static inline uint64_t hsi_vm_exit_cr_access_cr_num(uint64_t exit_qual)
-{
-	return hsi_vm_exit_qualification_bit_mask(exit_qual, 3U, 0U);
-}
-
-__unused static inline uint64_t hsi_vm_exit_cr_access_reg_idx(uint64_t exit_qual)
-{
-	return (hsi_vm_exit_qualification_bit_mask(exit_qual, 11U, 8U) >> 8U);
-}
-
-__unused static inline uint64_t hsi_vm_exit_cr_access_type(uint64_t exit_qual)
-{
-	return hsi_vm_exit_qualification_bit_mask(exit_qual, 5U, 4U);
-}
-
-__unused static inline uint64_t hsi_vm_exit_io_access_port_num(uint64_t exit_qual)
-{
-	return ((hsi_vm_exit_qualification_bit_mask(exit_qual, 31, 16) >> 16) & 0xffffULL);
+	DBG_INFO(#_vmcs_field_":0x%x\n", exec_vmread32(_vmcs_field_)); \
 }
 
 #define BUILD_GUEST_MAIN_FUNC(_func_, _case_suit_) \
@@ -413,9 +542,24 @@ typedef enum {
 	CON_CPU_CTRL2_ENABLE_PML,
 	CON_CPU_CTRL2_ENABLE_XSAVES_XRSTORS,
 	CON_CPU_CTRL2_USE_TSC_SCALING,
+	CON_CPU_CTRL2_ENABLE_INVPCID,
 	CON_EXIT_SAVE_DEBUG,
+	CON_ENTRY_DEBUG_CONTROL,
 	CON_ENTRY_LOAD_PERF,
+	CON_ENTRY_LOAD_BNDCFGS,
+	CON_EXIT_CLEAR_BNDCFGS,
+	CON_EXIT_ACK_INTER,
+	CON_EXIT_SAVE_PREEM_TIME,
+	CON_EXIT_HOST_ADDR64,
+	CON_ENTRY_IA32_MODE_GUEST,
+	CON_ENTRY_TO_SMM,
+	CON_IO_BITMAP,
+	CON_EXCEPTION_BITMAP,
+
 	CON_CR0_MASK,
+	CON_CR0_READ_SHADOW,
+	CON_CR4_MASK,
+	CON_CR4_READ_SHADOW,
 	CON_MSR_BITMAP,
 	CON_EPT_CONSTRUCT,
 	CON_VPID_INVALID,
@@ -424,6 +568,11 @@ typedef enum {
 	CON_EXIT_GUEST_MSR_STORE,
 	CON_TSC_OFFSET_MULTI,
 	CON_VM_EXIT_INFO,
+	CON_EXIT_IA32_PAT,
+	CON_ENTRY_IA32_PAT,
+	CON_EXIT_IA32_EFER,
+	CON_ENTRY_IA32_EFER,
+	CON_EXIT_IA32_PERF,
 	CON_BUFF,
 } U_VMX_CONDITION;
 
@@ -438,6 +587,19 @@ typedef enum {
 	CON_CHECK_TSC_AUX_VALUE,
 	CON_CHECK_TSC_AUX_GUEST_VMCS_FIELD,
 	CON_ENTRY_EVENT_INJECT,
+	CON_GET_PML_INDEX,
+	CON_42066_GET_RESULT,
+	CON_CHANGE_GUEST_MSR_PAT,
+	CON_42174_GET_RESULT,
+	CON_CHANGE_GUEST_MSR_EFER,
+	CON_42178_GET_RESULT,
+	CON_42183_GET_RESULT,
+	CON_42189_GET_PREEM_TIME,
+	CON_42192_GET_RESULT,
+	CON_42022_SET_CR0_READ_SHADOW,
+	CON_42029_SET_CR4_READ_SHADOW,
+	CON_42243_REPORT_CASE,
+
 	CON_SECOND_BUFF,
 } U_VM_EXIT_SECOND;
 
@@ -579,6 +741,7 @@ struct vcpu_arch {
 	struct hsi_vlapic vlapic;
 	/* pid MUST be 64 bytes aligned */
 	struct st_pi_desc pid ALIGNED(64);
+	u8 pml[PAGE_SIZE] ALIGNED(PAGE_SIZE);
 	unsigned long *pml4;
 	u64 eptp;
 	u64 guest_rip;
@@ -677,6 +840,11 @@ typedef struct {
 	uint8_t is_msr_ins_exit;
 	/* record WRMSR for special MSR_IA32_EXT_APIC_ICR vm exit */
 	uint8_t is_wrmsr_apic_icr_exit;
+	/* record #DB exception vm exit */
+	uint8_t is_exception_db_exit;
+	/* record #GP exception vm exit */
+	uint8_t is_exception_gp_exit;
+
 	/* record VM exit array */
 	uint8_t is_vm_exit[VM_EXIT_RECORD_BUTT];
 } st_vm_exit_info;
@@ -688,6 +856,13 @@ enum {
 	RET_CHECK_EPT_CONSTRUCT,
 	RET_CHECK_TSC_AUX,
 	RET_CHECK_GUEST_TSC_AUX_VMCS,
+	RET_42066_CHECK_MSR_IA32_PAT,
+	RET_42174_CHECK_MSR_IA32_EFER,
+	RET_42178_CHECK_MSR_IA32_PERF,
+	RET_42183_CHECK_MSR_IA32_BNDCFGS,
+	RET_42189_CHECK_PREE_TIME,
+	RET_42192_CHECK_RESULT,
+
 };
 typedef struct {
 	u8 exit_reason;
@@ -1036,6 +1211,7 @@ enum Reason {
 	VMX_RDRAND		= 57,
 	VMX_INVPCID		= 58,
 	VMX_VMFUNC		= 59,
+	VMX_ENCLS		= 60,
 	VMX_RDSEED		= 61,
 	VMX_PML_FULL		= 62,
 	VMX_XSAVES		= 63,
@@ -1108,6 +1284,7 @@ enum Ctrl1 {
 	CPU_VINTD		= 1ul << 9,
 	CPU_PAUSE_LOOP	= 1ul << 10,
 	CPU_RDRAND		= 1ul << 11,
+	CPU_INVPCID		= 1UL << 12,
 	CPU_VMFUNC		= 1ul << 13,
 	CPU_SHADOW_VMCS		= 1ul << 14,
 	CPU_RDSEED		= 1ul << 16,
@@ -1590,6 +1767,61 @@ do { \
 #define TEST_EXPECT_EQ(a, b) __TEST_EQ(a, b, #a, #b, 0, "")
 #define TEST_EXPECT_EQ_MSG(a, b, fmt, args...) \
 	__TEST_EQ(a, b, #a, #b, 0, fmt, ## args)
+
+/* common function */
+extern struct st_vcpu *get_bp_vcpu(void);
+extern u64 vcpu_get_gpreg(u8 idx);
+extern void vmx_set_test_condition(u32 s);
+extern u32 vmx_get_test_condition(void);
+extern void set_exit_reason(u32 exit_reason);
+extern u32 get_exit_reason(void);
+extern void exec_vmwrite32_bit(u32 field, u32 bitmap, u32 is_bit_set);
+extern void set_vmcs(u32 condition);
+void set_io_bitmap(uint8_t *io_bitmap, uint32_t port_io, uint32_t is_bit_set, uint32_t bytes);
+void set_msr_bitmap(uint8_t *msr_bitmap, uint32_t msr,
+	uint32_t is_bit_set, uint8_t is_rd_wt);
+static void msr_passthroudh();
+__unused static void delay_tsc(u64 count);
+
+void ept_gpa2hpa_map(struct st_vcpu *vcpu, u64 hpa, u64 gpa,
+		u32 size, u64 permission, bool is_clear);
+int vm_exec_init(__unused struct vmcs *vmcs);
+
+static inline u64 hva2hpa(const void *hva)
+{
+	return (u64)hva;
+}
+
+static inline void vmcall(void)
+{
+	asm volatile("vmcall");
+}
+
+__unused static inline uint64_t hsi_vm_exit_qualification_bit_mask(uint64_t exit_qual, uint32_t msb, uint32_t lsb)
+{
+	return (exit_qual & (((1UL << (msb + 1U)) - 1UL) - ((1UL << lsb) - 1UL)));
+}
+
+/* access Control-Register Info using exit qualification field */
+__unused static inline uint64_t hsi_vm_exit_cr_access_cr_num(uint64_t exit_qual)
+{
+	return hsi_vm_exit_qualification_bit_mask(exit_qual, 3U, 0U);
+}
+
+__unused static inline uint64_t hsi_vm_exit_cr_access_reg_idx(uint64_t exit_qual)
+{
+	return (hsi_vm_exit_qualification_bit_mask(exit_qual, 11U, 8U) >> 8U);
+}
+
+__unused static inline uint64_t hsi_vm_exit_cr_access_type(uint64_t exit_qual)
+{
+	return hsi_vm_exit_qualification_bit_mask(exit_qual, 5U, 4U);
+}
+
+__unused static inline uint64_t hsi_vm_exit_io_access_port_num(uint64_t exit_qual)
+{
+	return ((hsi_vm_exit_qualification_bit_mask(exit_qual, 31, 16) >> 16) & 0xffffULL);
+}
 
 /* common data structe */
 extern st_vm_exit_info vm_exit_info;

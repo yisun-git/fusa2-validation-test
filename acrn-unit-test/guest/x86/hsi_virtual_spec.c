@@ -45,7 +45,12 @@
 #include "pci_log.h"
 
 #if defined(IN_NATIVE)
+void *guest_stack, *guest_syscall_stack;
+
+#include "hsi_vmx_32bit.c"
+#include "hsi_vmx_exit_entry_contrl.c"
 #include "hsi_vmx_exe_contrl0.c"
+#include "hsi_vmx_exe_contrl1.c"
 #include "hsi_vmx_general2.c"
 #include "hsi_vmx_general.c"
 struct st_vcpu vcpu_bp;
@@ -53,7 +58,6 @@ struct st_vcpu vcpu_bp;
 u64 *vmxon_region;
 struct vmcs *vmcs_root;
 u32 vpid_cnt;
-void *guest_stack, *guest_syscall_stack;
 u32 ctrl_pin, ctrl_enter, ctrl_exit, ctrl_cpu[2];
 struct regs regs;
 
@@ -186,7 +190,7 @@ static void vm_exec_ctrl_init(void)
 	 * the IA32_VMX_PROCBASED_CTRLS MSR are always read as 1 --- A.3.2
 	 */
 	u32 value32 = check_vmx_ctrl(MSR_IA32_VMX_PROCBASED_CTLS,
-		CPU_RDTSCP | CPU_TPR_SHADOW | CPU_IO_BITMAP |
+		CPU_RDTSCP | CPU_IO_BITMAP |
 			CPU_MSR_BITMAP | CPU_SECONDARY);
 
 	/*Disable VM_EXIT for CR3 access*/
@@ -217,7 +221,7 @@ static void vm_exec_ctrl_init(void)
 	value32 &= ~CPU_XSAVES_XRSTORS;
 
 	/** Bitwise OR value32 by VMX_PROCBASED_CTLS2_WBINVD */
-	value32 |= CPU_WBINVD | CPU_RDTSCP | CPU_EPT | CPU_VPID;
+	value32 |= CPU_WBINVD | CPU_RDTSCP | CPU_EPT | CPU_VPID | CPU_URG;
 	vmcs_write(CPU_EXEC_CTRL1, value32);
 }
 
