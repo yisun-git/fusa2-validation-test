@@ -69,31 +69,72 @@ static int bcd_value_check(uint8_t bcd)
 
 	return ret;
 }
-static int rtc_ap_start_count = 0;
 static volatile uint8_t init_rtc_index = 0;
-static volatile uint8_t set_rtc_index = 0;
-void save_unchanged_reg()
+static volatile uint8_t rtc_year_value = 0;
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int ap_start_count = 0;
+
+__unused static void wait_ap_ready()
 {
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+static void rtc_ap_unchanged_case_24601()
+{
+	if (ap_start_count == 0) {
+		/*
+		 *set new value to rtc index
+		 */
+		outb(YEAR_INDEX, RTC_INDEX_REG);
+		/*
+		 *Because RTC_INDEX_REG is write only, so we read YEAR_INDEX index's
+		 * corresponding data to prove it unchange indirectly.
+		 */
+		rtc_year_value = inb(RTC_TARGET_REG);
+		ap_start_count++;
+		wait_ap = 1;
+	} else if (ap_start_count == 1) {
+		rtc_year_value = inb(RTC_TARGET_REG);
+		ap_start_count++;
+		wait_ap = 1;
+	}
+}
+
+void ap_main(void)
+{
+	/*
+	 *test only on the ap 2,other ap return directly
+	 */
 	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
-	if (rtc_ap_start_count == 0) {
-		/* save init rtc index (defalut is 0)*/
-		init_rtc_index = inb(RTC_INDEX_REG);
-
-		/* set new value to rtc index */
-		outb(B_INDEX, RTC_INDEX_REG);
-		rtc_ap_start_count++;
-	}
-
-	set_rtc_index = inb(RTC_INDEX_REG);
-
-	if (rtc_ap_start_count == 2) {
-		/* resume environment */
-		outb(set_rtc_index, RTC_INDEX_REG);
+	while (1) {
+		switch (cur_case_id) {
+		case 24601:
+			rtc_ap_unchanged_case_24601();
+			cur_case_id = 0;
+			break;
+		default:
+			asm volatile ("nop\n\t" :::"memory");
+		}
 	}
 }
+#endif
+
 
 /**
  *  @brief Case name: When a vCPU attempts to write guest RTC target register_001
@@ -147,12 +188,13 @@ void rtc_rqmid_24560_write_2_bytes_to_guest_rtc_index_register(void)
 	uint8_t reg8_value1;
 	uint8_t reg8_value2;
 
-	outb(B_INDEX, RTC_INDEX_REG);
-	reg8_value1 = inb(RTC_INDEX_REG);
-	outw(0xFFFF, RTC_INDEX_REG);
-	reg8_value2 = inb(RTC_INDEX_REG);
+	outb(YEAR_INDEX, RTC_INDEX_REG);
+	reg8_value1 = inb(RTC_TARGET_REG);
 
-	report("\t\t %s 0x%x", ((reg8_value1 == B_INDEX) && (reg8_value2 == B_INDEX)),
+	outw(0xFFFF, RTC_INDEX_REG);
+	reg8_value2 = inb(RTC_TARGET_REG);
+
+	report("\t\t %s 0x%x", (reg8_value1 == reg8_value2),
 		__FUNCTION__, reg8_value1);
 }
 
@@ -273,12 +315,12 @@ void rtc_rqmid_24563_writing_4_bytes_to_70H(void)
 	uint8_t reg8_value1;
 	uint8_t reg8_value2;
 
-	outb(B_INDEX, RTC_INDEX_REG);
-	reg8_value1 = inb(RTC_INDEX_REG);
+	outb(YEAR_INDEX, RTC_INDEX_REG);
+	reg8_value1 = inb(RTC_TARGET_REG);
 	(void)outl(0xFFFFFFFF, RTC_INDEX_REG);
-	reg8_value2 = inb(RTC_INDEX_REG);
+	reg8_value2 = inb(RTC_TARGET_REG);
 
-	report("\t\t %s 0x%x", ((reg8_value1 == B_INDEX) && (reg8_value2 == B_INDEX)),
+	report("\t\t %s 0x%x", (reg8_value1 == reg8_value2),
 		__FUNCTION__, reg8_value1);
 }
 
@@ -762,20 +804,29 @@ void rtc_rqmid_37835_rtc_index_init_unchange_002(void)
  */
 void __unused rtc_rqmid_24601_rtc_index_init_unchange_001(void)
 {
-	volatile uint8_t rtc_index1;
-	volatile uint8_t rtc_index2;
+	volatile uint8_t rtc_year_value1;
+	volatile uint8_t rtc_year_value2;
 
-	/*get set_pat value */
-	rtc_index1 = set_rtc_index;
-
-	/*send sipi to ap*/
+	/*
+	 *trigger ap_main function entering switch 24601
+	 */
+	cur_case_id = 24601;
+	wait_ap_ready();
+	rtc_year_value1 = rtc_year_value;
+	/*
+	 *send sipi to ap  trigger ap_main function was called to get rtc_year_value again.
+	 */
 	send_sipi();
-
-	/*get pat value again after ap reset*/
-	rtc_index2 = set_rtc_index;
-
-	/*compare init value with unchanged */
-	report("\t\t %s 0x%x", ((rtc_index1 == B_INDEX) && (rtc_index1 == rtc_index2)), __FUNCTION__, rtc_index1);
+	cur_case_id = 24601;
+	wait_ap_ready();
+	/*
+	 *get rtc_year value again after ap reset
+	 */
+	rtc_year_value2 = rtc_year_value;
+	/*
+	 *compare init value with unchanged
+	 */
+	report("\t\t %s", (rtc_year_value1 == rtc_year_value2), __FUNCTION__);
 }
 
 int rtc_get_second(int *sec)

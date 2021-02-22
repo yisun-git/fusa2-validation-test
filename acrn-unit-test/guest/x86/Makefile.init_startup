@@ -162,7 +162,6 @@ $(TEST_DIR)/interrupt.o:$(TEST_DIR)/interrupt.c
 
 $(TEST_DIR)/rtc.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_rtc_init.S\"
 $(TEST_DIR)/rtc.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_rtc_startup.S\"
-$(TEST_DIR)/rtc.o: CFLAGS += -DAP_UNCHANGED_CHECK
 $(TEST_DIR)/rtc.o: $(TEST_DIR)/rtc.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
