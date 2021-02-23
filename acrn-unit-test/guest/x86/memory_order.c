@@ -696,14 +696,31 @@ static void asm_test_144414_table15_ap1(void)
 
 static void asm_test_144414_table15_ap2(void)
 {
+	 u64 *_y = (u64 *)(u64)Y;
+	 u64 val;
+
+	/* read [_y] and [_z] with one instruction instead of
+	 * two movl instructions since re-order is sensitive for
+	 * the timing sequence
+	 */
+	asm volatile(
+		"movq %1, %0\n\t"
+		: "=r"(val)
+		: "m"(*_y)
+		: "memory");
+	r1 = (val >> 32) & 0xff;
+	r2 = val & 0xff;
+
+#if 0
 	int *_z = (int *)(unsigned long)Z;
 	int *_y = (int *)(unsigned long)Y;
 	asm volatile(
 		"movl %2, %0\n\t"
 		"movl %3, %1\n\t"
-		: "=r" (r1), "=r"(r2)
+		: "=b" (r1), "=c"(r2)
 		: "m"(*_z), "m"(*_y)
 		: "memory");
+#endif
 }
 
 static int memory_order_144414_table15_check()
@@ -721,8 +738,9 @@ static void asm_test_144414_table15_init()
 
 	/* _x <= _y < _z < _x+512 */
 	X = 0x6000;
-	Y = X + 0x50;
-	Z = Y + 0x50;
+	/* Y and Z across the cache line boundary */
+	Y = X + 0x100 - 4;
+	Z = X + 0x100;
 
 	point = (unsigned char *)0x6000;
 	memset(point, 0x0, 512);
