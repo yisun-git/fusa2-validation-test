@@ -9,7 +9,7 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
-	segmentation"
+	segmentation interrupt_triple_fault"
 BUILD_REAL_MODE_FEATURE=""
 BUILD_V8086_FEATURE="v8086_main"
 

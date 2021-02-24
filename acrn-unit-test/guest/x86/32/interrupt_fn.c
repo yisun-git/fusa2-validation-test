@@ -156,18 +156,6 @@ static void interru_df_ts(const char *fun)
 }
 
 /**
- * @brief case name: Contributory exception while handling #DF in non-safety VM_001
- *
- * Summary: At protected mode, when a vCPU of the non-safety VM detected a second contributory
- * exception(#TS) while calling the exception handler for a prior #DF, ACRN hypervisor shall
- * guarantee that any vCPU of the non-safety VM stops executing any instructions(VM shutdowns).
- */
-__attribute__((unused)) static void interrupt_rqmid_36128_df_ts(void)
-{
-	interru_df_ts(__FUNCTION__);
-}
-
-/**
  * @brief case name: Contributory exception while handling #DF in safety VM_001
  *
  * Summary: At protected mode, when a vCPU of the safety VM detected a second
@@ -1344,10 +1332,6 @@ static void test_interrupt_32(void)
 	interrupt_rqmid_38296_expose_exception_ts_001();
 	interrupt_rqmid_39163_expose_exception_ac_001();
 	interrupt_rqmid_39164_expose_exception_ac_002();
-#ifdef IN_NON_SAFETY_VM
-	/* non-safety VM shutdowns, no information can be print */
-	//interrupt_rqmid_36128_df_ts();
-#endif
 #ifdef IN_SAFETY_VM
 	interrupt_rqmid_36132_df_ts();	//safety call bsp_fatal_error()
 #endif
