@@ -163,7 +163,7 @@ struct xsave_exception {
 
 /* Expected register values following the start-up/INIT */
 #define XSAVE_EXPECTED_STARTUP_XCR0		1UL
-#define XSAVE_EXPECTED_STARTUP_XINUSE		1UL
+#define XSAVE_EXPECTED_STARTUP_XINUSE		3UL
 #define XSAVE_EXPECTED_STARTUP_CR4_OSXSAVE	0UL
 #define XSAVE_EXPECTED_INIT_CR4_OSXSAVE		0UL
 

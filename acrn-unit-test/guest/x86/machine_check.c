@@ -38,30 +38,6 @@ static void MCA_rqmid_24569_set_IA32_MCG_CAP_following_startup_001()
 }
 
 /*
- * @brief case name: MCA_rqmid_37030_initialize_IA32_MCi_STATUS_following_startup_001
- *
- *Summary:
- *	 ACRN hypervisor shall set initial guest IA32_MCi_STATUS (0<=i<=9) of safety VM to 0H following start-up.
- *
- */
-static void MCA_rqmid_37030_initialize_IA32_MCi_STATUS_following_startup_001()
-{
-	int i;
-
-	for (i = 0; i < MAX_VALID_ERROR_REPORTING_BANK_NUM; i++) {
-
-		printf("read msr = 0x%lx\r\n", rdmsr(MSR_IA32_MCx_STATUS(i)));
-		if ((*(volatile uint64_t *)(STARTUP_IA32_MC0_STATUS_ADDR + i * 8)) != 0) {
-			report("%s: line[%d] val= 0x%lx", 0, __FUNCTION__, __LINE__,
-					(*(volatile uint64_t *)(STARTUP_IA32_MC0_STATUS_ADDR + i * 8)));
-			return;
-		}
-	}
-
-	report("%s", 1, __FUNCTION__);
-}
-
-/*
  * @brief case name: MCA_rqmid_37031_initialize_IA32_MCi_CTL2_following_startup_001
  *
  *Summary:
@@ -198,41 +174,6 @@ static void MCA_rqmid_27281_expose_valid_Error_Reporting_register_bank_MSRs_safe
 	}
 
 #endif
-
-	/* Read/Write IA32_MCi_CTL, normal operation for safety VM(0<=i<=9) */
-	for (i = 0; i < MAX_VALID_ERROR_REPORTING_BANK_NUM; i++) {
-		if (rdmsr_checking(MSR_IA32_MCx_STATUS(i), &pre_val) == GP_VECTOR) {
-			report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
-			return;
-		}
-
-		val = 0;
-		if (wrmsr_checking(MSR_IA32_MCx_STATUS(i), val) == GP_VECTOR) {
-			report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
-			return;
-		}
-
-		val = rdmsr(MSR_IA32_MCx_STATUS(i));
-		if (val != 0) {
-			report("%s: line[%d] val = 0x%lx", 0, __FUNCTION__, __LINE__, val);
-			return;
-		}
-#if 0
-		val = 1;
-		if (wrmsr_checking(MSR_IA32_MCx_STATUS(i), val) == GP_VECTOR) {
-			report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
-			return;
-		}
-
-		if (rdmsr(MSR_IA32_MCx_STATUS(i)) != val) {
-			report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
-			return;
-		}
-#endif
-		/* restore msr */
-		wrmsr(MSR_IA32_MCx_STATUS(i), pre_val);
-	}
-
 
 		/* Read/Write IA32_MCi_ADDR, normal operation for safety VM(0<=i<=9) */
 	for (i = 0; i < MAX_VALID_ERROR_REPORTING_BANK_NUM; i++) {
@@ -1829,7 +1770,6 @@ static void test_mca_safety_vm(void)
 {
 #ifdef IN_SAFETY_VM
 	MCA_rqmid_24569_set_IA32_MCG_CAP_following_startup_001();
-	MCA_rqmid_37030_initialize_IA32_MCi_STATUS_following_startup_001();
 	MCA_rqmid_37031_initialize_IA32_MCi_CTL2_following_startup_001();
 	MCA_rqmid_28168_guarantee_implemented_IA32_MCi_CTL_same_as_host_001();
 	MCA_rqmid_27410_expose_valid_Error_Reporting_register_bank_count_safety_VM_001();
