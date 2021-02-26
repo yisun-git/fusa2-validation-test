@@ -281,7 +281,6 @@ static void MP_initialization_rqmid_39037_ap(void)
 
 static void MP_initialization_rqmid_39038_ap(void)
 {
-	start_run_id = 0;
 	/*wait for BP to execute to case id 39038*/
 	bsp_is_running = 0;
 	wait_ap = 1;
