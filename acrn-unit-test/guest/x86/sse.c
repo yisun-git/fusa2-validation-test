@@ -375,6 +375,8 @@ static void sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001(void)
 
 static void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
 {
+	/*HV flush fpu, need init fpu if we use fpu*/
+	asm volatile("fninit");
 	cur_case_id = 27437;/*trigger ap_main function entering switch  27437*/
 	wait_ap_ready();
 	/*send sipi to ap  trigger ap_main function was called to get XMM0 through XMM15 again.*/
@@ -1090,6 +1092,8 @@ static void sse_ap_unchanged_case_27437()
 {
 	ulong cr4;
 	volatile fxsave_64bit_t *sse_save;
+	/*HV flush fpu, need init fpu*/
+	asm volatile("fninit");
 
 	/*test only on the ap  2,other ap return directly*/
 	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {

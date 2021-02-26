@@ -329,6 +329,8 @@ static void  avx_rqmid_23170_AVX_initial_YMM_register_following_INIT_001()
  */
 static void  avx_rqmid_37029_AVX_initial_YMM_register_following_INIT_002()
 {
+	/*HV flush fpu, need init fpu*/
+	asm volatile("fninit");
 	cur_case_id = 37029;/*trigger ap_main function entering switch  37029*/
 	wait_ap_ready();
 	/*send sipi to ap  trigger ap_main function was called to get YMM again.*/
