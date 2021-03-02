@@ -645,10 +645,9 @@ static void  gp_rqmid_31261_control_transfer_physical_support(void)
 	asm volatile ("2:");
 	CHECK_REPORT();
 
-
 	asm volatile (ASM_TRY("2f"):::"memory");
 	asm volatile ("mov $0, %ecx\n\t"
-					"jecxz 1f\n\t"
+					".byte 0xE3, 0x00\n\t"	//jecxz 1f
 					"1:nop\n\t"
 					);
 	asm volatile ("2:");
@@ -1753,20 +1752,6 @@ static void gp_rqmid_25468_ebx_ecx_and_other_register_Following_init(void)
 		(esp_init == 0x0) && (esi_init == 0x0) && (edi_init == 0x0), __FUNCTION__);
 }
 
-/**
- * @brief case name: EIP register init value_001
- * Summary: Get eip register at AP init, the register's value shall be 0000FFF0H and same with SDM definition.
- */
-static void gp_rqmid_25476_eip_register_Following_init(void)
-{
-	volatile u32 eip_init = *((volatile u32 *)INIT_EIP_ADDR);
-	u32 entry_offset = 0x30; /*from elf Disassembly*/
-
-	eip_init = eip_init - entry_offset;
-	//printf("eip_init:%x\n",eip_init);
-	report("%s", eip_init == 0x0000fff0, __FUNCTION__);
-}
-
 #endif
 
 /**
@@ -1838,24 +1823,6 @@ static void gp_rqmid_25063_eflags_register_start_up(void)
 	report("%s", eflags_startup == 0x00000002, __FUNCTION__);
 
 }
-
-/**
- * @brief case name: EIP register start-up value_001
- * Summary: Get EIP register at BP start-up, the register's value shall be 0000FFF0H and same
- * with SDM definition.
- */
-
-static void gp_rqmid_25474_eip_register_start_up(void)
-{
-	u32 offset_entry = 0x39;	/*from Disassembly by objdump*/
-	volatile u32 eip_startup = *((volatile u32 *)STARTUP_EIP_ADDR) - offset_entry;
-#ifdef IN_NON_SAFETY_VM
-	offset_entry = 0x33;		/*from Disassembly bzimage_stub.o by objdump*/
-	eip_startup = *((volatile u32 *)STARTUP_EIP_ADDR_IN_NON_SAFETY) - offset_entry;
-#endif
-	report("%s", eip_startup == 0x0000FFF0, __FUNCTION__);
-}
-
 
 #else  /* #ifndef __x86_64__*/
 /*
@@ -2060,8 +2027,6 @@ static void print_case_list(void)
 		"EFLAGS register init value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25468u,
 		"EBX, ECX, ESI, EDI, EBP, ESP register init value_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 25476u,
-		"EIP register init value_001");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 25067u,
 	"EAX register start-up value_001");
@@ -2071,8 +2036,6 @@ static void print_case_list(void)
 		"EBX, ECX, EDI, EBP, ESP register start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25063u,
 		"EFLAGS register start-up value_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 25474u,
-		"EIP register start-up value_001");
 #endif
 }
 
@@ -2154,13 +2117,11 @@ int main(void)
 	gp_rqmid_25080_edx_register_Following_init();
 	gp_rqmid_25061_eflags_register_Following_init();
 	gp_rqmid_25468_ebx_ecx_and_other_register_Following_init();
-	gp_rqmid_25476_eip_register_Following_init();
 #endif
 	gp_rqmid_25067_eax_register_start_up();
 	gp_rqmid_25083_edx_register_start_up();
 	gp_rqmid_25308_ebx_ecx_and_other_register_start_up();
 	gp_rqmid_25063_eflags_register_start_up();
-	gp_rqmid_25474_eip_register_start_up();
 	/*---64 bit end----*/
 #else /* #ifndef __x86_64__ */
 	/*--------------------------32 bit--------------------------*/

@@ -9,10 +9,6 @@ mov %esi,INIT_ESI_ADDR
 mov %edi,INIT_EDI_ADDR
 
 mov $stacktop, %esp
-call 11f
-11:
-pop %edx
-mov %edx, INIT_EIP_ADDR
 /* push 32bit eflags to eax */
 pushfl
 pop %eax

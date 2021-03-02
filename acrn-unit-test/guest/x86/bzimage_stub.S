@@ -101,7 +101,6 @@ start:
 11:
 	pop %edx
 #ifdef IN_GP_TEST
-	mov %edx, STARTUP_EIP_ADDR_IN_NON_SAFETY
 	pushfl
 	pop %eax
 	mov %eax, STARTUP_EFLAGS_ADDR_IN_NON_SAFETY
