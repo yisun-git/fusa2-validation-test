@@ -1065,7 +1065,7 @@ static int setup_ept(struct st_vcpu *vcpu)
 	 * accessed/dirty bits at 4K granularity.
 	 */
 	setup_ept_range(pml4, 0, ept_mapping_size,
-			EPT_WA | EPT_RA | EPT_EA);
+			EPT_WA | EPT_RA | EPT_EA | (EPT_MEM_TYPE_WB << 3));
 	return 0;
 }
 

@@ -237,6 +237,57 @@ static __unused void hsi_rqmid_36057_peripherals_features_rtc_002(void)
 }
 
 /*
+ * @brief case name: HSI_Peripherals_Features_RTC_003
+ *
+ * Summary: On native board, Loop read RTC register A to get the time duration between
+ * a “bit 7 value from 0 to 1” and (from that on) the most recent
+ * “bit 7 value from 1 to 0”, which is the RTC update cycle.
+ * verify that the time duration is less than (488 + 1984) us
+ */
+static __unused void hsi_rqmid_43752_peripherals_features_rtc_003(void)
+{
+	u32 chk = 0;
+	u64 tsc_0to1 = 0;
+	u64 tsc_1to0 = 0;
+
+	/* test read RTC register AH */
+	outb(A_INDEX, RTC_INDEX_REG);
+
+	/* make sure rtc register A bit7 is 0 */
+	while ((inb(RTC_TARGET_REG) & RTC_REG_A_CHECK_BIT) != 0) {
+		nop();
+	}
+
+	/* wait for bit7 from 0 to 1*/
+	while ((inb(RTC_TARGET_REG) & RTC_REG_A_CHECK_BIT) == 0) {
+		nop();
+	}
+
+	/* record the current tsc */
+	tsc_0to1 = rdtsc();
+
+	/* wait for bit7 from 1 to 0 */
+	while ((inb(RTC_TARGET_REG) & RTC_REG_A_CHECK_BIT) != 0) {
+		nop();
+	}
+	/* record tsc */
+	tsc_1to0 = rdtsc();
+
+	u64 tsc_diff = tsc_1to0 - tsc_0to1;
+
+	/* get duration time(us) */
+	double duration = ((double)tsc_diff / tsc_hz) * 1000000;
+	const double max_duration = 488.00 + 1984.00;
+
+	/* verify that the time duration is less than (488 + 1984) us */
+	if (duration < max_duration) {
+		chk++;
+	}
+	debug_print("tsc_diff:%lx duration:%lx max_duration:%lx\n", tsc_diff, (u64)duration, (u64)max_duration);
+	report("%s", (chk == 1), __FUNCTION__);
+}
+
+/*
  * @brief case name: HSI_Peripherals_Features_PCI_configuration_space_001
  *
  * Summary: On native board, Access PCI configuration space of USB
@@ -339,6 +390,12 @@ static st_case_suit_peri case_suit_peri[] = {
 		.case_fun = hsi_rqmid_36057_peripherals_features_rtc_002,
 		.case_id = 36057,
 		.case_name = "HSI_Peripherals_Features_RTC_002",
+	},
+
+	{
+		.case_fun = hsi_rqmid_43752_peripherals_features_rtc_003,
+		.case_id = 43752,
+		.case_name = "HSI_Peripherals_Features_RTC_003",
 	},
 
 	{

@@ -1,3 +1,5 @@
+/* start_run_id is used to identify which test case is running. */
+static volatile int start_run_id = 0;
 
 static void exit_host_msr_control_condition(__unused struct st_vcpu *vcpu)
 {
@@ -593,5 +595,424 @@ static void hypercall_clear_cr4_read_shadow(__unused struct st_vcpu *vcpu)
 	vmcs_write(VMX_CR4_READ_SHADOW, temp);
 	DBG_INFO("VMX_CR4_READ_SHADOW:0x%lx", vmcs_read(VMX_CR4_READ_SHADOW));
 
+}
+
+static void ept_read_access_contrl_condition(__unused struct st_vcpu *vcpu)
+{
+	u64 start_hpa = HOST_PHY_ADDR_START;
+	u64 start_gpa = GUEST_PHYSICAL_ADDRESS_START;
+	u32 size = GUEST_MEMORY_MAP_SIZE;
+
+	/* map 4M memory from gpa to hpa */
+	/**
+	 * Clear read access bit(bit 0) to 0,
+	 * read are not allowed from guest.
+	 */
+	ept_gpa2hpa_map(vcpu, start_hpa, start_gpa, size,
+		(EPT_EA | EPT_WA) & ~EPT_RA, true);
+
+	u64 eptp = vcpu->arch.eptp;
+	vmcs_write(EPTP, eptp);
+
+	*((u32 *)HOST_PHY_ADDR_START) = MAGIC_VAL_1;
+	invept(INVEPT_TYPE_ALL_CONTEXTS, eptp);
+	DBG_INFO("Set GUEST_PHYSICAL_ADDRESS_START unread!");
+
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Read_Access_001
+ *
+ * Summary: IN root operation,  map a 4M memory from GPA to HPA by EPT,
+ * clear bit0 to 0 which means diable guest to read,
+ * write a magic number to 4bytes memory pointed by the HPA.
+ * switch to non-root operation,
+ * read 4 bytes memory pointed by GPA would cause ept misconfiguration and the memory can't be readed by guest.
+ * switch to root operation.
+ * resume the read access, set ept table bit0 to 1 which means allow guest to read,
+ * read 4 bytes memory pointed by GPA again, the value should be the magic number which the value wiritted in host.
+ */
+static void hsi_rqmid_43420_virtualization_specific_features_ept_read_access_001()
+{
+	u32 *gva = (u32 *)GUEST_PHYSICAL_ADDRESS_START;
+	static u32 value32 = 0;
+	u8 chk = 0;
+
+	/* set run case id for resume ept config when ept misconfig occurs */
+	start_run_id = CASE_ID_43420;
+
+	/* Because this address is one one mapping, so GVA is GPA */
+	value32 = *gva;
+
+	/** According SDM 28.2.3.1 EPT Misconfigurations:
+	 * An EPT misconfiguration occurs if translation of a guest-physical address encounters
+	 * an EPT paging-structure that
+	 * meets the following conditions:
+	 * Bit 0 of the entry is clear (indicating that data reads are not allowed)
+	 * and bit 1 is set (indicating that data writes
+	 * are allowed).
+	 */
+	if ((get_exit_reason() == VMX_EPT_MISCONFIG) &&
+		(value32 != MAGIC_VAL_1)) {
+		chk++;
+	}
+	DBG_INFO("exit reason:%d value32:%x", get_exit_reason(), value32);
+	/* after host resume ept config, read memory again*/
+	value32 = *gva;
+	if (value32 == MAGIC_VAL_1) {
+		chk++;
+	}
+	DBG_INFO("value32:%x", value32);
+	report("%s", (chk == 2), __func__);
+}
+
+static void ept_write_access_contrl_condition(__unused struct st_vcpu *vcpu)
+{
+	u64 start_hpa = HOST_PHY_ADDR_START;
+	u64 start_gpa = GUEST_PHYSICAL_ADDRESS_START;
+	u32 size = GUEST_MEMORY_MAP_SIZE;
+
+	/* map 4M memory from gpa to hpa */
+	/**
+	 * Clear write access bit1 to 0,
+	 * write are not allowed from guest.
+	 */
+	ept_gpa2hpa_map(vcpu, start_hpa, start_gpa, size,
+		(EPT_EA | EPT_RA) & ~EPT_WA, true);
+
+	u64 eptp = vcpu->arch.eptp;
+	vmcs_write(EPTP, eptp);
+
+	invept(INVEPT_TYPE_ALL_CONTEXTS, eptp);
+	DBG_INFO("Set GUEST_PHYSICAL_ADDRESS_START unwritable!");
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Write_Access_001
+ *
+ * Summary: IN root operation,  map a 4M memory from GPA to HPA by EPT,
+ * clear bit1 to 0 which means diable guest to write,
+ * write 0 to 4bytes memory pointed by the HPA,
+ * switch to non-root operation,
+ * write magic number(0x87654321) to the 4 bytes memory pointed by GPA would cause
+ * ept violation and the memory can't be writed by guest. 
+ * switch to root operation,
+ * resume the write access, set ept table bit1 to 1 which means allow guest
+ * to write,
+ * write magic number to the 4 bytes memory pointed by GPA,
+ * the memory can be writed, the value is the 0x87654321.
+ */
+static void hsi_rqmid_43421_virtualization_specific_features_ept_write_access_001()
+{
+	u32 *gva = (u32 *)GUEST_PHYSICAL_ADDRESS_START;
+	static u32 value32 = MAGIC_VAL_2;
+	u8 chk = 0;
+
+	/* set run case id for resume ept config when ept violation occurs */
+	start_run_id = CASE_ID_43421;
+
+	/* Because this address is one one mapping, so GVA is GPA */
+	*gva = value32;
+
+	if ((get_exit_reason() == VMX_EPT_VIOLATION) &&
+		(*gva == 0)) {
+		chk++;
+	}
+
+	/** According SDM Table 27-7. Exit Qualification for EPT Violations
+	 * bit0: Set if the access causing the EPT violation was a data read.
+	 * bit1: Set if the access causing the EPT violation was a data write.
+	 * bit3: Set if the access causing the EPT violation was an instruction fetch.
+	 */
+	u32 qulifi = get_bp_vcpu()->arch.exit_qualification;
+	if (qulifi & EPT_VIOLATION_WRITE) {
+		chk++;
+	}
+	DBG_INFO("exit reason:%d qulification:%x *gva:%x", get_exit_reason(), qulifi, *gva);
+
+	/* after host resume ept config, write memory again*/
+	*gva = value32;
+	if (*gva == MAGIC_VAL_2) {
+		chk++;
+	}
+	DBG_INFO("*gva:%x", *gva);
+	report("%s", (chk == 3), __func__);
+}
+
+static void ept_execute_access_contrl_condition(__unused struct st_vcpu *vcpu)
+{
+	u64 start_hpa = HOST_PHY_ADDR_START;
+	u64 start_gpa = GUEST_PHYSICAL_ADDRESS_START;
+	u32 size = GUEST_MEMORY_MAP_SIZE;
+
+	/* map 4M memory from gpa to hpa */
+	/**
+	 * Clear execute access bit2 to 0,
+	 * instruction fetch are not allowed from guest.
+	 */
+	ept_gpa2hpa_map(vcpu, start_hpa, start_gpa, size,
+		(EPT_WA | EPT_RA) & ~EPT_EA, true);
+
+	u64 eptp = vcpu->arch.eptp;
+	vmcs_write(EPTP, eptp);
+
+	invept(INVEPT_TYPE_ALL_CONTEXTS, eptp);
+	DBG_INFO("Set GUEST_PHYSICAL_ADDRESS_START unexecutable!");
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Write_Access_001
+ *
+ * Summary: IN root operation,  map a 4M memory from GPA to HPA by EPT,
+ * clear bit2 to 0 which means diable guest to execute instruction, 
+ * switch to non-root operation,
+ * Write 0xc3(RET opcode) to the momory which pointed by GPA,
+ * execute CALL instruction with the memory pointed by GVA,
+ * then check vm exit for EPT violation are called becasue GVA pointed memory
+ * can't executable
+ * switch to root operation,
+ * resume the execute access, set ept table bit2 to 1 which means allow guest
+ * to execute instruction, do not skip the guest rip cause vm-exit.
+ * switch to non-root operation,
+ * execute CALL instruction with the memory pointed by GVA should be success.
+ */
+static void hsi_rqmid_43423_virtualization_specific_features_ept_execute_access_001()
+{
+	const char *temp = "\xC3";
+	u8 chk = 0;
+	start_run_id = CASE_ID_43423;
+	get_bp_vcpu()->arch.exit_qualification = 0;
+	void (*gva)(void) = (void *)GUEST_PHYSICAL_ADDRESS_START;
+	memcpy(gva, temp, strlen(temp));
+	/*
+	 * Because this address is one one mapping, so GVA is GPA.
+	 * this instruction shall cause ept violation exit, because
+	 * this memory disallow instruction fetched.
+	 */
+	asm volatile("call *%[address]\n\t"
+		: : [address]"a"(gva));
+
+	barrier();
+	u32 qualifi = get_bp_vcpu()->arch.exit_qualification;
+	/** According SDM Table 27-7. Exit Qualification for EPT Violations
+	 * bit0: Set if the access causing the EPT violation was a data read.
+	 * bit1: Set if the access causing the EPT violation was a data write.
+	 * bit3: Set if the access causing the EPT violation was an instruction fetch.
+	 */
+	if ((get_exit_reason() == VMX_EPT_VIOLATION) &&
+		((qualifi & EPT_VIOLATION_INST) == EPT_VIOLATION_INST)) {
+		chk++;
+	}
+
+	DBG_INFO("qualification:%x exit reason:%d", qualifi, get_exit_reason());
+	report("%s", (chk == 1), __func__);
+	start_run_id = CASE_ID_BUTT;
+}
+
+u64 *cache_test_addr = NULL;
+#define CACHE_TEST_MAX_TIMES			41
+typedef enum {
+	CACHE_MEM_TYPE_WB = 0,
+	CACHE_MEM_TYPE_UC,
+	CACHE_MEM_TYPE_BUTT,
+} EN_CACHE_TYPE;
+typedef enum {
+	SIZE_L1 = 0,
+	SIZE_L2,
+	SIZE_BUTT,
+} EN_CACHE_SIZE;
+
+__attribute__((aligned(64))) u64 hsi_read_mem_cache_test(u64 size)
+{
+	return read_mem_cache_test_addr(cache_test_addr, size);
+}
+
+static const u64 test_mem_size[SIZE_BUTT] = {
+	CACHE_L1_SIZE,
+	CACHE_L2_SIZE,
+};
+
+__unused static void malloc_cache_test_addr(void)
+{
+	cache_test_addr = (u64 *)malloc(CACHE_MALLOC_SIZE * 8);
+	if (cache_test_addr == NULL) {
+		debug_error("malloc cache test memory error.\n");
+		return;
+	}
+
+	debug_print("cache_test_addr=%p\n", cache_test_addr);
+	memset(cache_test_addr, 0xFF, CACHE_MALLOC_SIZE * 8);
+}
+
+__unused static void free_cache_test_addr(void)
+{
+	free((void *)cache_test_addr);
+}
+
+__unused static void hsi_set_mem_cache_type(u64 cache_type)
+{
+	set_mem_cache_type_addr(cache_test_addr, cache_type, CACHE_OVE_L3_SIZE * 8);
+}
+
+u64 get_read_mem_average_time(u64 cache_type, u64 size)
+{
+	int i;
+	u64 tsc_delay_delta_total = 0;
+	u64 tsc_delay[CACHE_TEST_MAX_TIMES] = {0};
+
+	if (cache_type == CACHE_MEM_TYPE_WB) {
+		hsi_set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
+	} else if (cache_type == CACHE_MEM_TYPE_UC) {
+		hsi_set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
+	}
+	size = test_mem_size[size];
+
+	/* Remove the first test data */
+	hsi_read_mem_cache_test(size);
+
+	for (i = 0; i < CACHE_TEST_MAX_TIMES; i++) {
+		tsc_delay[i] = hsi_read_mem_cache_test(size);
+		tsc_delay_delta_total += tsc_delay[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_MAX_TIMES;
+
+	asm_mfence_wbinvd();
+	return tsc_delay_delta_total;
+}
+
+
+static void ept_mem_type_uc_condition(__unused struct st_vcpu *vcpu)
+{
+	/* map ept memory type UC from gpa to hpa */
+	setup_ept_range(vcpu->arch.pml4, 0, EPT_MAPING_SIZE_4G,
+			EPT_WA | EPT_RA | EPT_EA | (EPT_MEM_TYPE_UC << 3));
+
+	u64 eptp = vcpu->arch.eptp;
+	invept(INVEPT_TYPE_ALL_CONTEXTS, eptp);
+
+	/* wbinvd instruction passtroudh */
+	vmcs_clear_bits(CPU_EXEC_CTRL1, CPU_WBINVD);
+	DBG_INFO("Set ept UC type eptp:%lx pat_msr:0x%lx!", eptp, rdmsr(IA32_PAT_MSR));
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Memory_Type_UC_001
+ *
+ * Summary: IN root operation,  map 4G memory from GPA to HPA by EPT,
+ * set bit3~bit5 to 0 which means ept memory type is UC,
+ * switch to non-root operation,
+ * Clear CR0.CD[bit 30] and CR0.NW[bit 29] to 0, enable cache.
+ * make sure cache read with pat memory type WB should be the same with pat memory type UC.
+ * Because the ept memory type is UC so effective memory type is UC ignore the PAT memory type.
+ */
+static void hsi_rqmid_43496_virtualization_specific_features_ept_mem_type_uc_001()
+{
+	u64 average_times[CACHE_MEM_TYPE_BUTT][SIZE_BUTT] = {0};
+	u8 chk = 0;
+
+	/* Clear CR0.CD[bit 30] and CR0.NW[bit 29] to 0. */
+	write_cr0(read_cr0() & ~X86_CR0_CD);
+	write_cr0(read_cr0() & ~X86_CR0_NW);
+
+	/* config PAT entry value 0x0000000001040506 */
+	set_mem_cache_type_all(0x0000000001040506);
+
+	/* set memory test start address */
+	malloc_cache_test_addr();
+
+	/* get average tsc data for pat memory type WB, UC, read memory L1,L2 size */
+	u32 i, j;
+	for (i = 0; i < CACHE_MEM_TYPE_BUTT; i++) {
+		for (j = 0; j < SIZE_BUTT; j++) {
+			average_times[i][j] = get_read_mem_average_time((EN_CACHE_TYPE)i, (EN_CACHE_SIZE)j);
+			DBG_INFO("average_times[%d][%d]:%ld", i, j, average_times[i][j]);
+		}
+	}
+
+	/* compare ept memory type UC,
+	 * PAT memory type values between UC and WB
+	 * According SDM 28.2.6.2 Memory Type Used for
+	 * Translated Guest-Physical Addresses and Table 11-7,
+	 * (ept memory type)     (PAT Entry Value)    (Effective Memory Type)
+	 *  UC						UC					UC
+	 *  UC						WB					UC
+	 * so the tesc value is almost equal
+	 */
+	for (i = 0; i < SIZE_BUTT; i++) {
+		if ((average_times[CACHE_MEM_TYPE_UC][i] >
+			(average_times[CACHE_MEM_TYPE_WB][i] * 2)) ||
+			(average_times[CACHE_MEM_TYPE_WB][i] >
+			(average_times[CACHE_MEM_TYPE_UC][i] * 2))) {
+			DBG_INFO("check ept UC: cache size:%d error.", i);
+			break;
+		}
+		chk++;
+	}
+
+	report("%s", (chk == SIZE_BUTT), __func__);
+	free_cache_test_addr();
+}
+
+static void ept_mem_type_wb_condition(__unused struct st_vcpu *vcpu)
+{
+	/* map ept memory type WB from gpa to hpa */
+	setup_ept_range(vcpu->arch.pml4, 0, EPT_MAPING_SIZE_4G,
+			EPT_WA | EPT_RA | EPT_EA | (EPT_MEM_TYPE_WB << 3));
+
+	u64 eptp = vcpu->arch.eptp;
+	invept(INVEPT_TYPE_ALL_CONTEXTS, eptp);
+
+	/* wbinvd instruction passtroudh */
+	vmcs_clear_bits(CPU_EXEC_CTRL1, CPU_WBINVD);
+	DBG_INFO("Set ept WB type eptp:%lx pat_msr:0x%lx!", eptp, rdmsr(IA32_PAT_MSR));
+}
+
+/**
+ * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Memory_Type_WB_001
+ *
+ * Summary: IN root operation,  map 4G memory from GPA to HPA by EPT,
+ * set bit3~bit5 to 6 which means ept memory type is WB,
+ * switch to non-root operation,
+ * Clear CR0.CD[bit 30] and CR0.NW[bit 29] to 0, enable cache.
+ * make sure cache read with pat memory type WB should be better than pat memory type UC.
+ * Because the ept memory type is WB so effective memory type is up to the PAT memory type.
+ */
+
+static void hsi_rqmid_43497_virtualization_specific_features_ept_mem_type_wb_001()
+{
+	u64 average_times[CACHE_MEM_TYPE_BUTT][SIZE_BUTT] = {0};
+	u8 chk = 0;
+	/* set memory test start address */
+	malloc_cache_test_addr();
+
+	/* get average tsc data for pat memory type WB, UC, read memory L1,L2 size */
+	u32 i, j;
+	for (i = 0; i < CACHE_MEM_TYPE_BUTT; i++) {
+		for (j = 0; j < SIZE_BUTT; j++) {
+			average_times[i][j] = get_read_mem_average_time((EN_CACHE_TYPE)i, (EN_CACHE_SIZE)j);
+			DBG_INFO("average_times[%d][%d]:%ld", i, j, average_times[i][j]);
+		}
+	}
+
+	/* compare ept memory type WB,
+	 * PAT memory type values between UC and WB
+	 * According SDM 28.2.6.2 Memory Type Used for
+	 * Translated Guest-Physical Addresses and Table 11-7,
+	 * (ept memory type)     (PAT Entry Value)    (Effective Memory Type)
+	 *  WB						UC					UC
+	 *  WB						WB					WB
+	 * the wb tsc vaule is far less then uc tsc value.
+	 */
+	for (i = 0; i < SIZE_BUTT; i++) {
+		if (average_times[CACHE_MEM_TYPE_UC][i] <=
+			(average_times[CACHE_MEM_TYPE_WB][i] * 100)) {
+			DBG_INFO("check ept WB: cache size:%d error.", i);
+			break;
+		}
+		chk++;
+	}
+
+	report("%s", (chk == SIZE_BUTT), __func__);
+	free_cache_test_addr();
 }
 

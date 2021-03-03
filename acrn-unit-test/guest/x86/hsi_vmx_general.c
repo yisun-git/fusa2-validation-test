@@ -1,11 +1,8 @@
 
 int vm_exec_init(struct vmcs *vmcs);
-void ept_gpa2hpa_map(struct st_vcpu *vcpu, u64 hpa, u64 gpa,
-		u32 size, u64 permission, bool is_clear);
+
 /* define for posted interrupt */
 static u16 record_vector;
-/* start_run_id is used to identify which test case is running. */
-static volatile int start_run_id = 0;
 static volatile u32 nmi_count;
 static u64 time_tsc[TSC_NMI_BUFF];
 static volatile u8 ap_send_nmi_flag;
@@ -850,22 +847,32 @@ static void handler_exit_common(struct st_vcpu *vcpu)
 		vcpu->arch.exit_qualification);
 }
 
+static void resume_ept_env(struct st_vcpu *vcpu)
+{
+	ept_gpa2hpa_map(vcpu,
+		HOST_PHY_ADDR_START,
+		GUEST_PHYSICAL_ADDRESS_START,
+		GUEST_MEMORY_MAP_SIZE,
+		EPT_RA | EPT_WA | EPT_EA,
+		false);
+	invept(INVEPT_TYPE_ALL_CONTEXTS, vcpu->arch.eptp);
+}
 static void handler_exit_ept_violation(struct st_vcpu *vcpu)
 {
 	set_exit_reason(vcpu->arch.exit_reason);
 
 	switch (start_run_id) {
 	case CASE_ID_41113:
-		/* resume environment for case 41113 */
-		ept_gpa2hpa_map(vcpu,
-			HOST_PHY_ADDR_START,
-			GUEST_PHYSICAL_ADDRESS_START,
-			GUEST_MEMORY_MAP_SIZE,
-			EPT_RA | EPT_WA | EPT_EA,
-			false);
+	case CASE_ID_43423:
+		/* resume environment for case 41113,43423 */
+		resume_ept_env(vcpu);
 		vcpu_retain_rip(vcpu);
-		invept(INVEPT_TYPE_ALL_CONTEXTS, vcpu->arch.eptp);
-		DBG_INFO("resume environment success!");
+		DBG_INFO("resume case 41113, 43423 ept environment success!");
+		break;
+	case CASE_ID_43421:
+		/* resume environment for case 43421 */
+		resume_ept_env(vcpu);
+		DBG_INFO("resume case 43421 ept environment success!");
 		break;
 	default:
 		break;
@@ -881,6 +888,27 @@ static void handler_exit_ept_violation(struct st_vcpu *vcpu)
 	 * bit1: Set if the access causing the EPT violation was a data write.
 	 * bit3: Set if the access causing the EPT violation was an instruction fetch.
 	 */
+}
+
+static void handler_exit_ept_misconfig(struct st_vcpu *vcpu)
+{
+	set_exit_reason(vcpu->arch.exit_reason);
+
+	switch (start_run_id) {
+	case CASE_ID_43420:
+		/* resume environment for case 43420 */
+		resume_ept_env(vcpu);
+		DBG_INFO("resume case 43420 ept environment success!");
+		break;
+	default:
+		break;
+	}
+
+	DBG_INFO("<ept misconfig>exit reason:%d guest_rip:0x%lx ins_len:%d qualification:0x%x", \
+		vcpu->arch.exit_reason,\
+		vcpu->arch.guest_rip,
+		vcpu->arch.guest_ins_len,
+		vcpu->arch.exit_qualification);
 }
 
 static void handler_exit_cr_access(struct st_vcpu *vcpu)
@@ -1645,6 +1673,8 @@ st_vm_exit vm_exit[VMX_EXIT_REASON_NUM] = {
 
 	[VMX_EPT_VIOLATION] = {
 		.exit_func = handler_exit_ept_violation},
+	[VMX_EPT_MISCONFIG] = {
+		.exit_func = handler_exit_ept_misconfig},
 	[VMX_CR] = {
 		.exit_func = handler_exit_cr_access},
 	[VMX_RDMSR] = {
@@ -1815,6 +1845,16 @@ st_vm_exit vmcall_exit[] = {
 		.exit_func = cr4_masks_condition},
 	[CON_CR4_READ_SHADOW] = {
 		.exit_func = cr4_read_shadow_condition},
+	[CON_EPT_READ_ACCESS] = {
+		.exit_func = ept_read_access_contrl_condition},
+	[CON_EPT_WRITE_ACCESS] = {
+		.exit_func = ept_write_access_contrl_condition},
+	[CON_EPT_EXECUTE_ACCESS] = {
+		.exit_func = ept_execute_access_contrl_condition},
+	[CON_EPT_MEM_TYPE_UC] = {
+		.exit_func = ept_mem_type_uc_condition},
+	[CON_EPT_MEM_TYPE_WB] = {
+		.exit_func = ept_mem_type_wb_condition},
 
 };
 
@@ -1927,6 +1967,11 @@ st_case_suit case_mem_suit[] = {
 	GET_CASE_INFO_GENERAL(CON_EPT_CONSTRUCT, 42209, ept_construct, EPT_Construct),
 	GET_CASE_INFO_GENERAL(CON_BUFF, 42224, ept_invalid, EPT_Invalid),
 	GET_CASE_INFO_GENERAL(CON_VPID_INVALID, 42226, vpid_invalid, VPID_Invalid),
+	GET_CASE_INFO_GENERAL(CON_EPT_READ_ACCESS, 43420, ept_read_access, EPT_Read_Access),
+	GET_CASE_INFO_GENERAL(CON_EPT_WRITE_ACCESS, 43421, ept_write_access, EPT_Write_Access),
+	GET_CASE_INFO_GENERAL(CON_EPT_EXECUTE_ACCESS, 43423, ept_execute_access, EPT_Execute_Access),
+	GET_CASE_INFO_GENERAL(CON_EPT_MEM_TYPE_UC, 43496, ept_mem_type_uc, EPT_Memory_Type_UC),
+	GET_CASE_INFO_GENERAL(CON_EPT_MEM_TYPE_WB, 43497, ept_mem_type_wb, EPT_Memory_Type_WB),
 };
 
 st_case_suit case_exit_entry[] = {
