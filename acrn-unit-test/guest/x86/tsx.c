@@ -11,10 +11,11 @@
 
 static unsigned xbegin_checking(void)
 {
-	unsigned int result = 0;
+	unsigned int result = 0xff;
 	unsigned int temp = 0;
 
 	asm volatile(
+		"movl $0xFF, %%eax\n"
 		"xbegin  exit1\n"
 		"movq $0x5555, %1\n"
 		"xend \n"
@@ -48,17 +49,17 @@ static void tsx_rqmid_37763_cpuid_eax07_ebx0_001()
  */
 static void tsx_rqmid_37798_cpuid_eax07_edx0_001()
 {
-	unsigned int result = 0;
+	unsigned int result = 0xFF;
 
 	if ((((cpuid(0x7).d) >> 13) & 1) == 1)
 	{
 		wrmsr(MSR_IA32_TSX_FORCE_ABORT, rdmsr(MSR_IA32_TSX_FORCE_ABORT) | FORCE_ABORT_RTM);
 		result = xbegin_checking();
-		report("%s", (result & 1) == 1, __FUNCTION__);
+		report("%s", result == 0, __FUNCTION__);
 	}
 	else
 	{
-		report("%s", result, __FUNCTION__);
+		report("%s", false, __FUNCTION__);
 	}
 }
 
