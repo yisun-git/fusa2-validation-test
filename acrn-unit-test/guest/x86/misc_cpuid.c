@@ -289,18 +289,6 @@ static unsigned rdpid_checking(void)
 	return exception_vector();
 }
 
-static unsigned prefetchwt1_checking(void)
-{
-	u8 line = 1;
-	asm volatile(ASM_TRY("1f")
-		"prefetchwt1 %0\n\t"
-		"1:"
-		:
-		: "m"(line)
-		:);
-
-	return exception_vector();
-}
 
 static unsigned sha1msg1_checking(void)
 {
@@ -1018,6 +1006,8 @@ static void misc_cpuid_rqmid_38284_cpuid_eax0h_ecx0_001()
 	wrmsr(IA32_MISC_ENABLE, rdmsr(IA32_MISC_ENABLE) | (1 << 22));
 	cpuid = cpuid_indexed(0x0, 0);
 	report("%s", cpuid.a == 0x2,  __FUNCTION__);
+	/*restore IA32_MISC_ENABLE's original value,or execute cpuid above 2 will return 0 in eax ebx exc edx*/
+	wrmsr(IA32_MISC_ENABLE, rdmsr(IA32_MISC_ENABLE) ^ (1 << 22));
 }
 
 /*
@@ -1123,13 +1113,22 @@ static void misc_cpuid_rqmid_38299_execute_rdpid()
 }
 
 /**
- * @brief case name:Guarantee that the vCPU receives #UD when a vCPU attempts to execute PREFETCHWT1_001
+ * @brief case name:No operation when a vCPU attempts to execute PREFETCHWT1_001
  *
- * Summary:Guarantee that the vCPU receives #UD when a vCPU attempts to execute PREFETCHWT1
+ * Summary:When a vCPU attempts to execute PREFETCHWT1, ACRN hypervisor shall guarantee that the instruction
+ * performs no operation
  */
 static void misc_cpuid_rqmid_38306_execute_prefetchwt1()
 {
-	report("%s", prefetchwt1_checking() == UD_VECTOR, __FUNCTION__);
+	bool ret = false;
+	u8 line = 1;
+
+	enable_xsave();
+	ret = CHECK_INSTRUCTION_REGS(asm volatile("prefetchwt1 %0\n\t"
+		:
+		: "m"(line)
+		:));
+	report("%s", ret, __FUNCTION__);
 }
 
 /**
@@ -1432,6 +1431,7 @@ int check_bits_is_set(u32 value, u32 start, u32 end)
 
 	for (start_bit = start; start_bit <= end_bit; start_bit++) {
 		if ((check_value & (1UL << start_bit)) != 0) {
+			printf("not zero reserve bit:%d\n", start_bit);
 			return 1;
 		}
 	}
@@ -1452,7 +1452,7 @@ static void misc_cpuid_rqmid_38417_check_reserved_bits_001()
 	t_rvdbits	rvdbits[] = {
 		{cpuid(0x3).a, 0, 31},
 		{cpuid(0x3).b, 0, 31},
-		{cpuid(0x4).a, 4, 31},
+		{cpuid(0x4).a, 4, 4},
 		{cpuid(0x4).a, 10, 13},
 		{cpuid(0x4).d, 3, 31},
 		{cpuid(0x5).a, 16, 31},
@@ -1470,7 +1470,8 @@ static void misc_cpuid_rqmid_38417_check_reserved_bits_001()
 		{cpuid(0x7).c, 5, 16},
 		{cpuid(0x7).c, 23, 29},
 		{cpuid(0x7).c, 31, 31},
-		{cpuid(0x7).d, 0, 31},
+		{cpuid(0x7).d, 0, 12},
+		{cpuid(0x7).d, 14, 31},
 		{cpuid(0x9).b, 0, 31},
 		{cpuid(0x9).c, 0, 31},
 		{cpuid(0x9).d, 0, 31},
@@ -1560,7 +1561,7 @@ static void misc_cpuid_rqmid_38417_check_reserved_bits_001()
 	for (index = 0; index < count; index++) {
 		if (check_bits_is_set(rvdbits[index].check_value,
 			rvdbits[index].start_bit, rvdbits[index].end_bit)) {
-			report("%s(%d)", false, __FUNCTION__, index);
+			report("%s(%d) check_value:%x", false, __FUNCTION__, index, rvdbits[index].check_value);
 			return;
 		}
 	}
@@ -1763,7 +1764,7 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 38299u,
 	"Guarantee that the vCPU receives #UD when a vCPU attempts to execute RDPID_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38306u,
-	"Guarantee that the vCPU receives #UD when a vCPU attempts to execute PREFETCHWT1_001");
+	"No operation when a vCPU attempts to execute PREFETCHWT1_001");
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 38369u,
 	"Set the initial guest IA32_MISC_ENABLE [bit 23] to 1H following INIT_001");
