@@ -305,6 +305,12 @@ void cpu_base_freq_init(void)
 	cpu_base_freq_khz = base_freq_mhz * 1000;
 }
 
+void e1000e_init_flag_reset()
+{
+	P_E1000E_DEV p_e1000e_dev = (P_E1000E_DEV)&e1000e_dev;
+	p_e1000e_dev->init_flag = 0;
+}
+
 int e1000e_init(union pci_bdf bdf)
 {
 	int ret = 0;

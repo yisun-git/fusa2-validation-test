@@ -18,7 +18,7 @@ BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_ana
 	fpu mmx general_purpose sgx avx"
 
 BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt \
-	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec"
+	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec hsi_inter_remap"
 
 BUILD_NATIVE_32_FEATURE="taskmanagement general_purpose"
 BUILD_NATIVE_32_FEATURE="$BUILD_NATIVE_32_FEATURE hsi_mem_mgmt hsi_gp"
