@@ -90,3 +90,8 @@ $(TEST_DIR)/rtc.o: $(TEST_DIR)/rtc.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
+$(TEST_DIR)/general_purpose.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/general_purpose.o: $(TEST_DIR)/general_purpose.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

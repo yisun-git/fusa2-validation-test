@@ -10,6 +10,9 @@
 #include "general_purpose.h"
 #include "regdump.h"
 #include "interrupt.h"
+#include "fwcfg.h"
+#include "delay.h"
+
 
 #define TRY_INSTRUCTION(_ins)\
 do { \
@@ -34,6 +37,111 @@ do { \
 } while (0)
 
 #define get_bit(x, n)  (((x) >> (n)) & 1)
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+static volatile int esp = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_eax_init_value()
+{
+	asm volatile ("movl $0xFFFF, %eax\n");
+}
+
+__unused static void modify_edx_init_value()
+{
+	asm volatile ("movl $0xFFFF, %edx\n");
+}
+
+__unused static void modify_eflags_init_value()
+{
+	/*cf change to 1*/
+	write_rflags(read_rflags() | 1ul);
+}
+
+__unused static void modify_ebx_ecx_ebp_esp_esi_edi_init_value()
+{
+	asm volatile ("movl $0xFFFF, %ebx\n");
+	asm volatile ("movl $0xFFFF, %ecx\n");
+	asm volatile ("movl $0xFFFF, %ebp\n");
+	asm volatile ("movl $0xFFFF, %esi\n");
+	asm volatile ("movl $0xFFFF, %edi\n");
+	asm volatile ("movl %%esp, %0\n" : "=m"(esp));
+}
+
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 25070:
+		fp = modify_eax_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 25080:
+		fp = modify_edx_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 25061:
+		fp = modify_eflags_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 25468:
+		fp = modify_ebx_ecx_ebp_esp_esi_edi_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
 
 /*--------------------------------Test case------------------------------------*/
 #ifdef IN_NATIVE
@@ -1705,7 +1813,19 @@ static void gp_rqmid_25070_eax_register_Following_init(void)
 {
 	volatile u32 eax_init = *((volatile u32 *)INIT_EAX_ADDR);
 
-	report("%s", eax_init == 0x0, __FUNCTION__);
+	bool is_pass = true;
+	if (eax_init != 0x0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(25070);
+
+	eax_init = *((volatile u32 *)INIT_EAX_ADDR);
+	if (eax_init != 0x0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -1715,10 +1835,18 @@ static void gp_rqmid_25070_eax_register_Following_init(void)
 static void gp_rqmid_25080_edx_register_Following_init(void)
 {
 	volatile u32 edx_init = *((volatile u32 *)INIT_EDX_ADDR);
-	printf("edx= %x\n", edx_init);
+	bool is_pass = true;
+	if (edx_init != 0x80600) {
+		is_pass = false;
+	}
 
-	report("%s", edx_init == 0x80600, __FUNCTION__);
+	notify_modify_and_read_init_value(25080);
+	edx_init = *((volatile u32 *)INIT_EDX_ADDR);
+	if (edx_init != 0x80600) {
+		is_pass = false;
+	}
 
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -1729,9 +1857,18 @@ static void gp_rqmid_25080_edx_register_Following_init(void)
 static void gp_rqmid_25061_eflags_register_Following_init(void)
 {
 	volatile u32 eflags_init = *((volatile u32 *)INIT_EFLAGS_ADDR);
+	bool is_pass = true;
 
-	report("%s", eflags_init == 0x00000002, __FUNCTION__);
+	if (eflags_init != 0x00000002) {
+		is_pass = false;
+	}
+	notify_modify_and_read_init_value(25061);
+	eflags_init = *((volatile u32 *)INIT_EFLAGS_ADDR);
+	if (eflags_init != 0x00000002) {
+		is_pass = false;
+	}
 
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -1748,8 +1885,29 @@ static void gp_rqmid_25468_ebx_ecx_and_other_register_Following_init(void)
 	volatile u32 esi_init = *((volatile u32 *)INIT_ESI_ADDR);
 	volatile u32 edi_init = *((volatile u32 *)INIT_EDI_ADDR);
 
-	report("%s", (ebx_init == 0x0) && (ecx_init == 0x0) && (ebp_init == 0x0) &&
-		(esp_init == 0x0) && (esi_init == 0x0) && (edi_init == 0x0), __FUNCTION__);
+	bool is_pass = true;
+
+	if (!((ebx_init == 0x0) && (ecx_init == 0x0) && (ebp_init == 0x0) &&
+		(esp_init == 0x0) && (esi_init == 0x0) && (edi_init == 0x0))) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(25468);
+
+	ebx_init = *((volatile u32 *)INIT_EBX_ADDR);
+	ecx_init = *((volatile u32 *)INIT_ECX_ADDR);
+	ebp_init = *((volatile u32 *)INIT_EBP_ADDR);
+	esp_init = *((volatile u32 *)INIT_ESP_ADDR);
+	esi_init = *((volatile u32 *)INIT_ESI_ADDR);
+	edi_init = *((volatile u32 *)INIT_EDI_ADDR);
+
+	if (!((ebx_init == 0x0) && (ecx_init == 0x0) && (ebp_init == 0x0) &&
+		(esp_init == 0x0) && (esi_init == 0x0) && (edi_init == 0x0))) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
+
 }
 
 #endif
