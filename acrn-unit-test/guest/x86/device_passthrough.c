@@ -1014,30 +1014,6 @@ static void device_passthrough_rqmid_29336_PCIe_XHCC1_write_001(void)
 #endif
 
 #ifdef IN_NATIVE
-/*
- * @brief case name:PCIe USB controller message control_001
- *
- * Summary:The value in the message control register [bit 3:1] of the PCI MSI capability structure
- * of the physical PCIe device at BDF 00:14.0 shall be 0H.
- */
-static void device_passthrough_rqmid_29337_PCIe_USB_controller_message_control_001(void)
-{
-	uint32_t reg_addr = 0U;
-	int ret = OK;
-	uint32_t reg_value = 0U;
-	bool is_pass = false;
-	ret = pci_probe_msi_capability(usb_bdf_native, &reg_addr);
-	if (ret == OK) {
-		reg_addr = reg_addr + PCI_MSI_FLAGS;
-		reg_value = pci_pdev_read_cfg(usb_bdf_native, reg_addr, BYTE_2);
-		//printf("\n reg_value = %x \n", reg_value);
-		reg_value &= SHIFT_MASK(3, 1);
-		if (reg_value == 0U) {
-			is_pass = true;
-		}
-	}
-	report("%s", is_pass, __FUNCTION__);
-}
 
 /*
  * @brief case name:PCIe Ethernet controller message control_001
@@ -2284,8 +2260,6 @@ static void print_case_list(void)
 	"PCIe USB controller BAR_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29285,
 	"PCIe Ethernet controller BAR_001");
-	printf("\t Case ID:%d case name:%s\n\r", 29337,
-	"PCIe USB controller message control_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29290,
 	"PCIe Ethernet controller message control_001");
 	printf("\t Case ID:%d case name:%s\n\r", 29291,
@@ -2554,7 +2528,6 @@ int main()
 	device_passthrough_rqmid_29312_PCIe_USB_controller_physical_BAR_read_only_bits_field_001();
 	device_passthrough_rqmid_29519_PCIe_USB_controller_BAR_001();
 	device_passthrough_rqmid_29285_PCIe_Ethernet_controller_BAR_001();
-	device_passthrough_rqmid_29337_PCIe_USB_controller_message_control_001();
 	device_passthrough_rqmid_29290_PCIe_Ethernet_controller_message_control_001();
 	device_passthrough_rqmid_29291_PCIe_Ethernet_controller_message_control_002();
 	device_passthrough_rqmid_29339_PCIe_USB_controller_interrupt_pin_001();
