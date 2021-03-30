@@ -1289,7 +1289,7 @@ static void MCA_rqmid_37648_expose_MC_common_MSRs_001()
 	}
 
 	val = 0;
-	if ((wrmsr_checking(MSR_IA32_P5_MC_ADDR, val) != GP_VECTOR) || (exception_error_code() != 0)) {
+	if ((wrmsr_checking(MSR_IA32_P5_MC_ADDR, val) == GP_VECTOR) || (exception_error_code() != 0)) {
 		report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
 		return;
 	}
@@ -1307,7 +1307,7 @@ static void MCA_rqmid_37648_expose_MC_common_MSRs_001()
 	}
 
 	val = 0;
-	if ((wrmsr_checking(MSR_IA32_P5_MC_TYPE, val) != GP_VECTOR) || (exception_error_code() != 0)) {
+	if ((wrmsr_checking(MSR_IA32_P5_MC_TYPE, val) == GP_VECTOR) || (exception_error_code() != 0)) {
 		report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
 		return;
 	}
