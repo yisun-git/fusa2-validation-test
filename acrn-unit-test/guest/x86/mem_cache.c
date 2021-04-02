@@ -23,6 +23,107 @@
 #include "memory_type.h"
 #include "debug_print.h"
 #include "pci_util.h"
+#include "delay.h"
+#include "mem_cache.h"
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_cr0_cd_init_value()
+{
+	/*this function will change cd to 0*/
+	mem_cache_reflush_cache();
+}
+
+__unused static void modify_cr0_nw_init_value()
+{
+	/*this function will change nw to 0*/
+	mem_cache_reflush_cache();
+}
+
+
+__unused static void modify_cr3_pcd_init_value()
+{
+	write_cr3(read_cr3() | (1ul << CR3_BIT_PCD));
+}
+
+__unused static void modify_cr3_pwt_init_value()
+{
+	write_cr3(read_cr3() | (1ul << CR3_BIT_PWT));
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 23241:
+		fp = modify_cr0_cd_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 36850:
+		fp = modify_cr0_nw_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 36869:
+		fp = modify_cr3_pcd_init_value;
+		ap_init_value_process(fp);
+	case 36853:
+		fp = modify_cr3_pwt_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
+
 
 #ifdef IN_NATIVE
 #define CACHE_IN_NATIVE
@@ -759,11 +860,25 @@ void __unused cache_rqmid_23241_cr0_cd_init(void)
 {
 	volatile u32 ap_cr0 = 0;
 	volatile u32 *ptr;
+	bool is_pass = true;
 
-	ptr = (volatile u32 *)0x8000;
+	ptr = (volatile u32 *)INIT_CR0_ADDR;
+	ap_cr0 = *ptr;
+	if ((ap_cr0 & (1ul << CR0_BIT_CD)) == 0) {
+		printf("(%s):%d\n", __FUNCTION__, __LINE__);
+		is_pass = false;
+	}
+	notify_ap_modify_and_read_init_value(23241);
+
+	ptr = (volatile u32 *)INIT_CR0_ADDR;
 	ap_cr0 = *ptr;
 
-	report("%s", (ap_cr0 & (1<<30)), __FUNCTION__);
+	if ((ap_cr0 & (1ul << CR0_BIT_CD)) == 0) {
+		printf("(%s):%d\n", __FUNCTION__, __LINE__);
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -801,23 +916,59 @@ void cache_rqmid_36852_cr0_cd_startup(void)
 
 void cache_rqmid_36850_cr0_nw_init(void)
 {
-	volatile u32 cr0 = *(volatile u32 *)0x8000;
+	volatile u32 cr0 = *(volatile u32 *)INIT_CR0_ADDR;
+	bool is_pass = true;
 
-	report("%s", (cr0 & (1 << 29)), __FUNCTION__);
+	if ((cr0 & (1ul << CR0_BIT_NW)) == 0) {
+		is_pass = false;
+	}
+
+	notify_ap_modify_and_read_init_value(36850);
+
+	cr0 = *(volatile u32 *)INIT_CR0_ADDR;
+	if ((cr0 & (1ul << CR0_BIT_NW)) == 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 void cache_rqmid_36869_cr3_pcd_init(void)
 {
-	volatile u32 cr3 = *(volatile u32 *)(0x8000 + 0x4);
+	volatile u32 cr3 = *(volatile u32 *)INIT_CR3_ADDR;
+	bool is_pass = true;
 
-	report("%s", ~(cr3 & (1 << 4)), __FUNCTION__);
+	if ((cr3 & (1ul << CR3_BIT_PCD))) {
+		is_pass = false;
+	}
+
+	notify_ap_modify_and_read_init_value(36869);
+	cr3 = *(volatile u32 *)INIT_CR3_ADDR;
+
+	if ((cr3 & (1ul << CR3_BIT_PCD))) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 void cache_rqmid_36853_cr3_pwt_init(void)
 {
-	volatile u32 cr3 = *(volatile u32 *)(0x8000 + 0x4);
+	volatile u32 cr3 = *(volatile u32 *)INIT_CR3_ADDR;
+	bool is_pass = true;
 
-	report("%s", ~(cr3 & (1 << 3)), __FUNCTION__);
+	if ((cr3 & (1 << CR3_BIT_PWT))) {
+		is_pass = false;
+	}
+
+	notify_ap_modify_and_read_init_value(36853);
+	cr3 = *(volatile u32 *)INIT_CR3_ADDR;
+
+	if ((cr3 & (1 << CR3_BIT_PWT))) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 void cache_rqmid_36854_cr3_pcd_startup(void)
@@ -945,5 +1096,6 @@ int main(int ac, char **av)
 	free(cache_test_array);
 	cache_test_array = NULL;
 	return report_summary();
+
 }
 
