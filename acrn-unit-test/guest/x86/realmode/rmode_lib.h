@@ -59,6 +59,11 @@ struct excp_regs {
 	u16 rflags;
 };
 
+struct idt_descr {
+	u16 limit;
+	u32 base_addr;
+} __attribute__((packed));
+
 typedef void (*handler)(struct excp_regs *regs);
 void *memset(void *s, int c, u32 n);
 void *memcpy(void *dest, const void *src, size_t n);
@@ -189,5 +194,21 @@ static inline struct cpuid cpuid_indexed(u32 function, u32 index)
 static inline struct cpuid cpuid(u32 function)
 {
 	return cpuid_indexed(function, 0);
+}
+
+static inline void set_idt_limit(u16 idt_limit)
+{
+	u16 limit = ((idt_limit > 256) ? 256 : idt_limit);
+
+	struct idt_descr desc = {
+		.limit = (limit << 2),
+		.base_addr = 0
+	};
+
+	asm volatile("lidt %0\n"
+		:
+		: "m"(desc)
+		: "memory"
+		);
 }
 #endif

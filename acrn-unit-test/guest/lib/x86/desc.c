@@ -3,13 +3,13 @@
 #include "processor.h"
 #include <setjmp.h>
 
-void set_idt_entry(int vec, void *addr, int dpl)
+void set_idt_entry_ex(int vec, void *addr, u16 selector, int dpl, int ist)
 {
 	idt_entry_t *e = &boot_idt[vec];
 	memset(e, 0, sizeof *e);
 	e->offset0 = (unsigned long)addr;
-	e->selector = read_cs();
-	e->ist = 0;
+	e->selector = selector;
+	e->ist = ist;
 	e->type = 14;
 	e->dpl = dpl;
 	e->p = 1;
@@ -17,6 +17,16 @@ void set_idt_entry(int vec, void *addr, int dpl)
 #ifdef __x86_64__
 	e->offset2 = (unsigned long)addr >> 32;
 #endif
+}
+
+void set_idt_entry_ist(int vec, void *addr, int dpl, int ist)
+{
+	set_idt_entry_ex(vec, addr, read_cs(), dpl, ist);
+}
+
+void set_idt_entry(int vec, void *addr, int dpl)
+{
+	set_idt_entry_ex(vec, addr, read_cs(), dpl, 0);
 }
 
 void set_idt_dpl(int vec, u16 dpl)

@@ -78,7 +78,7 @@
 #define V8086_ESP_ADDR    (shared_data + 0x30)
 #define TEMP_VALUE_ADDR   (shared_data + 0x34)
 
-#define PAGE_FAULT_ADDR	  0xf000
+#define PAGE_FAULT_ADDR	  0x3000
 #define INVALID_CASE_ID   0xffff
 #define MAGIC_DWORD       0xfeedbabe
 #define MAGIC_WORD        0xcafe
