@@ -19,6 +19,8 @@
 #include "fwcfg.h"
 #include "local_apic.h"
 #include "misc.h"
+#include "delay.h"
+
 /* common code */
 #define LAPIC_REG_MASK  0x0FFFFFFFFUL
 #define APIC_RESET_BASE 0xfee00000
@@ -135,6 +137,191 @@
 
 #define LAPIC_TEST_INVALID_MAX_VEC 15UL
 #define APIC_DM_RESERVED 0x600
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+__unused static void modify_apic_cr8_init_value()
+{
+	write_cr8(0x1);
+}
+
+__unused static void modify_apic_cmci_init_value()
+{
+	apic_write(APIC_CMCI, 0);
+}
+
+__unused static void modify_apic_lint0_init_value()
+{
+	apic_write(APIC_LVT0, 0);
+}
+
+__unused static void modify_apic_lint1_init_value()
+{
+	apic_write(APIC_LVT1, 0);
+}
+
+__unused static void modify_apic_lvterr_init_value()
+{
+	apic_write(APIC_LVTERR, 0);
+}
+
+__unused static void modify_apic_lvtthmr_init_value()
+{
+	apic_write(APIC_LVTTHMR, 0);
+}
+
+__unused static void modify_apic_lvtpc_init_value()
+{
+	apic_write(APIC_LVTPC, 0);
+}
+
+__unused static void modify_apic_lvttimer_init_value()
+{
+	apic_write(APIC_LVTT, 0);
+}
+
+__unused static void modify_apic_spiv_init_value()
+{
+	apic_write(APIC_SPIV, 0);
+}
+
+__unused static void modify_apic_icr_init_value()
+{
+	apic_write(APIC_ICR, 0xF);
+}
+
+__unused static void modify_apic_tpr_init_value()
+{
+	apic_write(APIC_TASKPRI, LAPIC_TPR_MAX);
+}
+
+__unused static void modify_apic_tmict_init_value()
+{
+	apic_write(APIC_TMICT, 0xF);
+}
+
+__unused static void modify_apic_tdcr_init_value()
+{
+	/* Divider == 1 */
+	apic_write(APIC_TDCR, 0x0000000b);
+}
+
+__unused static void modify_apic_tscdeadline_init_value()
+{
+	wrmsr(MSR_IA32_TSCDEADLINE, 0xF);
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 38686:
+		fp = modify_apic_cmci_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38687:
+		fp = modify_apic_lint0_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38688:
+		fp = modify_apic_lint1_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38691:
+		fp = modify_apic_lvterr_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38692:
+		fp = modify_apic_lvtthmr_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38693:
+		fp = modify_apic_lvtpc_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38694:
+		fp = modify_apic_lvttimer_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38698:
+		fp = modify_apic_spiv_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38699:
+		fp = modify_apic_icr_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38700:
+		fp = modify_apic_tpr_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38707:
+		fp = modify_apic_cr8_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38708:
+		fp = modify_apic_tmict_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38710:
+		fp = modify_apic_tdcr_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 38711:
+		fp = modify_apic_tscdeadline_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
 
 void sleep(u64 ticks)
 {
@@ -1752,9 +1939,21 @@ void local_apic_rqmid_27681_apic_base_field_state_of_ap_following_init_001(void)
  */
 void local_apic_rqmid_38686_LVT_CMCI_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)LVT_CMCI_INIT_ADDR;
 
-	report("%s", *init_addr == 0x00010000U, __FUNCTION__);
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(38686);
+	init_addr = (u32 *)LVT_CMCI_INIT_ADDR;
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+		printf("%d: init_addr=%d\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name LVT LINT0  state of following INIT
@@ -1769,9 +1968,20 @@ void local_apic_rqmid_38686_LVT_CMCI_state_of_following_init(void)
  */
 void local_apic_rqmid_38687_LVT_LINT0_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)LINT0_INIT_ADDR;
 
-	report("%s", *init_addr == 0x00010000U, __FUNCTION__);
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(38687);
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+		printf("%d: init_addr=%d\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name LVT LINT0  state of following INIT
@@ -1786,9 +1996,21 @@ void local_apic_rqmid_38687_LVT_LINT0_state_of_following_init(void)
  */
 void local_apic_rqmid_38688_LVT_LINT1_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)LINT1_INIT_ADDR;
 
-	report("%s", *init_addr == 0x00010000U, __FUNCTION__);
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(38688);
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+		printf("%d: init_addr=%d\n", __LINE__, *init_addr);
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name LVT Error register  state of following INIT
@@ -1803,9 +2025,20 @@ void local_apic_rqmid_38688_LVT_LINT1_state_of_following_init(void)
  */
 void local_apic_rqmid_38691_LVT_ERROR_register_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)LVT_ERROR_INIT_ADDR;
 
-	report("%s", *init_addr == 0x00010000U, __FUNCTION__);
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(38691);
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+		printf("%d: init_addr=%d\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name  LVT Thermal Monitor  state of following INIT
@@ -1820,9 +2053,20 @@ void local_apic_rqmid_38691_LVT_ERROR_register_state_of_following_init(void)
  */
 void local_apic_rqmid_38692_LVT_Thermal_Monitor_register_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)LVTTHMR_INIT_ADDR;
 
-	report("%s", *init_addr == 0x00010000U, __FUNCTION__);
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(38692);
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+		printf("%d: init_addr=%d\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name
@@ -1838,8 +2082,20 @@ void local_apic_rqmid_38692_LVT_Thermal_Monitor_register_state_of_following_init
  */
 void local_apic_rqmid_38693_LVT_Performance_Counter_register_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)LVTPC_INIT_ADDR;
-	report("%s", *init_addr == 0x00010000U, __FUNCTION__);
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(38693);
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+		printf("%d: init_addr=%d\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name
@@ -1855,9 +2111,20 @@ void local_apic_rqmid_38693_LVT_Performance_Counter_register_state_of_following_
  */
 void local_apic_rqmid_38694_LVT_timer_register_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)LVT_TIMER_INIT_ADDR;
 
-	report("%s", *init_addr == 0x00010000U, __FUNCTION__);
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(38694);
+
+	if (*init_addr != 0x00010000U) {
+		is_pass = false;
+		printf("%d: init_addr=%d\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name
@@ -1891,9 +2158,20 @@ void local_apic_rqmid_38697_ESR_state_of_following_init(void)
  */
 void local_apic_rqmid_38698_SVR_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)SVR_INIT_ADDR;
 
-	report("%s", *init_addr == 0x0FFU, __FUNCTION__);
+	if (*init_addr != 0x0FFU) {
+		is_pass = false;
+		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38698);
+	if (*init_addr != 0x0FFU) {
+		is_pass = false;
+		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name
@@ -1909,9 +2187,20 @@ void local_apic_rqmid_38698_SVR_state_of_following_init(void)
  */
 void local_apic_rqmid_38699_ICR_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)ICR_INIT_ADDR;
 
-	report("%s", *init_addr == 0x0U, __FUNCTION__);
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38699);
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name
@@ -1927,9 +2216,21 @@ void local_apic_rqmid_38699_ICR_state_of_following_init(void)
  */
 void local_apic_rqmid_38700_TPR_state_of_following_init(void)
 {
+	bool is_pass = true;
 	volatile u32 *init_addr = (u32 *)TPR_INIT_ADDR;
 
-	report("%s", *init_addr == 0x0U, __FUNCTION__);
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: TPR=0x%x\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38700);
+
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: TPR=0x%x\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 /**
  * @brief case name
@@ -2017,9 +2318,22 @@ void local_apic_rqmid_38706_TMR_state_of_following_init(void)
  */
 void local_apic_rqmid_38707_CR8_state_of_following_init(void)
 {
-	volatile ulong *init_addr = (ulong *)CR8_INIT_ADDR;
+	volatile ulong *init_addr = (volatile ulong *)CR8_INIT_ADDR;
+	bool is_pass = true;
 
-	report("%s", *init_addr == 0x0U, __FUNCTION__);
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: cr8=0x%lx\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38707);
+
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: cr8=0x%lx\n", __LINE__, *init_addr);
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -2036,9 +2350,21 @@ void local_apic_rqmid_38707_CR8_state_of_following_init(void)
  */
 void local_apic_rqmid_38708_timer_initial_count_state_of_following_init(void)
 {
-	volatile u32 *init_addr = (u32 *)TICR_INIT_ADDR;
+	bool is_pass = true;
+	volatile u32 *init_addr = (volatile u32 *)TICR_INIT_ADDR;
 
-	report("%s", *init_addr == 0x0U, __FUNCTION__);
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: TICR_INIT=0x%x\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38708);
+
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: TICR_INIT=0x%x\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -2074,9 +2400,21 @@ void local_apic_rqmid_38709_timer_current_count_state_of_following_init(void)
  */
 void local_apic_rqmid_38710_DCR_state_of_following_init(void)
 {
-	volatile u32 *init_addr = (u32 *)TDCR_INIT_ADDR;
+	bool is_pass = true;
+	volatile u32 *init_addr = (volatile u32 *)TDCR_INIT_ADDR;
 
-	report("%s", *init_addr == 0x0U, __FUNCTION__);
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: DCR=0x%x\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38710);
+
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: DCR=0x%x\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -2093,9 +2431,21 @@ void local_apic_rqmid_38710_DCR_state_of_following_init(void)
  */
 void local_apic_rqmid_38711_IA32_TSC_DEADLINE_state_of_following_init(void)
 {
-	volatile u32 *init_addr = (u32 *)IA32_TSC_DEADLINE_INIT_ADDR;
+	bool is_pass = true;
+	volatile u32 *init_addr = (volatile u32 *)IA32_TSC_DEADLINE_INIT_ADDR;
 
-	report("%s", *init_addr == 0x0U, __FUNCTION__);
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: tsc_deadline=0x%x\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38711);
+
+	if (*init_addr != 0x0U) {
+		is_pass = false;
+		printf("%d: tsc_deadline=0x%x\n", __LINE__, *init_addr);
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -2112,9 +2462,23 @@ void local_apic_rqmid_38711_IA32_TSC_DEADLINE_state_of_following_init(void)
  */
 void local_apic_rqmid_38713_IA32_APIC_BASE_state_of_following_init(void)
 {
-	volatile u32 *init_addr = (u32 *)IA32_APIC_BASE_INIT_ADDR;
 
-	report("%s", *init_addr == 0xfee00c00U, __FUNCTION__);
+	volatile u32 *init_addr = (volatile u32 *)IA32_APIC_BASE_INIT_ADDR;
+	bool is_pass = true;
+
+	if (*init_addr != 0xfee00c00U) {
+		is_pass = false;
+		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
+	}
+
+	notify_modify_and_read_init_value(38713);
+	if (*init_addr != 0xfee00c00U) {
+		is_pass = false;
+		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
+	}
+
+	report("%s", is_pass, __FUNCTION__);
+
 }
 
 #endif

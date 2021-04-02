@@ -119,10 +119,20 @@ static void paging_rqmid_32346_check_linear_address_width()
  */
 static void paging_rqmid_32265_ia32_efer_nxe_init()
 {
-	volatile u32 *ptr = (volatile u32 *)INIT_IA32_EFER_LOW_ADDR;
-	u64 ia32_init = *ptr + ((u64)(*(ptr + 1)) << 32);
+	bool is_pass = true;
+	volatile u64 ia32_init = *(volatile u64 *)INIT_IA32_EFER_LOW_ADDR;
 
-	report("%s", (ia32_init & X86_IA32_EFER_NXE) == 0, __FUNCTION__);
+	if ((ia32_init & X86_IA32_EFER_NXE) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32265);
+	ia32_init = *(volatile u64 *)INIT_IA32_EFER_LOW_ADDR;
+	if ((ia32_init & X86_IA32_EFER_NXE) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -132,9 +142,21 @@ static void paging_rqmid_32265_ia32_efer_nxe_init()
  */
 static void paging_rqmid_32270_eflags_ac_init()
 {
+	bool is_pass = true;
+
 	volatile u32 eflags_ac_init = *((volatile u32 *)INIT_EFLAGS_ADDR);
 
-	report("%s", (eflags_ac_init & X86_EFLAGS_AC) == 0, __FUNCTION__);
+	if ((eflags_ac_init & X86_EFLAGS_AC) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32270);
+	eflags_ac_init = *((volatile u32 *)INIT_EFLAGS_ADDR);
+	if ((eflags_ac_init & X86_EFLAGS_AC) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -144,9 +166,21 @@ static void paging_rqmid_32270_eflags_ac_init()
  */
 static void paging_rqmid_32272_cr4_smep_init()
 {
+	bool is_pass = true;
 	u32 cr4 = get_init_cr4();
 
-	report("%s", (cr4 & X86_CR4_SMEP) == 0, __FUNCTION__);
+	if ((cr4 & X86_CR4_SMEP) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32272);
+
+	cr4 = get_init_cr4();
+	if ((cr4 & X86_CR4_SMEP) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -156,9 +190,21 @@ static void paging_rqmid_32272_cr4_smep_init()
  */
 static void paging_rqmid_32274_cr4_smap_init()
 {
+	bool is_pass = true;
 	u32 cr4 = get_init_cr4();
 
-	report("%s", (cr4 & X86_CR4_SMAP) == 0, __FUNCTION__);
+	if ((cr4 & X86_CR4_SMAP) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32274);
+
+	cr4 = get_init_cr4();
+	if ((cr4 & X86_CR4_SMAP) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -168,9 +214,20 @@ static void paging_rqmid_32274_cr4_smap_init()
  */
 static void paging_rqmid_32276_cr4_pse_init()
 {
+	bool is_pass = true;
 	u32 cr4 = get_init_cr4();
 
-	report("%s", (cr4 & X86_CR4_PSE) == 0, __FUNCTION__);
+	if ((cr4 & X86_CR4_PSE) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32276);
+
+	cr4 = get_init_cr4();
+	if ((cr4 & X86_CR4_PSE) != 0) {
+		is_pass = false;
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -192,9 +249,20 @@ static void paging_rqmid_32278_cr4_pke_init()
  */
 static void paging_rqmid_32280_cr4_pge_init()
 {
+	bool is_pass = true;
 	u32 cr4 = get_init_cr4();
 
-	report("%s", (cr4 & X86_CR4_PGE) == 0, __FUNCTION__);
+	if ((cr4 & X86_CR4_PGE) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32280);
+
+	cr4 = get_init_cr4();
+	if ((cr4 & X86_CR4_PGE) != 0) {
+		is_pass = false;
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -204,9 +272,20 @@ static void paging_rqmid_32280_cr4_pge_init()
  */
 static void paging_rqmid_32297_cr4_pae_init()
 {
+	bool is_pass = true;
 	u32 cr4 = get_init_cr4();
 
-	report("%s", (cr4 & X86_CR4_PAE) == 0, __FUNCTION__);
+	if ((cr4 & X86_CR4_PAE) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32297);
+
+	cr4 = get_init_cr4();
+	if ((cr4 & X86_CR4_PAE) != 0) {
+		is_pass = false;
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -228,9 +307,18 @@ static void paging_rqmid_32290_cr4_pcide_init()
  */
 static void paging_rqmid_32304_cr0_wp_init()
 {
+	bool is_pass = true;
 	u32 cr0 = get_init_cr0();
 
-	report("%s", (cr0 & X86_CR0_WP) == 0, __FUNCTION__);
+	if ((cr0 & X86_CR0_WP) != 0) {
+		is_pass = false;
+	}
+	notify_modify_and_read_init_value(32304);
+	cr0 = get_init_cr0();
+	if ((cr0 & X86_CR0_WP) != 0) {
+		is_pass = false;
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -240,9 +328,18 @@ static void paging_rqmid_32304_cr0_wp_init()
  */
 static void paging_rqmid_32306_cr0_pg_init()
 {
+	bool is_pass = true;
 	u32 cr0 = get_init_cr0();
 
-	report("%s", (cr0 & X86_CR0_PG) == 0, __FUNCTION__);
+	if ((cr0 & X86_CR0_PG) != 0) {
+		is_pass = false;
+	}
+	notify_modify_and_read_init_value(32306);
+	cr0 = get_init_cr0();
+	if ((cr0 & X86_CR0_PG) != 0) {
+		is_pass = false;
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -252,9 +349,21 @@ static void paging_rqmid_32306_cr0_pg_init()
  */
 static void paging_rqmid_32302_cr2_init()
 {
+	bool is_pass = true;
 	volatile u32 cr2 = *((volatile u32 *)INIT_CR2_ADDR);
 
-	report("%s", (cr2 == 0), __FUNCTION__);
+	if (cr2 != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32306);
+
+	cr2 = *((volatile u32 *)INIT_CR2_ADDR);
+	if (cr2 != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -268,12 +377,29 @@ static void paging_rqmid_32300_cr3_init()
 	volatile u64 cr3_64bit;
 	u64 cr3_h = 0;
 	u64 cr3;
+	bool is_pass = true;
 
 	cr3_l = *((volatile u32 *)INIT_CR3_ADDR);
 	cr3_64bit = *((volatile u64 *)INIT_64BIT_CR3_ADDR);
 	cr3_h = cr3_64bit >> 32;
 	cr3 = (cr3_h << 32) | cr3_l;
-	report("%s", ((cr3 & (~(0xfffull))) == 0), __FUNCTION__);
+
+	if ((cr3 & (~(0xfffull))) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32300);
+
+	cr3_l = *((volatile u32 *)INIT_CR3_ADDR);
+	cr3_64bit = *((volatile u64 *)INIT_64BIT_CR3_ADDR);
+	cr3_h = cr3_64bit >> 32;
+	cr3 = (cr3_h << 32) | cr3_l;
+
+	if ((cr3 & (~(0xfffull))) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 #endif
 
