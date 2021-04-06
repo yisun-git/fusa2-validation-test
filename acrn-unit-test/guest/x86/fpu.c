@@ -13,6 +13,7 @@
 #include "fwcfg.h"
 #include "smp.h"
 #include "xsave.h"
+#include "delay.h"
 
 #define get_bit(x, n)  (((x) >> (n)) & 1)
 #define CR0_NE_BIT		(1<<5)
@@ -123,6 +124,213 @@ void save_unchanged_reg(void)
 
 #endif
 
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+__unused static void modify_fpu_data_operand_and_inst_pointers()
+{
+	struct fxsave_struct *fpu_xsave;
+	ulong cr4;
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));//set OSFXSR
+	fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+
+	fpu_xsave->fdp = 1;
+	fpu_xsave->fip = 1;
+
+	/*new value restore to fpu*/
+	asm volatile("fxrstor %0" : : "m"(*fpu_xsave));
+	write_cr4(cr4);
+}
+
+__unused static void modify_cr0_ne_bit()
+{
+	write_cr0(read_cr0() & (~CR0_NE_BIT));
+}
+
+__unused static void modify_cr0_mp_bit()
+{
+	write_cr0(read_cr0() | (1L << CR0_BIT_MP));
+}
+
+__unused static void modify_cr0_em_bit()
+{
+	write_cr0(read_cr0() | (1L << CR0_BIT_EM));
+}
+
+__unused static void modify_fpu_tag_word_states()
+{
+	struct fxsave_struct *fpu_xsave;
+	ulong cr4;
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));//set OSFXSR
+	fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+
+	fpu_xsave->ftw = 0xFF;
+
+	/*new value restore to fpu*/
+	asm volatile("fxrstor %0" : : "m"(*fpu_xsave));
+	write_cr4(cr4);
+}
+
+__unused static void modify_fpu_status_word_states()
+{
+	struct fxsave_struct *fpu_xsave;
+	ulong cr4;
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));//set OSFXSR
+	fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+
+	fpu_xsave->fsw = 0x5555;
+
+	/*new value restore to fpu*/
+	asm volatile("fxrstor %0" : : "m"(*fpu_xsave));
+	write_cr4(cr4);
+}
+
+__unused static void modify_fpu_control_word_states()
+{
+	struct fxsave_struct *fpu_xsave;
+	ulong cr4;
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));//set OSFXSR
+
+	fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+	fpu_xsave->fcw = 0x370;
+
+	/*new value restore to fpu*/
+	asm volatile("fxrstor %0" : : "m"(*fpu_xsave));
+	write_cr4(cr4);
+}
+
+__unused static void modify_fpu_data_operand_and_cs_seg_state()
+{
+	volatile fxsave_t *fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+	ulong cr4;
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));//set OSFXSR
+	asm volatile("fxsave %0" : "=m"(*fpu_xsave));
+	fpu_xsave->fdp = 0xff;
+	fpu_xsave->fcs = 0xff00;
+
+	/*new value restore to fpu*/
+	asm volatile("fxrstor %0" : : "m"(*fpu_xsave));
+	write_cr4(cr4);
+}
+
+__unused static void modify_FPU_opcode_register_state()
+{
+	volatile fxsave_t *fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+	ulong cr4;
+
+	cr4 = read_cr4();
+	write_cr4(cr4 | (1<<9));//set OSFXSR
+	asm volatile("fxsave %0" : "=m"(*fpu_xsave));
+	fpu_xsave->fop = 0x55;
+
+	/*new value restore to fpu*/
+	asm volatile("fxrstor %0" : : "m"(*fpu_xsave));
+	write_cr4(cr4);
+}
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 32361:
+		fp = modify_fpu_data_operand_and_inst_pointers;
+		ap_init_value_process(fp);
+		break;
+	case 32380:
+		fp = modify_cr0_ne_bit;
+		ap_init_value_process(fp);
+		break;
+	case 32382:
+		fp = modify_cr0_mp_bit;
+		ap_init_value_process(fp);
+		break;
+	case 32384:
+		fp = modify_cr0_em_bit;
+		ap_init_value_process(fp);
+		break;
+	case 32357:
+		fp = modify_fpu_tag_word_states;
+		ap_init_value_process(fp);
+		break;
+	case 32359:
+		fp = modify_fpu_status_word_states;
+		ap_init_value_process(fp);
+		break;
+	case 32364:
+		fp = modify_fpu_control_word_states;
+		ap_init_value_process(fp);
+		break;
+	case 39119:
+		fp = modify_fpu_data_operand_and_cs_seg_state;
+		ap_init_value_process(fp);
+		break;
+	case 46062:
+		fp = modify_FPU_opcode_register_state;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+
+#endif
 
 #ifdef IN_NATIVE
 /*
@@ -463,15 +671,22 @@ static void fpu_rqmid_31656_execution_environment_protected_mode_FADD_pf_001()
 static void fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_following_INIT_001()
 {
 	struct fxsave_struct *fpu_save;
+	bool is_pass = true;
 
 	fpu_save = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
-	if (((fpu_save->fip & 0xffffU) == 0) && (fpu_save->fcs == 0)
-		&& ((fpu_save->fdp & 0xffffU) == 0) && (fpu_save->fds == 0)) {
 
-		report("%s", 1, __FUNCTION__);
-	} else {
-		report("%s", 0, __FUNCTION__);
+	if (!(((fpu_save->fip & 0xffffU) == 0) && ((fpu_save->fdp & 0xffffU) == 0))) {
+		is_pass = false;
 	}
+
+	notify_modify_and_read_init_value(32361);
+
+	if (!(((fpu_save->fip & 0xffffU) == 0) && ((fpu_save->fdp & 0xffffU) == 0))) {
+		is_pass = false;
+		printf("[%d]:fpu_save->fip:%x fpu_save->fdp:%x\n", __LINE__, fpu_save->fip, fpu_save->fdp);
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 /*
  * @brief case name: st0 through st7 states following INIT_002
@@ -547,7 +762,18 @@ static void fpu_rqmid_32366_st0_through_st7_states_following_INIT_001()
 
 static void fpu_rqmid_32380_CR0_NE_state_following_INIT_001()
 {
-	report("%s", ((*(u32 *)INIT_CR0_REG_ADDR >> 5) & 0x1) == 1, __FUNCTION__);
+	bool is_pass = true;
+	if (((*(u32 *)INIT_CR0_REG_ADDR >> 5) & 0x1) != 1) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32380);
+
+	if (((*(u32 *)INIT_CR0_REG_ADDR >> 5) & 0x1) != 1) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 
@@ -563,7 +789,18 @@ static void fpu_rqmid_32380_CR0_NE_state_following_INIT_001()
 
 static void fpu_rqmid_32382_CR0_MP_state_following_INIT_001()
 {
-	report("%s", (*(u32 *)INIT_CR0_REG_ADDR & 0x2) == 0, __FUNCTION__);
+	bool is_pass = true;
+	if ((*(u32 *)INIT_CR0_REG_ADDR & 0x2) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32382);
+
+	if ((*(u32 *)INIT_CR0_REG_ADDR & 0x2) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /*
@@ -578,7 +815,18 @@ static void fpu_rqmid_32382_CR0_MP_state_following_INIT_001()
 
 static void fpu_rqmid_32384_CR0_EM_state_following_INIT_001()
 {
-	report("%s", ((*(u32 *)INIT_CR0_REG_ADDR >> 2) & 0x1) == 0, __FUNCTION__);
+	bool is_pass = true;
+	if (((*(u32 *)INIT_CR0_REG_ADDR >> 2) & 0x1) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32384);
+
+	if (((*(u32 *)INIT_CR0_REG_ADDR >> 2) & 0x1) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /*
@@ -590,7 +838,21 @@ static void fpu_rqmid_32384_CR0_EM_state_following_INIT_001()
 
 static void fpu_rqmid_32359_Status_Word_states_following_INIT_001()
 {
-	report("%s", *(u16 *)INIT_FPU_SWS_ADDR == 0, __FUNCTION__);
+	bool is_pass = true;
+
+	if (*(u16 *)INIT_FPU_SWS_ADDR != 0) {
+		printf("line:%d fsw=0x%x\n", __LINE__, *(u16 *)INIT_FPU_SWS_ADDR);
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32359);
+
+	if (*(u16 *)INIT_FPU_SWS_ADDR != 0) {
+		printf("line:%d fsw=0x%x\n", __LINE__, *(u16 *)INIT_FPU_SWS_ADDR);
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /*
@@ -603,15 +865,23 @@ static void fpu_rqmid_32359_Status_Word_states_following_INIT_001()
 static void fpu_rqmid_32357_Tag_Word_states_following_INIT_001()
 {
 	struct fsave_16bit_struct *fpu_save;/*fsave area ,pls refer to sdm vol1 8.1.10*/
-#if 0
-	struct fxsave_struct *fpu_xsave;
-	fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
-	printf("fpu_xsave->ftw=%x\n", fpu_xsave->ftw);
-#endif
+	bool is_pass = true;
 
 	fpu_save = (struct fsave_16bit_struct *)INIT_FPU_FSAVE_ADDR;
-	printf("fpu_save->ftw=%x\n", fpu_save->ftw);
-	report("%s", fpu_save->ftw == 0xFFFF, __FUNCTION__);
+
+	if (fpu_save->ftw != 0xFFFF) {
+		printf("line:%d ftw=0x%x\n", __LINE__, fpu_save->ftw);
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32357);
+
+	if (fpu_save->ftw != 0xFFFF) {
+		printf("line:%d ftw=0x%x\n", __LINE__, fpu_save->ftw);
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /*
@@ -626,8 +896,20 @@ static void fpu_rqmid_32357_Tag_Word_states_following_INIT_001()
 
 static void fpu_rqmid_32364_Control_Word_states_following_INIT_001()
 {
-	printf("init Control Word 0x%x\n", *(u16 *)INIT_FPU_CWS_ADDR);
-	report("%s", *(u16 *)INIT_FPU_CWS_ADDR == 0x37F, __FUNCTION__);
+	bool is_pass = true;
+	if (*(u16 *)INIT_FPU_CWS_ADDR != 0x37F) {
+		printf("line:%d fcw=%x\n", __LINE__, *(u16 *)INIT_FPU_CWS_ADDR);
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(32364);
+
+	if (*(u16 *)INIT_FPU_CWS_ADDR != 0x37F) {
+		printf("line:%d fcw=%x\n", __LINE__, *(u16 *)INIT_FPU_CWS_ADDR);
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /*
@@ -643,12 +925,56 @@ static void fpu_rqmid_32364_Control_Word_states_following_INIT_001()
  */
 static void fpu_rqmid_39119_fpu_data_operand_and_cs_seg_state_following_init_001()
 {
-
+	bool is_pass = true;
 	struct fxsave_struct *fpu_save = NULL;
 
 	fpu_save = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
-	report("%s", (fpu_save->fdp == 0x0) && ((fpu_save->fcs & 0xFFFF) == 0), __FUNCTION__);
+
+	if (!((fpu_save->fdp == 0x0) && ((fpu_save->fcs & 0xFFFF) == 0))) {
+		is_pass = false;
+		printf("line:%d fdp=%x fcs=%x\n", __LINE__, fpu_save->fdp, fpu_save->fcs);
+	}
+
+	notify_modify_and_read_init_value(39119);
+	fpu_save = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+
+	if (!((fpu_save->fdp == 0x0) && ((fpu_save->fcs & 0xFFFF) == 0))) {
+		is_pass = false;
+		printf("line:%d fdp=%x fcs=%x\n", __LINE__, fpu_save->fdp, fpu_save->fcs);
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
+
+/*
+ * @brief case name: Set initial guest x87 FPU opcode register to 0H for virtual AP_001
+ *
+ *Summary:ACRN hypervisor shall set initial guest x87 FPU opcode register to 0H following INIT.
+ */
+static void fpu_rqmid_46062_fpu_data_opcode_register_following_init_001()
+{
+	bool is_pass = true;
+	struct fxsave_struct *fpu_save = NULL;
+
+	fpu_save = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+
+	if (fpu_save->fop != 0) {
+		is_pass = false;
+		printf("line:%d fdp=%x\n", __LINE__, fpu_save->fop);
+	}
+
+	notify_modify_and_read_init_value(46062);
+
+	fpu_save = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+
+	if (fpu_save->fop != 0) {
+		is_pass = false;
+		printf("line:%d fdp=%x\n", __LINE__, fpu_save->fop);
+	}
+
+	report("%s", is_pass, __FUNCTION__);
+}
+
 
 /*
  * @brief case name: fpu execution environment FDISI 001
@@ -1049,6 +1375,8 @@ static void print_case_list(void)
 		   "x87 FPU Control Word states following INIT_001");
 	printf("\t Case ID:%d case name:%s\n\r", 39119,
 		   "x87 FPU Data Operand and CS Seg. Selectors states following INIT_001");
+	printf("\t Case ID:%d case name:%s\n\r", 46062,
+		   "Set initial guest x87 FPU opcode register to 0H for virtual AP_001");
 	printf("\t Case ID:%d case name:%s\n\r", 32385,
 		   "Ignore Changes of CR0.NE_001");
 	printf("\t Case ID:%d case name:%s\n\r", 32377,
@@ -1111,6 +1439,7 @@ int main(void)
 	fpu_rqmid_32359_Status_Word_states_following_INIT_001();
 	fpu_rqmid_32364_Control_Word_states_following_INIT_001();
 	fpu_rqmid_39119_fpu_data_operand_and_cs_seg_state_following_init_001();
+	fpu_rqmid_46062_fpu_data_opcode_register_following_init_001();
 
 	fpu_rqmid_32377_execution_environment_FDISI_001();
 	fpu_rqmid_32378_FPU_capability_enumeration_001();

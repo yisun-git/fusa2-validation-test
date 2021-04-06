@@ -137,3 +137,21 @@ $(TEST_DIR)/local_apic.o: $(TEST_DIR)/local_apic.c
 	@rm -rf $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/fpu.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/fpu.o: $(TEST_DIR)/fpu.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/misc_cpuid.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/misc_cpuid.o: $(TEST_DIR)/misc_cpuid.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/misc_msr.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/misc_msr.o: $(TEST_DIR)/misc_msr.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
