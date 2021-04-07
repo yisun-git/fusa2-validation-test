@@ -14,6 +14,9 @@
 #include "msr.h"
 #include "smp.h"
 #include "vm.h"
+#include "tsc.h"
+#include "fwcfg.h"
+#include "delay.h"
 
 #define CR4_TSD (1 << 2)
 
@@ -38,13 +41,6 @@ static u32 bp_eax_tsc_greg_64;
 static u32 bp_edx_tsc_greg_64;
 static u32 bp_cr4_greg_long;
 extern char sipi_cnt; /*count sipi */
-static u32 ap_eax_tscadj_greg_64;
-static u32 ap_edx_tscadj_greg_64;
-static u32 ap_eax_tscaux_greg_64;
-static u32 ap_edx_tscaux_greg_64;
-static u32 ap_eax_tsc_greg_64;
-static u32 ap_edx_tsc_greg_64;
-static u32 ap_cr4_greg_long;
 
 u64 g_temp_bp_tsc[ARRY_LEN] = {0};
 u32 g_times = 0;
@@ -52,6 +48,109 @@ u32 g_times = 0;
 #define TSC_DEADLINE_TIMER_VECTOR	0xef
 static volatile int tdt_count;
 u64 now_tsc = 0;
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+u64 counter = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_cr4_tsd_init_value()
+{
+	write_cr4(read_cr4() | CR4_TSD);
+}
+
+__unused static void modify_tsc_adj_init_value()
+{
+	wrmsr(MSR_IA32_TSC_ADJUST, TSCADJ_UNCHANGE_NEW_VALUE);
+}
+
+__unused static void modify_tsc_aux_init_value()
+{
+	wrmsr(MSR_TSC_AUX, TSCAUX_UNCHANGE_NEW_VALUE);
+}
+
+__unused static void modify_tsc_init_value()
+{
+	wrmsr(MSR_TSC, TSC_UNCHANGE_NEW_VALUE);
+}
+
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	write_cr4(read_cr4() | X86_CR4_TSD);
+	counter = rdtsc();
+
+	switch (cur_case_id) {
+	case 25226:
+		fp = modify_cr4_tsd_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 45987:
+		fp = modify_tsc_adj_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 45988:
+		fp = modify_tsc_aux_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 45998:
+		fp = modify_tsc_aux_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
+
 
 #ifdef __x86_64__
 static void tsc_deadline_timer_isr(isr_regs_t *regs)
@@ -126,37 +225,6 @@ void read_bp_startup(void)
 		: "=q"(bp_cr4_greg_long));
 }
 
-
-void save_unchanged_reg(void)
-{
-	asm ("mov (0x8008) ,%%eax\n\t"
-		"mov %%eax,%0\n\t"
-		: "=q"(ap_cr4_greg_long));
-
-	asm ("mov (0x8010) ,%%eax\n\t"
-		"mov %%eax,%0\n\t"
-		: "=q"(ap_eax_tscadj_greg_64));
-
-	asm ("mov (0x8018) ,%%eax\n\t"
-		"mov %%eax,%0\n\t"
-		: "=q"(ap_edx_tscadj_greg_64));
-
-	asm ("mov (0x8020) ,%%eax\n\t"
-		"mov %%eax,%0\n\t"
-		: "=q"(ap_eax_tscaux_greg_64));
-
-	asm ("mov (0x8028) ,%%eax\n\t"
-		"mov %%eax,%0\n\t"
-		: "=q"(ap_edx_tscaux_greg_64));
-
-	asm ("mov (0x8030) ,%%eax\n\t"
-		"mov %%eax,%0\n\t"
-		: "=q"(ap_eax_tsc_greg_64));
-
-	asm ("mov (0x8038) ,%%eax\n\t"
-		"mov %%eax,%0\n\t"
-		: "=q"(ap_edx_tsc_greg_64));
-}
 
 /**
  * @brief Case name:Nominal core crystal clock frequency_001
@@ -449,83 +517,124 @@ static void tsc_rqmid_39307_CR4_TSD_startup_value_001(void)
 	report("\t\t%s", (bp_cr4_greg_long & CR4_TSD) == 0x0, __FUNCTION__);
 }
 
+
 /**
  * @brief Case name: CR4.TSD init value_001
  *
  * Summary: To check whether valule of registers changed after INIT or not.
  *
  */
-static void __unused tsc_rqmid_25226_init_unchanged_check(void)
+static void __unused tsc_rqmid_25226_cr4_tsd_init_value()
 {
-	u64 temp_ap_eax_tscadj_greg_64[2] = {0};
-	u64 temp_ap_edx_tscadj_greg_64[2] = {0};
-	u64 temp_ap_eax_tscaux_greg_64[2] = {0};
-	u64 temp_ap_edx_tscaux_greg_64[2] = {0};
-	u64 temp_ap_eax_tsc_greg_64[2] = {0};
-	u64 temp_ap_edx_tsc_greg_64[2] = {0};
+	volatile u32 cr4_init = *((u32 *)INIT_CR4_ADDR);
+	bool is_pass = true;
 
-	u64 temp_ap_tscadj[2] = {0};
-	u64 temp_ap_tscaux[2] = {0};
-	u64 temp_ap_tsc[2] = {0};
+	if ((cr4_init & CR4_TSD) != 0x0) {
+		is_pass = false;
+	}
 
-	//u64 ap_tsc = 0;
-	//u64 result_64 = 0;
+	notify_modify_and_read_init_value(25226);
+	cr4_init = *((u32 *)INIT_CR4_ADDR);
+	if ((cr4_init & CR4_TSD) != 0x0) {
+		is_pass = false;
+	}
 
-	report("\t\t tsc_rqmid_25226_init_unchanged_check,CR4_TSD is initialized to 0x0 following INIT",
-		(ap_cr4_greg_long&CR4_TSD) == 0x0);
-
-	/* save TSC value to buffer */
-	temp_ap_eax_tscadj_greg_64[0] = ap_eax_tscadj_greg_64;
-	temp_ap_edx_tscadj_greg_64[0] = ap_edx_tscadj_greg_64;
-
-	temp_ap_eax_tscaux_greg_64[0] = ap_eax_tscaux_greg_64;
-	temp_ap_edx_tscaux_greg_64[0] = ap_edx_tscaux_greg_64;
-
-	temp_ap_eax_tsc_greg_64[0] = ap_eax_tsc_greg_64;
-	temp_ap_edx_tsc_greg_64[0] = ap_edx_tsc_greg_64;
-
-	temp_ap_tscadj[0] =	msr_cal(temp_ap_eax_tscadj_greg_64[0], temp_ap_edx_tscadj_greg_64[0]);
-	temp_ap_tscaux[0] =	msr_cal(temp_ap_eax_tscaux_greg_64[0], temp_ap_edx_tscaux_greg_64[0]);
-	temp_ap_tsc[0] = msr_cal(temp_ap_eax_tsc_greg_64[0], temp_ap_edx_tsc_greg_64[0]);
-
-	/* issue sipi to awake AP */
-	//printf("--------------------2nd INIT--------------------------\n");
-	send_sipi();
-
-	/* save value to buffer again */
-	temp_ap_eax_tscadj_greg_64[1] = ap_eax_tscadj_greg_64;
-	temp_ap_edx_tscadj_greg_64[1] = ap_edx_tscadj_greg_64;
-
-	temp_ap_eax_tscaux_greg_64[1] = ap_eax_tscaux_greg_64;
-	temp_ap_edx_tscaux_greg_64[1] = ap_edx_tscaux_greg_64;
-
-	temp_ap_eax_tsc_greg_64[1] = ap_eax_tsc_greg_64;
-	temp_ap_edx_tsc_greg_64[1] = ap_edx_tsc_greg_64;
-
-	temp_ap_tscadj[1] = msr_cal(temp_ap_eax_tscadj_greg_64[1], temp_ap_edx_tscadj_greg_64[1]);
-	temp_ap_tscaux[1] =	msr_cal(temp_ap_eax_tscaux_greg_64[1], temp_ap_edx_tscaux_greg_64[1]);
-	temp_ap_tsc[1] = msr_cal(temp_ap_eax_tsc_greg_64[1], temp_ap_edx_tsc_greg_64[1]);
-
-	/* compare with first start up */
-	report("\t\ttsc_rqmid_25226_init_unchanged_check,IA32_TSC_ADJUST unchanged following INIT",
-		temp_ap_tscadj[0] == temp_ap_tscadj[1]);
-
-	report("\t\ttsc_rqmid_25226_init_unchanged_check,IA32_TSC_AUX unchanged following INIT",
-		temp_ap_tscaux[0] == temp_ap_tscaux[1]);
-
-	report("\t\ttsc_rqmid_25226_init_unchanged_check,IA32_TIME_STAMP_COUNTER unchanged following INIT",
-		(temp_ap_tsc[0] == temp_ap_tsc[1]) && (temp_ap_tsc[0] == 0));
-
-	return;
+	report("\t\t%s", is_pass, __FUNCTION__);
 }
 
+/**
+ * @brief Case name: IA32_TSC_ADJUST init value_001
+ *
+ * Summary: ACRN hypervisor shall keep guest IA32_TSC_ADJUST unchanged following INIT.
+ *
+ */
+static void __unused tsc_rqmid_45987_IA32_TSC_ADJUST_init_value()
+{
+	volatile u64 tscadj = *((u64 *)INIT_TSCADJ_LOW_ADDR);
+	bool is_pass = true;
 
+	if (tscadj != 0x0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(45987);
+	tscadj = *((u64 *)INIT_TSCADJ_LOW_ADDR);
+	if (tscadj != TSCADJ_UNCHANGE_NEW_VALUE) {
+		is_pass = false;
+	}
+	report("\t\t%s", is_pass, __FUNCTION__);
+}
+
+/**
+ * @brief Case name: IA32_TSC_AUX init value_001
+ *
+ * Summary: ACRN hypervisor shall keep guest IA32_TSC_AUX unchanged following INIT.
+ *
+ */
+static void __unused tsc_rqmid_45988_IA32_TSC_AUX_init_value()
+{
+	volatile u64 tscaux = *((u64 *)INIT_TSCAUX_LOW_ADDR);
+	bool is_pass = true;
+
+	if (tscaux != 0x0) {
+		is_pass = false;
+		printf("%d: tscaux=%ld\n", __LINE__, tscaux);
+	}
+
+	notify_modify_and_read_init_value(45988);
+	tscaux = *((u64 *)INIT_TSCAUX_LOW_ADDR);
+	if (tscaux != TSCAUX_UNCHANGE_NEW_VALUE) {
+		printf("%d: tscaux=%ld\n", __LINE__, tscaux);
+		is_pass = false;
+	}
+	report("\t\t%s", is_pass, __FUNCTION__);
+}
+
+#define CPU_FREQ_INFO_LEAF 0x16U
+u64 cpu_base_freq_khz = 2100000U;
+void cpu_base_freq_init(void)
+{
+	struct cpuid id = cpuid(CPU_FREQ_INFO_LEAF);
+	u64 base_freq_mhz = id.a;
+	cpu_base_freq_khz = base_freq_mhz * 1000;
+}
+
+/**
+ * @brief Case name:IA32_TIME_STAMP_COUNTER init value_001
+ *
+ * Summary: ACRN hypervisor shall keep guest IA32_TIME_STAMP_COUNTER unchanged following INIT.
+ *
+ */
+static void __unused tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value()
+{
+	volatile u64 tsc = *((u64 *)INIT_TSC_LOW_ADDR);
+	bool is_pass = true;
+
+	cpu_base_freq_init();
+
+	if (tsc > (10 * cpu_base_freq_khz)) {
+		is_pass = false;
+		printf("%d: tsc=%ld\n", __LINE__, tsc);
+		printf("%d: cnt=%ld\n", __LINE__, counter);
+	}
+
+	notify_modify_and_read_init_value(45998);
+	tsc = *((u64 *)INIT_TSC_LOW_ADDR);
+	if (tsc != TSC_UNCHANGE_NEW_VALUE) {
+		printf("%d: tsc=%ld\n", __LINE__, tsc);
+		is_pass = false;
+	}
+	report("\t\t%s", is_pass, __FUNCTION__);
+}
 
 static void print_case_list(void)
 {
 	printf("\t\t TSC feature case list:\n\r");
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 25226u, "CR4.TSD init value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 45987u, "IA32_TSC_ADJUST init value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 45988u, "IA32_TSC_AUX init value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 45998u, "IA32_TIME_STAMP_COUNTER init value_001");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 39299u, "IA32_TSC_AUX start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39303u, "IA32_TIME_STAMP_COUNTER start-up value_001");
@@ -545,7 +654,10 @@ static void test_tsc(void)
 
 	read_bp_startup();
 #ifdef IN_NON_SAFETY_VM
-	tsc_rqmid_25226_init_unchanged_check();
+	tsc_rqmid_25226_cr4_tsd_init_value();
+	tsc_rqmid_45987_IA32_TSC_ADJUST_init_value();
+	tsc_rqmid_45988_IA32_TSC_AUX_init_value();
+	tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value();
 #endif
 	tsc_rqmid_26015_invariant_tsc_support();
 	tsc_rqmid_39299_IA32_TSC_AUX_startup_value_001();

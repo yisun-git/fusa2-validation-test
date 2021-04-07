@@ -2,6 +2,9 @@
 #ifdef IN_PAGING_TEST
 #include "paging.h"
 #endif
+#ifdef IN_GP_TEST
+#include "general_purpose.h"
+#endif
 
 .globl boot_idt
 
@@ -249,6 +252,16 @@ ap_start64:
 #ifdef IN_PAGING_TEST
 	mov %cr3, %rax
 	mov %rax, (INIT_64BIT_CR3_ADDR)
+#endif
+#ifdef IN_GP_TEST
+	movq %r8, (INIT_R8_ADDR)
+	movq %r9, (INIT_R9_ADDR)
+	movq %r10, (INIT_R10_ADDR)
+	movq %r11, (INIT_R11_ADDR)
+	movq %r12, (INIT_R12_ADDR)
+	movq %r13, (INIT_R13_ADDR)
+	movq %r14, (INIT_R14_ADDR)
+	movq %r15, (INIT_R15_ADDR)
 #endif
 	call enable_apic
 	call load_tss

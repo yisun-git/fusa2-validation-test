@@ -2,6 +2,11 @@ static volatile int test_count;
 tss64_t tss64_intr;
 static char intr_alt_stack[4096];
 
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
 static void setup_tss64(void)
 {
 	u16 desc_size = sizeof(tss64_t);

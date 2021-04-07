@@ -16,6 +16,8 @@
 #include "instruction_common.h"
 #include "xsave.h"
 #include "register_op.h"
+#include "fwcfg.h"
+#include "delay.h"
 
 #ifdef __x86_64__
 #include "./64/taskmanagement_fn.c"

@@ -13,6 +13,10 @@
 #include "asm/spinlock.h"
 #include "debug_print.h"
 #include "multiboot.h"
+#include "misc.h"
+#include "fwcfg.h"
+#include "delay.h"
+
 
 /** Defines a single entry in an E820 memory map. */
 struct e820_entry {
@@ -166,6 +170,77 @@ struct acpi_table_info {
 		struct acpi_madt_local_apic lapic_array[CONFIG_MAX_PCPU_NUM];
 	} __attribute__((packed));
 };
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+static volatile int esp = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_esi_init_value()
+{
+	asm volatile ("movl $0xFFFF, %esi\n");
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 34260:
+		fp = modify_esi_init_value;
+		ap_init_value_process(fp);
+		break;
+
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
 
 static int __unused zero_field_zero_page(unsigned char *point)
 {
@@ -1127,8 +1202,19 @@ static void __unused multiboot_rqmid_27234_esi_of_safety_001()
 static void __unused multiboot_rqmid_34260_linux_esi_001()
 {
 	volatile u32 esi = *((volatile u32 *)MULTIBOOT_INIT_ESI_ADDR);
+	bool is_pass = true;
 
-	report("%s 0x%x", (esi == 0), __FUNCTION__, esi);
+	if (esi != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(34260);
+	esi = *((volatile u32 *)MULTIBOOT_INIT_ESI_ADDR);
+	if (esi != 0) {
+		is_pass = false;
+	}
+
+	report("%s 0x%x", is_pass, __FUNCTION__, esi);
 }
 
 /**
@@ -2239,10 +2325,5 @@ int main(int ac, char **av)
 	print_case_list();
 	test_multiboot_list();
 	return report_summary();
-}
-
-void ap_main(void)
-{
-	return;
 }
 

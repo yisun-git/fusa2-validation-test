@@ -3,6 +3,86 @@ gdt_entry_t *new_gdt;
 struct descriptor_table_ptr old_gdt_desc;
 struct descriptor_table_ptr new_gdt_desc;
 
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+static volatile int esp = 0;
+u16 tr_selector;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		if (modify_init_func != NULL) {
+			modify_init_func();
+		}
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_cr0_ts_init_value()
+{
+	ulong cr0;
+	cr0 = read_cr0();
+	write_cr0(cr0 | X86_CR0_TS);
+}
+
+__unused static void modify_eflags_nt_init_value()
+{
+	eflags_nt_to_1();
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 23827:
+		fp = modify_cr0_ts_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 23830:
+		fp = modify_eflags_nt_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 26024:
+	/*In Cstart64.S , load_tss modified this value, here we need not modify it*/
+		ap_init_value_process(NULL);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+
+
 #define USE_DEBUG
 #ifdef USE_DEBUG
 #define debug_print(fmt, args...) \
@@ -2543,9 +2623,20 @@ static void taskm_id_38866_task_switch_page_not_present(void)
  */
 static void taskm_id_23827_cr0_ts_init(void)
 {
-	u32 cr0 = *((u32 *)INIT_CR0_ADDR);
+	volatile u32 cr0 = *((volatile u32 *)INIT_CR0_ADDR);
+	bool is_pass = true;
 
-	report("%s", (cr0 & X86_CR0_TS) == 0, __func__);
+	if ((cr0 & X86_CR0_TS) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(23827);
+	cr0 = *((volatile u32 *)INIT_CR0_ADDR);
+	if ((cr0 & X86_CR0_TS) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __func__);
 }
 
 /**
@@ -2556,9 +2647,20 @@ static void taskm_id_23827_cr0_ts_init(void)
  */
 static void taskm_id_23830_eflags_nt_init(void)
 {
-	u32 eflags = *((u32 *)INIT_EFLAGS_ADDR);
+	volatile u32 eflags = *((u32 *)INIT_EFLAGS_ADDR);
+	bool is_pass = true;
 
-	report("%s", (eflags & X86_EFLAGS_NT) == 0, __func__);
+	if ((eflags & X86_EFLAGS_NT) != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(23830);
+	eflags = *((u32 *)INIT_EFLAGS_ADDR);
+	if ((eflags & X86_EFLAGS_NT) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __func__);
 }
 
 /**
@@ -2568,9 +2670,20 @@ static void taskm_id_23830_eflags_nt_init(void)
  */
 static void taskm_id_26024_tr_selector_init(void)
 {
-	u32 tr_sel = *((u32 *)INIT_TR_SEL_ADDR);
+	volatile u32 tr_sel = *((u32 *)INIT_TR_SEL_ADDR);
+	bool is_pass = true;
 
-	report("%s", tr_sel == 0, __func__);
+	if (tr_sel != 0) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(26024);
+	tr_sel = *((u32 *)INIT_TR_SEL_ADDR);
+	if (tr_sel != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __func__);
 }
 
 /**

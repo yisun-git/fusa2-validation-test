@@ -110,6 +110,17 @@ __unused static void modify_ebx_ecx_ebp_esp_esi_edi_init_value()
 	asm volatile ("movl %%esp, %0\n" : "=m"(esp));
 }
 
+__unused static void modify_r8_r15_init_value()
+{
+	asm volatile ("movq $0xFFFF, %r8\n");
+	asm volatile ("movq $0xFFFF, %r9\n");
+	asm volatile ("movq $0xFFFF, %r10\n");
+	asm volatile ("movq $0xFFFF, %r11\n");
+	asm volatile ("movq $0xFFFF, %r12\n");
+	asm volatile ("movq $0xFFFF, %r13\n");
+	asm volatile ("movq $0xFFFF, %r14\n");
+	asm volatile ("movq $0xFFFF, %r15\n");
+}
 
 void ap_main(void)
 {
@@ -134,6 +145,10 @@ void ap_main(void)
 		break;
 	case 25468:
 		fp = modify_ebx_ecx_ebp_esp_esi_edi_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 46083:
+		fp = modify_r8_r15_init_value;
 		ap_init_value_process(fp);
 		break;
 	default:
@@ -1910,6 +1925,48 @@ static void gp_rqmid_25468_ebx_ecx_and_other_register_Following_init(void)
 
 }
 
+/**
+ * @brief case name: Set initial guest R8~R15 to 0H for virtual AP_001
+ * Summary: ACRN hypervisor shall set initial guest R8~R15 to 0H following INIT.
+ */
+
+static void gp_rqmid_46083_r8_r15_following_init(void)
+{
+	volatile u64 r8 = *((volatile u64 *)INIT_R8_ADDR);
+	volatile u64 r9 = *((volatile u64 *)INIT_R9_ADDR);
+	volatile u64 r10 = *((volatile u64 *)INIT_R10_ADDR);
+	volatile u64 r11 = *((volatile u64 *)INIT_R11_ADDR);
+	volatile u64 r12 = *((volatile u64 *)INIT_R12_ADDR);
+	volatile u64 r13 = *((volatile u64 *)INIT_R13_ADDR);
+	volatile u64 r14 = *((volatile u64 *)INIT_R14_ADDR);
+	volatile u64 r15 = *((volatile u64 *)INIT_R15_ADDR);
+	bool is_pass = true;
+
+	if (!((r8 == 0x0) && (r9 == 0x0) && (r10 == 0x0) && (r11 == 0x0) &&
+		(r12 == 0x0) && (r13 == 0x0) && (r14 == 0x0) && (r15 == 0x0))) {
+		is_pass = false;
+	}
+
+	notify_modify_and_read_init_value(46083);
+
+	r8 = *((volatile u64 *)INIT_R8_ADDR);
+	r9 = *((volatile u64 *)INIT_R9_ADDR);
+	r10 = *((volatile u64 *)INIT_R10_ADDR);
+	r11 = *((volatile u64 *)INIT_R11_ADDR);
+	r12 = *((volatile u64 *)INIT_R12_ADDR);
+	r13 = *((volatile u64 *)INIT_R13_ADDR);
+	r14 = *((volatile u64 *)INIT_R14_ADDR);
+	r15 = *((volatile u64 *)INIT_R15_ADDR);
+
+	if (!((r8 == 0x0) && (r9 == 0x0) && (r10 == 0x0) && (r11 == 0x0) &&
+		(r12 == 0x0) && (r13 == 0x0) && (r14 == 0x0) && (r15 == 0x0))) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
+
+}
+
 #endif
 
 /**
@@ -2185,6 +2242,8 @@ static void print_case_list(void)
 		"EFLAGS register init value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25468u,
 		"EBX, ECX, ESI, EDI, EBP, ESP register init value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 46083u,
+		"Set initial guest R8~R15 to 0H for virtual AP_001");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 25067u,
 	"EAX register start-up value_001");
@@ -2275,6 +2334,7 @@ int main(void)
 	gp_rqmid_25080_edx_register_Following_init();
 	gp_rqmid_25061_eflags_register_Following_init();
 	gp_rqmid_25468_ebx_ecx_and_other_register_Following_init();
+	gp_rqmid_46083_r8_r15_following_init();
 #endif
 	gp_rqmid_25067_eax_register_start_up();
 	gp_rqmid_25083_edx_register_start_up();

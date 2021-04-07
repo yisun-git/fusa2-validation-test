@@ -95,3 +95,21 @@ $(TEST_DIR)/general_purpose.o: $(TEST_DIR)/general_purpose.c
 	@rm -rf $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/taskmanagement.o: $(TEST_DIR)/taskmanagement.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/tsc.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/tsc.o: $(TEST_DIR)/tsc.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/multiboot.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/multiboot.o: $(TEST_DIR)/multiboot.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<	
