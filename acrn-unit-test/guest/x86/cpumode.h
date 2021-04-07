@@ -1,0 +1,5 @@
+#ifndef _CPUMODE_H_
+#define _CPUMODE_H_
+#define INIT_IA32_EFER_LOW_ADDR			0x8300ULL
+#define INIT_IA32_EFER_HIGH_ADDR		0x8304ULL
+#endif

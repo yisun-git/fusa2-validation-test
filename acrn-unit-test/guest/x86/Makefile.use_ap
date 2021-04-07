@@ -155,3 +155,39 @@ $(TEST_DIR)/misc_msr.o: $(TEST_DIR)/misc_msr.c
 	@rm -rf $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/machine_check.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/machine_check.o: $(TEST_DIR)/machine_check.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/smx.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/smx.o: $(TEST_DIR)/smx.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/pmu_fu.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/pmu_fu.o: $(TEST_DIR)/pmu_fu.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/sgx.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/sgx.o: $(TEST_DIR)/sgx.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/debug_features.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/debug_features.o: $(TEST_DIR)/debug_features.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/cpumode.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/cpumode.o: $(TEST_DIR)/cpumode.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

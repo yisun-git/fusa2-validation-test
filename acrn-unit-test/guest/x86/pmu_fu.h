@@ -76,6 +76,7 @@
 #define MSR_UNC_PERF_GLOBAL_STATUS		0x00000e02
 
 #define VAL 1
+#define INIT_CR4_ADDR				(0x8100)
 
 
 #endif

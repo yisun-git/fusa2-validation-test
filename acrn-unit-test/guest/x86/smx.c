@@ -6,6 +6,9 @@
 #include "vmalloc.h"
 #include "misc.h"
 #include "register_op.h"
+#include "delay.h"
+#include "fwcfg.h"
+
 
 #ifdef __x86_64__
 #define uint64_t unsigned long
@@ -16,6 +19,92 @@ struct emulate_register {
 	u32 a, b, c, d;
 };
 
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_ia32_feature_control_init_value()
+{
+	if (cpuid(1).c & (1ul << 6)) {
+		wrmsr(IA32_FEATURE_CONTROL, rdmsr(IA32_FEATURE_CONTROL) | 0xFF00);
+	}
+}
+
+__unused static void modify_cr4_smxe_init_value()
+{
+	/*
+	 *If the CPUID SMX feature flag is clear (CPUID.01H.ECX[Bit 6] = 0), attempting to set CR4.SMXE[Bit 14]
+	 *results in a general protection exception
+	 */
+	if (cpuid(1).c & (1ul << 6)) {
+		write_cr4(read_cr4() | (1ul << 14));
+	}
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 37054:
+		fp = modify_ia32_feature_control_init_value;
+		ap_init_value_process(fp);
+		break;
+
+	case 37063:
+		fp = modify_cr4_smxe_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
 
 u32 get_startup_ia32_feature()
 {
@@ -172,9 +261,22 @@ static void smx_rqmid_37055_CR4_SMXE_BP_001()
 static void smx_rqmid_37054_IA32_FEATURE_CONTROL_AP_001()
 {
 	u32 value = get_init_ia32_feature();
+	bool is_pass = true;
 	value &= 0xff00;
 
-	report("\t\t %s", value == 0, __FUNCTION__);
+	if (value != 0) {
+		is_pass = false;
+	}
+
+	notify_ap_modify_and_read_init_value(37054);
+	value = get_init_ia32_feature();
+	value &= 0xff00;
+
+	if (value != 0) {
+		is_pass = false;
+	}
+
+	report("\t\t %s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -185,9 +287,23 @@ static void smx_rqmid_37054_IA32_FEATURE_CONTROL_AP_001()
 static void smx_rqmid_37063_CR4_SMXE_AP_001()
 {
 	u32 value = get_init_cr4();
+	bool is_pass = true;
+
 	value &= 0x4000;
 
-	report("\t\t %s", value == 0, __FUNCTION__);
+	if (value != 0) {
+		is_pass = false;
+	}
+
+	notify_ap_modify_and_read_init_value(37063);
+
+	value = get_init_cr4();
+	value &= 0x4000;
+	if (value != 0) {
+		is_pass = false;
+	}
+
+	report("\t\t %s", is_pass, __FUNCTION__);
 }
 #endif
 

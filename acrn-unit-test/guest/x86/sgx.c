@@ -8,6 +8,9 @@
 #include "apic.h"
 #include "isr.h"
 #include "register_op.h"
+#include "delay.h"
+#include "fwcfg.h"
+
 
 void save_unchanged_reg()
 {
@@ -18,6 +21,89 @@ void save_unchanged_reg()
 		"mov %edx, (0x7004)"
 	);
 }
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_sgx_lauch_bit_init_value()
+{
+	if (cpuid(7).c & (1ul << 30)) {
+		wrmsr(IA32_FEATURE_CONTROL, rdmsr(IA32_FEATURE_CONTROL) | SGX_LAUCH_BIT);
+	}
+}
+
+__unused static void modify_sgx_enable_bit_init_value()
+{
+	if (cpuid(7).b & (1ul << 2)) {
+		wrmsr(IA32_FEATURE_CONTROL, rdmsr(IA32_FEATURE_CONTROL) | SGX_ENABLE_BIT);
+	}
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 29562:
+		fp = modify_sgx_lauch_bit_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 27404:
+		fp = modify_sgx_enable_bit_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
+
 #ifdef IN_NATIVE
 /**
  * @brief case name:Physical SGX1 support_001
@@ -999,12 +1085,22 @@ static void sgx_rqmid_38063_enclu_eax_07h_008(const char *msg)
  */
 static __unused void sgx_rqmid_29562_sgx_lauch_bit_init()
 {
-	volatile u32 *ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT1_ADDR;
-	u64 ia32_init_first;
+	bool is_pass = true;
+	u64 ia32_init_first = *((volatile uint64_t *)IA32_FEATURE_CONTROL_INIT1_ADDR);
 
-	ia32_init_first = *ptr + ((u64)(*(ptr + 1)) << 32);
+	if ((ia32_init_first & SGX_LAUCH_BIT) != 0) {
+		is_pass = false;
+	}
 
-	report("\t\t %s", (ia32_init_first & SGX_LAUCH_BIT) == 0, __FUNCTION__);
+	notify_ap_modify_and_read_init_value(29562);
+
+	ia32_init_first = *((volatile uint64_t *)IA32_FEATURE_CONTROL_INIT1_ADDR);
+
+	if ((ia32_init_first & SGX_LAUCH_BIT) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /**
@@ -1015,15 +1111,23 @@ static __unused void sgx_rqmid_29562_sgx_lauch_bit_init()
  */
 static __unused void sgx_rqmid_27404_sgx_enable_init()
 {
-	volatile u32 *ptr = (volatile u32 *)IA32_FEATURE_CONTROL_INIT1_ADDR;
-	u64 ia32_init_first;
+	bool is_pass = true;
+	u64 ia32_init_first = *((volatile uint64_t *)IA32_FEATURE_CONTROL_INIT1_ADDR);
 
-	ia32_init_first = *ptr + ((u64)(*(ptr + 1)) << 32);
+	if ((ia32_init_first & SGX_ENABLE_BIT) != 0) {
+		is_pass = false;
+	}
 
-	report("\t\t %s", (ia32_init_first & SGX_ENABLE_BIT) == 0, __FUNCTION__);
+	notify_ap_modify_and_read_init_value(27404);
+
+	ia32_init_first = *((volatile uint64_t *)IA32_FEATURE_CONTROL_INIT1_ADDR);
+
+	if ((ia32_init_first & SGX_ENABLE_BIT) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
-
-
 
 #endif
 #endif
@@ -1189,9 +1293,6 @@ static void test_sgx()
 int main(void)
 {
 	print_case_list();
-#ifdef IN_NON_SAFETY_VM
-	sgx_rqmid_27404_ia32_feature_control_init();
-#endif
 	setup_idt();
 	test_sgx();
 

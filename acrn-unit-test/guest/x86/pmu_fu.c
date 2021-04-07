@@ -1,9 +1,80 @@
 #include "libcflat.h"
 #include "desc.h"
 #include "processor.h"
-
 #include "pmu_fu.h"
 #include "host_register.h"
+#include "misc.h"
+#include "delay.h"
+#include "fwcfg.h"
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_cr4_pce_init_value()
+{
+	write_cr4(read_cr4() | (1ul << 8));
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 29694:
+		fp = modify_cr4_pce_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
 
 void pmu_test_rdmsr(u32 msr, u32 vector, u32 error_code, const char *func)
 {
@@ -1442,9 +1513,21 @@ static void pmu_rqmid_37370_MSR_PLATFORM_INFO_init_001(void)
 
 static void pmu_rqmid_29694_cr4_pce_init_001()
 {
-	u32 cr4 = *(u32 *)0x8100;
+	volatile u32 cr4 = *(volatile u32 *)INIT_CR4_ADDR;
+	bool is_pass = true;
 
-	report("%s", ((cr4 & (1 << 8)) == 0), __FUNCTION__);
+	if ((cr4 & (1 << 8)) != 0) {
+		is_pass = false;
+	}
+
+	notify_ap_modify_and_read_init_value(29694);
+	cr4 = *(volatile u32 *)INIT_CR4_ADDR;
+
+	if ((cr4 & (1 << 8)) != 0) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 #endif
 #endif

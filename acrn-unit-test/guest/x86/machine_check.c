@@ -12,6 +12,79 @@
 #include "apic.h"
 #include "machine_check.h"
 #include "register_op.h"
+#include "fwcfg.h"
+#include "delay.h"
+#include "misc.h"
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_msr_ia32_feature_control_lmce_on_init_value()
+{
+	if (rdmsr(MSR_IA32_MCG_CAP) & (1ul << 27)) {
+		wrmsr(MSR_IA32_FEATURE_CONTROL, rdmsr(MSR_IA32_FEATURE_CONTROL) | IA32_FEATURE_CONTROL_LMCE_ON);
+	}
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 24454:
+		fp = modify_msr_ia32_feature_control_lmce_on_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
 
 int check_cpuid_1_edx(unsigned int bit)
 {
@@ -530,8 +603,18 @@ static void MCA_rqmid_37641_access_IA32_MCi_MISC_for_safety_VM_001(void)
  */
 static void MCA_rqmid_24454_set_IA32_FEATURE_CONTROL_LMCE_ON_following_init_001()
 {
-	report("%s", (*(volatile uint32_t *)INIT_IA32_FEATURE_CONTROL & IA32_FEATURE_CONTROL_LMCE_ON) == 0,
-			__FUNCTION__);
+	bool is_pass = true;
+	volatile u32 msr_feature_ctl = *((volatile uint32_t *)INIT_IA32_FEATURE_CONTROL);
+
+	if ((msr_feature_ctl & IA32_FEATURE_CONTROL_LMCE_ON) != 0) {
+		is_pass = false;
+	}
+	notify_ap_modify_and_read_init_value(24454);
+	msr_feature_ctl = *((volatile uint32_t *)INIT_IA32_FEATURE_CONTROL);
+	if ((msr_feature_ctl & IA32_FEATURE_CONTROL_LMCE_ON) != 0) {
+		is_pass = false;
+	}
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /*
