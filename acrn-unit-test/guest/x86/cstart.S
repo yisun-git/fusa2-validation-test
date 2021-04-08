@@ -1,6 +1,7 @@
 #include "apic-defs.h"
 
 .globl boot_idt
+.globl pt_root
 
 .globl cpu_online_count
 
@@ -17,6 +18,37 @@ stacktop:
 	. = . + 4096 * max_cpus
 	.align 16
 ring0stacktop:
+
+.align 4096
+.globl ptl2
+ptl2:
+i = 0
+	.rept 512 * 4
+	.long 0x1e7 | (i << 21)
+	.long 0
+	i = i + 1
+	.endr
+
+.align 4096
+ptl3:
+	.long ptl2 + 7 + 0 * 4096
+	.long 0
+	.long ptl2 + 7 + 1 * 4096
+	.long 0
+	.long ptl2 + 7 + 2 * 4096
+	.long 0
+	.long ptl2 + 7 + 3 * 4096
+	.long 0
+
+.align 4096
+ptl4:
+	.long ptl3 + 7
+	.long 0
+
+.align 4096
+ptl5:
+	.long ptl4 + 7
+	.long 0
 
 .align 4096
 pt:
@@ -77,6 +109,9 @@ idt_descr:
 	.word 16 * 256 - 1
 	.long boot_idt
 
+pt_root:
+	.long ptl4
+	.long 0
 
 .section .init
 
