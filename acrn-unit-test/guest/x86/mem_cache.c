@@ -1000,9 +1000,11 @@ void cache_test_init_startup(long rqmid)
 		{23242, cache_rqmid_23242_cr0_nw_startup},
 		{36851, cache_rqmid_36851_ia32_pat_startup},
 		{36852, cache_rqmid_36852_cr0_cd_startup},
+	#ifdef IN_NON_SAFETY_VM
 		{36850, cache_rqmid_36850_cr0_nw_init},
 		{36869, cache_rqmid_36869_cr3_pcd_init},
 		{36853, cache_rqmid_36853_cr3_pwt_init},
+	#endif
 		{36854, cache_rqmid_36854_cr3_pcd_startup},
 		{36855, cache_rqmid_36855_cr3_pwt_startup},
 	};

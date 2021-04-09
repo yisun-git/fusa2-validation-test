@@ -2462,23 +2462,9 @@ void local_apic_rqmid_38711_IA32_TSC_DEADLINE_state_of_following_init(void)
  */
 void local_apic_rqmid_38713_IA32_APIC_BASE_state_of_following_init(void)
 {
+	volatile u32 *init_addr = (u32 *)IA32_APIC_BASE_INIT_ADDR;
 
-	volatile u32 *init_addr = (volatile u32 *)IA32_APIC_BASE_INIT_ADDR;
-	bool is_pass = true;
-
-	if (*init_addr != 0xfee00c00U) {
-		is_pass = false;
-		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
-	}
-
-	notify_modify_and_read_init_value(38713);
-	if (*init_addr != 0xfee00c00U) {
-		is_pass = false;
-		printf("%d: init_addr=0x%x\n", __LINE__, *init_addr);
-	}
-
-	report("%s", is_pass, __FUNCTION__);
-
+	report("%s", *init_addr == 0xfee00c00U, __FUNCTION__);
 }
 
 #endif
