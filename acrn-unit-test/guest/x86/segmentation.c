@@ -4,7 +4,88 @@
 #include "desc.h"
 #include <regdump.h>
 #include <asm/spinlock.h>
+#include "misc.h"
+#include "fwcfg.h"
+#include "delay.h"
+
 #define USE_HAND_EXECEPTION
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_segmentation_init_value()
+{
+	/*In Cstart64.S , ap_start32 modified ds es fs gs ss's value,we need not modify them*/
+
+	write_cr4(read_cr4() | CR4_FSGSBASE);
+	wrmsr(MSR_IA32_SYSENTER_CS, 1);
+	wrmsr(MSR_IA32_SYSENTER_ESP, 1);
+	wrmsr(MSR_IA32_SYSENTER_EIP, 1);
+	wrmsr(IA32_EFER, rdmsr(IA32_EFER) | (1ull << 11));
+
+	if (cpuid(0x80000001).d & (1ul << 29)) {
+		wrmsr(IA32_STAR, 0xFFFFFFFFFFFFFFFF);
+		wrmsr(IA32_LSTAR, 0xFFFFFFFFFFFFFFFF);
+		wrmsr(IA32_CSTAR, 0xFFFFFFFFFFFFFFFF);
+#if defined(__x86_64__)
+		asm volatile ("wrfsbase %0" : : "r"(10) : "memory");
+		asm volatile ("wrgsbase %0" : : "r"(10) : "memory");
+#endif
+		wrmsr(IA32_KERNEL_GS_BASE,  0xFFFFFFFFFFFFFFFF);
+	}
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 27194:
+		fp = modify_segmentation_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
 
 /* bit test */
 #define BIT_IS(NUMBER, N) ((((uint64_t)NUMBER) >> N) & (0x1))
@@ -318,6 +399,8 @@ static void verify_bp_dump_info(void)
 static void verify_ap_dump_info(void)
 {
 	uint32_t *dump = (u32 *)0x7000;
+	bool is_pass_reg[REG_MAX] = {1, 1, 1, 1, 1, 1, 1};
+	bool is_pass_msr[E_IA32_MAX] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 	printf("Verify Segmentation Initialization Check TCs for AP:\n");
 
@@ -335,39 +418,183 @@ static void verify_ap_dump_info(void)
 
 	//report("Test Case: 29056", p_reg[REG_CS] == 0); //0X10
 
-	report("Test Case: 27194", p_reg[REG_DS] == 0); //0x18
-	report("Test Case: 27190", p_reg[REG_ES] == 0);
-	report("Test Case: 27189", p_reg[REG_FS] == 0);
-	report("Test Case: 27187", p_reg[REG_GS] == 0);
-	report("Test Case: 27186", p_reg[REG_SS] == 0);
-	report("Test Case: 29064", (p_reg[REG_CR4] & CR4_FSGSBASE) == 0);
+	if (p_reg[REG_DS] != 0) {
+		is_pass_reg[REG_DS] = false;
+	}
+
+	if (p_reg[REG_ES] != 0) {
+		is_pass_reg[REG_ES] = false;
+	}
+
+	if (p_reg[REG_FS] != 0) {
+		is_pass_reg[REG_FS] = false;
+	}
+
+	if (p_reg[REG_GS] != 0) {
+		is_pass_reg[REG_GS] = false;
+	}
+
+	if (p_reg[REG_SS] != 0) {
+		is_pass_reg[REG_SS] = false;
+	}
+
+	if ((p_reg[REG_CR4] & CR4_FSGSBASE) != 0) {
+		is_pass_reg[REG_CR4] = false;
+	}
 
 	uint64_t *p_msr = (uint64_t *)(dump + MSR_BASE);
 
-	printf("\ncheck MSRs, dumped @%p\n", p_msr);
-	report("Test Case: 29534", p_msr[E_IA32_SYSENTER_CS] == 0x00);
-	report("Test Case: 29536", p_msr[E_IA32_SYSENTER_ESP] == 0x00);
-	report("Test Case: 29538", p_msr[E_IA32_SYSENTER_EIP] == 0x00);
+	if (p_msr[E_IA32_SYSENTER_CS] != 0x00) {
+		is_pass_msr[E_IA32_SYSENTER_CS] = false;
+	}
 
-	report("Test Case: 29531", (p_msr[E_IA32_EFER] & EFER_SCE) == 0x00);
+	if (p_msr[E_IA32_SYSENTER_ESP] != 0x00) {
+		is_pass_msr[E_IA32_SYSENTER_ESP] = false;
+	}
 
-	report("Test Case: 29540", p_msr[E_IA32_STAR] == 0x00);
-	report("Test Case: 29542", p_msr[E_IA32_LSTAR] == 0x00);
-	report("Test Case: 29547", p_msr[E_IA32_CSTAR] == 0x00);
-	report("Test Case: 29545", p_msr[E_IA32_FMASK] == 0x00);
+	if (p_msr[E_IA32_SYSENTER_EIP] != 0x00) {
+		is_pass_msr[E_IA32_SYSENTER_EIP] = false;
+	}
 
-	report("Test Case: 29061", p_msr[E_IA32_FS_BASE] == 0x00);
-	report("Test Case: 29059", p_msr[E_IA32_GS_BASE] == 0x00);
-	report("Test Case: 29055", p_msr[E_IA32_KERNEL_GS_BASE] == 0x00);
+	if ((p_msr[E_IA32_EFER] & EFER_SCE) != 0x00) {
+		is_pass_msr[E_IA32_EFER] = false;
+	}
 
+	if (p_msr[E_IA32_STAR] != 0x00) {
+		is_pass_msr[E_IA32_STAR] = false;
+	}
+
+	if (p_msr[E_IA32_LSTAR] != 0x00) {
+		is_pass_msr[E_IA32_LSTAR] = false;
+	}
+
+	if (p_msr[E_IA32_CSTAR] != 0x00) {
+		is_pass_msr[E_IA32_CSTAR] = false;
+	}
+	if (p_msr[E_IA32_FMASK] != 0x00) {
+		is_pass_msr[E_IA32_FMASK] = false;
+	}
+
+	if (p_msr[E_IA32_FS_BASE] != 0x00) {
+		is_pass_msr[E_IA32_FS_BASE] = false;
+	}
+
+	if (p_msr[E_IA32_GS_BASE] != 0x00) {
+		is_pass_msr[E_IA32_GS_BASE] = false;
+	}
+
+	if (p_msr[E_IA32_KERNEL_GS_BASE] != 0x00) {
+		is_pass_msr[E_IA32_KERNEL_GS_BASE] = false;
+	}
 
 	struct gdtr32_t *gdtr32 = (struct gdtr32_t *)(dump + GDTR_BASE);
 
-	printf("\ndumped GDTR@%p: base=0x%x, limit=%d\n", gdtr32, gdtr32->base, gdtr32->limit);
-//	printf("LDTR = %d\n", dump[GDTR_BASE + 3]);
+	if (!((gdtr32->base == 0) && (gdtr32->limit == 0xFFFF))) {
+		is_pass_msr[E_GDTR_BASE] = false;
+	}
 
-	//for GDTR test cases:
-	report("Test Case: 29527", (gdtr32->base == 0) && (gdtr32->limit == 0xFFFF));
+	notify_modify_and_read_init_value(27194);
+
+	if (p_reg[REG_DS] != 0) {
+		is_pass_reg[REG_DS] = false;
+	}
+
+	if (p_reg[REG_ES] != 0) {
+		is_pass_reg[REG_ES] = false;
+	}
+
+	if (p_reg[REG_FS] != 0) {
+		is_pass_reg[REG_FS] = false;
+	}
+
+	if (p_reg[REG_GS] != 0) {
+		is_pass_reg[REG_GS] = false;
+	}
+
+	if (p_reg[REG_SS] != 0) {
+		is_pass_reg[REG_SS] = false;
+	}
+
+	if ((p_reg[REG_CR4] & CR4_FSGSBASE) != 0) {
+		is_pass_reg[REG_CR4] = false;
+	}
+
+	if (p_msr[E_IA32_SYSENTER_CS] != 0x00) {
+		is_pass_msr[E_IA32_SYSENTER_CS] = false;
+	}
+
+	if (p_msr[E_IA32_SYSENTER_ESP] != 0x00) {
+		is_pass_msr[E_IA32_SYSENTER_ESP] = false;
+	}
+
+	if (p_msr[E_IA32_SYSENTER_EIP] != 0x00) {
+		is_pass_msr[E_IA32_SYSENTER_EIP] = false;
+	}
+
+	if ((p_msr[E_IA32_EFER] & EFER_SCE) != 0x00) {
+		is_pass_msr[E_IA32_EFER] = false;
+	}
+
+	if (p_msr[E_IA32_STAR] != 0x00) {
+		is_pass_msr[E_IA32_STAR] = false;
+		printf("[%s:%d] p_msr[E_IA32_STAR]=%" PRIx64 "\n", __FUNCTION__, __LINE__, p_msr[E_IA32_STAR]);
+	}
+
+	if (p_msr[E_IA32_LSTAR] != 0x00) {
+		is_pass_msr[E_IA32_LSTAR] = false;
+		printf("[%s:%d] p_msr[E_IA32_LSTAR]=%" PRIx64 "\n", __FUNCTION__, __LINE__, p_msr[E_IA32_LSTAR]);
+	}
+
+	if (p_msr[E_IA32_CSTAR] != 0x00) {
+		is_pass_msr[E_IA32_CSTAR] = false;
+		printf("[%s:%d] p_msr[E_IA32_CSTAR]=%" PRIx64 "\n", __FUNCTION__, __LINE__, p_msr[E_IA32_CSTAR]);
+	}
+	if (p_msr[E_IA32_FMASK] != 0x00) {
+		is_pass_msr[E_IA32_FMASK] = false;
+	}
+
+	if (p_msr[E_IA32_FS_BASE] != 0x00) {
+		is_pass_msr[E_IA32_FS_BASE] = false;
+	}
+
+	if (p_msr[E_IA32_GS_BASE] != 0x00) {
+		is_pass_msr[E_IA32_GS_BASE] = false;
+	}
+
+	if (p_msr[E_IA32_KERNEL_GS_BASE] != 0x00) {
+		is_pass_msr[E_IA32_KERNEL_GS_BASE] = false;
+		printf("[%d]p_msr[KERNEL_GS_BASE]=%" PRIx64 "\n",  __LINE__, p_msr[E_IA32_KERNEL_GS_BASE]);
+	}
+
+	gdtr32 = (struct gdtr32_t *)(dump + GDTR_BASE);
+
+	if (!((gdtr32->base == 0) && (gdtr32->limit == 0xFFFF))) {
+		is_pass_msr[E_GDTR_BASE] = false;
+	}
+
+	report("Test Case: 27194", is_pass_reg[REG_DS]);
+	report("Test Case: 27190", is_pass_reg[REG_ES]);
+	report("Test Case: 27189", is_pass_reg[REG_FS]);
+	report("Test Case: 27187", is_pass_reg[REG_GS]);
+	report("Test Case: 27186", is_pass_reg[REG_SS]);
+	report("Test Case: 29064", is_pass_reg[REG_CR4]);
+
+	report("Test Case: 29534", is_pass_msr[E_IA32_SYSENTER_CS]);
+	report("Test Case: 29536", is_pass_msr[E_IA32_SYSENTER_ESP]);
+	report("Test Case: 29538", is_pass_msr[E_IA32_SYSENTER_EIP]);
+
+	report("Test Case: 29531", is_pass_msr[E_IA32_EFER]);
+
+	report("Test Case: 29540", is_pass_msr[E_IA32_STAR]);
+	report("Test Case: 29542", is_pass_msr[E_IA32_LSTAR]);
+	report("Test Case: 29547", is_pass_msr[E_IA32_CSTAR]);
+	report("Test Case: 29545", is_pass_msr[E_IA32_FMASK]);
+
+	report("Test Case: 29061", is_pass_msr[E_IA32_FS_BASE]);
+	report("Test Case: 29059", is_pass_msr[E_IA32_GS_BASE]);
+	report("Test Case: 29055", is_pass_msr[E_IA32_KERNEL_GS_BASE]);
+
+	report("Test Case: 29527", is_pass_msr[E_GDTR_BASE]);
 
 }
 #endif
@@ -610,32 +837,10 @@ int main(void)
 	test_segmentation();
 
 #endif
-	report_summary();
-
-	bp_test_done = true;
-
-	return 0;
-}
-
-static struct spinlock ap_lock;
-
-void ap_main(void)
-{
-	static bool run_once = false; //just run test code on one AP
-
-	//wait BP test done, then test AP
-	while (!bp_test_done);
-
-	spin_lock(&ap_lock);
-
-	if (!run_once) {
-		run_once = true;
 #if defined(AP_INIT_CHECK) && !defined(IN_NATIVE)
-		printf("AP-test start:\n");
-		verify_ap_dump_info();
-		report_summary();
+	verify_ap_dump_info();
 #endif
-	}
 
-	spin_unlock(&ap_lock);
+	report_summary();
+	return 0;
 }

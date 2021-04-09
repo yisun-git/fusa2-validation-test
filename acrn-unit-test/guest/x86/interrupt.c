@@ -4,6 +4,7 @@
 #include "delay.h"
 #include "debug_print.h"
 #include "memory_type.h"
+#include "fwcfg.h"
 
 static volatile unsigned int g_irqcounter[256] = { 0 };
 

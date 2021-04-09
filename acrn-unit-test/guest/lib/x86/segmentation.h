@@ -118,6 +118,7 @@ typedef enum {
 	REG_GS,
 	REG_SS,
 	REG_CR4,
+	REG_MAX,
 } DUMPED_REG;
 
 typedef enum {
@@ -133,6 +134,8 @@ typedef enum {
 	E_IA32_FS_BASE,
 	E_IA32_GS_BASE,
 	E_IA32_KERNEL_GS_BASE,
+	E_GDTR_BASE,
+	E_IA32_MAX,
 } DUMPED_MSR;
 
 /* for GDTR in protect mode */

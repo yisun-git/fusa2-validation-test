@@ -3,6 +3,16 @@
 static int rip_index = 0;
 static u64 rip[10] = {0, };
 static volatile int current_case_id = 0;
+static volatile int wait_ap = 0;
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
 
 void handled_exception(struct ex_regs *regs)
 {
@@ -871,11 +881,23 @@ static void interrupt_rqmid_24028_idtr_startup(void)
 static void __unused interrupt_rqmid_23981_idtr_init(void)
 {
 	volatile struct descriptor_table_32_ptr *ptr;
+	bool is_pass = true;
 
 	ptr = (volatile struct descriptor_table_32_ptr *)INIT_IDTR_ADDR;
 
-	report("%s base=%x limit=%x", ((ptr->base == 0x0) && (ptr->limit == 0xFFFF)),
-		__FUNCTION__, ptr->base, ptr->limit);
+	if (!((ptr->base == 0x0) && (ptr->limit == 0xFFFF))) {
+		is_pass = false;
+	}
+
+	current_case_id = 23981;
+	send_sipi();
+	wait_ap_ready();
+
+	if (!((ptr->base == 0x0) && (ptr->limit == 0xFFFF))) {
+		is_pass = false;
+	}
+
+	report("%s base=%x limit=%x", is_pass, __FUNCTION__, ptr->base, ptr->limit);
 }
 
 static void interru_df_pf(const char *fun)
@@ -3031,7 +3053,13 @@ static void test_ap_interrupt_64(void)
 			interrupt_rqmid_38112_nmi_ap_002();
 			current_case_id = 0;
 			break;
-
+		case 23981:
+			if (get_lapic_id() == (fwcfg_get_nb_cpus() - 1)) {
+			/*In Cstart64.S load_tss modify idt's content,here we need not change it*/
+				wait_ap = 1;
+				current_case_id = 0;
+			}
+			break;
 		default:
 			asm volatile ("nop\n\t" :::"memory");
 		}

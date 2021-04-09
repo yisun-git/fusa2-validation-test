@@ -141,7 +141,7 @@ void ap_main(void)
 		ap_init_value_process(fp);
 		break;
 	case 45998:
-		fp = modify_tsc_aux_init_value;
+		fp = modify_tsc_init_value;
 		ap_init_value_process(fp);
 		break;
 	default:

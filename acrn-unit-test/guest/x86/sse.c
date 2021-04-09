@@ -84,6 +84,7 @@ volatile u32 set_mxcsr2 = 0;
 volatile long double xmm_unchange_regs1[16];
 volatile long double xmm_unchange_regs2[16];
 static volatile int cur_case_id = 0;
+static volatile int need_modify_init_value = 0;
 
 void wait_ap_ready()
 {
@@ -92,6 +93,19 @@ void wait_ap_ready()
 	}
 	wait_ap = 0;
 }
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
 
 #ifdef __i386__
 /*
@@ -346,13 +360,13 @@ static void sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001(void)
 	volatile u32 mxcsr2;
 
 	cur_case_id = 23197;/*trigger ap_main function entering switch  23197*/
+	send_sipi();
 	wait_ap_ready();
 	/*get mxcsr value modified*/
 	mxcsr1 = set_mxcsr1;
 
 	/*send sipi to ap again*/
 	send_sipi();
-	cur_case_id = 23197;
 	wait_ap_ready();
 
 	/*get mxcsr value again after ap reset*/
@@ -362,7 +376,6 @@ static void sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001(void)
 
 	/*send sipi to ap again for restoring mxcsr init value*/
 	send_sipi();
-	cur_case_id = 23197;
 	wait_ap_ready();
 	ap_start_count = 0;
 }
@@ -378,10 +391,10 @@ static void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
 	/*HV flush fpu, need init fpu if we use fpu*/
 	asm volatile("fninit");
 	cur_case_id = 27437;/*trigger ap_main function entering switch  27437*/
+	send_sipi();
 	wait_ap_ready();
 	/*send sipi to ap  trigger ap_main function was called to get XMM0 through XMM15 again.*/
 	send_sipi();
-	cur_case_id = 27437;
 	wait_ap_ready();
 	for (int i = 0; i < 16; i++) {
 		if (xmm_unchange_regs1[i] != xmm_unchange_regs2[i]) {
@@ -393,7 +406,6 @@ static void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
 
 	/*send sipi to ap again for restoring XMM0 through XMM15 initial value*/
 	send_sipi();
-	cur_case_id = 27437;
 	wait_ap_ready();
 	ap_start_count = 0;
 }
@@ -407,10 +419,18 @@ static void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
  */
 static __unused void sse_rqmid_23189_SSE_CR4_OSFXSR_initial_state_following_INIT_001(void)
 {
-	bool  is_pass = false;
+	bool  is_pass = true;
 	ap_cr4 = *(volatile uint32_t *)INIT_CR4_SAVE_ADDR;
 	sse_debug("\nDump ap_cr4 = 0x%x\n", ap_cr4);
-	is_pass = ((CR4_OSFXSR_BIT_MASK & ap_cr4) == 0);
+	if ((CR4_OSFXSR_BIT_MASK & ap_cr4) != 0) {
+		is_pass = false;
+	}
+	notify_ap_modify_and_read_init_value(23189);
+	ap_cr4 = *(volatile uint32_t *)INIT_CR4_SAVE_ADDR;
+	if ((CR4_OSFXSR_BIT_MASK & ap_cr4) != 0) {
+		is_pass = false;
+	}
+
 	report("%s \n", is_pass, __FUNCTION__);
 }
 
@@ -1144,26 +1164,44 @@ static void sse_ap_unchanged_case_27437()
 	write_cr4(cr4);
 }
 
+__unused void modify_cr4_osfxr(void)
+{
+	write_cr4(read_cr4() | CR4_OSFXSR_BIT_MASK);
+}
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
 void ap_main(void)
 {
+	ap_init_value_modify fp;
 	/*test only on the ap 2,other ap return directly*/
 	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
-	while (1) {
-		switch (cur_case_id) {
-		case 23197:
-			sse_ap_unchanged_case_23197();
-			cur_case_id = 0;
-			break;
-		case 27437:
-			sse_ap_unchanged_case_27437();
-			cur_case_id = 0;
-			break;
-		default:
-			asm volatile ("nop\n\t" :::"memory");
-		}
+	switch (cur_case_id) {
+	case 23197:
+		sse_ap_unchanged_case_23197();
+		break;
+	case 27437:
+		sse_ap_unchanged_case_27437();
+		break;
+	case 23189:
+		fp = modify_cr4_osfxr;
+		ap_init_value_process(fp);
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
 	}
 }
 

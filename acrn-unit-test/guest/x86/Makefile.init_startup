@@ -18,7 +18,6 @@ $(TEST_DIR)/sgx.o: $(TEST_DIR)/sgx.c
 
 $(TEST_DIR)/xsave.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_xsave_init.S\"
 $(TEST_DIR)/xsave.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_xsave_startup.S\"
-$(TEST_DIR)/xsave.o: CFLAGS += -DAP_UNCHANGED_CHECK
 $(TEST_DIR)/xsave.o: $(TEST_DIR)/xsave.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)

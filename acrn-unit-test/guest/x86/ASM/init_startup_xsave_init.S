@@ -20,3 +20,12 @@ mov %cr4, %eax
 bts $9, %eax
 mov %eax, %cr4
 
+mov $0, %ecx
+xgetbv
+mov %eax, XSAVE_XCR0_LOW
+mov %edx, XSAVE_XCR0_HIGH
+
+mov $1, %ecx
+xgetbv
+mov %eax, XSAVE_XCR1_LOW
+mov %edx, XSAVE_XCR1_HIGH

@@ -191,3 +191,9 @@ $(TEST_DIR)/cpumode.o: $(TEST_DIR)/cpumode.c
 	@rm -rf $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/xsave.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/xsave.o: $(TEST_DIR)/xsave.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

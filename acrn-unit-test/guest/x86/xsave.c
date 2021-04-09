@@ -12,6 +12,8 @@
 #include "register_op.h"
 #include "xsave.h"
 #include "debug_print.h"
+#include "delay.h"
+#include "fwcfg.h"
 
 /**CPUID Function:**/
 /**Some common function **/
@@ -29,51 +31,100 @@ static uint64_t xcr0_enter_1st_init, xcr1_enter_1st_init;
 
 static uint64_t xcr0_init_write_7_to_xcr0, xcr1_init_after_sse_exe;
 static uint64_t xcr0_enter_2nd_init, xcr1_enter_2nd_init;
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
 
-void save_unchanged_reg(void)
+__unused void wait_ap_ready()
 {
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		if (cur_case_id == 23151) {
+			xcr0_enter_2nd_init = asm_read_xcr(0);
+		} else if (cur_case_id == 23635) {
+			xcr1_enter_2nd_init = asm_read_xcr(1);
+		}
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_cr4_osxsave_init_value()
+{
+	asm_write_cr4_osxsave(1);
+}
+
+__unused static void modify_xcr0_init_value()
+{
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+	xcr0_init_write_7_to_xcr0 = asm_read_xcr(0);
+}
+
+__unused static void modify_xinuse_bit2to0_initial_state()
+{
+	asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
+	asm volatile("movapd %xmm1, %xmm2");
+	xcr1_init_after_sse_exe = asm_read_xcr(1);
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
 	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
-	debug_print(" ap_start_count=%d \n", ap_start_count);
-
-	/* CR4.OSXSAVE[bit 18] has been set to 1 in init_startup_xsave_init.S. No need to duplicate it here. */
-
-	if (ap_start_count == 0) {
-		debug_print("1st INIT: Start this AP \n");
-
-		/* Record XCR0 to verify XCR0 following the first INIT (for case 36768). */
-		xcr0_enter_1st_init = asm_read_xcr(0);
-
-		debug_print("Set XCR0 to 7 (for case 24108 and 23635) \n");
-		asm_write_xcr(0, STATE_X87 | STATE_SSE | STATE_AVX);
-
-		/* Record XCR1 to verify XINUSE[bit 2:0] following the first INIT (for case 24108). */
-		xcr1_enter_1st_init = asm_read_xcr(1);
-
-		debug_print("Execute SSE instruction on this AP (for case 23635). \n");
-		asm volatile("movapd %xmm1, %xmm2");
-
-		xcr0_init_write_7_to_xcr0 = asm_read_xcr(0);
-		xcr1_init_after_sse_exe = asm_read_xcr(1);
-
-		debug_print(" xcr0_enter_1st_init=%lx xcr1_enter_1st_init=%lx \n",
-			xcr0_enter_1st_init, xcr1_enter_1st_init);
-		debug_print(" xcr0_init_write_7_to_xcr0=%lx xcr1_init_after_sse_exe=%lx \n",
-			xcr0_init_write_7_to_xcr0, xcr1_init_after_sse_exe);
-	} else if (ap_start_count == 1) {
-		debug_print("Right following 2nd INIT: record XCR0 and XCR1 to verify case 23635 and 23151. \n");
-		xcr0_enter_2nd_init = asm_read_xcr(0);
-		xcr1_enter_2nd_init = asm_read_xcr(1);
-
-		debug_print(" xcr0_enter_2nd_init=%lx xcr1_enter_2nd_init=%lx \n",
-			xcr0_enter_2nd_init, xcr1_enter_2nd_init);
+	switch (cur_case_id) {
+	case 23154:
+		fp = modify_cr4_osxsave_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 23151:
+		fp = modify_xcr0_init_value;
+		ap_init_value_process(fp);
+	case 23635:
+		fp = modify_xinuse_bit2to0_initial_state;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
 	}
-
-	ap_start_count++;
-	debug_print(" ap_start_count=%d \n", ap_start_count);
 }
+#endif
+
 /*
  * Case name: 23633:XSAVE hide AVX-512 support_001.
  *
@@ -1162,12 +1213,25 @@ static __unused void xsave_rqmid_23154_xsave_cr4_initial_state_following_init_00
 {
 	uint64_t volatile cr4_init = *((uint64_t volatile *)XSAVE_INIT_CR4_ADDR);
 	uint64_t cr4_osxsave_init = cr4_init & X86_CR4_OSXSAVE;
+	bool is_pass = true;
 
 	debug_print("Check CR4.OSXSAVE initial state following INIT \n");
 	debug_print("cr4_osxsave_init = 0x%lx, XSAVE_EXPECTED_INIT_CR4_OSXSAVE = 0x%lx \n",
 		cr4_osxsave_init, XSAVE_EXPECTED_INIT_CR4_OSXSAVE);
+	if (cr4_osxsave_init != XSAVE_EXPECTED_INIT_CR4_OSXSAVE) {
+		is_pass = false;
+	}
 
-	report("%s", (cr4_osxsave_init == XSAVE_EXPECTED_INIT_CR4_OSXSAVE), __FUNCTION__);
+	notify_ap_modify_and_read_init_value(23154);
+
+	cr4_init = *((uint64_t volatile *)XSAVE_INIT_CR4_ADDR);
+	cr4_osxsave_init = cr4_init & X86_CR4_OSXSAVE;
+
+	if (cr4_osxsave_init != XSAVE_EXPECTED_INIT_CR4_OSXSAVE) {
+		is_pass = false;
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 /*
@@ -1180,8 +1244,10 @@ static __unused void xsave_rqmid_23154_xsave_cr4_initial_state_following_init_00
  */
 static __unused void xsave_rqmid_36768_xcr0_initial_state_following_init_002(void)
 {
-	debug_print("Check XCR0 following the first INIT received by the AP: \n");
-	debug_print("XCR0 following the first INIT = 0x%lx, expected value = 0x%lx \n",
+	xcr0_enter_1st_init = *(volatile uint64_t *)XSAVE_XCR0_LOW;
+
+	printf("Check XCR0 following the first INIT received by the AP: \n");
+	printf("XCR0 following the first INIT = 0x%lx, expected value = 0x%lx \n",
 		xcr0_enter_1st_init, XSAVE_EXPECTED_STARTUP_XCR0);
 
 	report("%s", (xcr0_enter_1st_init == XSAVE_EXPECTED_STARTUP_XCR0), __FUNCTION__);
@@ -1197,11 +1263,12 @@ static __unused void xsave_rqmid_36768_xcr0_initial_state_following_init_002(voi
  */
 static __unused void xsave_rqmid_24108_xinuse_bit2to0_initial_state_following_init_002(void)
 {
+	xcr1_enter_1st_init = *(volatile uint64_t *)XSAVE_XCR1_LOW;
 	debug_print("Check XINUSE[bit 2:0] following the first INIT received by the AP: \n");
 	debug_print("XINUSE[bit 2:0] following the first INIT = 0x%lx, expected value = 0x%lx \n",
-		xcr1_enter_1st_init, XSAVE_EXPECTED_STARTUP_XINUSE);
+		xcr1_enter_1st_init, XSAVE_EXPECTED_INIT_XINUSE);
 
-	report("%s", (xcr1_enter_1st_init == XSAVE_EXPECTED_STARTUP_XINUSE), __FUNCTION__);
+	report("%s", (xcr1_enter_1st_init == XSAVE_EXPECTED_INIT_XINUSE), __FUNCTION__);
 }
 
 /*
@@ -1213,10 +1280,8 @@ static __unused void xsave_rqmid_24108_xinuse_bit2to0_initial_state_following_in
  */
 static __unused void xsave_rqmid_23151_xcr0_initial_state_following_init_001(void)
 {
-	/* As the environment set-up is complete in 2nd INIT, wait until it happens. */
-	while (ap_start_count < 2) {
-		asm_pause();
-	}
+
+	notify_ap_modify_and_read_init_value(23151);
 
 	debug_print("Check XCR0 following the INIT when it has been set to 7H: \n");
 	debug_print("XCR0 following the 2nd INIT = 0x%lx, expected value = 0x%lx \n",
@@ -1234,11 +1299,8 @@ static __unused void xsave_rqmid_23151_xcr0_initial_state_following_init_001(voi
  */
 static __unused void xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_001(void)
 {
-	/* As the environment set-up is complete in 2nd INIT, wait until it happens. */
-	while (ap_start_count < 2) {
-		asm_pause();
-	}
 
+	notify_ap_modify_and_read_init_value(23635);
 	debug_print("Check XINUSE[bit 2:0] following the INIT when XINUSE[1] has been set to 1: \n");
 	debug_print("XINUSE[bit 2:0] following the 2nd INIT = 0x%lx, expected value = 0x%lx \n",
 		xcr1_enter_2nd_init, xcr1_init_after_sse_exe);
