@@ -525,9 +525,14 @@ void v8086_rqmid_envir(void)
 	v8086_rqmid_37950_envir_001_1();
 	v8086_rqmid_37953_envir_002_1();
 	v8086_rqmid_37958_envir_003_1();
+	//init FPU before each case.
+	asm volatile("fninit");
 	v8086_rqmid_37951_envir_004_1();
+	asm volatile("fninit");
 	v8086_rqmid_37954_envir_005_1();
+	asm volatile("fninit");
 	v8086_rqmid_37955_envir_006_1();
+	asm volatile("fninit");
 	v8086_rqmid_37956_envir_007_1();
 	v8086_rqmid_37952_envir_008_1();
 	v8086_rqmid_38245_envir_009();
