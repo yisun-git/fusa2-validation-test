@@ -28,12 +28,15 @@
 #define CFG_TEST_MEMORY_ALL_CPU_READY_NATIVE	3
 #define CFG_TEST_MEMORY_ORDERING_CPU_NR_NATIVE	4
 
-#define CFG_MEMORY_ORDER_DEBUG_TIMES	10000000
-#define CFG_TEST_MEMORY_ORDERING_TIMES	100000000UL
+long CFG_MEMORY_ORDER_DEBUG_TIMES   =	10000000;
+long CFG_TEST_MEMORY_ORDERING_TIMES =	100000000UL;
 
 enum memory_order_type {
+	MEMORY_ORDER_TEST_LOOP_RUN_WO_INSTRUCTION = 0,
+	MEMORY_ORDER_TEST_LOOP_RUN_W_INSTRUCTION,
+
 	/* mfence (notmemory re-ordering occur) */
-	MEMORY_ORDER_TEST_144415_TABLE_1 = 0,
+	MEMORY_ORDER_TEST_144415_TABLE_1,
 
 	/* no mfence(memory re-ordering occur) */
 	MEMORY_ORDER_TEST_144415_TABLE_2,
@@ -120,6 +123,285 @@ static int r6;
 static void asm_test_null(void)
 {
 }
+
+//loop run start
+static inline void func_wrmsr(void)
+{
+	u32 index = IA32_PAT_MSR;
+	asm volatile (
+		"rdmsr\n"
+		"wrmsr\n"
+		:
+		: "c"(index)
+		: "%eax", "%edx", "memory"
+		);
+}
+
+static inline void func_cr(void)
+{
+	ulong cr4;
+	asm volatile (
+		"mov %%cr4, %0\n"
+		"mov %0, %%cr4\n"
+		: "=r"(cr4)
+		:
+		: "memory"
+		);
+}
+
+static inline void func_dr(void)
+{
+	ulong dr0;
+	asm volatile (
+		"mov %%dr0, %0\n"
+		"mov %0, %%dr0\n"
+		: "=r"(dr0)
+		:
+		: "memory"
+		);
+}
+
+static inline void func_lock(void)
+{
+	u32 val;
+	asm volatile (
+		"lock incl %0\n"
+		:
+		: "m"(val)
+		: "memory"
+		);
+}
+
+static inline void func_locking(void)
+{
+	u32 val = 0;
+	asm volatile (
+		"xchg %%eax, %0\n"
+		: "=m"(val)
+		:
+		: "eax"
+		);
+}
+
+static inline void func_io(void)
+{
+	u8 value = 0xB;
+	u16 port = 0x70;
+	asm volatile("out %0, %1" : : "a"(value), "d"(port));
+}
+
+static inline void func_wbinvd(void)
+{
+	asm volatile("wbinvd");
+}
+
+static char gva[0x1000];
+static inline void func_invlpg(void)
+{
+	asm volatile(
+		"invlpg (%0)\n"
+		:
+		: "r" (gva + 0x10)
+		: "memory"
+		);
+}
+
+static inline void func_cpuid(void)
+{
+	asm volatile (
+		"movl $1, %%eax\n"
+		"movl $0, %%ecx\n"
+		"cpuid\n"
+		:
+		:
+		: "eax", "ebx", "ecx", "edx"
+		);
+}
+
+
+static inline void func_lgdt(void)
+{
+	struct descriptor_table_ptr *ptr = NULL;
+	asm volatile (
+		"sgdt %0\n"
+		"lgdt %0\n"
+		: "=m"(*ptr)
+		);
+}
+
+static inline void func_lidt(void)
+{
+	struct descriptor_table_ptr *ptr = NULL;
+	asm volatile (
+		"sidt %0\n"
+		"lidt %0\n"
+		: "=m"(*ptr)
+		);
+}
+
+static inline void func_lldt(void)
+{
+	asm volatile (
+		"sldt %%ax\n"
+		"lldt %%ax\n"
+		:
+		:
+		: "eax");
+}
+
+#define TSS_TYPE_BUSY 0x2
+extern gdt_entry_t gdt64[];
+static inline void func_ltr(void)
+{
+	u16 tr = str();
+	gdt64[tr >> 3].access &= ~TSS_TYPE_BUSY;
+	ltr(tr);
+}
+
+void func_iret(void)
+{
+	u16 cs = read_cs();
+	u16 rflags = read_rflags();
+	asm volatile (
+		"mov %%ss, %%rax\n"
+		"pushq %%rax\n"
+		"mov %%rsp, %%rax\n"
+		"pushq %%rax\n"
+		"pushq %0\n"
+		"pushq %1\n"
+		"pushq $1f\n"
+		"iretq\n"
+		"1:\n"
+		:
+		: "m"(rflags), "m"(cs)
+		: "eax"
+		);
+}
+
+typedef void (*test_func_t)(void);
+
+struct test_case {
+	int case_id;
+	const char *case_name;
+	test_func_t test_func;
+};
+
+struct test_case  cases[] = {
+	{
+		.case_id = 46532,
+		.case_name = "WRMSR in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_wrmsr,
+	}, {
+		.case_id = 46534,
+		.case_name = "Writing CR in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_cr,
+	}, {
+		.case_id = 46528,
+		.case_name = "Writing DR in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_dr,
+	}, {
+		.case_id = 46529,
+		.case_name = "LOCK prefixed instruction in VMX non-root operation serializes memory operations_001",
+		.test_func = func_lock,
+	}, {
+		.case_id = 46530,
+		.case_name = "Locking instructions in VMX non-root operation serializes memory operations_001",
+		.test_func = func_locking,
+	}, {
+		.case_id = 46531,
+		.case_name = "When a vCPU attempts to execute an I/O instruction, the physical .. is serialized_001",
+		.test_func = func_io,
+	}, {
+		.case_id = 46535,
+		.case_name = "INVLPG in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_invlpg,
+	}, {
+		.case_id = 46540,
+		.case_name = "CPUID in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_cpuid,
+	}, {
+		.case_id = 46536,
+		.case_name = "LGDT in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_lgdt,
+	}, {
+		.case_id = 46537,
+		.case_name = "LIDT in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_lidt,
+	}, {
+		.case_id = 46538,
+		.case_name = "LLDT in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_lldt,
+	}, {
+		.case_id = 46539,
+		.case_name = "LTR in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_ltr,
+	}, {
+		.case_id = 46541,
+		.case_name = "IRET in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_iret,
+	}, {
+		//leave case 46533 at last, because wbinvd need a lot of time to run.
+		.case_id = 46533,
+		.case_name = "WBINVD in VMX non-root operation serializes instruction execution_001",
+		.test_func = func_wbinvd,
+	}, {
+		.case_id = 0,
+		.case_name = NULL,
+		.test_func = NULL
+	}
+};
+
+test_func_t global_test_func = NULL;
+static void set_test_func(test_func_t test_func)
+{
+	global_test_func = test_func;
+}
+
+static void asm_test_loop_run_init(void)
+{
+	X = 0;
+	Y = 0;
+}
+
+static void asm_test_loop_run_wo_instruction_ap1(void)
+{
+	asm volatile(
+		"movl $1, %1\n\t"
+		"movl %2, %0\n\t"
+		: "=r"(r1), "=m" (X)
+		: "m"(Y)
+		: "memory");
+}
+
+static void asm_test_loop_run_wo_instruction_ap2(void)
+{
+	asm volatile(
+		"movl $1, %1\n\t"
+		"movl %2, %0\n\t"
+		: "=r"(r2), "=m" (Y)
+		: "m"(X)
+		: "memory");
+}
+
+void asm_test_loop_run_w_instruction_ap1(void)
+{
+	asm volatile("movl $1, %0\n" : "=m" (X) :  : "memory");
+	global_test_func();
+	asm volatile("movl %1, %0\n" : "=r"(r1)	: "m"(Y) : "eax", "memory");
+}
+
+void asm_test_loop_run_w_instruction_ap2(void)
+{
+	asm volatile("movl $1, %0\n" : "=m" (Y) :  : "memory");
+	global_test_func();
+	asm volatile("movl %1, %0\n" : "=r"(r2)	: "m"(X) : "eax", "memory");
+}
+
+static int memory_order_loop_run_check(void)
+{
+	return (r1 == 0) && (r2 == 0);
+}
+//loop run end
 
 static void asm_test_144415_table1_mfence_ap1(void)
 {
@@ -817,6 +1099,22 @@ static void asm_test_144412_table2_init()
 }
 
 static void (*memory_ordering_test_type[MEMORY_ORDER_TEST_MAX+1][CFG_TEST_MEMORY_ORDERING_CPU_NR_NATIVE])(void) = {
+	// MEMORY_ORDER_TEST_LOOP_RUN_WO_INSTRUCTION
+	{
+		NULL,
+		asm_test_loop_run_wo_instruction_ap1,
+		asm_test_loop_run_wo_instruction_ap2,
+		NULL,
+	},
+
+	// MEMORY_ORDER_TEST_LOOP_RUN_W_INSTRUCTION
+	{
+		NULL,
+		asm_test_loop_run_w_instruction_ap1,
+		asm_test_loop_run_w_instruction_ap2,
+		NULL,
+	},
+
 	/* MEMORY_ORDER_TEST_144415_TABLE_1 */
 	{
 		NULL,
@@ -980,6 +1278,11 @@ static void (*memory_ordering_test_type[MEMORY_ORDER_TEST_MAX+1][CFG_TEST_MEMORY
 
 
 static void (*memory_ordering_init[MEMORY_ORDER_TEST_MAX+1])(void) = {
+	// MEMORY_ORDER_TEST_LOOP_RUN_WO_INSTRUCTION
+	asm_test_loop_run_init,
+	// MEMORY_ORDER_TEST_LOOP_RUN_W_INSTRUCTION
+	asm_test_loop_run_init,
+
 	/* MEMORY_ORDER_TEST_144415_TABLE_1 */
 	asm_test_144415_table12_init,
 
@@ -1080,6 +1383,8 @@ static void (*memory_ordering_ap_test_entry[CFG_TEST_MEMORY_ORDERING_CPU_NR_NATI
 };
 
 static int (*memory_ordering_bp_check[MEMORY_ORDER_TEST_MAX+1])() = {
+	memory_order_loop_run_check,			//MEMORY_ORDER_TEST_LOOP_RUN_WO_INSTRUCTION
+	memory_order_loop_run_check,			//MEMORY_ORDER_TEST_LOOP_RUN_W_INSTRUCTION
 	memory_order_144415_table12_check,		//MEMORY_ORDER_TEST_144415_TABLE_1
 	memory_order_144415_table12_check,		//MEMORY_ORDER_TEST_144415_TABLE_2
 	memory_order_144414_table2_check,		//MEMORY_ORDER_TEST_144414_TABLE_2
@@ -1572,6 +1877,35 @@ __unused static void memory_ordering_rqmid_39349_uc_ordering_002(void)
 	report("%s %ld", (result == 0), __FUNCTION__, result);
 }
 
+/**
+ * @brief case name: ACRN hypervisor shall expose memory ordering instructions to any VM
+ *
+ * Summary: ACRN hypervisor shall expose memory ordering instructions to any VM,
+ * in compliance with Chapter 8.2.5, Vol. 3, SDM.
+ *
+ */
+__unused static void loop_run_memory_ordering(void)
+{
+	struct test_case *cur = cases;
+	while (cur->case_id > 0) {
+		ulong result[2] = { 0, 0 };
+		set_test_func(cur->test_func);
+		//instruction function is not run.
+		result[0] = memory_ordering_bp_test_two_ap(
+			cur->case_id, MEMORY_ORDER_TEST_LOOP_RUN_WO_INSTRUCTION, CACHE_PAT_WB);
+		//because wbinvd need a lot of time to run, test times need to be adjusted.
+		if (46533 == cur->case_id) {
+			CFG_MEMORY_ORDER_DEBUG_TIMES = 1000;
+			CFG_TEST_MEMORY_ORDERING_TIMES = 10000;
+		}
+		//instruction function is run.
+		result[1] = memory_ordering_bp_test_two_ap(
+			cur->case_id, MEMORY_ORDER_TEST_LOOP_RUN_W_INSTRUCTION, CACHE_PAT_WB);
+		report("%s: %ld, %ld", ((result[0] != 0) && (result[1] == 0)), cur->case_name, result[0], result[1]);
+		cur++;
+	}
+}
+
 static void print_case_list()
 {
 	printf("Memory ordering feature case list:\n\r");
@@ -1613,6 +1947,11 @@ static void print_case_list()
 		"Accesses to UC or UC- memory ranges follows strong ordering_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39349u,
 		"Accesses to UC or UC- memory ranges follows strong ordering_002");
+	struct test_case *cur = cases;
+	while (cur->case_id > 0) {
+		printf("\t\t Case ID:%d case name:%s\n\r", cur->case_id, cur->case_name);
+		cur++;
+	}
 #endif
 }
 
@@ -1671,6 +2010,7 @@ int main(int ac, char **av)
 	memory_ordering_rqmid_39322_processor_ordering_015();
 	memory_ordering_rqmid_39348_uc_ordering_001();
 	memory_ordering_rqmid_39349_uc_ordering_002();
+	loop_run_memory_ordering();
 #endif
 	return report_summary();
 }

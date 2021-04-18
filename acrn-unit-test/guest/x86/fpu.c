@@ -587,6 +587,25 @@ static void fpu_rqmid_32365_st0_through_st7_states_following_startup_001()
 	report("%s", 1, __FUNCTION__);
 }
 
+/*
+ * @brief case name: x86 FPU opcode register start-up value_001
+ *
+ *Summary:
+	ACRN hypervisor shall set initial guest x87 FPU opcode register to 0H for virtual BP.
+ */
+
+static void fpu_rqmid_46097_fpu_data_opcode_register_following_startup_001()
+{
+	bool is_pass = true;
+	volatile struct fxsave_struct *fpu_save;
+
+	fpu_save = (struct fxsave_struct *)STARTUP_FPU_XSAVE_ADDR;
+	if (fpu_save->fop != 0) {
+		is_pass = false;
+		printf("fop=%x\n", fpu_save->fop);
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
 
 #endif
 #ifdef IN_NON_SAFETY_VM
@@ -1138,7 +1157,7 @@ static void fpu_rqmid_32378_FPU_capability_enumeration_001()
  *  ACRN hypervisor shall expose FPU execution environment to any guest,
  *	in compliance with Chapter 8.1 and 8.3, Vol. 1, SDM and Chapter 2.5, Vol.3, SDM.
  *
- *	Under 64 bit Mode ,  
+ *	Under 64 bit Mode,
  * Rebulid the paging structure, to create the page fault(pgfault: occur),executing FICOMP shall generate #PF ..
  */
 static void fpu_rqmid_31189_execution_environment_64_bit_Mode_FICOMP_PF_001()
@@ -1168,7 +1187,7 @@ static void fpu_rqmid_31189_execution_environment_64_bit_Mode_FICOMP_PF_001()
  *	in compliance with Chapter 8.1 and 8.3, Vol. 1, SDM and Chapter 2.5, Vol.3, SDM.
  *
  * Under 64 bit Mode and CPL0 ,
- * If the memory address is in a non-canonical form(Ad. Cann.: non mem),  executing FIST shall generate #GP.
+ * If the memory address is in a non-canonical form(Ad. Cann.: non mem), executing FIST shall generate #GP.
  */
 static void fpu_rqmid_31436_execution_environment_64_bit_Mode_FIST_GP_001()
 {
@@ -1421,6 +1440,7 @@ int main(void)
 	fpu_rqmid_32385_Ignore_Changing_CR0_NE_to_001();
 	fpu_rqmid_40028_FPU_hide_Exception_only_FDP_update_001();
 	fpu_rqmid_32365_st0_through_st7_states_following_startup_001();
+	fpu_rqmid_46097_fpu_data_opcode_register_following_startup_001();
 #endif
 #ifdef IN_NON_SAFETY_VM
 #ifdef __i386__
