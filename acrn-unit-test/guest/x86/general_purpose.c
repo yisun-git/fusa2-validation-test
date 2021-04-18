@@ -480,7 +480,7 @@ static void  gp_rqmid_31257_bit_and_byte_physical_support(void)
  *
  * Summary: Binary arithmetic instructions shall be available on the physical platform.
 
- * ADD, ADC, SUB, SBB, INC, DEC, CMP, NEG, MUL, IMUL, DIV, IDIV can be executed normally.
+ * ADD, ADC, SUB, SBB, INC, DEC, CMP, NEG, MUL, IMUL, DIV, IDIV can be executed normally.
  */
 static void  gp_rqmid_31242_binary_arithmetic_physical_support(void)
 {
@@ -1866,7 +1866,7 @@ static void gp_rqmid_25080_edx_register_Following_init(void)
 
 /**
  * @brief case name: EFLAGS register init value_001
- * Summary: Get eflags register at AP init, the bit shall be 00000002H and same with SDM definition.
+ * Summary: Get eflags register at AP init, the bit shall be 00000002H and same with SDM definition.
  */
 
 static void gp_rqmid_25061_eflags_register_Following_init(void)
@@ -1971,7 +1971,7 @@ static void gp_rqmid_46083_r8_r15_following_init(void)
 
 /**
  * @brief case name: EAX register start-up value_001
- * Summary: Get eax register at BP start-up, the register's value shall be 0 and same with SDM definition.
+ * Summary: Get eax register at BP start-up, the register's value shall be 0, and same with SDM definition.
  */
 static void gp_rqmid_25067_eax_register_start_up(void)
 {
@@ -2037,6 +2037,34 @@ static void gp_rqmid_25063_eflags_register_start_up(void)
 #endif
 	report("%s", eflags_startup == 0x00000002, __FUNCTION__);
 
+}
+
+/**
+ * @brief case name: R8~R15 register start-up value_001
+ * Summary: Get R8~R15Â at BP start-up, Â these register's value shall be 0H.
+ */
+
+void gp_rqmid_46098_r8_r15_register_start_up(void)
+{
+	volatile u64 r8 = *((volatile u64 *)STARTUP_R8_ADDR);
+	volatile u64 r9 = *((volatile u64 *)STARTUP_R9_ADDR);
+	volatile u64 r10 = *((volatile u64 *)STARTUP_R10_ADDR);
+	volatile u64 r11 = *((volatile u64 *)STARTUP_R11_ADDR);
+	volatile u64 r12 = *((volatile u64 *)STARTUP_R12_ADDR);
+	volatile u64 r13 = *((volatile u64 *)STARTUP_R13_ADDR);
+	volatile u64 r14 = *((volatile u64 *)STARTUP_R14_ADDR);
+	volatile u64 r15 = *((volatile u64 *)STARTUP_R15_ADDR);
+
+	bool is_pass = false;
+	if ((r8 == 0x0) && (r9 == 0x0) && (r10 == 0x0) && (r11 == 0x0) &&
+		(r12 == 0x0) && (r13 == 0x0) && (r14 == 0x0) && (r15 == 0x0)) {
+		is_pass = true;
+	} else {
+		printf("r8=0x%lx, r9=0x%lx, r10=0x%lx, r11=0x%lx, r12=0x%lx, r13=0x%lx, r14=0x%lx, r15=0x%lx\n",
+			r8, r9, r10, r11, r12, r13, r14, r15);
+	}
+
+	report("%s", is_pass, __FUNCTION__);
 }
 
 #else  /* #ifndef __x86_64__*/
@@ -2167,6 +2195,23 @@ static void  gp_rqmid_32179_decimal_arithmetic_aam_32bit_de_001(void)
 }
 
 #endif   /* #ifndef __x86_64__*/
+
+/**
+ * @brief case name: Guarantee that the vCPU receives #GP(0) when a vCPU attempt to write guest
+ * IA32_MISC_ENABLE [bit 0]_001
+ *
+ * Summary: Execute WRMSR instruction to write IA32_MISC_ENABLE [bit 0] with different form old value
+ * shall generate #GP(0).
+ */
+void misc_msr_rqmid_46546_wt_IA32_MISC_ENABLE_bit0_001(void)
+{
+	u64 msr_ia32_misc_enable;
+
+	msr_ia32_misc_enable = rdmsr(IA32_MISC_ENABLE) ^ MSR_IA32_MISC_ENABLE_FAST_STRING;
+	report("%s", (wrmsr_checking(IA32_MISC_ENABLE, msr_ia32_misc_enable) == GP_VECTOR) &&
+		(exception_error_code() == 0), __FUNCTION__);
+}
+
 #endif
 
 static void print_case_list(void)
@@ -2253,6 +2298,10 @@ static void print_case_list(void)
 		"EBX, ECX, EDI, EBP, ESP register start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25063u,
 		"EFLAGS register start-up value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 46098u,
+		"R8~R15 register start-up value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 46546u,
+		"Guarantee that the vCPU receives #GP(0) when a vCPU attempt to write guest IA32_MISC_ENABLE [bit 0]_001");
 #endif
 }
 
@@ -2340,6 +2389,7 @@ int main(void)
 	gp_rqmid_25083_edx_register_start_up();
 	gp_rqmid_25308_ebx_ecx_and_other_register_start_up();
 	gp_rqmid_25063_eflags_register_start_up();
+	gp_rqmid_46098_r8_r15_register_start_up();
 	/*---64 bit end----*/
 #else /* #ifndef __x86_64__ */
 	/*--------------------------32 bit--------------------------*/
@@ -2350,6 +2400,7 @@ int main(void)
 	gp_rqmid_32179_decimal_arithmetic_aam_32bit_de_001();
 	/*--------------------------32 bit end ----------------------*/
 #endif
+	misc_msr_rqmid_46546_wt_IA32_MISC_ENABLE_bit0_001();
 #endif
 	return report_summary();
 }

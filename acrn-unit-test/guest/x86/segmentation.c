@@ -348,18 +348,27 @@ static void verify_bp_dump_info(void)
 
 
 	struct gdtr32_t *gdtr32 = (struct gdtr32_t *)(dump + GDTR_BASE);
+	u16 gdt_desc_count = (gdtr32->limit + 1) / 4;
+	u16 ldtr_selector = (u16)dump[GDTR_BASE + 3];
 
 	printf("\ndumped GDTR@%p: base=0x%x, limit=%d\n", gdtr32, gdtr32->base, gdtr32->limit);
-	printf("LDTR selector = 0x%x\n", (u16)dump[GDTR_BASE + 3]);
+	printf("LDTR selector = 0x%x\n", ldtr_selector);
 	printf("dump GDT rep args: ecx = %d, esi=0x%x, edi=0x%x, (check:%p)\n", dump[GDTR_BASE + 4],
 		dump[GDTR_BASE + 5], dump[GDTR_BASE + 6], dump + GDT_BASE);
 
-	for (uint32_t i = 0; i < ((gdtr32->limit + 1) / 4); i += 2) {
+	for (uint32_t i = 0; i < gdt_desc_count; i += 2) {
 		printf("GDT[%d]: %08x %08x\n", i/2, dump[GDT_BASE + i + 1], dump[GDT_BASE + i]);
 	}
 
 	//for LDTR test cases
-	report("Test Case: 29065", (u16)dump[GDTR_BASE + 3] == 0);
+	report("Test Case: 29065", ldtr_selector == 0);
+
+	u32 ldr_base_addr = 0xFF;
+	if (ldtr_selector < gdt_desc_count) {
+		u32 *ldt_ptr = dump + GDT_BASE + ldtr_selector;
+		ldr_base_addr = (ldt_ptr[1] & 0xff000000) | ((ldt_ptr[1] & 0xff) << 16) | (ldt_ptr[0] >> 16);
+	}
+	report("Test Case: 46547: Initialize LDTR base address for virtual BP_001", ldr_base_addr == 0);
 
 	//for GDTR test cases, verify its base and limit
 	#if defined(__x86_64__)

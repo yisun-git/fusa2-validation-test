@@ -278,6 +278,10 @@ ap_start64:
 	jmp 1b
 
 start64:
+#ifdef BP_STARTUP_CHECK_64
+	#define RUN_IN_64BIT
+	#include BP_STARTUP_CHECK
+#endif
 #ifdef IN_PAGING_TEST
 	mov %cr3, %rax
 	movq %rax, (STARTUP_64BIT_CR3_ADDR)

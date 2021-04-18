@@ -184,7 +184,7 @@ $(TEST_DIR)/multiboot.o:$(TEST_DIR)/multiboot.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 	
 $(TEST_DIR)/general_purpose.o: CFLAGS += -DAP_INIT_CHECK=\"gp_init.S\"
-$(TEST_DIR)/general_purpose.o: CFLAGS += -DBP_STARTUP_CHECK=\"gp_startup.S\"
+$(TEST_DIR)/general_purpose.o: CFLAGS += -DBP_STARTUP_CHECK=\"gp_startup.S\" -DBP_STARTUP_CHECK_64
 $(TEST_DIR)/general_purpose.o: $(TEST_DIR)/general_purpose.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)

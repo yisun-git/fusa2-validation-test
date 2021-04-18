@@ -1481,6 +1481,56 @@ static void misc_msr_rqmid_40268_read_msr_reserve_bits(void)
 	report("%s", true, __FUNCTION__);
 }
 
+/**
+ * @brief case name: Access guest MSR_MISC_FEATURE_CONTROL_001
+ *
+ * Summary:   Access register MSR_MISC_FEATURE_CONTROL shall generate #GP(0).
+ */
+static void misc_msr_rqmid_46542_rd_MSR_MISC_FEATURE_CONTROL_001(void)
+{
+	misc_msr_test_rdmsr(MSR_MISC_FEATURE_CONTROL, GP_VECTOR, 0, __FUNCTION__);
+}
+
+/**
+ * @brief case name: Access guest IA32_CPU_DCA_CAP_001
+ *
+ * Summary:   Access register IA32_CPU_DCA_CAP shall generate #GP(0).
+ */
+static void misc_msr_rqmid_46543_rd_IA32_CPU_DCA_CAP_001(void)
+{
+	misc_msr_test_rdmsr(IA32_CPU_DCA_CAP, GP_VECTOR, 0, __FUNCTION__);
+}
+
+/**
+ * @brief case name: Access guest IA32_DCA_0_CAP_001
+ *
+ * Summary:   Access register IA32_DCA_0_CAP shall generate #GP(0).
+ */
+static void misc_msr_rqmid_46544_rd_IA32_DCA_0_CAP_001(void)
+{
+	misc_msr_test_rdmsr(IA32_DCA_0_CAP, GP_VECTOR, 0, __FUNCTION__);
+}
+
+/**
+ * @brief case name: Guarantee that the write is ignored when a vCPU attempts to write 0H to
+ * guest IA32_BIOS_SIGN_ID_001
+ *
+ * Summary: When a vCPU attempts to write 0H guest  IA32_BIOS_SIGN_ID,
+ *  ACRN hypervisor shall ignore this access.
+ */
+static void misc_msr_rqmid_46545_wt_IA32_BIOS_SIGN_ID_001(void)
+{
+	u64 msr_ia32_efer;
+	msr_ia32_efer = rdmsr(IA32_BIOS_SIGN_ID);
+	wrmsr(IA32_BIOS_SIGN_ID, 0);
+	if (rdmsr(IA32_BIOS_SIGN_ID) == msr_ia32_efer) {
+		report("%s", true, __FUNCTION__);
+	} else {
+		report("%s", false, __FUNCTION__);
+	}
+}
+
+
 static void print_case_list(void)
 {
 	printf("PMU feature case list:\n\r");
@@ -1606,6 +1656,11 @@ static void print_case_list(void)
 	printf("\t Case ID:%d case name:%s %s\n\r", 40268,
 	"Guarantee that the vCPU will gets the current value of guest reserve bits of this MSR when",
 	"a vCPU attempts to read reserve bits of any guest impletemented MSR_001");
+	printf("\t Case ID:%d case name:%s\n\r", 46545,
+	"Guarantee that the write is ignored when a vCPU attempts to write 0H to guest IA32_BIOS_SIGN_ID_001");
+	printf("\t Case ID:%d case name:%s\n\r", 46542,	"Access guest MSR_MISC_FEATURE_CONTROL_001");
+	printf("\t Case ID:%d case name:%s\n\r", 46543,	"Access guest IA32_CPU_DCA_CAP_001");
+	printf("\t Case ID:%d case name:%s\n\r", 46544,	"Access guest IA32_DCA_0_CAP_001");
 }
 
 int main(void)
@@ -1670,5 +1725,10 @@ int main(void)
 	misc_msr_rqmid_38736_change_IA32_MISC_ENABLE_bit34_invalidate_tlb();
 	misc_msr_rqmid_38742_change_IA32_MISC_ENABLE_bit34_invalidate_paging_struct();
 	misc_msr_rqmid_40268_read_msr_reserve_bits();
+	misc_msr_rqmid_46545_wt_IA32_BIOS_SIGN_ID_001();
+	misc_msr_rqmid_46542_rd_MSR_MISC_FEATURE_CONTROL_001();
+	misc_msr_rqmid_46543_rd_IA32_CPU_DCA_CAP_001();
+	misc_msr_rqmid_46544_rd_IA32_DCA_0_CAP_001();
+
 	return report_summary();
 }
