@@ -107,6 +107,8 @@ static __unused void mmx_pt_ra_b6_0(void)
 	u32 cr3 = read_cr3();
 	u32 cr4 = read_cr4();
 	condition_CR0_EM_1();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(mmx_pt_ra_b6_instruction_0, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -123,6 +125,8 @@ static __unused void mmx_pt_ra_b6_1(void)
 	u32 cr4 = read_cr4();
 	condition_CPUID_MMX_1();
 	condition_LOCK_used();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(mmx_pt_ra_b6_instruction_1, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -138,6 +142,8 @@ int main(void)
 	setup_idt();
 	setup_ring_env();
 	set_handle_exception();
+	//Added manually: init floating-point unit
+	asm volatile("fninit");
 	#ifdef PHASE_0
 	mmx_pt_ra_b6_0();
 	mmx_pt_ra_b6_1();

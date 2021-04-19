@@ -181,6 +181,8 @@ static __unused void fpu_pt_ra_b6_0(void)
 	u32 cr8 = read_cr8();
 	#endif
 	condition_LOCK_used();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_0, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -203,6 +205,8 @@ static __unused void fpu_pt_ra_b6_1(void)
 	#endif
 	condition_LOCK_not_used();
 	condition_CR0_EM_1();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_1, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -226,6 +230,8 @@ static __unused void fpu_pt_ra_b6_2(void)
 	condition_LOCK_not_used();
 	condition_CR0_EM_0();
 	condition_CR0_TS_1();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_2, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -249,6 +255,8 @@ static __unused void fpu_pt_ra_b6_3(void)
 	condition_LOCK_not_used();
 	condition_CR0_EM_0();
 	condition_CR0_TS_0();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_3, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -273,6 +281,8 @@ static __unused void fpu_pt_ra_b6_4(void)
 	condition_CR0_EM_0();
 	condition_CR0_TS_0();
 	condition_D_segfault_occur();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_4, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -298,6 +308,8 @@ static __unused void fpu_pt_ra_b6_5(void)
 	condition_CR0_TS_0();
 	condition_CR0_NE_1();
 	condition_FPU_excp_hold();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_5, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -322,6 +334,8 @@ static __unused void fpu_pt_ra_b6_6(void)
 	condition_CR0_EM_0();
 	condition_CR0_TS_0();
 	condition_FPU_excp_not_hold();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_6, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -345,6 +359,8 @@ static __unused void fpu_pt_ra_b6_7(void)
 	condition_LOCK_not_used();
 	condition_CR0_MP_1();
 	condition_CR0_TS_1();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_7, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -367,6 +383,8 @@ static __unused void fpu_pt_ra_b6_8(void)
 	#endif
 	condition_LOCK_not_used();
 	condition_CR0_MP_0();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_8, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -390,6 +408,8 @@ static __unused void fpu_pt_ra_b6_9(void)
 	condition_LOCK_not_used();
 	condition_CR0_MP_1();
 	condition_CR0_TS_0();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(fpu_pt_ra_b6_instruction_9, "");
 	write_cr0(cr0);
 	write_cr2(cr2);

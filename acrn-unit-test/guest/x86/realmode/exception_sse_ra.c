@@ -672,6 +672,8 @@ static __unused void sse_ra_0(void)
 	condition_CR4_OSFXSR_1();
 	condition_exceed_64K_hold();
 	execption_inc_len = 3;
+	//Added manually: fix no output issue
+	printf("\n");
 	do_at_ring0(sse_ra_instruction_0, "");
 	execption_inc_len = 0;
 	write_cr0(cr0);

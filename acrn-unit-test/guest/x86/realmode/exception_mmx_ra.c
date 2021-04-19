@@ -60,6 +60,8 @@ static __unused void mmx_ra_0(void)
 	condition_LOCK_not_used();
 	condition_exceed_64K_hold();
 	execption_inc_len = 3;
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(mmx_ra_instruction_0, "");
 	execption_inc_len = 0;
 	write_cr0(cr0);
@@ -80,6 +82,8 @@ static __unused void mmx_ra_1(void)
 	condition_exceed_64K_not_hold();
 	condition_CR0_NE_1();
 	condition_FPU_excp_hold();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(mmx_ra_instruction_1, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -99,6 +103,8 @@ static __unused void mmx_ra_2(void)
 	condition_exceed_64K_not_hold();
 	condition_FPU_excp_not_hold();
 	condition_CR0_EM_1();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(mmx_ra_instruction_2, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -119,6 +125,8 @@ static __unused void mmx_ra_3(void)
 	condition_FPU_excp_not_hold();
 	condition_CR0_EM_0();
 	condition_CR0_TS_1();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(mmx_ra_instruction_3, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -139,6 +147,8 @@ static __unused void mmx_ra_4(void)
 	condition_FPU_excp_not_hold();
 	condition_CR0_EM_0();
 	condition_CR0_TS_0();
+	//Added manually: fix no output issue
+	printf(" ");
 	do_at_ring0(mmx_ra_instruction_4, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -154,6 +164,8 @@ int main(void)
 	setup_idt();
 	setup_ring_env();
 	set_handle_exception();
+	//Added manually: init floating-point unit
+	asm volatile("fninit");
 	#ifdef PHASE_0
 	mmx_ra_0();
 	mmx_ra_1();
