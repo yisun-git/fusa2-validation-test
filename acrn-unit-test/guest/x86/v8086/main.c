@@ -181,6 +181,8 @@ void handle_intr21(void)
 		"mov %eax, %gs\n"
 		);
 
+	//add print message to refrash the serial buffer.
+	printf("enter: %s()\n", __func__);
 	esp = read_v8086_esp();
 	regs = ((struct int_regs *)&ring0stacktop) - 1;
 
@@ -253,7 +255,8 @@ __noinline void v8_set_igdt(void)
 	u8 access = (value >> 16) & 0xff;
 	u8 selector = (22 == vector ? VM86_CS_DPL_SEL : VM86_CS_CONFORM_SEL);
 
-	//printf("%s: vector=%u, gate_type=%u, access=0x%x\n", __func__, vector, gate_type, access);
+	//add print message to refrash the serial buffer.
+	printf("%s: vector=%u, gate_type=%u, access=0x%x\n", __func__, vector, gate_type, access);
 	switch (vector) {
 	case 21:
 		set_idt_entry_ex(vector, handle_intr21, DPL_3, read_cs(), gate_type);
