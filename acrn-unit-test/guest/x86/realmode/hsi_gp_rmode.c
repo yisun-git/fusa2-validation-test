@@ -33,7 +33,7 @@ static u8 cmove_checking(void)
 		: "bx"
 	);
 
-	return ((exception_vector() == 0) && (op == 0));
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0));
 }
 
 /* 0x10 & 0x11 */
@@ -50,7 +50,7 @@ static u8 and_checking(void)
 		: "ax"
 	);
 
-	return ((exception_vector() == 0) && (op == 0x10));
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
 }
 
 /* CLI instruction make the eflags.IF to 0 */
@@ -72,7 +72,7 @@ static u8 cli_checking(void)
 		: : "bx"
 	);
 
-	return ((exception_vector() == 0) && (op == 0));
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0));
 }
 
 /* move $0x10 to segment FS */
@@ -90,7 +90,7 @@ static u8 mov_real_checking(void)
 		: : "ebx", "ecx"
 	);
 
-	return ((exception_vector() == 0) && (op == 0x10));
+	return ((exception_vector() == NO_EXCEPTION) && (op == 0x10));
 }
 
 /*
