@@ -237,3 +237,9 @@ $(TEST_DIR)/v8086_protect.o: $(TEST_DIR)/v8086_protect.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/application_constraints.o: CFLAGS += -DBP_STARTUP_CHECK=\"application_constraints_eip.S\"
+$(TEST_DIR)/application_constraints.o: $(TEST_DIR)/application_constraints.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
