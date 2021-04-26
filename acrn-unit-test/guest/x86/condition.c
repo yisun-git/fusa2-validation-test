@@ -13,15 +13,6 @@
 #include "mpx.h"
 
 /* commmon function */
-void condition_CPUID_AVX_1(void)
-{
-	unsigned long check_bit = 0;
-
-	//printf("***** Check CPUID.(EAX=01H,ECX=0):ECX[bit 28] *****\n");
-
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01, EXTENDED_STATE_SUBLEAF_0).c;
-	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_28);
-}
 
 void condition_CPUID_AVX2_1(void)
 {
@@ -237,9 +228,12 @@ void condition_CR0_NE_1(void)
 	write_cr0(check_bit);
 }
 
-void condition_cs_cpl_0(void)
-{
-}
+//Modified manually: reconstruct this condition totally.
+#define condition_cs_cpl_0() \
+	if (0 != (read_cs() & 0x03)) { \
+		report("%s: CPL is not 0", 0, __func__); \
+		return; \
+	}
 
 void condition_cs_cpl_1(void)
 {
@@ -404,8 +398,39 @@ void condition_CSLoad_true(void)
 			: : "r" (0x8));
 }
 
+#define LAST_SPARE_SEL 0x78
 void condition_CSLoad_false(void)
 {
+	struct descriptor_table_ptr old_gdt_desc;
+	sgdt(&old_gdt_desc);
+#ifdef __x86_64__
+	//0x00af9b000000ffff // 64-bit code segment
+	set_gdt64_entry(LAST_SPARE_SEL, 0, SEGMENT_LIMIT_ALL,
+		SEGMENT_PRESENT_SET | DESCRIPTOR_PRIVILEGE_LEVEL_0 |
+		DESCRIPTOR_TYPE_CODE_OR_DATA | SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
+		GRANULARITY_SET | L_64_BIT_CODE_SEGMENT);
+#else
+	set_gdt_entry(LAST_SPARE_SEL, 0, SEGMENT_LIMIT_ALL,
+		SEGMENT_PRESENT_SET | DESCRIPTOR_PRIVILEGE_LEVEL_0 |
+		DESCRIPTOR_TYPE_CODE_OR_DATA | SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
+		GRANULARITY_SET | DEFAULT_OPERATION_SIZE_32BIT_SEGMENT);
+#endif
+	lgdt(&old_gdt_desc);
+
+#ifdef __x86_64__
+	struct lseg_st64 fptr;
+	fptr.offset = (u64)&&end;
+	fptr.selector = LAST_SPARE_SEL;
+	asm goto("rex.W\n" "ljmp *%0\n" : : "m"(fptr) : : end);
+#else
+	struct lseg_st fptr;
+	fptr.offset = (u32)&&end;
+	fptr.selector = LAST_SPARE_SEL;
+	asm goto("ljmp *%0\n" : : "m"(fptr) : : end);
+#endif
+
+end:
+	printf(" "); //add this line for fixing compile error
 }
 
 void condition_REXR_hold(void)
@@ -1117,37 +1142,73 @@ void condition_ECX_MSR_Unimplement_false(void)
 {
 }
 
-void condition_CPUID_SSE3_0(void)
-{
-}
-
-void condition_CPUID_SSE4_1_0(void)
-{
-}
-
-void condition_CPUID_SSE4_2_0(void)
-{
-}
-
 void condition_CPUID_MMX_0(void)
 {
 }
 
-void condition_CPUID_AVX_0(void)
-{
-}
+#define CHECK_CPUID_0(func, index, reg, bit, msg) \
+	if (0 != (cpuid_indexed((func), (index)).reg & (1 << (bit)))) { \
+		report("%s: Ignore this case, because the processor supports " msg, \
+			1, __func__); \
+		return; \
+	} \
+	printf("%s: the processor does not supports " msg, __func__)
 
-void condition_CPUID_AVX2_0(void)
-{
-}
+#define CHECK_CPUID_1(func, index, reg, bit, msg) \
+	if (0 == (cpuid_indexed((func), (index)).reg & (1 << (bit)))) { \
+		report("%s: The processor does not support " msg, \
+			0, __func__); \
+		return; \
+	} \
+	printf("%s: CPUID = 0x%x", __func__, cpuid_indexed((func), (index)).reg)
 
-void condition_CPUID_F16C_0(void)
-{
-}
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H,ECX=0):ECX[bit 28]
+#define condition_CPUID_AVX_0() \
+	CHECK_CPUID_0(0x01, 0, c, 28, "AVX instruction extensions.")
 
-void condition_CPUID_FMA_0(void)
-{
-}
+#define condition_CPUID_AVX_1() \
+	CHECK_CPUID_1(0x01, 0, c, 28, "AVX instruction extensions.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=07H,ECX=0):EBX[bit 5]
+#define condition_CPUID_AVX2_0() \
+	CHECK_CPUID_0(0x07, 0, b, 5, "AVX2 instruction extensions.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 29]
+#define condition_CPUID_F16C_0() \
+	CHECK_CPUID_0(0x01, 0, c, 29, "16-bit floating-point conversion instructions.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 12]
+#define condition_CPUID_FMA_0() \
+	CHECK_CPUID_0(0x01, 0, c, 12, "FMA extensions using YMM state.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 0]
+#define condition_CPUID_SSE3_0() \
+	CHECK_CPUID_0(0x01, 0, c, 0, "Streaming SIMD Extensions 3 (SSE3).")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 19]
+#define condition_CPUID_SSE4_1_0() \
+	CHECK_CPUID_0(0x01, 0, c, 19, "Streaming SIMD Extensions 4.1 (SSE4.1).")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 20]
+#define condition_CPUID_SSE4_2_0() \
+	CHECK_CPUID_0(0x01, 0, c, 20, "Streaming SIMD Extensions 4.2 (SSE4.2).")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18]
+#define condition_CPUID_RDSEED_0() \
+	CHECK_CPUID_0(0x07, 0, b, 18, "RDSEED instruction.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX.RDRAND[bit 30]
+#define condition_CPUID_RDRAND_0() \
+	CHECK_CPUID_0(0x01, 0, c, 30, "RDRAND instruction.")
 
 void condition_CR0_MP_1(void)
 {
@@ -1170,15 +1231,7 @@ void condition_CR0_MP_0(void)
 	write_cr0(check_bit);
 }
 
-void condition_CPUID_RDRAND_0(void)
-{
-}
-
 void condition_CPUID_RDRAND_1(void)
-{
-}
-
-void condition_CPUID_RDSEED_0(void)
 {
 }
 
@@ -1201,6 +1254,20 @@ void condition_OpcodeExcp_false(void)
 void condition_OpcodeExcp_true(void)
 {
 }
+
+//Added manually
+u16 global_ss;
+void condition_set_ss_null(void)
+{
+	global_ss = read_ss();
+	write_ss(0);
+}
+
+void condition_restore_ss(void)
+{
+	write_ss(global_ss);
+}
+//end
 
 /*----------------ring0-------------------*/
 void do_at_ring0(void (*fn)(const char *), const char *arg)

@@ -104,7 +104,6 @@ void condition_CPUID_FMA_1(void);
 void condition_CPUID_F16C_1(void);
 void condition_CPUID_AVX_1(void);
 void condition_CPUID_AVX2_1(void);
-void condition_CPUID_AVX_0(void);
 void condition_CPUID_AVX2_0(void);
 void condition_CPUID_F16C_0(void);
 void condition_CPUID_FMA_0(void);

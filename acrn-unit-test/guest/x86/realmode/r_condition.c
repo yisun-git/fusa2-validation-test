@@ -216,9 +216,6 @@ void condition_imm8_0_not_hold(void)
 {
 }
 
-void condition_CPUID_RDSEED_0(void)
-{
-}
 
 void condition_CPUID_RDSEED_1(void)
 {
@@ -237,10 +234,6 @@ void condition_OpcodeExcp_false(void)
 }
 
 void condition_OpcodeExcp_true(void)
-{
-}
-
-void condition_CPUID_RDRAND_0(void)
 {
 }
 
@@ -390,16 +383,6 @@ void condition_CPUID_F16C_1(void)
 	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_29);
 }
 
-void condition_CPUID_AVX_1(void)
-{
-	unsigned long check_bit = 0;
-
-	//printf("***** Check CPUID.(EAX=01H,ECX=0):ECX[bit 28] *****\n");
-
-	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01, EXTENDED_STATE_SUBLEAF_0).c;
-	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_28);
-}
-
 void condition_CPUID_AVX2_1(void)
 {
 	unsigned long check_bit = 0;
@@ -410,21 +393,69 @@ void condition_CPUID_AVX2_1(void)
 	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_05);
 }
 
-void condition_CPUID_AVX_0(void)
-{
-}
+#define CHECK_CPUID_0(func, index, reg, bit, msg) \
+	if (0 != (cpuid_indexed((func), (index)).reg & (1 << (bit)))) { \
+		report("%s: Ignore this case, because the processor supports " msg, \
+			1, __func__); \
+		return; \
+	} \
+	printf("%s: the processor does not supports " msg, __func__)
 
-void condition_CPUID_AVX2_0(void)
-{
-}
+#define CHECK_CPUID_1(func, index, reg, bit, msg) \
+	if (0 == (cpuid_indexed((func), (index)).reg & (1 << (bit)))) { \
+		report("%s: The processor does not support " msg, \
+			0, __func__); \
+		return; \
+	} \
+	printf("%s: CPUID = 0x%x", __func__, cpuid_indexed((func), (index)).reg)
 
-void condition_CPUID_F16C_0(void)
-{
-}
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H,ECX=0):ECX[bit 28]
+#define condition_CPUID_AVX_0() \
+	CHECK_CPUID_0(0x01, 0, c, 28, "AVX instruction extensions.")
 
-void condition_CPUID_FMA_0(void)
-{
-}
+#define condition_CPUID_AVX_1() \
+	CHECK_CPUID_1(0x01, 0, c, 28, "AVX instruction extensions.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=07H,ECX=0):EBX[bit 5]
+#define condition_CPUID_AVX2_0() \
+	CHECK_CPUID_0(0x07, 0, b, 5, "AVX2 instruction extensions.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 29]
+#define condition_CPUID_F16C_0() \
+	CHECK_CPUID_0(0x01, 0, c, 29, "16-bit floating-point conversion instructions.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 12]
+#define condition_CPUID_FMA_0() \
+	CHECK_CPUID_0(0x01, 0, c, 12, "FMA extensions using YMM state.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 0]
+#define condition_CPUID_SSE3_0() \
+	CHECK_CPUID_0(0x01, 0, c, 0, "Streaming SIMD Extensions 3 (SSE3).")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 19]
+#define condition_CPUID_SSE4_1_0() \
+	CHECK_CPUID_0(0x01, 0, c, 19, "Streaming SIMD Extensions 4.1 (SSE4.1).")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX[bit 20]
+#define condition_CPUID_SSE4_2_0() \
+	CHECK_CPUID_0(0x01, 0, c, 20, "Streaming SIMD Extensions 4.2 (SSE4.2).")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=07H, ECX=0H):EBX.RDSEED[bit 18]
+#define condition_CPUID_RDSEED_0() \
+	CHECK_CPUID_0(0x07, 0, b, 18, "RDSEED instruction.")
+
+//Modified manually: reconstruct this condition totally.
+//Check CPUID.(EAX=01H):ECX.RDRAND[bit 30]
+#define condition_CPUID_RDRAND_0() \
+	CHECK_CPUID_0(0x01, 0, c, 30, "RDRAND instruction.")
 
 void condition_CPUID_SSE2_1(void)
 {
@@ -516,19 +547,7 @@ void condition_CPUID_SSE_0(void)
 {
 }
 
-void condition_CPUID_SSE3_0(void)
-{
-}
-
-void condition_CPUID_SSE4_1_0(void)
-{
-}
-
 void condition_CPUID_SSSE3_0(void)
-{
-}
-
-void condition_CPUID_SSE4_2_0(void)
 {
 }
 

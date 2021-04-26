@@ -421,11 +421,19 @@ static __unused void gp_pt_b6_instruction_14(const char *msg)
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
 
+#ifdef __x86_64__
+#define NON_CANO_PREFIX_MASK (0xFFFFUL << 48) /*bits [63:48] */
 static __unused void gp_pt_b6_instruction_15(const char *msg)
 {
-	wrmsr_checking(0x571, 0x0);
+	//Modified manually
+	//wrmsr_checking(0x571, 0x0);
+	u32 msr_index = IA32_GS_BASE;
+	u64 msr_value = rdmsr(msr_index);
+	msr_value ^= NON_CANO_PREFIX_MASK;
+	wrmsr_checking(msr_index, msr_value);
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
+#endif
 
 static __unused void gp_pt_b6_instruction_16(const char *msg)
 {
@@ -441,7 +449,12 @@ static __unused void gp_pt_b6_instruction_17(const char *msg)
 
 static __unused void gp_pt_b6_instruction_18(const char *msg)
 {
-	wrmsr_checking(0x571, 0x0);
+	//Modified manually
+	//wrmsr_checking(0x571, 0x0);
+	u32 msr_index = IA32_PAT;
+	u64 msr_value = rdmsr(msr_index);
+	msr_value |= 0xF0; //set reserved bits: [7:4]
+	wrmsr_checking(msr_index, msr_value);
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
 
@@ -814,6 +827,7 @@ static __unused void gp_pt_b6_14(void)
 	write_cr4(cr4);
 }
 
+#ifdef __x86_64__
 static __unused void gp_pt_b6_15(void)
 {
 	u32 cr0 = read_cr0();
@@ -829,6 +843,7 @@ static __unused void gp_pt_b6_15(void)
 	write_cr3(cr3);
 	write_cr4(cr4);
 }
+#endif
 
 static __unused void gp_pt_b6_16(void)
 {
@@ -1137,7 +1152,9 @@ int main(void)
 	gp_pt_b6_12();
 	gp_pt_b6_13();
 	gp_pt_b6_14();
+#ifdef __x86_64__
 	gp_pt_b6_15();
+#endif
 	gp_pt_b6_16();
 	gp_pt_b6_17();
 	gp_pt_b6_18();
