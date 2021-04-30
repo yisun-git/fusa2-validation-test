@@ -48,9 +48,13 @@ void bss_init(void)
 	memset(&bss_start, 0, &edata - &bss_start);
 }
 
+struct mbi_bootinfo *g_bootinfo;
+
 void setup_multiboot(struct mbi_bootinfo *bootinfo)
 {
 	struct mbi_module *mods;
+
+	g_bootinfo = bootinfo;
 
 	/* TODO: use e820 */
 	u64 end_of_memory = bootinfo->mem_upper * 1024ull;

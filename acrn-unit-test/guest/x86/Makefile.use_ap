@@ -197,3 +197,22 @@ $(TEST_DIR)/xsave.o: $(TEST_DIR)/xsave.c
 	@rm -rf $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/application_constraints.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/application_constraints.o: $(TEST_DIR)/application_constraints.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/pci.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/pci.o: $(TEST_DIR)/pci.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/device_passthrough.o: CFLAGS += -DAP_USE_MAIN
+$(TEST_DIR)/device_passthrough.o: $(TEST_DIR)/device_passthrough.c
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+

@@ -859,7 +859,7 @@ static void misc_msr_rqmid_38560_wt_IA32_MISC_ENABLE_bit7_001(void)
 static void misc_msr_rqmid_38567_rd_IA32_EFER_001(void)
 {
 	u64 msr_ia32_efer;
-	report("%s", rdmsr_checking(IA32_EFER, &msr_ia32_efer) != GP_VECTOR, __FUNCTION__);
+	report("%s", rdmsr_checking(IA32_EFER, &msr_ia32_efer) == NO_EXCEPTION, __FUNCTION__);
 }
 
 /**
@@ -873,7 +873,7 @@ static void misc_msr_rqmid_38572_rd_IA32_MISC_ENABLE_001(void)
 {
 	u64 msr_ia32_misc_enable;
 	report("%s",
-		rdmsr_checking(IA32_MISC_ENABLE, &msr_ia32_misc_enable) != GP_VECTOR, __FUNCTION__);
+		rdmsr_checking(IA32_MISC_ENABLE, &msr_ia32_misc_enable) == NO_EXCEPTION, __FUNCTION__);
 }
 
 /**

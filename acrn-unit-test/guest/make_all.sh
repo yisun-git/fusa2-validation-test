@@ -21,7 +21,7 @@ BUILD_V8086_FEATURE="v8086_part1 v8086_part2 v8086_part3 v8086_seg"
 
 BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
 	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order misc_cpuid tsx locked_atomic \
-	fpu mmx general_purpose sgx avx"
+	fpu mmx general_purpose sgx avx application_constraints"
 
 BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt \
 	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec hsi_inter_remap"

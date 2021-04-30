@@ -2141,8 +2141,10 @@ void local_apic_rqmid_38694_LVT_timer_register_state_of_following_init(void)
 void local_apic_rqmid_38697_ESR_state_of_following_init(void)
 {
 	volatile u32 *init_addr = (u32 *)ESR_INIT_ADDR;
+	unsigned vector;
 
-	report("%s", *init_addr == 0x0U, __FUNCTION__);
+	vector = wrmsr_checking(APIC_BASE_MSR + APIC_ESR / 16, apic_read(APIC_ESR) + 1);
+	report("%s", (*init_addr == 0x0U) && (vector == GP_VECTOR), __FUNCTION__);
 }
 /**
  * @brief case name

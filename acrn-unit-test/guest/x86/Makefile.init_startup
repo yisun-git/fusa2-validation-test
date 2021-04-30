@@ -53,7 +53,6 @@ $(TEST_DIR)/branch_profile.o: $(TEST_DIR)/branch_profile.c
 
 $(TEST_DIR)/device_passthrough.o: CFLAGS += -DAP_INIT_CHECK=\"device_passthrough_init.S\"
 $(TEST_DIR)/device_passthrough.o: CFLAGS += -DBP_STARTUP_CHECK=\"device_passthrough_startup.S\"
-$(TEST_DIR)/device_passthrough.o: CFLAGS += -DAP_UNCHANGED_CHECK
 $(TEST_DIR)/device_passthrough.o: $(TEST_DIR)/device_passthrough.c $(TEST_DIR)/device_passthrough.h 
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
@@ -234,6 +233,12 @@ $(TEST_DIR)/smx.o: $(TEST_DIR)/smx.c $(TEST_DIR)/smx.h
 $(TEST_DIR)/v8086_protect.o: CFLAGS += -DAP_INIT_CHECK=\"v8086_init.S\"
 $(TEST_DIR)/v8086_protect.o: CFLAGS += -DBP_STARTUP_CHECK=\"v8086_startup.S\"
 $(TEST_DIR)/v8086_protect.o: $(TEST_DIR)/v8086_protect.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/application_constraints.o: CFLAGS += -DBP_STARTUP_CHECK=\"application_constraints_eip.S\"
+$(TEST_DIR)/application_constraints.o: $(TEST_DIR)/application_constraints.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

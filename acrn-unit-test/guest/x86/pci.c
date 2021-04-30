@@ -12,6 +12,7 @@
 #include "asm/io.h"
 #include "pci_check.h"
 #include "pci_native_config.h"
+#include "misc.h"
 
 #define GBECSR_5B54      (0x5B54U)
 #define USB_MSI_REG_OFFSET	(0x80U)
@@ -46,7 +47,6 @@ typedef struct pci_cfg_reg_s {
 static struct pci_dev pci_devs[MAX_PCI_DEV_NUM];
 static uint32_t nr_pci_devs = MAX_PCI_DEV_NUM;
 static uint64_t apic_id_bitmap = 0UL;
-static uint32_t ap_count = 0U;
 
 #ifdef IN_SAFETY_VM
 static pci_capability_node_t net_cap_list[] =
@@ -173,29 +173,57 @@ static pci_cfg_reg_t hostbridge_pci_cfg[] =
 
 // For BAR0 init test case
 static PCI_MAKE_BDF(usb, 0x0, 0x1, 0x0);
+
+static uint32_t first_usb_bar0_resume_value = 0U;
 static uint32_t first_usb_bar0_value = 0U;
 static uint32_t first_usb_new_bar0_value = 0U;
-static uint32_t second_usb_bar0_value = 0U;
 // For 0xCF8 port init test case
-static uint32_t unchange_reg_value_0 = 0U;
-static uint32_t unchange_reg_value_1 = 0U;
 static uint32_t unchange_resume_value = 0U;
 // For MSI control flag init test case
 static uint32_t first_usb_msi_ctrl = 0U;
+static uint32_t usb_msi_ctrl_resume_value = 0U;
 static uint32_t first_usb_new_msi_ctrl = 0U;
-static uint32_t second_usb_msi_ctrl = 0U;
 // For Command register init test case
+static uint32_t usb_command_resume_value = 0U;
 static uint32_t first_usb_command = 0U;
 static uint32_t first_usb_new_command = 0U;
-static uint32_t second_usb_command = 0U;
 // For BAR0 function status init test case
 static uint32_t first_usb_hci_version = 0U;
-static uint32_t first_usb_dn_ctrl = 0U;
-static uint32_t second_usb_dn_ctrl = 0U;
+static volatile uint32_t first_usb_dn_ctrl = 0U;
+static volatile uint32_t second_usb_dn_ctrl = 0U;
+
+//For interrupt line
+static uint8_t new_interrupt_line = 0U;
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
 
 static int pci_probe_msi_capability(union pci_bdf bdf, uint32_t *msi_addr);
 static int pci_data_check(union pci_bdf bdf, uint32_t offset,
 uint32_t bytes, uint32_t val1, uint32_t val2, bool sw_flag);
+
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
 
 static bool is_cap_ptr_exist(pci_capability_node_t *caplist, uint32_t size, uint8_t next_ptr)
 {
@@ -947,113 +975,126 @@ bool test_Read_with_Enabled_Config_Address(uint8_t msi_offset, uint32_t bytes, u
 }
 
 
-static void check_bar_map_function_on_first_AP(void)
+static void check_bar_map_function(void)
 {
-	first_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
+	//first_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
+	if (first_usb_bar0_resume_value != 0) {
+		void *hci_version_addr;
+		pci_pdev_write_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4, first_usb_bar0_resume_value);
+		hci_version_addr = phys_to_virt((first_usb_bar0_resume_value & 0xFFFFFFF0) + 0x02U);
+		first_usb_hci_version = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)hci_version_addr, 2);
 
-	void *hci_version_addr = phys_to_virt((first_usb_bar0_value & 0xFFFFFFF0) + 0x02U);
-	first_usb_hci_version = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)hci_version_addr, 2);
-
-	void *dn_ctrl_addr = phys_to_virt((first_usb_bar0_value & 0xFFFFFFF0) + 0x94U);
-	pci_pdev_write_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4, 0x1U);
-	first_usb_dn_ctrl = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4);
-
+		void *dn_ctrl_addr = phys_to_virt((first_usb_bar0_resume_value & 0xFFFFFFF0) + 0x94U);
+		first_usb_dn_ctrl = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4);
+	}
 }
 
-static void check_bar_map_function_on_second_AP(void)
+static void modify_usb_dn_ctrl(void)
 {
-	void *dn_ctrl_addr = phys_to_virt((first_usb_bar0_value & 0xFFFFFFF0) + 0x94U);
-	second_usb_dn_ctrl = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4);
+	if (first_usb_bar0_resume_value != 0)
+	{
+		pci_pdev_write_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2, usb_command_resume_value);
+		void *dn_ctrl_addr = phys_to_virt((first_usb_bar0_resume_value & 0xFFFFFFF0) + 0x94U);
+		first_usb_dn_ctrl = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4);
+		pci_pdev_write_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4, first_usb_dn_ctrl ^ 1ul);
+		second_usb_dn_ctrl = pci_pdev_read_mem(PCI_GET_BDF(usb), (mem_size)dn_ctrl_addr, 4);
+	}
 }
 
+static void read_command_register(void)
+{
+	if (usb_command_resume_value == 0) {
+		usb_command_resume_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
+	}
+	first_usb_command = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
+}
 
-static void check_command_register_on_first_AP(void)
+static void modify_command_register()
 {
 	uint32_t new_value = 0U;
+
 	first_usb_command = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
-	new_value = first_usb_command | SHIFT_LEFT(0x1, 1);
+	/*bit1:Controls a device's response to Memory Space accesses*/
+	new_value = first_usb_command ^ SHIFT_LEFT(0x1, 1);
 	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2, new_value);
 	first_usb_new_command = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
 }
 
-static void check_command_register_on_second_AP(void)
+static
+void read_BAR_Address_register(void)
 {
-	second_usb_command = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2);
-	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCI_COMMAND, 2, first_usb_command);
+	if (first_usb_bar0_resume_value == 0) {
+		first_usb_bar0_resume_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
+	}
+	first_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
 }
 
 static
-void check_bar0_on_first_AP(void)
+void modify_BAR_Address_register(void)
 {
-	first_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
 	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4, A_NEW_USB_BAR0_VALUE);
 	first_usb_new_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
 }
 
 static
-void check_bar0_on_second_AP(void)
+void read_msi_control_flag(void)
 {
-	second_usb_bar0_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4);
-	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCIR_BAR(0), 4, first_usb_bar0_value);
+	if (usb_msi_ctrl_resume_value == 0) {
+		usb_msi_ctrl_resume_value = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
+	}
+	first_usb_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
 }
 
 static
-void check_msi_control_flag_on_first_AP(void)
+void modify_msi_control_flag(void)
 {
 	uint32_t new_value = 0U;
 	first_usb_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
-	new_value = first_usb_msi_ctrl | SHIFT_LEFT(0x01, 0);
+	/*bit 0: MSI enable bit */
+	new_value = first_usb_msi_ctrl ^ SHIFT_LEFT(0x01, 0);
 	pci_pdev_write_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2, new_value);
 	first_usb_new_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
 }
 
 static
-void check_msi_control_flag_on_second_AP(void)
+void read_USB_interrupt_line(void)
 {
-	second_usb_msi_ctrl = pci_pdev_read_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2);
-	// reset the original MSI_CTRL value of devices
-	pci_pdev_write_cfg(PCI_GET_BDF(usb), USB_MSI_REG_OFFSET + 2, 2, first_usb_msi_ctrl);
+	uint8_t usb_interrupt_line;
+
+	usb_interrupt_line = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_INTERRUPT_LINE, 1);
+	*((uint32_t *)AP_USB_INTERRUP_LINE_ADDR0) = usb_interrupt_line;
 }
 
-static void check_PCI_address_port_on_first_AP(void)
+static
+void modify_usb_interrupt_line(void)
 {
-	uint32_t new_value = A_NEW_VALUE_UNCHANGE;
+	uint8_t usb_interrupt_line;
+	usb_interrupt_line = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_INTERRUPT_LINE, 1);
+	pci_pdev_write_cfg(PCI_GET_BDF(usb), PCI_INTERRUPT_LINE, 1, usb_interrupt_line ^ 1);
+	new_interrupt_line = pci_pdev_read_cfg(PCI_GET_BDF(usb), PCI_INTERRUPT_LINE, 1);
+}
+
+
+static void read_PCI_address_port(void)
+{
 	// write a new value to $0xCF8 PCI address port and read it on first AP.
 	asm volatile("push" W " %%" R "dx\n\t"\
 				"push" W " %%" R "ax\n\t"\
 				"mov $0xCF8, %%edx\n\t"\
 				"inl (%%dx), %%eax\n\t"\
-				"mov %%eax, %1\n\t"\
-				"mov %2, %%eax\n\t"\
-				"outl %%eax, (%%dx)\n\t"\
-				"inl (%%dx), %%eax\n\t"\
 				"mov %%eax, %0\n\t"\
 				"pop" W " %%" R "ax\n\t"\
 				"pop" W " %%" R "dx\n\t"\
-				: "=m" (unchange_reg_value_0), "=m" (unchange_resume_value)
-				: "m" (new_value)
+				: "=m" (unchange_resume_value)
+				:
 				: "memory");
 	*((uint32_t *)AP_IO_PORT_ADDR) = unchange_resume_value;
 }
 
-static void check_PCI_address_port_on_second_AP(void)
+static void modify_PCI_address_port(void)
 {
-	// read $0xCF8 PCI address port on second AP.
-	asm volatile("push" W " %%" R "dx\n\t"\
-				"push" W " %%" R "ax\n\t"\
-				"mov $0xCF8, %%edx\n\t"\
-				"inl (%%dx), %%eax\n\t"\
-				"mov %%eax, %0\n\t"\
-				"pop" W " %%" R "ax\n\t"\
-				"pop" W " %%" R "dx\n\t"\
-				: "=m" (unchange_reg_value_1)
-				:
-				: "memory");
-}
-
-static void check_PCI_address_port_on_third_AP(void)
-{
-	// resume the original $0xCF8 PCI address port value.
+	uint32_t new_value = A_NEW_VALUE_UNCHANGE;
+	// write a new value to $0xCF8 PCI address port and read it on first AP.
 	asm volatile("push" W " %%" R "dx\n\t"\
 				"push" W " %%" R "ax\n\t"\
 				"mov $0xCF8, %%edx\n\t"\
@@ -1062,98 +1103,87 @@ static void check_PCI_address_port_on_third_AP(void)
 				"pop" W " %%" R "ax\n\t"\
 				"pop" W " %%" R "dx\n\t"\
 				:
-				: "m" (unchange_resume_value)
+				: "m" (new_value)
 				: "memory");
 }
 
-static void check_USB_interrupt_line_on_first_AP(void)
-{
-	uint32_t addr = 0U;
-	addr = pci_pdev_calc_address(PCI_GET_BDF(usb), PCI_INTERRUPT_LINE);
-	/*read the USB interrupt line register on first AP, save it to AP_USB_INTERRUP_LINE_ADDR0,
-	 *and NOT the original value as a new value,
-	 *write the new value to it.
-	 */
-	asm volatile("push" W " %%" R "dx\n\t"\
-			"push" W " %%" R "ax\n\t"\
-			"mov %[_addr_], %%eax\n\t"\
-			"mov $0xCF8, %%edx\n\t"\
-			"outl %%eax, (%%dx)\n\t"\
-			"mov $0xCFC, %%edx\n\t"\
-			"inb (%%dx), %%al\n\t"\
-			"mov %[addr_0], %%edx\n\t"\
-			"mov %%eax, (%%edx)\n\t"\
-			"mov %[_addr_], %%eax\n\t"\
-			"mov $0xCF8, %%edx\n\t"\
-			"outl %%eax, (%%dx)\n\t"\
-			"mov $0xCFC, %%edx\n\t"\
-			"mov %[addr_0], %%eax\n\t"\
-			"mov (%%eax), %%eax\n\t"\
-			"xor $0xFF, %%eax\n\t"\
-			"outb %%al, (%%dx)\n\t"\
-			"pop" W " %%" R "ax\n\t"\
-			"pop" W " %%" R "dx\n\t"\
-			:
-			: [_addr_] "m" (addr), [addr_0] "i" (AP_USB_INTERRUP_LINE_ADDR0)
-			:);
-}
-
-static void check_USB_interrupt_line_on_second_AP(void)
-{
-	uint32_t addr = 0U;
-	addr = pci_pdev_calc_address(PCI_GET_BDF(usb), PCI_INTERRUPT_LINE);
-	// read USB interrupt line on second AP, and save it to AP_USB_INTERRUP_LINE_ADDR1
-	asm volatile("push" W " %%" R "dx\n\t"\
-		"push" W " %%" R "ax\n\t"\
-		"mov %[_addr_], %%eax\n\t"\
-		"mov $0xCF8, %%edx\n\t"\
-		"outl %%eax, (%%dx)\n\t"\
-		"mov $0xCFC, %%edx\n\t"\
-		"inb (%%dx), %%al\n\t"\
-		"mov %[addr_1], %%edx\n\t"\
-		"mov %%eax, (%%edx)\n\t"\
-		"pop" W " %%" R "ax\n\t"\
-		"pop" W " %%" R "dx\n\t"\
-		:
-		: [_addr_] "m" (addr), [addr_1] "i" (AP_USB_INTERRUP_LINE_ADDR1)
-		:);
-}
-
-static struct spinlock lock;
 void save_unchanged_reg(void)
 {
 	uint32_t id = 0U;
 	id = apic_id();
 	apic_id_bitmap |= SHIFT_LEFT(1UL, id);
-	bool is = false;
-	spin_lock(&lock);
-	if (ap_count == 0) {
-		pci_pdev_enumerate_dev(pci_devs, &nr_pci_devs);
-		is = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &PCI_GET_BDF(usb));
-		if (is) {
-			check_bar_map_function_on_first_AP();
-			check_USB_interrupt_line_on_first_AP();
-			check_bar0_on_first_AP();
-			check_msi_control_flag_on_first_AP();
-			check_command_register_on_first_AP();
-		}
-		check_PCI_address_port_on_first_AP();
-	} else if (ap_count == 1) {
-		check_PCI_address_port_on_second_AP();
-		is = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &PCI_GET_BDF(usb));
-		if (is) {
-			check_USB_interrupt_line_on_second_AP();
-			check_bar0_on_second_AP();
-			check_msi_control_flag_on_second_AP();
-			check_command_register_on_second_AP();
-			check_bar_map_function_on_second_AP();
-		}
-	} else if (ap_count == 2) {
-		check_PCI_address_port_on_third_AP();
+
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
 	}
-	ap_count++;
-	spin_unlock(&lock);
+
+	read_PCI_address_port();
+	read_USB_interrupt_line();
+	read_BAR_Address_register();
+	read_msi_control_flag();
+	read_command_register();
+	check_bar_map_function();
 }
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		wait_ap = 1;
+	}
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 37251:
+		fp = modify_PCI_address_port;
+		ap_init_value_process(fp);
+		break;
+	case 38217:
+		fp = modify_msi_control_flag;
+		ap_init_value_process(fp);
+		break;
+	case 37264:
+		fp = modify_usb_interrupt_line;
+		ap_init_value_process(fp);
+		break;
+	case 38246:
+		fp = modify_command_register;
+		ap_init_value_process(fp);
+		break;
+	case 38204:
+		fp = modify_BAR_Address_register;
+		ap_init_value_process(fp);
+		break;
+	case 38265:
+		fp = modify_usb_dn_ctrl;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
+#endif
 
 static __unused
 uint32_t find_first_apic_id(void)
@@ -2603,7 +2633,11 @@ static void pci_rqmid_37250_PCIe_config_space_and_host_Address_register_init_001
 static void pci_rqmid_37251_PCIe_config_space_and_host_Address_register_init_002(void)
 {
 	bool is_pass = false;
-	is_pass = ((unchange_reg_value_0 == unchange_reg_value_1) && (A_NEW_VALUE_UNCHANGE == unchange_reg_value_0));
+	uint32_t reg_val = 0U;
+
+	notify_modify_and_read_init_value(37251);
+	reg_val = *(volatile uint32_t *)(AP_IO_PORT_ADDR);
+	is_pass = (reg_val == A_NEW_VALUE_UNCHANGE);
 	report("%s", is_pass, __FUNCTION__);
 }
 #endif
@@ -2679,9 +2713,10 @@ void pci_rqmid_37264_PCIe_config_space_and_host_device_interrupt_line_register_v
 {
 	bool is_pass = false;
 	uint32_t reg_val = 0U;
+	notify_modify_and_read_init_value(37264);
 	is_pass = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_pass) {
-		reg_val = *(volatile uint32_t *)(AP_USB_INTERRUP_LINE_ADDR1);
+		reg_val = *(volatile uint32_t *)(AP_USB_INTERRUP_LINE_ADDR0);
 		is_pass = ((reg_val & 0xFFU) == NATIVE_USB_INTERRUPT_LINE) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -6038,11 +6073,13 @@ void pci_rqmid_38204_PCIe_config_space_and_BAR_Address_register_init_002(void)
 	bool is_pass = false;
 	uint32_t value1 = 0U;
 	bool is_usb_exist = false;
+
+	notify_modify_and_read_init_value(38204);
 	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_usb_exist) {
 		value1 = first_usb_new_bar0_value & 0xFFFFFFF0;
 		is_pass = (A_NEW_USB_BAR0_VALUE == value1)\
-			&& (first_usb_new_bar0_value == second_usb_bar0_value);
+			&& (first_usb_new_bar0_value == first_usb_bar0_value);
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
@@ -6079,10 +6116,11 @@ void pci_rqmid_38217_PCIe_config_space_and_host_msi_control_register_following_i
 	bool is_pass = false;
 	uint32_t value1 = 0U;
 	uint32_t value3 = 0U;
+
+	notify_modify_and_read_init_value(38217);
 	value1 = first_usb_new_msi_ctrl & SHIFT_LEFT(0x1, 0);
-	value3 = second_usb_msi_ctrl & SHIFT_LEFT(0x1, 0);
-	is_pass = (value1 == value3)\
-				&& (value1 == 0x01);
+	value3 = first_usb_msi_ctrl & SHIFT_LEFT(0x1, 0);
+	is_pass = (value1 == value3);
 	report("%s", is_pass, __FUNCTION__);
 }
 #endif
@@ -6151,6 +6189,7 @@ void pci_rqmid_38103_PCIe_config_space_and_host_PCI_command_register_following_i
 		bp_command &= SHIFT_MASK(15, 0);
 		is_pass = (bp_command == first_usb_command) ? true : false;
 	}
+
 	report("%s", is_pass, __FUNCTION__);
 }
 
@@ -6166,11 +6205,12 @@ void pci_rqmid_38246_PCIe_config_space_and_host_PCI_command_register_following_i
 	bool is_usb_exist = false;
 	uint32_t command1 = 0U;
 	uint32_t command2 = 0U;
+	notify_modify_and_read_init_value(38246);
 	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_usb_exist) {
+		command2 = first_usb_command & SHIFT_LEFT(0x01, 1);
 		command1 = first_usb_new_command & SHIFT_LEFT(0x01, 1);
-		command2 = second_usb_command & SHIFT_LEFT(0x01, 1);
-		is_pass = ((command1 == command2) && (command1 == 0x2)) ? true : false;
+		is_pass = (command1 == command2) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
@@ -6281,6 +6321,7 @@ void pci_rqmid_38080_PCIe_config_space_and_host_bar_control_function_usb_02_foll
 		bp_ver = *(uint32_t *)(BP_USB_DEVICE_HCIVERSION_ADDR);
 		bp_ver &= SHIFT_MASK(15, 0);
 		ap_ver = (first_usb_hci_version & SHIFT_MASK(15, 0));
+		printf("ap_ver:%#x\n", ap_ver);
 		is_pass = (bp_ver == ap_ver) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -6297,6 +6338,8 @@ void pci_rqmid_38265_PCIe_config_space_and_host_bar_control_function_usb_02_foll
 {
 	bool is_pass = false;
 	bool is_exist = false;
+
+	notify_modify_and_read_init_value(38265);
 	is_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_exist) {
 		is_pass = (first_usb_dn_ctrl == second_usb_dn_ctrl) ? true : false;
@@ -6892,6 +6935,7 @@ static void print_case_list(void)
 int main(void)
 {
 	setup_idt();
+	setup_vm();
 	set_log_level(PCI_DEBUG_LEVEL);
 
 	print_case_list();
@@ -7247,20 +7291,21 @@ int main(void)
 	pci_rqmid_38106_PCIe_config_space_and_host_PCI_command_register_following_start_up_Ethernet_001();
 #endif
 #ifdef IN_NON_SAFETY_VM
-	pci_rqmid_37250_PCIe_config_space_and_host_Address_register_init_001();
-	pci_rqmid_37251_PCIe_config_space_and_host_Address_register_init_002();
 	pci_rqmid_37255_PCIe_config_space_and_host_device_interrupt_line_register_value_init_001();
-	pci_rqmid_37264_PCIe_config_space_and_host_device_interrupt_line_register_value_init_004();
 	pci_rqmid_37661_PCIe_config_space_and_BAR_Address_register_init_001();
+	pci_rqmid_37250_PCIe_config_space_and_host_Address_register_init_001();
+	pci_rqmid_38103_PCIe_config_space_and_host_PCI_command_register_following_init_USB_001();
+	pci_rqmid_37251_PCIe_config_space_and_host_Address_register_init_002();
+	pci_rqmid_37264_PCIe_config_space_and_host_device_interrupt_line_register_value_init_004();
 	pci_rqmid_38204_PCIe_config_space_and_BAR_Address_register_init_002();
 	pci_rqmid_38099_PCIe_config_space_and_host_msi_control_register_following_init_USB_001();
 	pci_rqmid_38217_PCIe_config_space_and_host_msi_control_register_following_init_USB_002();
-	pci_rqmid_38103_PCIe_config_space_and_host_PCI_command_register_following_init_USB_001();
 	pci_rqmid_38246_PCIe_config_space_and_host_PCI_command_register_following_init_USB_002();
 #endif
 // 511:PCIe_start-up and init end
 
 // ***********************************<The scaling part end>**********************************
 #endif
+
 	return report_summary();
 }

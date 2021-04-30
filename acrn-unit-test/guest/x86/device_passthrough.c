@@ -12,6 +12,9 @@
 #include "processor.h"
 #include "smp.h"
 #include "e1000e.h"
+#include "misc.h"
+#include "fwcfg.h"
+#include "delay.h"
 
 #ifdef PASS_THROUGH_DEBUG
 #define PASS_THROUGH_DEBUG_LEVEL		DBG_LVL_INFO
@@ -43,16 +46,114 @@ union pci_bdf ethernet_bdf_native = {
 	.bits.f = 0x6
 };
 
-
-static int ap_count = 0;
-static struct spinlock lock;
-
 #ifdef IN_NON_SAFETY_VM
-static uint32_t usb_bar0_unchanged_value = 0U;
-static uint32_t usb_bar1_unchanged_value = 0U;
 static uint32_t usb_bar0_ori_value = 0U;
 static uint32_t usb_bar1_ori_value = 0U;
 static uint32_t usb_status_unchanged_value = 0U;
+#endif
+volatile uint32_t unchanged_bar0_value = 0;
+volatile uint32_t unchanged_bar1_value = 0;
+
+static volatile int cur_case_id = 0;
+static volatile int wait_ap = 0;
+static volatile int need_modify_init_value = 0;
+
+__unused static void modify_USB_controller_status_init_value();
+__unused static void restore_usb_bar_0_1(void);
+
+__unused void wait_ap_ready()
+{
+	while (wait_ap != 1) {
+		test_delay(1);
+	}
+	wait_ap = 0;
+}
+
+__unused static void notify_ap_modify_and_read_init_value(int case_id)
+{
+	cur_case_id = case_id;
+	need_modify_init_value = 1;
+	/* will change INIT value after AP reboot */
+	send_sipi();
+	wait_ap_ready();
+	/* Will check INIT value after AP reboot again */
+	send_sipi();
+	wait_ap_ready();
+}
+
+#ifdef __i386__
+void ap_main(void)
+{
+	asm volatile ("pause");
+}
+
+#elif __x86_64__
+
+typedef void (*ap_init_value_modify)(void);
+__unused static void ap_init_value_process(ap_init_value_modify modify_init_func)
+{
+	if (need_modify_init_value) {
+		need_modify_init_value = 0;
+		modify_init_func();
+		wait_ap = 1;
+	} else {
+		if (cur_case_id == 37941) {
+#ifdef IN_NON_SAFETY_VM
+			restore_usb_bar_0_1();
+#endif
+		}
+		wait_ap = 1;
+	}
+}
+
+__unused static void modify_USB_controller_status_init_value()
+{
+	pci_pdev_write_cfg(usb_bdf, PCI_STATUS, BYTE_2, A_NEW_USB_STATUS_VALUE);
+}
+
+static void restore_usb_bar_0_1(void)
+{
+#ifdef IN_NON_SAFETY_VM
+	/*write the original value to BAR[0-1]*/
+	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_0, BYTE_4, usb_bar0_ori_value);
+	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_1, BYTE_4, usb_bar1_ori_value);
+#endif
+}
+
+__unused static void modify_device_USB_BAR0_and_1_init_value()
+{
+#ifdef IN_NON_SAFETY_VM
+	/*read the original value of BAR[0-1]*/
+	usb_bar0_ori_value = pci_pdev_read_cfg(usb_bdf, PCI_BASE_ADDRESS_0, BYTE_4);
+	usb_bar1_ori_value = pci_pdev_read_cfg(usb_bdf, PCI_BASE_ADDRESS_1, BYTE_4);
+	/*write a new value to BAR[0-1]*/
+	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_0, BYTE_4, A_NEW_USB_BAR0_VALUE);
+	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_1, BYTE_4, A_NEW_USB_BAR1_VALUE);
+#endif
+}
+
+void ap_main(void)
+{
+	ap_init_value_modify fp;
+	/*test only on the ap 2,other ap return directly*/
+	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+		return;
+	}
+
+	switch (cur_case_id) {
+	case 37941:
+		fp = modify_device_USB_BAR0_and_1_init_value;
+		ap_init_value_process(fp);
+		break;
+	case 37942:
+		fp = modify_USB_controller_status_init_value;
+		ap_init_value_process(fp);
+		break;
+	default:
+		asm volatile ("nop\n\t" :::"memory");
+		break;
+	}
+}
 #endif
 
 /*
@@ -215,65 +316,6 @@ static int pci_probe_msi_capability(union pci_bdf bdf, uint32_t *msi_addr)
 	return OK;
 }
 #endif
-
-#ifdef IN_NON_SAFETY_VM
-static void check_usb_bar_0_1_on_first_ap(void)
-{
-	/*read the original value of BAR[0-1]*/
-	usb_bar0_ori_value = pci_pdev_read_cfg(usb_bdf, PCI_BASE_ADDRESS_0, BYTE_4);
-	usb_bar1_ori_value = pci_pdev_read_cfg(usb_bdf, PCI_BASE_ADDRESS_1, BYTE_4);
-	/*write a new value to BAR[0-1]*/
-	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_0, BYTE_4, A_NEW_USB_BAR0_VALUE);
-	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_1, BYTE_4, A_NEW_USB_BAR1_VALUE);
-}
-
-static void check_usb_bar_0_1_on_second_ap(void)
-{
-	/*read the unchanged value of BAR[0-1]*/
-	usb_bar0_unchanged_value = pci_pdev_read_cfg(usb_bdf, PCI_BASE_ADDRESS_0, BYTE_4);
-	usb_bar1_unchanged_value = pci_pdev_read_cfg(usb_bdf, PCI_BASE_ADDRESS_1, BYTE_4);
-	/*write the original value to BAR[0-1]*/
-	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_0, BYTE_4, usb_bar0_ori_value);
-	pci_pdev_write_cfg(usb_bdf, PCI_BASE_ADDRESS_1, BYTE_4, usb_bar1_ori_value);
-	*(uint32_t *)INIT_USB_BAR0_ADDRESS = usb_bar0_ori_value;
-	*(uint32_t *)INIT_USB_BAR1_ADDRESS = usb_bar1_ori_value;
-}
-
-static void check_usb_status_register_on_first_ap(void)
-{
-	pci_pdev_write_cfg(usb_bdf, PCI_STATUS, BYTE_2, A_NEW_USB_STATUS_VALUE);
-}
-
-static void check_usb_status_regsiter_on_second_ap(void)
-{
-	usb_status_unchanged_value = pci_pdev_read_cfg(usb_bdf, PCI_STATUS, BYTE_2);
-}
-#endif
-
-void save_unchanged_reg(void)
-{
-	spin_lock(&lock);
-	switch (ap_count) {
-	case 0:
-#ifdef IN_NON_SAFETY_VM
-	check_usb_status_register_on_first_ap();
-	check_usb_bar_0_1_on_first_ap();
-#endif
-	break;
-
-	case 1:
-#ifdef IN_NON_SAFETY_VM
-	check_usb_bar_0_1_on_second_ap();
-	check_usb_status_regsiter_on_second_ap();
-#endif
-	break;
-
-	default:
-	break;
-	}
-	ap_count++;
-	spin_unlock(&lock);
-}
 
 #ifdef IN_SAFETY_VM
 /*
@@ -1372,8 +1414,17 @@ static void device_passthrough_rqmid_37941_PCIe_device_USB_BAR0_and_1_init_002(v
 	uint32_t value = 0U;
 	uint32_t value1 = 0U;
 	bool is_pass = false;
-	value = usb_bar0_unchanged_value & 0xFFFFFFF0;
-	value1 = usb_bar1_unchanged_value & 0xFFFFFFF0;
+	volatile uint32_t unchanged_bar0_value = 0;
+	volatile uint32_t unchanged_bar1_value = 0;
+
+	notify_ap_modify_and_read_init_value(37941);
+
+	unchanged_bar0_value = *(volatile uint32_t *)INIT_USB_BAR0_ADDRESS;
+	unchanged_bar1_value = *(volatile uint32_t *)INIT_USB_BAR1_ADDRESS;
+
+	value = unchanged_bar0_value & 0xFFFFFFF0;
+	value1 = unchanged_bar1_value & 0xFFFFFFF0;
+
 	is_pass = (value == A_NEW_USB_BAR0_VALUE) && (value1 == A_NEW_USB_BAR1_VALUE);
 	report("%s", is_pass, __FUNCTION__);
 }
@@ -1387,8 +1438,15 @@ static void device_passthrough_rqmid_37941_PCIe_device_USB_BAR0_and_1_init_002(v
 static void device_passthrough_rqmid_37942_PCIe_USB_controller_status_register_following_INIT_002(void)
 {
 	bool is_pass = false;
-	uint32_t value = (usb_status_unchanged_value & SHIFT_LEFT(1, 14));
-	is_pass = (value == 0U) ? true : false;
+	uint32_t ap_usb_status_value;
+	uint32_t value0 = 0;
+	uint32_t value1 = 0;
+
+	notify_ap_modify_and_read_init_value(37942);
+	value0 = (usb_status_unchanged_value & SHIFT_LEFT(1, 14));
+	ap_usb_status_value = *(uint32_t *)INIT_USB_STATUS_ADDRESS;
+	value1 = (ap_usb_status_value & SHIFT_LEFT(1, 14));
+	is_pass = (value0 == value1) ? true : false;
 	report("%s", is_pass, __FUNCTION__);
 }
 #endif
