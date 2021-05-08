@@ -261,6 +261,8 @@ void set_mem_cache_type_all(u64 cache_type)
 	asm_mfence_wbinvd();
 
 	mem_cache_reflush_cache();
+
+	debug_print("CR0: 0x%lx, CR3: 0x%lx, CR4: 0x%lx\n", read_cr0(), read_cr3(), read_cr4());
 }
 
 __attribute__((aligned(64))) u64 read_mem_cache_test_addr(u64 *address, u64 size)

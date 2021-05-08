@@ -193,6 +193,20 @@ done
 
 cp x86/obj/*  x86/
 
+# compile those cases defined in the  macro PHASE_N.
+export PHASE_N=PHASE_RUN_SINGLE_CASE
+BUILD_FEATURE="memory_order"
+./make64_non_safety.sh $BUILD_FEATURE 64;
+make_result=$?
+if [ $make_result -ne 0 ]; then
+        RESULT=$make_result
+        echo "FAILED TO MAKE $BUILD_FEATURE"
+        exit $RESULT
+fi
+export PHASE_N=
+cp x86/obj/memory_order.bzimage x86/memory_order_single_case.bzimage
+# compile end
+
 echo "final make result for all images:"
 echo $RESULT
 

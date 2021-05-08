@@ -109,16 +109,16 @@ static atomic_t memory_ordering_end_sem;
 static atomic_t memory_ordering_begin_sem3;
 static atomic_t memory_ordering_begin_sem_ap;
 static volatile int memory_order_sync = MEMORY_ORDER_TEST_MAX;
-
-static int X;
-static int Y;
-static int Z;
-static int r1;
-static int r2;
-static int r3;
-static int r4;
-static int r5;
-static int r6;
+// make sure each variable is filled in a different cache line.
+static int X __attribute__((aligned(64)));
+static int Y __attribute__((aligned(64)));
+static int Z __attribute__((aligned(64)));
+static int r1 __attribute__((aligned(64)));
+static int r2 __attribute__((aligned(64)));
+static int r3 __attribute__((aligned(64)));
+static int r4 __attribute__((aligned(64)));
+static int r5 __attribute__((aligned(64)));
+static int r6 __attribute__((aligned(64)));
 
 static void asm_test_null(void)
 {
@@ -565,6 +565,12 @@ static int memory_order_144414_table4_check()
 
 static void asm_test_144414_table5_clflushopt_ap1(void)
 {
+	/*
+	 * move 'atomic_inc' here, because the lock prefix is used in its implementation,
+	 * which forces stronger ordering on the processor, so that the reorder cannot occur.
+	 */
+	atomic_inc(&memory_ordering_begin_sem_ap);
+
 	asm volatile(
 		"movl %3, %0\n\t"
 		"movl %2, %1\n\t"
@@ -573,9 +579,7 @@ static void asm_test_144414_table5_clflushopt_ap1(void)
 		"clflushopt (%4)\n\t"
 		: "=r"(r1), "=r"(r2), "=m"(X), "=m"(Y)
 		: "r"(&r1)
-		: "memory");
-
-	atomic_inc(&memory_ordering_begin_sem_ap);
+		:);
 }
 
 static void asm_test_144414_table5_clflushopt_ap2(void)
@@ -584,14 +588,15 @@ static void asm_test_144414_table5_clflushopt_ap2(void)
 		CFG_TEST_MEMORY_ORDERING_READY) {
 		nop();
 	}
-	atomic_dec(&memory_ordering_begin_sem_ap);
 
 	asm volatile(
 		"movl %3, %0\n\t"
 		"movl %2, %1\n\t"
 		: "=r"(r1), "=r" (r2)
 		: "m"(X), "m"(Y)
-		: "memory");
+		:);
+
+	atomic_dec(&memory_ordering_begin_sem_ap);
 }
 
 static int memory_order_144414_table5_check()
@@ -1418,7 +1423,6 @@ static void memory_ordering_memory_type(int memory_type)
 static unsigned long memory_ordering_bp_test_two_ap(int run_id, int test_id, int memory_type)
 {
 	unsigned long i;
-	int detected = 0;
 
 	start_run_id = run_id;
 	memory_order_sync = test_id;
@@ -1444,11 +1448,8 @@ static unsigned long memory_ordering_bp_test_two_ap(int run_id, int test_id, int
 		atomic_set(&memory_ordering_end_sem, CFG_TEST_MEMORY_ORDERING_CPU_START);
 
 		if (memory_ordering_bp_check[memory_order_sync]()) {
-			detected++;
-			if (detected <= 1) {
-				printf("type=%d %d reorders detected after %ld iterations\n",
-					memory_order_sync, detected, i);
-			}
+			printf("type=%d reorders detected after %ld iterations\n", memory_order_sync, i);
+			return 1;
 		}
 
 		if ((i % CFG_MEMORY_ORDER_DEBUG_TIMES) == 0) {
@@ -1457,7 +1458,7 @@ static unsigned long memory_ordering_bp_test_two_ap(int run_id, int test_id, int
 	}
 
 	memory_order_sync = MEMORY_ORDER_TEST_MAX;
-	return detected;
+	return 0;
 }
 
 static unsigned long memory_ordering_bp_test_one_ap(int run_id, int test_id, int memory_type)
@@ -1906,7 +1907,7 @@ __unused static void loop_run_memory_ordering(void)
 	}
 }
 
-static void print_case_list()
+__unused static void print_case_list()
 {
 	printf("Memory ordering feature case list:\n\r");
 #if defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE)
@@ -1918,9 +1919,6 @@ static void print_case_list()
 		"Accesses to WT, WB or WP memory ranges follows processor ordering_003");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39266u,
 		"Accesses to WT, WB or WP memory ranges follows processor ordering_004");
-	printf("\t\t Case ID:%d case name:%s\n\r", 39298u,
-		"Accesses to WT, WB or WP memory ranges follows processor ordering_005");
-
 	printf("\t\t Case ID:%d case name:%s\n\r", 39300u,
 		"Accesses to WT, WB or WP memory ranges follows processor ordering_006");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39302u,
@@ -1982,6 +1980,20 @@ void ap_main(void)
 	}
 }
 
+//export PHASE_N=PHASE_RUN_SINGLE_CASE
+#ifdef PHASE_RUN_SINGLE_CASE
+int main(int ac, char **av)
+{
+	printf("-- run single case --\n");
+	setup_idt();
+#if defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE)
+	printf("\t\tCase ID:%d case name:%s\n\r", 39298u,
+		"Accesses to WT, WB or WP memory ranges follows processor ordering_005");
+	memory_ordering_rqmid_39298_processor_ordering_005();
+#endif
+	return report_summary();
+}
+#else
 int main(int ac, char **av)
 {
 	print_case_list();
@@ -1993,7 +2005,6 @@ int main(int ac, char **av)
 	memory_ordering_rqmid_39236_processor_ordering_002();
 	memory_ordering_rqmid_39265_processor_ordering_003();
 	memory_ordering_rqmid_39266_processor_ordering_004();
-	memory_ordering_rqmid_39298_processor_ordering_005();
 
 	memory_ordering_rqmid_39300_processor_ordering_006();
 	memory_ordering_rqmid_39302_processor_ordering_007();
@@ -2014,3 +2025,4 @@ int main(int ac, char **av)
 #endif
 	return report_summary();
 }
+#endif
