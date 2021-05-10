@@ -356,7 +356,6 @@ end:
  */
 __noinline void v8086_rqmid_33813_interrupt_handling_001(void)
 {
-#if 0 //code don't work now
 	set_igdt(21, SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_INTERGATE, 0);
 
 	write_v8086_esp();
@@ -366,9 +365,6 @@ __noinline void v8086_rqmid_33813_interrupt_handling_001(void)
 		(X86_EFLAGS_VM | X86_EFLAGS_RF | X86_EFLAGS_NT | X86_EFLAGS_IF | X86_EFLAGS_TF)
 		) == 0, *temp_value);
 	clear_v8086_esp();
-#else
-	report_ex("case was not run for error", 0);
-#endif
 }
 
 /**
@@ -425,7 +421,6 @@ __noinline void v8086_rqmid_38116_interrupt_handling_003_1(void)
  */
 __noinline void v8086_rqmid_38113_interrupt_handling_001_1(void)
 {
-#if 0 //code don't work now
 	set_igdt(21, SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TRAPGATE, 0);
 
 	write_v8086_esp();
@@ -435,9 +430,6 @@ __noinline void v8086_rqmid_38113_interrupt_handling_001_1(void)
 	report_ex("eflags = 0x%x", (MAGIC_DWORD != *temp_value) &&
 		(*temp_value & X86_EFLAGS_IF) == (v8086_iopl & X86_EFLAGS_IF), *temp_value);
 	clear_v8086_esp();
-#else
-	report_ex("case was not run for error", 0);
-#endif
 }
 
 /**

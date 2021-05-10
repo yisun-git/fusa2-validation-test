@@ -689,10 +689,12 @@ void test_call_offset_operand_nc(void)
 #define OFFSET_IST 5
 #define AVL_SET 0x1
 static char exception_stack[0x1000] __attribute__((aligned(0x10)));
+static char rspx_stack[0x1000] __attribute__((aligned(0x10)));
 
-tss64_t *set_ist(void)
+tss64_t *set_ist(ulong non_cano_rsp)
 {
 	u64 ex_rsp = (u64)(exception_stack + sizeof(exception_stack));
+	u64 rspx = ((non_cano_rsp > 0) ? non_cano_rsp : (u64)(rspx_stack + sizeof(rspx_stack)));
 	tss64_t *tss64 = &tss +  OFFSET_IST;
 	tss64->ist1 = ex_rsp;
 	tss64->ist2 = 0;
@@ -701,9 +703,9 @@ tss64_t *set_ist(void)
 	tss64->ist5 = 0;
 	tss64->ist6 = 0;
 	tss64->ist7 = 0;
-	tss64->rsp0 = ex_rsp;
-	tss64->rsp1 = ex_rsp;
-	tss64->rsp2 = ex_rsp;
+	tss64->rsp0 = rspx;
+	tss64->rsp1 = rspx;
+	tss64->rsp2 = rspx;
 	tss64->res1 = 0;
 	tss64->res2 = 0;
 	tss64->res3 = 0;
@@ -712,9 +714,9 @@ tss64_t *set_ist(void)
 	return tss64;
 }
 
-void setup_tss64(int dpl)
+void setup_tss64(int dpl, ulong non_cano_rsp)
 {
-	tss64_t *tss64 = set_ist();
+	tss64_t *tss64 = set_ist(non_cano_rsp);
 	int tss_ist_sel = TSS_MAIN + (sizeof(struct segment_desc64)) * OFFSET_IST; //tss64
 	struct descriptor_table_ptr old_gdt_desc;
 	sgdt(&old_gdt_desc);
@@ -725,9 +727,18 @@ void setup_tss64(int dpl)
 	ltr(tss_ist_sel);
 }
 
+int stack_will_switch;
 ulong old_rsp;
+ulong ret_rip;
 static jmp_buf jmpbuf;
 static u8 test_vector = NO_EXCEPTION;
+
+void change_rsp_by_dpl(ulong dpl)
+{
+	if (stack_will_switch) {
+		setup_tss64(dpl, 0);
+	}
+}
 
 void longjmp_func(void)
 {
@@ -752,10 +763,12 @@ asm (
 	"movb $" xstr(SS_VECTOR) ", %gs:" xstr(EXCEPTION_VECTOR_ADDR) "\n"
 	"mov %bx, %gs:" xstr(EXCEPTION_ECODE_ADDR) "\n"
 "ringx_int_handler:\n"
+	"call change_rsp_by_dpl\n"
 	"movq old_rsp, %rax\n"
 	"mov %rsp, %rcx\n"
 	"mov %rax, 24(%rcx)\n" //change rsp
-	"mov %rdx, (%rcx)\n" //change rip
+	"mov ret_rip, %rax\n"
+	"mov %rax, (%rcx)\n" //change rip
 	"iretq\n"
 );
 
@@ -772,10 +785,11 @@ void ringx_int_with_non_cano_rsp(u16 cpl, u16 dpl)
 	assert((cpl <= 3) && (dpl <= 3));
 
 	ulong non_cano_rsp = 0, kernel_rsp = 0;
+	ulong udpl = dpl;
 	u16 ring_cs = cses[cpl];
 	u16 ring_ds = dses[cpl];
 	//u16 old_lr = str();
-
+	stack_will_switch = (cpl != dpl);
 	old_rsp = (ulong)(ringx_user_stack + sizeof(ringx_user_stack));
 	asm volatile ("mov %%rsp, %[kernel_rsp]\n"	: [kernel_rsp]"=r"(kernel_rsp));
 	// construct a non-canonical address
@@ -785,9 +799,10 @@ void ringx_int_with_non_cano_rsp(u16 cpl, u16 dpl)
 
 	set_idt_entry_ex(RING_INT, ringx_int_handler, cses[dpl], cpl, 0);
 	set_idt_entry(KERNEL_INT, return_kernel_entry, cpl);
-	set_idt_entry_ex(test_vector, ringx_non_cano_esp_handler, cses[dpl], cpl, EXCEPTION_IST);
+	set_idt_entry_ex(test_vector, ringx_non_cano_esp_handler,
+		(stack_will_switch ? cses[0] : cses[dpl]), dpl, EXCEPTION_IST);
 
-	setup_tss64(cpl);
+	setup_tss64(cpl, (stack_will_switch ? non_cano_rsp : 0));
 
 	// Enter ringx(ring1, 2, 3)
 	asm volatile (
@@ -812,14 +827,16 @@ void ringx_int_with_non_cano_rsp(u16 cpl, u16 dpl)
 	// Test under ringx
 	asm volatile (
 		"movb $" xstr(NO_EXCEPTION) ", %%gs:"xstr(EXCEPTION_ADDR)"\n"
+		"mov %[dpl], %%rdi\n"
 		"mov $1f, %%rdx\n"
+		"mov %%rdx, ret_rip\n"
 		"movq %[non_cano_user_stack], %%rsp\n"
 		"int %[ring_vector]\n"
 		"1:\n"
-		 :
-		 :  [non_cano_user_stack]"r"(non_cano_rsp), [test_vector]"r"(test_vector),  [ring_vector]"i"(RING_INT)
-		 : "rcx", "rdx", "memory"
-		 );
+		:
+		:  [non_cano_user_stack]"r"(non_cano_rsp), [dpl]"m"(udpl), [ring_vector]"i"(RING_INT)
+		: "rcx", "rdx", "memory"
+		);
 
 	// back to ring0
 	asm volatile (
@@ -852,7 +869,7 @@ u8 ring0_run_with_non_cano_rsp(void (*func)(void))
 	u64 non_cano_rsp = 0;
 	//u16 old_lr = str();
 	test_vector = SS_VECTOR;
-	setup_tss64(0);
+	setup_tss64(0, 0);
 	set_idt_entry_ist(test_vector, ring0_non_cano_esp_handler, 0, EXCEPTION_IST);
 	ret = setjmp(jmpbuf);
 	if (ret == 0) {
@@ -3903,9 +3920,9 @@ static __unused void gp_b6_instruction_382(const char *msg)
 
 static __unused void gp_b6_instruction_383(const char *msg)
 {
-	//Modified manually: Use the opcode of 'LSS r64,m16:64'
+	//Modified manually: Use the opcode of 'LFS r64,m16:64'
 	// to construct a non-memory location.
-	asm volatile(ASM_TRY("1f") "REX.W\n\t" ".byte 0x0F, 0xB2, 0xD0 \n" "1:"
+	asm volatile(ASM_TRY("1f") "REX.W\n\t" ".byte 0x0F, 0xB4, 0xD0 \n" "1:"
 				: : "m" (addr_m16_64));
 	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
 }
@@ -11660,9 +11677,13 @@ static __unused void gp_b6_352(void)
 	condition_D_segfault_not_occur();
 	condition_S_segfault_occur();
 	condition_cs_cpl_3();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring3(gp_b6_instruction_352, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11681,10 +11702,14 @@ static __unused void gp_b6_353(void)
 	condition_D_segfault_not_occur();
 	condition_S_segfault_occur();
 	condition_cs_cpl_0();
+	//Added manually
+	condition_set_ss_null();
 	condition_RPL_CPL_true();
 	execption_inc_len = 3;
 	do_at_ring0(gp_b6_instruction_353, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11704,9 +11729,13 @@ static __unused void gp_b6_354(void)
 	condition_S_segfault_occur();
 	condition_cs_cpl_1();
 	condition_RPL_CPL_true();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring1(gp_b6_instruction_354, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11726,9 +11755,13 @@ static __unused void gp_b6_355(void)
 	condition_S_segfault_occur();
 	condition_cs_cpl_2();
 	condition_RPL_CPL_true();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring2(gp_b6_instruction_355, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11749,9 +11782,13 @@ static __unused void gp_b6_356(void)
 	condition_cs_cpl_0();
 	condition_RPL_CPL_false();
 	condition_pgfault_occur();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring0(gp_b6_instruction_356, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11772,9 +11809,13 @@ static __unused void gp_b6_357(void)
 	condition_cs_cpl_1();
 	condition_RPL_CPL_false();
 	condition_pgfault_occur();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring1(gp_b6_instruction_357, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11795,9 +11836,13 @@ static __unused void gp_b6_358(void)
 	condition_cs_cpl_2();
 	condition_RPL_CPL_false();
 	condition_pgfault_occur();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring2(gp_b6_instruction_358, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11964,9 +12009,13 @@ static __unused void gp_b6_365(void)
 	condition_RPL_CPL_false();
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_non_mem();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring0(gp_b6_instruction_365, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -11988,9 +12037,13 @@ static __unused void gp_b6_366(void)
 	condition_RPL_CPL_false();
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_non_mem();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring1(gp_b6_instruction_366, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12012,9 +12065,13 @@ static __unused void gp_b6_367(void)
 	condition_RPL_CPL_false();
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_non_mem();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring2(gp_b6_instruction_367, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12181,9 +12238,13 @@ static __unused void gp_b6_374(void)
 	condition_RPL_CPL_false();
 	condition_pgfault_not_occur();
 	condition_complex_nc_hold();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring0(gp_b6_instruction_374, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12205,9 +12266,13 @@ static __unused void gp_b6_375(void)
 	condition_RPL_CPL_false();
 	condition_pgfault_not_occur();
 	condition_complex_nc_hold();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring1(gp_b6_instruction_375, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12229,9 +12294,13 @@ static __unused void gp_b6_376(void)
 	condition_RPL_CPL_false();
 	condition_pgfault_not_occur();
 	condition_complex_nc_hold();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring2(gp_b6_instruction_376, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12405,9 +12474,13 @@ static __unused void gp_b6_383(void)
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_cann();
 	condition_Sou_Not_mem_location_true();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring0(gp_b6_instruction_383, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12430,9 +12503,13 @@ static __unused void gp_b6_384(void)
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_cann();
 	condition_Sou_Not_mem_location_true();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring1(gp_b6_instruction_384, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12455,9 +12532,13 @@ static __unused void gp_b6_385(void)
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_cann();
 	condition_Sou_Not_mem_location_true();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring2(gp_b6_instruction_385, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12631,9 +12712,13 @@ static __unused void gp_b6_392(void)
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_cann();
 	condition_Sou_Not_mem_location_false();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring0(gp_b6_instruction_392, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12656,9 +12741,13 @@ static __unused void gp_b6_393(void)
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_cann();
 	condition_Sou_Not_mem_location_false();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring1(gp_b6_instruction_393, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
@@ -12681,9 +12770,13 @@ static __unused void gp_b6_394(void)
 	condition_pgfault_not_occur();
 	condition_Ad_Cann_cann();
 	condition_Sou_Not_mem_location_false();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring2(gp_b6_instruction_394, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);

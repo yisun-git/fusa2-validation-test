@@ -3508,9 +3508,13 @@ static __unused void gp_pt_111(void)
 	condition_LOCK_not_used();
 	condition_D_segfault_not_occur();
 	condition_S_segfault_occur();
+	//Added manually
+	condition_set_ss_null();
 	execption_inc_len = 3;
 	do_at_ring0(gp_pt_instruction_111, "");
 	execption_inc_len = 0;
+	//Added manually
+	condition_restore_ss();
 	write_cr0(cr0);
 	write_cr2(cr2);
 	write_cr3(cr3);
