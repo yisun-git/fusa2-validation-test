@@ -101,7 +101,7 @@ static void setup_32bit_guest_vmcs(void)
  * execute VMWRITE set guest msr ia32 efer to 0 which means IA32_EFER.LME clear to 0.
  * switch to non-root operation,
  * execute MOV save guest cr0 to memory,
- * execute RDMSR get ia32_efer rigseter in eax, then save eax value to memory.
+ * execute RDMSR get ia32_efer register in eax, then save eax value to memory.
  * switch to root operation again.
  * make sure guest run in unpaged protected mode,
  * Check guest cr0.pg is 0, cr0.pe is 1 and ia32_efer.lme is 0.

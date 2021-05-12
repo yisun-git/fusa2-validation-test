@@ -241,7 +241,7 @@ static void hsi_rqmid_35949_interrupt_management_features_eflags_interrupt_flag_
  *
  * Summary: Under 64 bit mode on native board, create a new IDT table,
  * set the IST field in the IDT descriptor for #MC to 1, allocate 1 stack spaces for #MC,
- * configure the IST1 fileds of the TSS to point to the mc stack spaces allocated in GDT table,
+ * configure the IST1 fields of the TSS to point to the mc stack spaces allocated in GDT table,
  * trigger #MC, verify that the RSP value obtained in the interrupt handler is in the allocated stack address space.
  */
 static void hsi_rqmid_40126_interrupt_management_features_inter_stack_table_mc_001(void)
@@ -284,7 +284,7 @@ static void hsi_rqmid_40126_interrupt_management_features_inter_stack_table_mc_0
  *
  * Summary: Under 64 bit mode on native board, create a new IDT table,
  * set the IST field in the IDT descriptor for #DF to 2, allocate 1 stack spaces for #DF,
- * configure the IST2 fileds of the TSS to point to the df stack spaces allocated in GDT table,
+ * configure the IST2 fields of the TSS to point to the df stack spaces allocated in GDT table,
  * trigger #DF, verify that the RSP value obtained in the interrupt handler is in the allocated stack address space.
  */
 __unused static void hsi_rqmid_40135_interrupt_management_features_inter_stack_table_df_001(void)
@@ -328,7 +328,7 @@ __unused static void hsi_rqmid_40135_interrupt_management_features_inter_stack_t
  *
  * Summary: Under 64 bit mode on native board, create a new IDT table,
  * set the IST field in the IDT descriptor for #SS to 3, allocate 1 stack spaces for #SS,
- * configure the IST3 fileds of the TSS to point to the SS stack spaces allocated in GDT table,
+ * configure the IST3 fields of the TSS to point to the SS stack spaces allocated in GDT table,
  * trigger #SS, verify that the RSP value obtained in the interrupt handler is in the allocated stack address space.
  */
 __unused static void hsi_rqmid_40147_interrupt_management_features_inter_stack_table_ss_001(void)

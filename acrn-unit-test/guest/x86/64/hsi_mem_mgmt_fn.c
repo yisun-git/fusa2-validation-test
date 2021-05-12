@@ -244,7 +244,7 @@ __unused static void hsi_rqmid_39867_memory_management_features_segmentation_002
  *
  * Summary: Under 64 bit mode on native board, create a new gdt table,
  * set IDT entry in GDT table, Execute LLDT instruction to load new LDT and
- * execute SLDT intructions to save LDT to memory.
+ * execute SLDT instructions to save LDT to memory.
  * Verify that instructions execution with no exception and install/save operation is successful.
  */
 static __unused void hsi_rqmid_40002_memory_management_features_segmentation_003()
@@ -542,7 +542,7 @@ static __unused void hsi_rqmid_36538_memory_management_features_paging_access_co
  *
  * Summary: On native board, run on ring 0, set CR4.SMAP to 1, execute clac reenabling
  * the SMAP protection, read from a user-mode address should generate #PF.
- * Then, execute stac diabling the SMAP protection, reading should be successful.
+ * Then, execute stac disabling the SMAP protection, reading should be successful.
  */
 static __unused void hsi_rqmid_40022_memory_management_features_paging_access_control_003()
 {
@@ -636,7 +636,7 @@ static __unused void hsi_rqmid_40027_memory_management_features_paging_access_co
  * Summary: On native board, test all available RAM addresses(High address 256~512M) are present and
  * writeable, via checking P flag (bit 0) and R/W flag (bit 1) of page structure entries
  * which reference these RAM addresses.
- * write value to the memory, check value write corrently.
+ * write value to the memory, check value write correctly.
  */
 static __unused void hsi_rqmid_40040_memory_management_features_paging_access_control_high_address_001(void)
 {
@@ -718,7 +718,7 @@ static __unused void hsi_rqmid_36574_memory_management_features_cache_control_00
  *
  * Summary: Under 64 bit mode on native board, read L2 size memory type WB form cache, 
  * record the tsc delay data, execute WBINVD, read L2 size memory
- * again with no cache, record tsc delay data, compare the two dealy data make sure 
+ * again with no cache, record tsc delay data, compare the two delay data make sure 
  * WBINVD executed with no exception and invalidated cache successfully.
  */
 static void hsi_rqmid_36539_memory_management_features_cache_management_instructions_001()
@@ -766,7 +766,7 @@ static void hsi_rqmid_36539_memory_management_features_cache_management_instruct
  *
  * Summary: Under 64 bit mode on native board, read 8 bytes size memory type WB from cache, 
  * record the tsc delay data, execute CLFLUSH with the memory address, read 8 bytes memory
- * again with no cache, record tsc delay data, compare the two dealy data make sure
+ * again with no cache, record tsc delay data, compare the two delay data make sure
  * CLFLUSH executed with no exception and invalidated cache successfully.
  */
 static void hsi_rqmid_40081_memory_management_features_cache_management_instructions_002()
@@ -815,7 +815,7 @@ static void hsi_rqmid_40081_memory_management_features_cache_management_instruct
  *
  * Summary: Under 64 bit mode on native board, read 8 bytes size memory type WB from cache, 
  * record the tsc delay data, execute CLFLUSHOPT with the memory address, read 8 bytes memory
- * again with no cache, record tsc delay data, compare the two dealy data make sure
+ * again with no cache, record tsc delay data, compare the two delay data make sure
  * CLFLUSH executed with no exception and invalidated cache successfully.
  */
 static void hsi_rqmid_40082_memory_management_features_cache_management_instructions_003()
