@@ -245,7 +245,7 @@ __unused static void modify_fpu_data_operand_and_cs_seg_state()
 	write_cr4(cr4 | (1<<9));//set OSFXSR
 	asm volatile("fxsave %0" : "=m"(*fpu_xsave));
 	fpu_xsave->fdp = 0xff;
-	fpu_xsave->fcs = 0xff00;
+	fpu_xsave->fcs = 0xff;
 
 	/*new value restore to fpu*/
 	asm volatile("fxrstor %0" : : "m"(*fpu_xsave));
@@ -700,7 +700,7 @@ static void fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_followi
 
 	notify_modify_and_read_init_value(32361);
 
-	if (!(((fpu_save->fip & 0xffffU) == 0) && ((fpu_save->fdp & 0xffffU) == 0))) {
+	if (!(((fpu_save->fip & 0xffffU) == 1) && ((fpu_save->fdp & 0xffffU) == 1))) {
 		is_pass = false;
 		printf("[%d]:fpu_save->fip:%x fpu_save->fdp:%x\n", __LINE__, fpu_save->fip, fpu_save->fdp);
 	}
@@ -866,7 +866,7 @@ static void fpu_rqmid_32359_Status_Word_states_following_INIT_001()
 
 	notify_modify_and_read_init_value(32359);
 
-	if (*(u16 *)INIT_FPU_SWS_ADDR != 0) {
+	if (*(u16 *)INIT_FPU_SWS_ADDR != 0x5555) {
 		printf("line:%d fsw=0x%x\n", __LINE__, *(u16 *)INIT_FPU_SWS_ADDR);
 		is_pass = false;
 	}
@@ -895,8 +895,11 @@ static void fpu_rqmid_32357_Tag_Word_states_following_INIT_001()
 
 	notify_modify_and_read_init_value(32357);
 
-	if (fpu_save->ftw != 0xFFFF) {
-		printf("line:%d ftw=0x%x\n", __LINE__, fpu_save->ftw);
+	struct fxsave_struct *fpu_xsave;
+	fpu_xsave = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
+
+	if (fpu_xsave->ftw != 0xFF) {
+		printf("line:%d ftw=0x%x\n", __LINE__, fpu_xsave->ftw);
 		is_pass = false;
 	}
 
@@ -923,7 +926,7 @@ static void fpu_rqmid_32364_Control_Word_states_following_INIT_001()
 
 	notify_modify_and_read_init_value(32364);
 
-	if (*(u16 *)INIT_FPU_CWS_ADDR != 0x37F) {
+	if (*(u16 *)INIT_FPU_CWS_ADDR != 0x370) {
 		printf("line:%d fcw=%x\n", __LINE__, *(u16 *)INIT_FPU_CWS_ADDR);
 		is_pass = false;
 	}
@@ -957,7 +960,7 @@ static void fpu_rqmid_39119_fpu_data_operand_and_cs_seg_state_following_init_001
 	notify_modify_and_read_init_value(39119);
 	fpu_save = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
 
-	if (!((fpu_save->fdp == 0x0) && ((fpu_save->fcs & 0xFFFF) == 0))) {
+	if (!((fpu_save->fdp == 0xFF) && ((fpu_save->fcs & 0xFFFF) == 0))) {
 		is_pass = false;
 		printf("line:%d fdp=%x fcs=%x\n", __LINE__, fpu_save->fdp, fpu_save->fcs);
 	}
@@ -986,7 +989,7 @@ static void fpu_rqmid_46062_fpu_data_opcode_register_following_init_001()
 
 	fpu_save = (struct fxsave_struct *)INIT_FPU_SAVE_ADDR;
 
-	if (fpu_save->fop != 0) {
+	if (fpu_save->fop != 0x55) {
 		is_pass = false;
 		printf("line:%d fdp=%x\n", __LINE__, fpu_save->fop);
 	}
@@ -1448,8 +1451,8 @@ int main(void)
 	fpu_rqmid_31656_execution_environment_protected_mode_FADD_pf_001();
 #endif
 #ifdef __x86_64__
-	fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_following_INIT_001();
 	fpu_rqmid_37198_st0_through_st7_states_following_INIT_002();
+	fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_following_INIT_001();
 	fpu_rqmid_32366_st0_through_st7_states_following_INIT_001();
 	fpu_rqmid_32380_CR0_NE_state_following_INIT_001();
 	fpu_rqmid_32382_CR0_MP_state_following_INIT_001();
