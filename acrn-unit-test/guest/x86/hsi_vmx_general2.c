@@ -41,12 +41,12 @@ static void hypercall_check_tsc_aux_load(__unused struct st_vcpu *vcpu)
  *
  * Summary: IN root operation, initialize 16 bytes memory host msr area,
  * write IA32_TSC_AUX value to msr index, write 0 to the msr,
- * execute VMWRITE set msr cout to 1 with VM-exit MSR-load count control field in the VMCS,
+ * execute VMWRITE set msr count to 1 with VM-exit MSR-load count control field in the VMCS,
  * execute VMWRITE set msr address to host msr area address with VM-exit MSR-load address control field in the VMCS,
  * set physical MSR_AREA_TSC_AUX value to 0xff different from 0
  * switch to non-root operation,
  * execute any instruction.
- * swith to root operation which means VM exit occurs,
+ * switch to root operation which means VM exit occurs,
  * check host IA32_TSC_AUX value should be 0 loaded by processor.
  */
 __unused static void hsi_rqmid_42237_virtualization_specific_features_exit_host_msr_load_001()
@@ -64,11 +64,11 @@ __unused static void hsi_rqmid_42237_virtualization_specific_features_exit_host_
  *
  * Summary: IN root operation, initialize 16 bytes memory guest msr area,
  * set IA32_TSC_AUX value to msr index, initialize 0 to the msr,
- * execute VMWRITE set msr cout to 1 with VM-Exit MSR-Store count control field in the VMCS,
+ * execute VMWRITE set msr count to 1 with VM-Exit MSR-Store count control field in the VMCS,
  * execute VMWRITE set msr address to guest msr area address with VM-Exit MSR-Store address control field in the VMCS,
  * switch to non-root operation,
  * set msr IA32_TSC_AUX value to 1.
- * swith to root operation which means VM-exit occurs,
+ * switch to root operation which means VM-exit occurs,
  * check IA32_TSC_AUX value should be 1 in guest msr area memory.
  */
 __unused static void hsi_rqmid_42238_virtualization_specific_features_exit_guest_msr_store_001()
@@ -229,7 +229,7 @@ static void ud_handler(__unused struct ex_regs *regs)
  * @brief Case name:HSI_Virtualization_Specific_Features_VM_Entry_Control_For_Event_Injection_001
  *
  * Summary: IN root operation, execute VMWRITE config vm-entry interruption-information field as below:
- * set vection to #UD exception, interruption type to hardware exception, valid interruption.
+ * set vector to #UD exception, interruption type to hardware exception, valid interruption.
  * switch to non-root operation,
  * check #UD exception handler function are called once.
  */
@@ -279,9 +279,9 @@ static void bitmap_io_condition(__unused struct st_vcpu *vcpu)
  * use I/O bitmaps exiting bit25 to 1, set I/O-bitmap A bit[0xCFC~0xCFF] to 1 enable vm exit,
  * set I/O-bitmap A bit[0xCF8~0xCFB] to 1, enable vm exit.
  * switch to non-root operation,
- * execute instructoin [INL 0xCFC], check vm-exit handler are called for
+ * execute instruction [INL 0xCFC], check vm-exit handler are called for
  * this action in root operation.
- * execute instructoin [INL 0xCF8], check vm-exit handler are called for
+ * execute instruction [INL 0xCF8], check vm-exit handler are called for
  * this action in root operation.
  */
 __unused static void hsi_rqmid_41086_virtualization_specific_features_vm_exe_con_bitmap_io_001()
@@ -346,9 +346,9 @@ typedef void (*trigger_func)(void *data);
  * Summary: IN root operation, set VMX exception bitmaps DB exception bit1 to 1
  * GP exception bit13 to 0.
  * switch to non-root operation,
- * trigger a #DB exception, check excetpion or NMI vm-exit handler are called for
+ * trigger a #DB exception, check exception or NMI vm-exit handler are called for
  * #DB exception.
- * trigger a #GP exception, check excetpion or NMI vm-exit handler are not called for
+ * trigger a #GP exception, check exception or NMI vm-exit handler are not called for
  * #GP exception.
  */
 __unused static void hsi_rqmid_41183_virtualization_specific_features_vm_exe_con_bitmap_exception_001()
@@ -492,7 +492,7 @@ static void cr4_masks_condition(__unused struct st_vcpu *vcpu)
  * execute MOV set CR4.SMEP from 0 to 1, check vm-exit handler are called for
  * this action in root operation because CR4.SMEP owned by host.
  * execute MOV set CR4.PVI from 0 to 1, check vm-exit handler are not called for
- * this action in root operation becasue CR4.PVI owned by guest.
+ * this action in root operation because CR4.PVI owned by guest.
  */
 __unused static void hsi_rqmid_42028_virtualization_specific_features_cr4_masks_001()
 {
@@ -624,13 +624,13 @@ static void ept_read_access_contrl_condition(__unused struct st_vcpu *vcpu)
  * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Read_Access_001
  *
  * Summary: IN root operation,  map a 4M memory from GPA to HPA by EPT,
- * clear bit0 to 0 which means diable guest to read,
+ * clear bit0 to 0 which means disable guest to read,
  * write a magic number to 4bytes memory pointed by the HPA.
  * switch to non-root operation,
- * read 4 bytes memory pointed by GPA would cause ept misconfiguration and the memory can't be readed by guest.
+ * read 4 bytes memory pointed by GPA would cause ept misconfiguration and the memory can't be read by guest.
  * switch to root operation.
  * resume the read access, set ept table bit0 to 1 which means allow guest to read,
- * read 4 bytes memory pointed by GPA again, the value should be the magic number which the value wiritted in host.
+ * read 4 bytes memory pointed by GPA again, the value should be the magic number which the value written in host.
  */
 static void hsi_rqmid_43420_virtualization_specific_features_ept_read_access_001()
 {
@@ -691,16 +691,16 @@ static void ept_write_access_contrl_condition(__unused struct st_vcpu *vcpu)
  * @brief Case name: HSI_Virtualization_Specific_Features_EPT_Write_Access_001
  *
  * Summary: IN root operation,  map a 4M memory from GPA to HPA by EPT,
- * clear bit1 to 0 which means diable guest to write,
+ * clear bit1 to 0 which means disable guest to write,
  * write 0 to 4bytes memory pointed by the HPA,
  * switch to non-root operation,
  * write magic number(0x87654321) to the 4 bytes memory pointed by GPA would cause
- * ept violation and the memory can't be writed by guest. 
+ * ept violation and the memory can't be written by guest. 
  * switch to root operation,
  * resume the write access, set ept table bit1 to 1 which means allow guest
  * to write,
  * write magic number to the 4 bytes memory pointed by GPA,
- * the memory can be writed, the value is the 0x87654321.
+ * the memory can be written, the value is the 0x87654321.
  */
 static void hsi_rqmid_43421_virtualization_specific_features_ept_write_access_001()
 {
@@ -766,9 +766,9 @@ static void ept_execute_access_contrl_condition(__unused struct st_vcpu *vcpu)
  * Summary: IN root operation,  map a 4M memory from GPA to HPA by EPT,
  * clear bit2 to 0 which means diable guest to execute instruction, 
  * switch to non-root operation,
- * Write 0xc3(RET opcode) to the momory which pointed by GPA,
+ * Write 0xc3(RET opcode) to the memory which pointed by GPA,
  * execute CALL instruction with the memory pointed by GVA,
- * then check vm exit for EPT violation are called becasue GVA pointed memory
+ * then check vm exit for EPT violation are called because GVA pointed memory
  * can't executable
  * switch to root operation,
  * resume the execute access, set ept table bit2 to 1 which means allow guest

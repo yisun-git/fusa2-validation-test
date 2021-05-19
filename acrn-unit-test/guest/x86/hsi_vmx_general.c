@@ -79,8 +79,8 @@ __unused void hsi_rqmid_40291_virtualization_specific_features_VMX_instruction_0
  * @brief Case name: HSI_Virtualization_Specific_Features_VMX_Instruction_002
  *
  * Summary: Config 4k size memory for VMCS, enable VMX operation, load VMCS.
- * Then verify execute instructions VMLAUNCH/VMRESUME to swith from VMX root
- * opertaion to VMX non-root operation successful.
+ * Then verify execute instructions VMLAUNCH/VMRESUME to switch from VMX root
+ * operation to VMX non-root operation successful.
  */
 __unused static void hsi_rqmid_41182_virtualization_specific_features_VMX_instruction_002()
 {
@@ -106,7 +106,7 @@ __unused static void hsi_rqmid_41182_virtualization_specific_features_VMX_instru
  *
  * Summary: IN root operation, clear Pin-Based VM-Execution Controls
  * external-interrupt exiting bit0 to 0, switch to non-root operation,
- * trigge an external interrupt, check vm-exit handler are not called for
+ * trigger an external interrupt, check vm-exit handler are not called for
  * this external interrupt in root operation.
  */
 static void hsi_rqmid_40364_virtualization_specific_features_vm_exe_con_external_inter_001()
@@ -153,7 +153,7 @@ void handle_nmi_inter(struct ex_regs *regs)
  *
  * Summary: IN root operation, clear Pin-Based VM-Execution Controls
  * NMI exiting bit3 to 0, switch to non-root operation,
- * trigge an NMI interrupt, check vm-exit handler are not called for
+ * trigger an NMI interrupt, check vm-exit handler are not called for
  * this NMI interrupt in root operation.
  */
 static void hsi_rqmid_40369_virtualization_specific_features_vm_exe_con_nmi_inter_001()
@@ -237,7 +237,7 @@ static void pi_request_inter_handle(__unused isr_regs_t *regs)
  * @brief Case name:HSI_Virtualization_Specific_Features_VM_Execution_Controls_Process_Posted_interrupts_001
  *
  * Summary: IN root operation, clear Pin-Based VM-Execution Controls
- * Process posted interrupts bit7 to 0, writethe posted-interrupt notification
+ * Process posted interrupts bit7 to 0, write the posted-interrupt notification
  * vector field with 0xe3, write posted-interrupt descriptor bit[255:0]'s
  * bit[0xa0] to 1.
  * switch to non-root operation,
@@ -380,8 +380,8 @@ static int write_mem_check(void *gva)
  * enable VPID bit5 to 1, switch to non-root operation,
  * Define a new address GVA points to 8bytes memory, cache the TLB for this GVA,
  * clear the P flag for this page table, execute VMCALL, it would cause vm exit/entry,
- * then swith to non-root operation again, access the GVA pointed memory, there is no #PF exception
- * becasue the VPID enabled.
+ * then switch to non-root operation again, access the GVA pointed memory, there is no #PF exception
+ * because the VPID enabled.
  */
 __unused static void hsi_rqmid_40638_virtualization_specific_features_vm_exe_con_enable_vpid_001()
 {
@@ -461,7 +461,7 @@ __unused static void hsi_rqmid_41081_virtualization_specific_features_vm_exe_con
  * EPT-violation #VE bit18 to 0, map a 4M non-writable memory from HPA to GPA by EPT,
  * set EPT paging-structure bit1 to 0.
  * switch to non-root operation,
- * Write data to the momory which pointed by GPA, then check vm exit for EPT violation are called
+ * Write data to the memory which pointed by GPA, then check vm exit for EPT violation are called
  * instead of EPT violations may cause virtualization exceptions.
  */
 __unused static void hsi_rqmid_41110_virtualization_specific_features_vm_exe_con_ept_violation_001()
@@ -486,15 +486,15 @@ __unused static void hsi_rqmid_41110_virtualization_specific_features_vm_exe_con
  *
  * Summary: IN root operation, clear Secondary Processor-Based VM-Execution Controls
  * Mode-based execute control for EPT bit22 to 0,
- * config 4M memory EPT paging-structrue table map GPA(384 * 1024 * 1024) to HPA,
+ * config 4M memory EPT paging-structure table map GPA(384 * 1024 * 1024) to HPA,
  * clear EPT paging-structure bit2 to 0, disallow execute access,
  * set EPT paging-structure bit10 to 1, allow user-mode paging execute access.
  * switch to non-root operation,
  * Config paging-structure table, make GVA to GPA one one mapping,
  * set paging-structure table bit2 to 1(user-mode paging),
- * Write 0xc3(RET opcode) to the momory which pointed by GPA,
+ * Write 0xc3(RET opcode) to the memory which pointed by GPA,
  * execute CALL instruction with the memory pointed by GVA,
- * then check vm exit for EPT violation are called becasue GVA pointed memory
+ * then check vm exit for EPT violation are called because GVA pointed memory
  * can't executable even if set EPT paging-structure bit10 to 1, allow user-mode paging execute access.
  */
 __unused static void hsi_rqmid_41113_virtualization_specific_features_vm_exe_con_excute_for_ept_001()
@@ -584,7 +584,7 @@ __unused static void hsi_rqmid_42179_virtualization_specific_features_entry_load
  * execute MOV set CR0.CD from 0 to 1, check vm-exit handler are called for
  * this action in root operation because CR0.CD owned by host.
  * execute MOV set CR0.MP from 0 to 1, check vm-exit handler are not called for
- * this action in root operation becasue CR0.MP owned by guest.
+ * this action in root operation because CR0.MP owned by guest.
  */
 __unused static void hsi_rqmid_41946_virtualization_specific_features_cr0_masks_001()
 {
@@ -622,9 +622,9 @@ __unused static void hsi_rqmid_41946_virtualization_specific_features_cr0_masks_
  * use msr bitmaps exiting bit28 to 1, set MSR_IA32_PAT read cause vm-exit,
  * set MSR_PLATFORM_INFO read not cause vm-exit,
  * switch to non-root operation,
- * execute instructoin rdmsr with ECX = 0x00000277, check vm-exit handler are called for
+ * execute instruction rdmsr with ECX = 0x00000277, check vm-exit handler are called for
  * this action in root operation.
- * execute instructoin rdmsr with ECX = 0x000000CE, check vm-exit handler are not called for
+ * execute instruction rdmsr with ECX = 0x000000CE, check vm-exit handler are not called for
  * this action in root operation.
  */
 __unused static void hsi_rqmid_41085_virtualization_specific_features_vm_exe_con_bitmap_msr_001()
@@ -654,7 +654,7 @@ __unused static void hsi_rqmid_41085_virtualization_specific_features_vm_exe_con
 /**
  * @brief Case name:HSI_Virtualization_Specific_Features_EPT_Construct_001
  *
- * Summary: IN root operation, alloc host address EPTP pointed to 4k memory
+ * Summary: IN root operation, allocate host address EPTP pointed to 4k memory
  * map memory form gpa to hpa with the EPTP, then execute VMWRITE set the EPTP
  * to VMCS, check instructions execution with no exception
  * and value read from VMCS is EPTP.
@@ -673,7 +673,7 @@ __unused static void hsi_rqmid_42209_virtualization_specific_features_ept_constr
  * Write magic number to the 8bytes memory which pointed by GPA,
  * switch to root operation,
  * change the mapping from GPA to HPA2 in the EPT
- * switch to non-root operatoin,
+ * switch to non-root operation,
  * check the 8bytes memory should be the magic number,
  * switch to root operation again,
  * execute invept instruction,
@@ -719,13 +719,13 @@ __unused static void hsi_rqmid_42224_virtualization_specific_features_ept_invali
  * Define a new address GVA points to 8bytes memory, cache the TLB for this GVA,
  * clear the P flag for this page table.
  * switch to root operation and do nothing at host,
- * swith to non-root operation,
+ * switch to non-root operation,
  * write GVA pointed memory, there is no exception,
- * swith to root operation,
+ * switch to root operation,
  * execute INVVPID instruction,
- * swith to non-root operation,
+ * switch to non-root operation,
  * write GVA pointed memory, there is #PF exception,
- * becasue the cached VPID mappings is invalidated.
+ * because the cached VPID mappings is invalidated.
  */
 __unused static void hsi_rqmid_42226_virtualization_specific_features_vpid_invalid_001()
 {
@@ -773,11 +773,11 @@ __unused static void hsi_rqmid_42226_virtualization_specific_features_vpid_inval
  *
  * Summary: IN root operation, initialize 16 bytes memory guest msr area,
  * write IA32_TSC_AUX value to msr index, write 0 to the msr,
- * execute VMWRITE set msr cout to 1 with VM entry MSR load count control field in the VMCS,
- * execute VMWRITE set msr addr to guest msr area address with VM-entry MSR-load address control field in the VMCS,
+ * execute VMWRITE set msr count to 1 with VM entry MSR load count control field in the VMCS,
+ * execute VMWRITE set msr address to guest msr area address with VM-entry MSR-load address control field in the VMCS,
  * switch to non-root operation which means VM-entry occurs,
  * check IA32_TSC_AUX value should be 0 loaded by processor.
- * swith to root operation,
+ * switch to root operation,
  * set guest IA32_TSC_AUX to 1 with guest msr area,
  * switch to non-root operation which means VM-entry occurs,
  * check IA32_TSC_AUX value should be 1 loaded by processor.
@@ -814,7 +814,7 @@ __unused static void hsi_rqmid_42236_virtualization_specific_features_entry_gues
  * use TSC offsetting bit3 to 1 and RDTSC exiting bit12 to 0,
  * clear second Processor-Base VM-Execution controls use TSC scaling bit25 to 0,
  * set TSC offsetting to a big value 0x100000000000, clear physical TSC to 0,
- * set TSC scailng value to 4.
+ * set TSC scaling value to 4.
  * switch to non-root operation,
  * execute RDTSC read TSC immediately, check the TSC value should more than
  * the TSC offsetting 0x100000000000 and much less than 4*0x100000000000

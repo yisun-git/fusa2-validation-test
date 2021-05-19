@@ -106,9 +106,9 @@ static int pci_probe_msi_cap(union pci_bdf bdf, uint32_t *msi_addr)
  * Set the local APIC ID of value to the message address register bit[19:12] to 0(BP ID) and
  * set message control register bit0 to 1 enable MSI interrupt function.
  * Set interrupt vector 0x40 to the message data register .Trigger NET MAC MSI interrupt, 
- * cpu should be able to receive MSI interrupt, interrupt vector number 0x40.
+ * CPU should be able to receive MSI interrupt, interrupt vector number 0x40.
  * Then clear message control register bit0 to 0 disable MSI interrupt function,
- * trigger NET MAC MSI interrupt,cpu should not be able to receive MSI interrupt.
+ * trigger NET MAC MSI interrupt,CPU should not be able to receive MSI interrupt.
  */
 __unused static void hsi_rqmid_42668_virtualization_specific_features_inter_remapping_001(void)
 {
@@ -377,18 +377,18 @@ __unused static void iommu_flush_cache(const void *p, uint32_t size)
  *
  * Summary: In 64-bit native mode,
  * Check ecap register bit3 whether is 1 and make sure hardware supports interrupt remapping,
- * alloc ir_table_addr pointed to 4K free memory, set the value to the Interrupt
+ * allocate ir_table_addr pointed to 4K free memory, set the value to the Interrupt
  * Remapping Table Address Register(offset is 0xb8), set bit24(SIRTP: Set Interrupt Remap Table Pointer),
- * bit25(Interrupt Remapping Enable) to 1 with global command regiseter. set IRTE with vector 0xe8 and LAPIC
+ * bit25(Interrupt Remapping Enable) to 1 with global command register. set IRTE with vector 0xe8 and LAPIC
  * ID is 0 with Interrupt Remapping table's index is 1.
  * to enumerate the Capabilities Pointer Register for the NET devices in the root mode.
  * The first address of the Capabilities Register is 0x34. You recursively obtain the Capabilities information
  * for the PCIe device, based on the NEXT Pointer information in the Capabilities Register value.
  * If the Capabilities ID is 0x05, that is the Capabilities register set for the MSI.
- * Set the handler index to 1 and Interrupt format bit4 to 1(remapping format) with MSI address reigster.
+ * Set the handler index to 1 and Interrupt format bit4 to 1(remapping format) with MSI address register.
  * set message control register bit0 to 1 enable MSI interrupt function.
  * Trigger NET MAC MSI interrupt, 
- * cpu should be able to receive MSI interrupt, interrupt vector number 0xe8 which is config in the IRTE.
+ * CPU should be able to receive MSI interrupt, interrupt vector number 0xe8 which is config in the IRTE.
  */
 __unused static void hsi_rqmid_43872_virtualization_specific_features_inter_remapping_002(void)
 {

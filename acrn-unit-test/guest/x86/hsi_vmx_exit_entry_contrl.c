@@ -446,7 +446,7 @@ static void exit_ack_inter_condition(__unused struct st_vcpu *vcpu)
  * Summary: IN root operation, set VMCS VM-Exit controls bit15(acknowledge interrupt on exit) to 1,
  * set Pin-base execute controls field bit0(External interrupt exiting) to 1,
  * switch to non-root operation,
- * Triggle a external 0x80 interrupt.
+ * Trigger an external 0x80 interrupt.
  * Check in VM-exit interruption information field bit[7:0]interrupt vector is 0x80,
  * bit31 is 1.
  */
@@ -488,8 +488,8 @@ static void exit_save_pree_timer_condition(__unused struct st_vcpu *vcpu)
  * set Pin-base execute controls field bit6(activate VMX preemption timer) to 1,
  * execute VMWRITE set preemption timer to a large value 0x10000000 with preemption timer fields,
  * switch to non-root operation,
- * Execute any instruciton.
- * switch to root opreation immediately which means vm-exit occurs,
+ * Execute any instruction.
+ * switch to root operation immediately which means vm-exit occurs,
  * Execute VMREAD get preemption timer value should be unchanged.
  */
 __unused static void hsi_rqmid_42189_virtualization_specific_features_exit_save_pree_timer_001()
@@ -538,8 +538,8 @@ static void exit_host_addr64_condition(__unused struct st_vcpu *vcpu)
  * Summary: IN root operation, set VMCS VM-Exit controls bit9(Host address space size) to 1,
  * clear VMCS VM-Exit controls bit21(load IA32_EFER) to 0,
  * switch to non-root operation,
- * Execute any instruciton.
- * switch to root opreation which means vm-exit occurs,
+ * Execute any instruction.
+ * switch to root operation which means vm-exit occurs,
  * Check IA32_EFER.LMA, IA32_EFER.LME, CS.L is loaded to 1.
  */
 __unused static void hsi_rqmid_42192_virtualization_specific_features_exit_host_addr64_001()
@@ -652,7 +652,7 @@ static int entry_to_smm_rsm_ins(void)
  *
  * Summary: IN root operation, clear VMCS VM-Entry controls bit10(Entry to SMM) to 0,
  * switch to non-root operation,
- * Execute RSM instruction should generate #UD exception, because SMM mode not supprot.
+ * Execute RSM instruction should generate #UD exception, because SMM mode not support.
  */
 __unused static void hsi_rqmid_42271_virtualization_specific_features_entry_to_smm_001()
 {

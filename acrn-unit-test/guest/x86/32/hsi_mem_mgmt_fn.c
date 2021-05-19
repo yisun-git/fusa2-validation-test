@@ -37,7 +37,7 @@ __unused static void hsi_rqmid_40035_memory_management_features_segmentation_32b
  *
  * Summary: Under 32 bit mode on native board, create a new gdt table,
  * set IDT entry in GDT table, Execute LLDT instruction to load new LDT and
- * execute SLDT intructions to save LDT to memory.
+ * execute SLDT instructions to save LDT to memory.
  * Verify that instructions execution with no exception and install/save operation is successful.
  */
 static __unused void hsi_rqmid_40036_memory_management_features_segmentation_32bit_mode_003()

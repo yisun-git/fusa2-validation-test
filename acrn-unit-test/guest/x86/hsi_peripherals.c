@@ -162,7 +162,7 @@ static __unused void hsi_rqmid_36056_peripherals_features_rtc_001(void)
  *
  * Summary: On native board, read RTC target date/timer registers:
  * second, minute, hour, day of week, day of month, year, check the reads
- * are successful; arm a 5-second apic timer to verify the increament of RTC time.
+ * are successful; arm a 5-second apic timer to verify the increment of RTC time.
  */
 static __unused void hsi_rqmid_36057_peripherals_features_rtc_002(void)
 {
@@ -292,7 +292,7 @@ static __unused void hsi_rqmid_43752_peripherals_features_rtc_003(void)
  *
  * Summary: On native board, Access PCI configuration space of USB
  * controller device, should get information about Device ID, Header Type,
- * Cacheline Size, Status, and Capabilities Pointer.
+ * Cache line Size, Status, and Capabilities Pointer.
  */
 static __unused void hsi_rqmid_36112_peripherals_features_pci_configuration_space_001(void)
 {

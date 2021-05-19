@@ -7,7 +7,7 @@ BUILD_CONDITION_FUNC(enable_rdtscp, CPU_EXEC_CTRL1, \
  * Summary: IN root operation, set Secondary Processor-Based VM-Execution Controls
  * enable RDTSCP bit3 to 1
  * switch to non-root operation,
- * execute instructoin RDTSCP, check this instruction executed successful and no #UD exception occurs.
+ * execute instruction RDTSCP, check this instruction executed successful and no #UD exception occurs.
  */
 __unused static void hsi_rqmid_40622_virtualization_specific_features_vm_exe_con_enable_rdtscp_001()
 {
@@ -175,7 +175,7 @@ BUILD_CONDITION_FUNC(vmcs_shadowing, CPU_EXEC_CTRL1, \
  * Summary: IN root operation, clear Secondary Processor-Based VM-Execution Controls
  * VMCS shadowing bit14 to 0, switch to non-root operation,
  * execute VMREAD instruction, then check vm-exit handler are called
- * for this action in root operation beacause VMCS shaowding is disable.
+ * for this action in root operation beacause VMCS shadowing is disable.
  */
 __unused static void hsi_rqmid_41084_virtualization_specific_features_vm_exe_con_vmcs_shadowing_001()
 {
@@ -362,9 +362,9 @@ static void virt_inter_delivery_condition(__unused struct st_vcpu *vcpu)
  * @brief Case name:HSI_Virtualization_Specific_Features_VM_Execution_Controls_Virtual-interrupt_Delivery_001
  *
  * Summary: IN root operation, clear second Processor-Based VM-Execution Controls
- * Virtual-interrupt delivery bit9 to 0, initlize 4K apic-access memory,
- * set the APIC-access address to incorrent value, install the APIC-access page.
- * Execute vmresume entry to non-root operation should be successful.
+ * Virtual-interrupt delivery bit9 to 0, initialize 4K apic-access memory,
+ * set the APIC-access address to incorrect value, install the APIC-access page.
+ * Execute VMRESUME to entry non-root operation should be successful.
  */
 __unused static void hsi_rqmid_41173_virtualization_specific_features_vm_exe_con_virt_inter_delivery_001()
 {

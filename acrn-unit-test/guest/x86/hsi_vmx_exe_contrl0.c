@@ -246,7 +246,7 @@ static void unconditional_io_exit_condition(__unused struct st_vcpu *vcpu)
  * Summary: IN root operation, clear Processor-Based VM-Execution Controls
  * Unconditional I/O exiting exiting bit24 and Use I/O bitmaps exiting bit25 to 0,
  * switch to non-root operation,
- * execute instructoin [INL 0x71], check vm-exit handler are not called for
+ * execute instruction [INL 0x71], check vm-exit handler are not called for
  * this action in root operation.
  */
 __unused static void hsi_rqmid_40492_virtualization_specific_features_vm_exe_con_unconditional_io_001()
@@ -284,7 +284,7 @@ static void io_bitmap_exit_condition(__unused struct st_vcpu *vcpu)
  * Summary: IN root operation, set Processor-Based VM-Execution Controls
  * use I/O bitmaps exiting bit25 to 1, set I/O-bitmap A bit[0x71] to 1 enable vm exit
  * switch to non-root operation,
- * execute instructoin [INL 0x71], check vm-exit handler are called for
+ * execute instruction [INL 0x71], check vm-exit handler are called for
  * this action in root operation.
  */
 __unused static void hsi_rqmid_40495_virtualization_specific_features_vm_exe_con_io_bitmap_001()
@@ -322,7 +322,7 @@ static void msr_bitmap_rdmsr_exit_condition(__unused struct st_vcpu *vcpu)
  * Summary: IN root operation, set Processor-Based VM-Execution Controls
  * use msr bitmaps exiting bit28 to 1, set read bitmap for low MSR bit[0x277] to 1 enable vm exit
  * switch to non-root operation,
- * execute instructoin rdmsr with ECX = 0x00000277U, check vm-exit handler are called for
+ * execute instruction rdmsr with ECX = 0x00000277U, check vm-exit handler are called for
  * this action in root operation.
  */
 __unused static void hsi_rqmid_40501_virtualization_specific_features_vm_exe_con_msr_bitmap_rdmsr_001()
@@ -369,7 +369,7 @@ static void msr_bitmap_wrmsr_exit_condition(__unused struct st_vcpu *vcpu)
  * Summary: IN root operation, set Processor-Based VM-Execution Controls
  * use msr bitmaps exiting bit28 to 1, set write bitmap for low MSR bit[2048*8 + 0x277] to 1 enable vm exit
  * switch to non-root operation,
- * execute instructoin wrmsr with ECX = 0x00000277U, check vm-exit handler are called for
+ * execute instruction wrmsr with ECX = 0x00000277U, check vm-exit handler are called for
  * this action in root operation.
  */
 __unused static void hsi_rqmid_40503_virtualization_specific_features_vm_exe_con_msr_bitmap_wrmsr_001()
@@ -474,7 +474,7 @@ static unsigned rdtscp_check(void)
  * Activate secondary controls bit31 to 1, enable the secondary processor-based VM-execution controls,
  * set secondary processor-based VM-execution bit3 to 1, then enable execution of RDTSCP,
  * switch to non-root operation,
- * execute instructoin RDTSCP, check this instruction executed successful and no #UD exception occurs.
+ * execute instruction RDTSCP, check this instruction executed successful and no #UD exception occurs.
  */
 __unused static void hsi_rqmid_40621_virtualization_specific_features_vm_exe_con_activate_secon_con_001()
 {

@@ -54,7 +54,7 @@ __unused static bool check_pages_p_and_rw_flag(u64 start_addr, u64 end_addr)
  * Summary: On native board, test all available RAM addresses(Low address 1~256M) are present and
  * writeable, via checking P flag (bit 0) and R/W flag (bit 1) of page structure entries
  * which reference these RAM addresses.
- * write value to the memory, check value write corrently.
+ * write value to the memory, check value write correctly.
  */
 static __unused void hsi_rqmid_40041_memory_management_features_paging_access_control_low_address_001(void)
 {
