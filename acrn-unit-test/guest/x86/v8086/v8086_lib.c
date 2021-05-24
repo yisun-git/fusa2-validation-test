@@ -83,6 +83,7 @@ void run_cases(const struct case_func *case_funcs)
 
 void send_cmd(enum func_id fid)
 {
+	printf("%s(%d) start\n", __func__, fid);
 	write_func_id(fid);
 	asm volatile (
 		"movl $1234f, %%gs:"xstr(RET_INS_ADDR)"\n"
@@ -90,6 +91,7 @@ void send_cmd(enum func_id fid)
 		"1234:\n"
 		::: "memory"
 	);
+	printf("%s(%d) end\n", __func__, fid);
 }
 
 u16 request_irq(u32 irq, irq_handler_t handler)

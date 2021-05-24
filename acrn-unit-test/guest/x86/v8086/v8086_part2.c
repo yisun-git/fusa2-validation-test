@@ -359,11 +359,13 @@ __noinline void v8086_rqmid_33813_interrupt_handling_001(void)
 	set_igdt(21, SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_INTERGATE, 0);
 
 	write_v8086_esp();
+	write_input_val(read_flags());
+
 	asm volatile("int $21\n\t");
 	/* VM, RF, NT, TF, IF of eflags is 0 */
-	report_ex("eflags = 0x%x", (MAGIC_DWORD != *temp_value) && (*temp_value &
-		(X86_EFLAGS_VM | X86_EFLAGS_RF | X86_EFLAGS_NT | X86_EFLAGS_IF | X86_EFLAGS_TF)
-		) == 0, *temp_value);
+	report_ex("eflags = 0x%x", (MAGIC_DWORD != *temp_value) &&
+		(*temp_value & (X86_EFLAGS_VM | X86_EFLAGS_RF | X86_EFLAGS_NT | X86_EFLAGS_IF | X86_EFLAGS_TF)) == 0,
+		*temp_value);
 	clear_v8086_esp();
 }
 
@@ -423,12 +425,16 @@ __noinline void v8086_rqmid_38113_interrupt_handling_001_1(void)
 {
 	set_igdt(21, SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TRAPGATE, 0);
 
+	u32 flags = read_flags();
 	write_v8086_esp();
+	write_input_val(flags);
+
 	asm volatile("int $21\n\t");
 
 	/* IF of eflags is not changed */
 	report_ex("eflags = 0x%x", (MAGIC_DWORD != *temp_value) &&
-		(*temp_value & X86_EFLAGS_IF) == (v8086_iopl & X86_EFLAGS_IF), *temp_value);
+		(*temp_value & (X86_EFLAGS_VM | X86_EFLAGS_RF | X86_EFLAGS_NT | X86_EFLAGS_TF)) == 0 &&
+		(*temp_value & X86_EFLAGS_IF) == (flags & X86_EFLAGS_IF), *temp_value);
 	clear_v8086_esp();
 }
 

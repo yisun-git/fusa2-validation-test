@@ -31,8 +31,8 @@ void print_case_list(void)
 #ifndef IN_NATIVE
 	printf("\t\tCase ID:%d case name:%s\n\t", 33868u, "reads CPUID.01H_001");
 #endif
-	printf("\t\tCase ID:%d case name:%s\n\t", 37947u, "write CR4 and the new guest CR4.VME is 1H_003");
-	printf("\t\tCase ID:%d case name:%s\n\t", 37948u, "write CR4 and the new guest CR4.PVI is 1H_003");
+	printf("\t\tCase ID:%d case name:%s\n\t", 37948u, "write CR4 and the new guest CR4.VME is 1H_003");
+	printf("\t\tCase ID:%d case name:%s\n\t", 37947u, "write CR4 and the new guest CR4.PVI is 1H_003");
 }
 
 /**
@@ -140,7 +140,7 @@ static void v8086_rqmid_33868_read_CPUID_01H_001()
  * written in protect mode, hyperversion should inject GP (0).
  *
  */
-static void v8086_rqmid_37947_write_CR4_VME_003()
+static void v8086_rqmid_37948_write_CR4_VME_003()
 {
 	asm volatile (
 		 "mov %cr4, %eax\n"
@@ -161,7 +161,7 @@ static void v8086_rqmid_37947_write_CR4_VME_003()
  * written in protect mode, hyperversion should inject GP (0).
  *
  */
-static void v8086_rqmid_37948_write_CR4_PVI_003()
+static void v8086_rqmid_37947_write_CR4_PVI_003()
 {
 	asm volatile (
 		 "mov %cr4, %eax\n"
@@ -190,8 +190,8 @@ int main()
 #ifndef IN_NATIVE
 	v8086_rqmid_33868_read_CPUID_01H_001();
 #endif
-	v8086_rqmid_37947_write_CR4_VME_003();
-	v8086_rqmid_37948_write_CR4_PVI_003();
+	v8086_rqmid_37948_write_CR4_VME_003();
+	v8086_rqmid_37947_write_CR4_PVI_003();
 
 	return report_summary();
 }

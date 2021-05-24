@@ -161,30 +161,24 @@ void handle_intr21(void)
 	u32 fs = 0xff;
 	u32 gs = 0xff;
 	u32 esp = 0xff;
+	u32 flags = 0xff;
 	struct int_regs *regs;
 
 	asm volatile (
-		"mov %%ds, %0\n"
-		"mov %%es, %1\n"
-		"mov %%fs, %2\n"
-		"mov %%gs, %3\n"
+		"mov %%ecx, %0\n"
+		"mov %%edx, %1\n"
+		"mov %%edi, %2\n"
+		"mov %%esi, %3\n"
 		: "=rm"(ds), "=rm"(es), "=rm"(fs), "=rm"(gs)
 		:
 		: "memory"
 		);
 
-	asm volatile (
-		"mov $0x10, %eax\n"
-		"mov %eax, %ds\n"
-		"mov %eax, %es\n"
-		"mov %eax, %fs\n"
-		"mov %eax, %gs\n"
-		);
-
 	//add print message to refrash the serial buffer.
 	printf("enter: %s()\n", __func__);
-	esp = read_v8086_esp();
 	regs = ((struct int_regs *)&ring0stacktop) - 1;
+	esp = read_v8086_esp();
+	flags = read_input_val();
 
 	*temp_value = MAGIC_DWORD;
 	/* current GS == 0, FS == 0, ES == 0, DS == 0 */
@@ -193,23 +187,35 @@ void handle_intr21(void)
 		if ((regs->gs == 0) && (regs->fs == 0) &&
 			(regs->ds == 0) && (regs->es == 0) &&
 			(regs->ss == 0) && (regs->cs == 0) &&
-			(regs->esp == esp) &&
-			((regs->eflags & 0xffff) == (v8086_iopl & 0xffff))) {
+			(regs->esp == esp) && ((regs->eflags & 0xffff) == flags)) {
 			*temp_value = read_flags();
 		}
 	}
 
 	if (MAGIC_DWORD == *temp_value) {
 		printf("\tgs=%u,fs=%u,ds=%u,es=%u,esp=0x%x,eflags=0x%x\n",
-			gs, fs, ds, es, esp, v8086_iopl);
+			gs, fs, ds, es, esp, flags);
 		printf("\tgs=%u,fs=%u,ds=%u,es=%u,esp=0x%x,eflags=0x%x,ss=%u,cs=%u\n",
-			regs->gs, regs->fs, regs->ds, regs->es, regs->ss, regs->esp,
-			regs->eflags, regs->cs);
+			regs->gs, regs->fs, regs->ds, regs->es, regs->esp, regs->eflags, regs->ss, regs->cs);
 	}
-
-	asm volatile("leave\n\t");
-	asm volatile("iret\n\t");
 }
+
+extern void asm_exc_handler(void);
+asm (".pushsection .text\n"
+"asm_exc_handler:\n"
+	"mov %ds, %ecx\n"
+	"mov %es, %edx\n"
+	"mov %fs, %edi\n"
+	"mov %gs, %esi\n"
+	"mov $0x10, %eax\n"
+	"mov %eax, %ds\n"
+	"mov %eax, %es\n"
+	"mov %eax, %fs\n"
+	"mov %eax, %gs\n"
+	"call handle_intr21\n\t"
+	"iret\n"
+".popsection\n"
+);
 
 void user_exc_handler(void)
 {
@@ -255,11 +261,9 @@ __noinline void v8_set_igdt(void)
 	u8 access = (value >> 16) & 0xff;
 	u8 selector = (22 == vector ? VM86_CS_DPL_SEL : VM86_CS_CONFORM_SEL);
 
-	//add print message to refrash the serial buffer.
-	printf("%s: vector=%u, gate_type=%u, access=0x%x\n", __func__, vector, gate_type, access);
 	switch (vector) {
 	case 21:
-		set_idt_entry_ex(vector, handle_intr21, DPL_3, read_cs(), gate_type);
+		set_idt_entry_ex(vector, asm_exc_handler, DPL_3, read_cs(), gate_type);
 		break;
 	case 22:
 	case 23:
