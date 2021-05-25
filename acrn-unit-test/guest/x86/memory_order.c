@@ -1902,7 +1902,8 @@ __unused static void loop_run_memory_ordering(void)
 		//instruction function is run.
 		result[1] = memory_ordering_bp_test_two_ap(
 			cur->case_id, MEMORY_ORDER_TEST_LOOP_RUN_W_INSTRUCTION, CACHE_PAT_WB);
-		report("%s: %ld, %ld", ((result[0] != 0) && (result[1] == 0)), cur->case_name, result[0], result[1]);
+		report("%d - %s %ld %ld",
+			((result[0] != 0) && (result[1] == 0)), cur->case_id, cur->case_name, result[0], result[1]);
 		cur++;
 	}
 }
