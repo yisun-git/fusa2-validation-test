@@ -192,7 +192,7 @@ done
        fi
 
 cp x86/obj/*  x86/
-
+cp x86/obj/memory_order.bzimage x86/obj/memory_order_multi_case.bzimage
 # compile those cases defined in the  macro PHASE_N.
 export PHASE_N=PHASE_RUN_SINGLE_CASE
 BUILD_FEATURE="memory_order"

@@ -1774,7 +1774,7 @@ static void device_passthrough_rqmid_29306_PCIe_USB_BAR0_write_001(void)
 	uint32_t value = 0U;
 	pci_pdev_write_cfg(usb_bdf, PCIR_BAR(0), BYTE_4, 0xFFFFFFFFU);
 	value = pci_pdev_read_cfg(usb_bdf, PCIR_BAR(0), BYTE_4);
-	is_pass = (USB_BAR0_MASK_VALUE == value) ? true : false;
+	is_pass = ((USB_BAR0_MASK_VALUE | 0x4) == value) ? true : false;
 	report("%s", is_pass, __FUNCTION__);
 }
 

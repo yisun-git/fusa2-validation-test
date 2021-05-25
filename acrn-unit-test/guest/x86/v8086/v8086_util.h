@@ -131,6 +131,7 @@ struct v8086_irq {
 };
 
 struct int_regs {
+	u32 eip;
 	u32 cs;
 	u32 eflags;
 	u32 esp;

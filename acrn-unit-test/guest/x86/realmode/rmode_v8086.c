@@ -113,10 +113,7 @@ void v8086_rqmid_37950_envir_001_1(void)
 		"mov %%ebx, %0\n"
 		: "=m"(v8086_val2) : : "memory");
 
-	if (v8086_val2 == 20)
-	{
-		report(__FUNCTION__, 1);
-	}
+	report_ex("v8086_val2=%u", v8086_val2 == 20, v8086_val2);
 
 	asm volatile("mov $0, %eax\n"
 		"mov %eax, %gs\n");
@@ -137,10 +134,7 @@ void v8086_rqmid_37953_envir_002_1(void)
 		"mov %%ebx, %0\n"
 		: "=m"(v8086_val1) : : "memory");
 
-	if (v8086_val1 == 10)
-	{
-		report(__FUNCTION__, 1);
-	}
+	report_ex("v8086_val1=%u", v8086_val1 == 10, v8086_val1);
 
 	asm volatile("mov $0, %eax\n"
 		"mov %eax, %fs\n");
@@ -180,10 +174,7 @@ void v8086_rqmid_37958_envir_003_1(void)
 	asm volatile("lcall $0, $call_test_123\n");
 
 ret_addr:
-	if (v8086_val3 == 11111)
-	{
-		report(__FUNCTION__, 1);
-	}
+	report_ex("v8086_val3=%u", v8086_val3 == 11111, v8086_val3);
 }
 
 double v8086_add_fpu(double p, double q)
@@ -256,12 +247,8 @@ void v8086_rqmid_37951_envir_004_1(void)
 {
 	int aa;
 	aa = (int)v8086_add_fpu(20.50, 10.50);
-	if (aa != 31)
-	{
-		return;
-	}
 
-	report(__FUNCTION__, 1);
+	report_ex("aa=%u", aa == 31, aa);
 }
 
 /**
@@ -274,12 +261,8 @@ void v8086_rqmid_37954_envir_005_1(void)
 {
 	int aa;
 	aa = (int)v8086_sub_fpu(20.50, 10.50);
-	if (aa != 10)
-	{
-		return;
-	}
 
-	report(__FUNCTION__, 1);
+	report_ex("aa=%u", aa == 10, aa);
 }
 
 
@@ -293,12 +276,8 @@ void v8086_rqmid_37955_envir_006_1(void)
 {
 	int aa;
 	aa = (int)v8086_mul_fpu(20.50, 10.00);
-	if (aa != 205)
-	{
-		return;
-	}
 
-	report(__FUNCTION__, 1);
+	report_ex("aa=%u", aa == 205, aa);
 }
 
 
@@ -312,12 +291,8 @@ void v8086_rqmid_37956_envir_007_1(void)
 {
 	int aa;
 	aa = (int)v8086_div_fpu(22.50, 1.50);
-	if (aa != 15)
-	{
-		return;
-	}
 
-	report(__FUNCTION__, 1);
+	report_ex("aa=%u", aa == 15, aa);
 }
 
 
@@ -368,10 +343,11 @@ void v8086_rqmid_37952_envir_008_1(void)
  * and add the guest logical address to get the guest physical address.
  *
  */
-__attribute__((aligned(64)))u16 magic = 0xcc;
+#define MAGIC_WORD 0xbeef
+__attribute__((aligned(64)))u16 magic = MAGIC_WORD;
 void v8086_rqmid_38245_envir_009(void)
 {
-	u32 ret = 0;
+	u16 ret = 0;
 	u16 *p = (u16 *)&magic;
 	u32 val = (u32)(p);
 	val = val >> 4;
@@ -379,14 +355,11 @@ void v8086_rqmid_38245_envir_009(void)
 	asm volatile(
 		"mov %1, %%eax\n"
 		"mov %%eax, %%gs\n"
-		"mov %%gs:0, %%eax\n"
-		"mov %%eax, %0\n"
+		"movw %%gs:0, %%ax\n"
+		"mov %%ax, %0\n"
 		: "=m"(ret) : "m"(val) : "memory");
 
-	if (ret == 0xcc)
-	{
-		report(__FUNCTION__, 1);
-	}
+	report_ex("ret=0x%x", ret == MAGIC_WORD, ret);
 }
 
 /**
@@ -403,10 +376,7 @@ void v8086_rqmid_38255_envir_010(void)
 	asm volatile("mov $0x1111, %%eax\n" : : : );
 	asm volatile("mov %%eax, %0\n" : "=m"(val2) :: "memory");
 
-	if (val2 == 0x1111)
-	{
-		report(__FUNCTION__, 1);
-	}
+	report_ex("val2=0x%x", val2 == 0x1111, val2);
 }
 
 struct lseg_st {
@@ -560,7 +530,7 @@ u32 v8086_get_cr4(void)
  * written in real mode, hyperversion should inject GP (0).
  *
  */
-void v8086_rqmid_37945_write_CR4_VME_002(void)
+void v8086_rqmid_37946_write_CR4_VME_002(void)
 {
 	asm volatile (
 		 "mov %%cr4, %%eax\n"
@@ -581,7 +551,7 @@ void v8086_rqmid_37945_write_CR4_VME_002(void)
  * written in real mode, hyperversion should inject GP (0).
  *
  */
-void v8086_rqmid_37946_write_CR4_PVI_002(void)
+void v8086_rqmid_37945_write_CR4_PVI_002(void)
 {
 	asm volatile (
 		 "mov %%cr4, %%eax\n"
@@ -596,8 +566,8 @@ void v8086_rqmid_37946_write_CR4_PVI_002(void)
 
 void v8086_rqmid_hide(void)
 {
-	v8086_rqmid_37945_write_CR4_VME_002();
-	v8086_rqmid_37946_write_CR4_PVI_002();
+	v8086_rqmid_37946_write_CR4_VME_002();
+	v8086_rqmid_37945_write_CR4_PVI_002();
 }
 
 void print_case_list(void)
@@ -619,8 +589,8 @@ void print_case_list(void)
 	print_serial("\t\tCase ID:38245 case name:Real and virtual-8086 mode execution environment_009\n\r");
 	print_serial("\t\tCase ID:38255 case name:Real and virtual-8086 mode execution environment_010\n\r");
 	print_serial("\t\tCase ID:38256 case name:Real and virtual-8086 mode execution environment_011\n\r");
-	print_serial("\t\tCase ID:37945 case name:write CR4 and the new guest CR4.VME is 1H_002\n\r");
-	print_serial("\t\tCase ID:37946 case name:write CR4 and the new guest CR4.PVI is 1H_002\n\r");
+	print_serial("\t\tCase ID:37946 case name:write CR4 and the new guest CR4.VME is 1H_002\n\r");
+	print_serial("\t\tCase ID:37945 case name:write CR4 and the new guest CR4.PVI is 1H_002\n\r");
 }
 
 void main(void)

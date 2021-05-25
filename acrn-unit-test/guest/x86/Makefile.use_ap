@@ -168,12 +168,6 @@ $(TEST_DIR)/smx.o: $(TEST_DIR)/smx.c
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
 
-$(TEST_DIR)/pmu_fu.o: CFLAGS += -DAP_USE_MAIN
-$(TEST_DIR)/pmu_fu.o: $(TEST_DIR)/pmu_fu.c
-	@rm -rf $(cstart.o)
-	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
-	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
-
 $(TEST_DIR)/sgx.o: CFLAGS += -DAP_USE_MAIN
 $(TEST_DIR)/sgx.o: $(TEST_DIR)/sgx.c
 	@rm -rf $(cstart.o)
