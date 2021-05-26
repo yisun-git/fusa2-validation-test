@@ -544,17 +544,17 @@ static void verify_ap_dump_info(void)
 		is_pass_msr[E_IA32_EFER] = false;
 	}
 
-	if (p_msr[E_IA32_STAR] != 0x00) {
+	if (p_msr[E_IA32_STAR] != 0xFFFFFFFFFFFFFFFF) {
 		is_pass_msr[E_IA32_STAR] = false;
 		printf("[%s:%d] p_msr[E_IA32_STAR]=%" PRIx64 "\n", __FUNCTION__, __LINE__, p_msr[E_IA32_STAR]);
 	}
 
-	if (p_msr[E_IA32_LSTAR] != 0x00) {
+	if (p_msr[E_IA32_LSTAR] != 0xFFFFFFFFFFFFFFFF) {
 		is_pass_msr[E_IA32_LSTAR] = false;
 		printf("[%s:%d] p_msr[E_IA32_LSTAR]=%" PRIx64 "\n", __FUNCTION__, __LINE__, p_msr[E_IA32_LSTAR]);
 	}
 
-	if (p_msr[E_IA32_CSTAR] != 0x00) {
+	if (p_msr[E_IA32_CSTAR] != 0xFFFFFFFFFFFFFFFF) {
 		is_pass_msr[E_IA32_CSTAR] = false;
 		printf("[%s:%d] p_msr[E_IA32_CSTAR]=%" PRIx64 "\n", __FUNCTION__, __LINE__, p_msr[E_IA32_CSTAR]);
 	}
