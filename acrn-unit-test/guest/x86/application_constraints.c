@@ -1768,7 +1768,7 @@ static void applicaton_constraints_rqmid_46104_pci_configuration_of_usb_controll
 
 	uint32_t xhci_usb2_opm3;
 	xhci_usb2_opm3 = pci_pdev_read_cfg(usb_bdf_native, PCI_XHCI_USB2_OPM3_OFFSET, PCI_XHCI_USB_OPM_SIZE);
-	if (xhci_usb2_opm3 != 0) {
+	if (xhci_usb2_opm3 != 0x60) {
 		report("\t\t %s", false, __FUNCTION__);
 		printf("\t\t Error line is %d xhci_usb2_opm3=%x expected:0\n", __LINE__, xhci_usb2_opm3);
 		return;
@@ -2348,6 +2348,35 @@ static void applicaton_constraints_rqmid_46573_INVVPID_instruction_shall_be_avai
 	report("\t\t %s", chk == 1, __FUNCTION__);
 
 }
+
+/*
+ * @brief case name:Physical platform shall guarantee TURBO mode is disabled in BIOS_01
+ *
+ * Summary:Physical platform shall guarantee TURBO mode is disabled in BIOS.
+ *
+ */
+static void applicaton_constraints_rqmid_46567_check_TURBO_mode_is_disabled()
+{
+	u64 msr;
+	int chk = 0;
+	u32 eax;
+
+	msr = rdmsr(IA32_MISC_ENABLE);
+	if (msr & (1ul << 38)) {
+		chk++;
+	} else {
+		printf("\t\tIA32_MISC_ENABLE [bit 38] is not 1\n");
+	}
+
+	eax = cpuid(0x6).a;
+	if ((eax & (1ul << 1)) == 0) {
+		chk++;
+	} else {
+		printf("\t\tCPUID.06H:EAX[bit 1 is not 0\n");
+	}
+
+	report("\t\t %s", chk == 2, __FUNCTION__);
+}
 #endif
 
 static void print_case_list(void)
@@ -2423,6 +2452,8 @@ static void print_case_list(void)
 			"INVEPT instruction and single-context INVEPT type shall be available_01");
 	printf("\t\t Case ID:%d case name:%s\n\r", 46573,
 			"INVVPID instruction shall be available on the physical platform_01");
+	printf("\t\t Case ID:%d case name:%s\n\r", 46567,
+			"Physical platform shall guarantee TURBO mode is disabled in BIOS_01");
 #endif
 	printf("\t\t \n\r \n\r");
 }
@@ -2474,6 +2505,7 @@ int main(void)
 	applicaton_constraints_rqmid_46527_the_val_of_physical_RTC_register_BH_is_2H_01();
 	applicaton_constraints_rqmid_46572_INVEPT_and_INVEPT_type_be_available_01();
 	applicaton_constraints_rqmid_46573_INVVPID_instruction_shall_be_available_01();
+	applicaton_constraints_rqmid_46567_check_TURBO_mode_is_disabled();
 #endif
 	return report_summary();
 }
