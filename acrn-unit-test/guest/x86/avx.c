@@ -657,6 +657,8 @@ static void avx_rqmid_30159_64bit_mode_vcvtsd2si_normal_execution_006()
 {
 	u32 mxcsr = 0x1f;
 
+	asm volatile("fninit");
+
 	/*check support AVX or not firstly*/
 	if (!(cpuid(1).c & CPUID_1_ECX_AVX)) {
 		report("%s", 0, __FUNCTION__);
