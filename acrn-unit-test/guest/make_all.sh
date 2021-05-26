@@ -24,7 +24,8 @@ BUILD_NATIVE_64_FEATURE="pmu_fu tsc xsave device_passthrough sse pt info_leakage
 	fpu mmx general_purpose sgx avx application_constraints exception_gp_pt_b6 exception_gp_pt_ra_b6"
 
 BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt \
-	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec hsi_inter_remap hsi_16_64_cpumode"
+	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec hsi_inter_remap \
+		hsi_16_64_cpumode hsi_gp_cpumode"
 
 BUILD_NATIVE_32_FEATURE="paging taskmanagement general_purpose exception_gp_pt_b6 exception_gp_pt_ra_b6"
 BUILD_NATIVE_32_FEATURE="$BUILD_NATIVE_32_FEATURE hsi_mem_mgmt hsi_gp"

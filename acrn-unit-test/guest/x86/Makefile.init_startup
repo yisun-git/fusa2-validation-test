@@ -242,3 +242,9 @@ $(TEST_DIR)/application_constraints.o: $(TEST_DIR)/application_constraints.c
 	@rm -rf  $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/hsi_gp_cpumode.o: CFLAGS += -DBP_STARTUP_CHECK=\"hsi_gp_bp_cpumode.S\"
+$(TEST_DIR)/hsi_gp_cpumode.o: $(TEST_DIR)/hsi_gp_cpumode.c $(TEST_DIR)/hsi_gp_cpumode.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
