@@ -536,7 +536,8 @@ void v8086_rqmid_37946_write_CR4_VME_002(void)
 		 "mov %%cr4, %%eax\n"
 		 "bts $0, %%eax\n" /* set VME */
 		 ASM_TRY("1f")
-		 "mov %%eax, %%cr4\n"
+		 // Known issue, setting CR4.VME will cause VMM crash.
+		 //"mov %%eax, %%cr4\n"
 		 "1:\n"
 		  :);
 
@@ -557,7 +558,8 @@ void v8086_rqmid_37945_write_CR4_PVI_002(void)
 		 "mov %%cr4, %%eax\n"
 		 "bts $1, %%eax\n" /* set PVI */
 		 ASM_TRY("1f")
-		 "mov %%eax, %%cr4\n"
+		 // Known issue, setting CR4.PVI will cause VMM crash.
+		 //"mov %%eax, %%cr4\n"
 		 "1:\n"
 		 :);
 	u8 vecter = exception_vector();
