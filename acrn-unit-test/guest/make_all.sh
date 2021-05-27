@@ -35,7 +35,7 @@ BUILD_NATIVE_REAL_MODE_FEATURE="hsi_mem_mgmt hsi_gp_rmode"
 # for example, 'exception_sse_ra_2' means exception_sse_ra.c can be used for compiling 3 images for test.
 BUILD_AUTO_GEN_REAL_MODE_FEATURE="exception_avx_pt_ra_b6_0 exception_avx_ra_0 exception_fpu_pt_ra_b6_0 exception_fpu_ra_0 \
         exception_fpu_ra_b6_0 exception_gp_pt_ra_0 exception_gp_pt_ra_b6_0 exception_gp_ra_1 exception_mmx_pt_ra_b6_0 \
-        exception_mmx_ra_0 exception_mpx_pt_ra_b6_0 exception_mpx_ra_0 exception_mpx_ra_b6_0 exception_sse_pt_ra_b6_1 \
+        exception_mmx_ra_0 exception_mpx_pt_ra_b6_0 exception_mpx_ra_1 exception_mpx_ra_b6_0 exception_sse_pt_ra_b6_1 \
         exception_sse_ra_2"
 BUILD_AUTO_GEN_V8086_FEATURE="exception_gp_v8_0 exception_sse_v8_1"
 

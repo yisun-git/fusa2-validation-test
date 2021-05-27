@@ -14,6 +14,8 @@ void mpx_precondition(void)
 {
 }
 
+//Modified manually: add the conditional compilation for the size limit.
+#ifdef PHASE_0
 static __unused void mpx_ra_instruction_0(const char *msg)
 {
 	u64 bound = 0;
@@ -257,7 +259,10 @@ static __unused void mpx_ra_instruction_14(const char *msg)
 				: : "m"(a));
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_1
 static __unused void mpx_ra_instruction_15(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
@@ -358,7 +363,10 @@ static __unused void mpx_ra_instruction_25(const char *msg)
 				: [output] "=m" (a) : );
 	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_0
 static __unused void mpx_ra_0(void)
 {
 	u32 cr0 = read_cr0();
@@ -741,7 +749,10 @@ static __unused void mpx_ra_14(void)
 	#endif
 	asm volatile("fninit");
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_1
 static __unused void mpx_ra_15(void)
 {
 	u32 cr0 = read_cr0();
@@ -1032,7 +1043,8 @@ static __unused void mpx_ra_25(void)
 	#endif
 	asm volatile("fninit");
 }
-
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
 int main(void)
 {
@@ -1058,6 +1070,8 @@ int main(void)
 	mpx_ra_12();
 	mpx_ra_13();
 	mpx_ra_14();
+	#endif
+	#ifdef PHASE_1
 	mpx_ra_15();
 	mpx_ra_16();
 	mpx_ra_17();
