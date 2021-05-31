@@ -52,12 +52,11 @@ u64 now_tsc = 0;
 static volatile int cur_case_id = 0;
 static volatile int wait_ap = 0;
 static volatile int need_modify_init_value = 0;
-u64 counter = 0;
 
 __unused void wait_ap_ready()
 {
 	while (wait_ap != 1) {
-		test_delay(1);
+		asm ("pause");
 	}
 	wait_ap = 0;
 }
@@ -125,7 +124,6 @@ void ap_main(void)
 	}
 
 	write_cr4(read_cr4() | X86_CR4_TSD);
-	counter = rdtsc();
 
 	switch (cur_case_id) {
 	case 25226:
@@ -605,6 +603,17 @@ void cpu_base_freq_init(void)
 	cpu_base_freq_khz = base_freq_mhz * 1000;
 }
 
+uint32_t get_tsc_khz(void)
+{
+	/** Return the frequency of TSC in KHz */
+	return cpu_base_freq_khz;
+}
+__unused uint64_t ticks_to_us(uint64_t ticks)
+{
+	/** Return the converted microseconds: ticks * 1000 / get_tsc_khz(). */
+	return (ticks * 1000UL) / (uint64_t)get_tsc_khz();
+}
+
 /**
  * @brief Case name:IA32_TIME_STAMP_COUNTER init value_001
  *
@@ -613,21 +622,31 @@ void cpu_base_freq_init(void)
  */
 static void __unused tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value()
 {
-	volatile u64 tsc = *((u64 *)INIT_TSC_LOW_ADDR);
+	volatile u64 tsc_ap = *((u64 *)INIT_TSC_LOW_ADDR);
+	volatile u64 tsc_bp = *((u64 *)BP_TSC_LOW_ADDR);
+
 	bool is_pass = true;
 
 	cpu_base_freq_init();
 
-	if (tsc > (10 * cpu_base_freq_khz)) {
+	/* The real tsc_delta < 1ms if there is no hypervisor printing message
+	 * because now hypervisor will print message if writing MSR during send SIPI
+	 * here check 100ms instead of 10ms
+	 */
+	if (ticks_to_us(tsc_ap - tsc_bp) > (100*1000)) {
 		is_pass = false;
-		printf("%d: tsc=%ld\n", __LINE__, tsc);
-		printf("%d: cnt=%ld\n", __LINE__, counter);
+		printf("%s: tsc_delta = %ld us\r\n", __func__, ticks_to_us(tsc_ap - tsc_bp));
 	}
 
 	notify_modify_and_read_init_value(45998);
-	tsc = *((u64 *)INIT_TSC_LOW_ADDR);
-	if (tsc != TSC_UNCHANGE_NEW_VALUE) {
-		printf("%d: tsc=%ld\n", __LINE__, tsc);
+
+	/* The real tsc_delta < 1ms if there is no hypervisor printing message
+	 * because now hypervisor will print message if writing MSR during send SIPI
+	 * here check 100ms instead of 10ms
+	 */
+	tsc_ap = *((u64 *)INIT_TSC_LOW_ADDR);
+	if (ticks_to_us(tsc_ap - TSC_UNCHANGE_NEW_VALUE) > (100*1000)) {
+		printf("%d: tsc_delta=%ld\n", __LINE__, ticks_to_us(tsc_ap - TSC_UNCHANGE_NEW_VALUE));
 		is_pass = false;
 	}
 	report("\t\t%s", is_pass, __FUNCTION__);
@@ -660,10 +679,10 @@ static void test_tsc(void)
 
 	read_bp_startup();
 #ifdef IN_NON_SAFETY_VM
+	tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value();
 	tsc_rqmid_25226_cr4_tsd_init_value();
 	tsc_rqmid_45987_IA32_TSC_ADJUST_init_value();
 	tsc_rqmid_45988_IA32_TSC_AUX_init_value();
-	tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value();
 #endif
 	tsc_rqmid_26015_invariant_tsc_support();
 	tsc_rqmid_39299_IA32_TSC_AUX_startup_value_001();

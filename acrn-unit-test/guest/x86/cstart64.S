@@ -6,6 +6,10 @@
 #include "general_purpose.h"
 #endif
 
+#ifdef IN_TSC_TEST
+#include "tsc.h"
+#endif
+
 .globl boot_idt
 
 .globl idt_descr
@@ -371,6 +375,20 @@ smp_init:
 	movl $APIC_ICR, %ecx
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
+
+/* only for TSC initial value test */
+#ifdef IN_TSC_TEST
+		push %rcx
+		push %rax
+		push %rdx
+		mov $MSR_TSC, %ecx
+		rdmsr
+		mov %eax, (BP_TSC_LOW_ADDR)
+		mov %edx, (BP_TSC_HIGH_ADDR)
+		pop %rdx
+		pop %rax
+		pop %rcx
+#endif
 
 	call fwcfg_get_nb_cpus
 	movl %eax, %edx
