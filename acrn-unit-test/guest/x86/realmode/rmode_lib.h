@@ -132,7 +132,11 @@ static inline u32 read_cr3(void)
 
 static inline void write_cr4(u32 val)
 {
-	asm volatile ("mov %0, %%cr4" : : "r"(val) : "memory");
+	#define CR4_VME 0x1
+	#define CR4_PVI 0x2
+	// Known issue, setting CR4.VME or CR4.PVI will cause VMM crash.
+	u32 value = val & (~(CR4_VME | CR4_PVI));
+	asm volatile ("mov %0, %%cr4" : : "r"(value) : "memory");
 }
 
 static inline u32 read_cr4(void)
