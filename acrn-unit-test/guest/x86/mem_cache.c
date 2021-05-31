@@ -161,7 +161,8 @@ u64 tsc_delay_delta[CACHE_TEST_TIME_MAX] = {0,};
 u64 tsc_delay_delta_total = 0;
 u64 tsc_delay_delta_stdev = 0;
 
-#define ERROR_RANG		6
+// Change the error range from 5% to 10% based on CCB.
+#define ERROR_RANG	10
 
 enum cache_size_type {
 	CACHE_L1_READ_UC = 0,
