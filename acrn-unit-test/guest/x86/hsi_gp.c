@@ -2295,7 +2295,7 @@ static __unused void hsi_rqmid_42231_generic_processor_features_task_management_
 }
 
 /*
- * @brief case name: HSI_Generic_Processor_Features_Msr_001
+ * @brief case name: HSI_Generic_Processor_Features_Msr_002
  *
  * Summary: Under protect mode on native board.
  * read from and write to the TSC_MSR successfully.
