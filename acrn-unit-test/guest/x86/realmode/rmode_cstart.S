@@ -134,6 +134,8 @@ start32:
 	mov %ax, %fs
 	mov %ax, %gs
 	mov %ax, %ss
+	movl $0x10f000, %ebx
+	movl $0xfeedbabe, (%ebx)
 	call enable_apic
 	call load_tss
 	call mask_pic_interrupts

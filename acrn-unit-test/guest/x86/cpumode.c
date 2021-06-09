@@ -74,6 +74,23 @@ __unused static void modify_efer_lma_init_value()
 	wrmsr(X86_IA32_EFER, rdmsr(X86_IA32_EFER) | (1ull << 10));
 }
 
+#if defined(IN_NON_SAFETY_VM) && defined(__i386__)
+/**
+ * @brief case name: Exposure of CPU modes of operation_001
+ *
+ * Summary: mode switch(include Real-address-->Protected mode,
+ * Protected mode-->V8086 mode, V8086 mode-->Protected mode,
+ * Protected mode-->IA-32e mode).
+ * this case only check real-address mode to protected mode.
+ */
+void rmode_rqmid_28140_cpu_modes_operation_001(void)
+{
+	u32 cr0_old = *((u32 *)INIT_CR0_ADDR);
+	u32 cr0_new = read_cr0();
+	report("%s()", ((cr0_old & X86_CR0_PE) == 0 && (cr0_new & X86_CR0_PE) == X86_CR0_PE), __func__);
+}
+#endif
+
 #ifdef __x86_64__
 void ap_main(void)
 {
@@ -110,6 +127,10 @@ void ap_main(void)
 		return;
 	}
 
+#if defined(IN_NON_SAFETY_VM)
+	rmode_rqmid_28140_cpu_modes_operation_001();
+#endif
+
 	while (1) {
 		switch (cur_case_id) {
 		case 27814:
@@ -132,6 +153,13 @@ void ap_main(void)
  */
 void cpumode_rqmid_37685_receives_GP_when_clear_CR0_PG_001(void)
 {
+	u32 cr0_old = *((u32 *)STARTUP_CR0_ADDR);
+	u32 efer_old = *((u32 *)STARTUP_IA32_EFER_ADDR);
+	u32 cr0_new = read_cr0();
+	u32 efer_new = rdmsr(X86_IA32_EFER);
+	bool switched = (((cr0_old & X86_CR0_PG) == 0) && ((efer_old & X86_EFER_LMA) == 0));
+	switched = (switched && ((cr0_new & X86_CR0_PG) > 0) && ((efer_new & X86_EFER_LMA) > 0));
+
 	asm volatile(
 		"mov %cr0, %rax\n"
 		"btc $31, %rax\n");
@@ -140,7 +168,7 @@ void cpumode_rqmid_37685_receives_GP_when_clear_CR0_PG_001(void)
 		"mov %%rax, %%cr0\n\t"
 		"1:":::);
 
-	report("%s", (exception_vector() == GP_VECTOR) && (exception_error_code() == 0), __FUNCTION__);
+	report("%s", ((exception_vector() == GP_VECTOR) && (exception_error_code() == 0) && switched), __FUNCTION__);
 }
 
 /**
@@ -528,9 +556,9 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 37715u,
 		"Preserve the value of any YMM register when attempts to switch to protected-mode then back_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 40496u,
-		"CPU Mode of Operation Exposure of CPU modes of operation_002");
+		"Inject #GP(0) to the vCPU when a vCPU attempt to write CR0_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 40500u,
-		"CPU Mode of Operation Exposure of CPU modes of operation_003");
+		"Inject #GP(0) to the vCPU when a vCPU attempt to write CR0_002");
 #endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 28141u, "Forbidden switch back to real address mode_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27815u, "INITIAL GUEST IA32 EFER LME FOLLOWING STARTUP_001");
@@ -983,7 +1011,7 @@ static void restore_ia32e_mode(void)
 }
 
 /**
- * @brief Case name: CPU Mode of Operation Exposure of CPU modes of operation_002
+ * @brief Case name: Inject #GP(0) to the vCPU when a vCPU attempt to write CR0_001
  *
  * Summary: The processor performs 64-bit mode consistency checks whenever
  * software attempts to modify any of the enable bits directly involved in
@@ -1027,7 +1055,7 @@ static u8 set_cs_l(void)
 }
 
 /**
- * @brief Case name: CPU Mode of Operation Exposure of CPU modes of operation_003
+ * @brief Case name: Inject #GP(0) to the vCPU when a vCPU attempt to write CR0_002
  *
  * Summary: The processor performs 64-bit mode consistency checks whenever
  * software attempts to modify any of the enable bits directly involved in

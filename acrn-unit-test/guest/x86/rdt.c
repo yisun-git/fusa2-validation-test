@@ -407,7 +407,7 @@ static void rdt_rqmid_28407_IA32_QM_CTR_002()
  *  hypervisor shall guarantee that the vCPU will receive #GP(0)
  *
  */
-static void rdt_rqmid_28401_IA32_PQR_ASSOC_001()
+static void rdt_rqmid_41192_IA32_PQR_ASSOC_001()
 {
 	bool result = true;
 
@@ -462,7 +462,7 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 28404u, "IA32_L3_QOS_CFG_002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27188u, "IA32_QM_CTR_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28407u, "IA32_QM_CTR_002");
-	printf("\t\t Case ID:%d case name:%s\n\r", 28401u, "IA32_PQR_ASSOC_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 41192u, "IA32_PQR_ASSOC_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28408u, "IA32_PQR_ASSOC_002");
 	printf("\t\t \n\r \n\r");
 }
@@ -498,7 +498,7 @@ int main(void)
 	rdt_rqmid_27188_IA32_QM_CTR_001();
 	rdt_rqmid_28407_IA32_QM_CTR_002();
 
-	rdt_rqmid_28401_IA32_PQR_ASSOC_001();
+	rdt_rqmid_41192_IA32_PQR_ASSOC_001();
 	rdt_rqmid_28408_IA32_PQR_ASSOC_002();
 
 	return report_summary();

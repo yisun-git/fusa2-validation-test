@@ -149,4 +149,9 @@ static inline void set_page_present(u16 addr, u8 present)
 	send_cmd(FUNC_SET_PAGE_P);
 }
 
+static inline u32 read_protected_mode(void)
+{
+	send_cmd(FUNC_READ_PMODE);
+	return read_output_val();
+}
 #endif

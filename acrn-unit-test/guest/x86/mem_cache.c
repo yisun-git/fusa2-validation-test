@@ -131,7 +131,7 @@ void ap_main(void)
 #endif
 
 //#define NO_PAGING_TESTS
-
+#define STD_FACTOR		10
 #define CACHE_TEST_TIME_MAX			40
 
 static volatile int ud;
@@ -699,47 +699,6 @@ void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 #define USB_HCIVERSION        0x02
 #define PCI_PCIR_BAR(x)	      (0x10 + (x) * 4)
 
-/**
- * @brief In 64-bit mode,Select USB device BAR0 as the test object.
- *       Write the value 0xDFFF_0000 to the BAR0 register of USB device.
- *       Read the HCIVERSION register of USB device
- *       If HCIVERSION register value is 0x100, pass,otherwize fail
- * none
- * Application Constraints: Only for USB.
- *
- * @param none
- *
- * @return OK. seccessed,pci_mem_address value is valid
- *
- * @retval (-1) fialed,pci_mem_address value is invalid
- */
-int pci_mem_get(void *pci_mem_address)
-{
-	union pci_bdf bdf = {.bits = {.b = 0, .d = 0x14, .f = 0} };
-	uint32_t bar_base;
-	uint32_t reg_val;
-	int ret = OK;
-
-	pci_pdev_write_cfg(bdf, PCI_PCIR_BAR(0), 4, BAR_REMAP_USB_BASE);
-
-	reg_val = pci_pdev_read_cfg(bdf, PCI_PCIR_BAR(0), 4);
-	DBG_INFO("R reg[%xH] = [%xH]", PCI_PCIR_BAR(0), reg_val);
-
-	bar_base = PCI_BAR_MASK & reg_val;
-
-	reg_val = pci_pdev_read_mem(bdf, (bar_base + USB_HCIVERSION), 2);
-	if (0x100 != reg_val) {
-		DBG_ERRO("R mem[%xH] != [%xH]", bar_base + USB_HCIVERSION, 0x100);
-		ret = ERROR;
-	}
-
-	if (OK == ret) {
-		*((uint64_t *)pci_mem_address) = BAR_REMAP_USB_BASE;
-	}
-
-	return ret;
-}
-
 void clear_cache()
 {
 	clflush_all_line(cache_malloc_size);
@@ -758,10 +717,9 @@ void clear_cache()
 /* native test cases */
 #include "64/mem_cache_native.c"
 #endif
-
-//#elif __i386__
+#elif __i386__
 /*test case which should run  under 32bit  */
-//#include "32/mem_cache_fn.c"
+#include "32/mem_cache_fn.c"
 #endif
 
 #ifdef __x86_64__
@@ -1038,6 +996,10 @@ void cache_test_no_paging_tests(long rqmid)
 
 #endif // CACHE_IN_NATIVE
 
+#else
+void save_unchanged_reg(void)
+{
+}
 #endif
 
 int main(int ac, char **av)
@@ -1093,7 +1055,7 @@ int main(int ac, char **av)
 # endif
 #endif
 #elif defined(__i386__)
-	/*cache_test_32(rqmid);*/
+	cache_test_32(rqmid);
 #endif
 
 	free(cache_test_array);

@@ -285,6 +285,18 @@ __noinline void v8_set_igdt(void)
 	}
 }
 
+static bool in_protected_mode(void)
+{
+	u32 cr0 = read_cr0();
+	u32 eflags = read_flags();
+	return (cr0 & X86_CR0_PE) == X86_CR0_PE && (eflags & X86_EFLAGS_VM) == 0;
+}
+
+__noinline void v8_read_protected_mode(void)
+{
+	write_output_val(in_protected_mode());
+}
+
 const v8086_func v8086_funcs[FUNC_ID_MAX] = {
 	[FUNC_V8086_EXIT] = v8_exit,
 	[FUNC_REG_INT]    = v8_reg_int,
@@ -301,11 +313,13 @@ const v8086_func v8086_funcs[FUNC_ID_MAX] = {
 	[FUNC_SET_IGDT]   = v8_set_igdt,
 	[FUNC_SET_PAGE]   = v8_set_page,
 	[FUNC_SET_PAGE_P] = v8_set_page_present,
+	[FUNC_READ_PMODE]   = v8_read_protected_mode,
 };
 
 int main(int argc, char **argv)
 {
 	setup_idt();
+	*temp_value = in_protected_mode();
 	write_func_id(FUNC_ID_MAX);
 	v8086_enter();
 	return 0;
