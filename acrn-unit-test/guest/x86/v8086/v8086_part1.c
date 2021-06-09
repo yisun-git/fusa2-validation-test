@@ -102,6 +102,15 @@ __noinline u8 v8086_check_addr_translation(u16 segment, u16 offset)
 	return MAGIC_WORD == output;
 }
 
+static inline u8 try_read_cr0(void)
+{
+	asm volatile (ASM_TRY("1f")
+		"mov %cr0, %eax\n"
+		"1:\n"
+		);
+	return exception_vector();
+}
+
 /**
  * @brief case name: Real-address and virtual-8086 mode address translation_001.
  *
@@ -109,14 +118,25 @@ __noinline u8 v8086_check_addr_translation(u16 segment, u16 offset)
  * The offset into a segment is added to the base address to create a linear address that maps directly to the
  * physical address space.
  *
+ * Check whether or not the processor is in v8086 mode:
+ * 1. In real-address mode or virtual-8086 mode,  the processor shifts the segment selector
+ * left by 4 bits to form a 20-bit base address.
+ * 2. Move from control registers will trigger #GP in virtual-8086 mode, NOT in real-address mode.
  */
 __noinline void v8086_rqmid_45232_check_address_translation(void)
 {
+	// Read the value which was set in protected mode before entering v8086 mode.
+	u8 in_protected_mode1 = *temp_value;
 	u8 data[32] = {0};
 	u16 offset = (u16)(u32)data;
 	u8 result = v8086_check_addr_translation(0x1, offset);
 	u8 vecter  = exception_vector();
-	report_ex("vecter=%u", (NO_EXCEPTION == vecter && result), vecter);
+	u8 in_v8086_mode = (NO_EXCEPTION == vecter && result && GP_VECTOR == try_read_cr0());
+	u8 in_protected_mode2 = read_protected_mode();
+
+	report_ex("in_protected_mode1=%d, in_v8086_mode=%d, in_protected_mode2=%d",
+		(in_protected_mode1 && in_v8086_mode && in_protected_mode2),
+		in_protected_mode1, in_v8086_mode, in_protected_mode2);
 }
 
 /**

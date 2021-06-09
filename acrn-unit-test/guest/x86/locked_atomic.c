@@ -934,10 +934,18 @@ __attribute__((unused)) static void locked_atomic_rqmid_32739_ap()
 
 	lapic_id = get_lapic_id();
 
-	if (lapic_id == 1) {
+#ifdef IN_NATIVE
+	u32 ap1_id = 2;
+	u32 ap2_id = 4;
+#else
+	u32 ap1_id = 1;
+	u32 ap2_id = 2;
+#endif
+
+	if (lapic_id == ap1_id) {
 		ap1_test(lapic_id, 1);
 	}
-	else if (lapic_id == 2) {
+	else if (lapic_id == ap2_id) {
 		ap2_test(lapic_id, 1);
 	}
 	else {
@@ -1096,10 +1104,18 @@ __attribute__((unused)) static void update_pte_ap()
 
 	lapic_id = get_cur_lapic_id();
 
-	if (lapic_id == 2) {
+#ifdef IN_NATIVE
+	u32 ap1_id = 2;
+	u32 ap2_id = 4;
+#else
+	u32 ap1_id = 1;
+	u32 ap2_id = 2;
+#endif
+
+	if (lapic_id == ap1_id) {
 		update_pte_ap1(lapic_id);
 	}
-	else if (lapic_id == 4) {
+	else if (lapic_id == ap2_id) {
 		update_pte_ap2(lapic_id);
 	}
 }
@@ -1570,12 +1586,20 @@ void ap_main(void)
 {
 	/* safety only 1 lapic_id, no ap run*/
 	printf("ap %d main test start\n", get_cur_lapic_id());
-#ifdef IN_NON_SAFETY_VM
+
+#if defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE)
 	while (start_case_id != CASE_ID_1) {
 		nop();
 	}
 	locked_atomic_rqmid_32739_ap();
 
+	while (start_case_id != CASE_ID_18) {
+		nop();
+	}
+	update_pte_ap();
+#endif
+
+#ifdef IN_NON_SAFETY_VM
 	while (start_case_id != CASE_ID_2) {
 		nop();
 	}
@@ -1654,11 +1678,6 @@ void ap_main(void)
 	}
 	update_segment_descriptor_ap();
 
-	while (start_case_id != CASE_ID_18) {
-		nop();
-	}
-	update_pte_ap();
-
 	while (start_case_id != CASE_ID_19) {
 		nop();
 	}
@@ -1670,11 +1689,17 @@ void ap_main(void)
 static void print_case_list()
 {
 	printf("locked atomic feature case list:\n\r");
-#ifdef IN_NON_SAFETY_VM
-		printf("\t\t Case ID:%d case name:%s\n\r", 32739U, "Atomic - expose LOCK prefix to VM_002/Atomic - \
+
+#if defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE)
+	printf("\t\t Case ID:%d case name:%s\n\r", 32739U, "Atomic - expose LOCK prefix to VM_002/Atomic - \
 		physical LOCK prefix support");
-		printf("\t\t Case ID:%d case name:%s\n\r", 32742u, "Atomic - expose LOCK prefix to VM_003");
+	printf("\t\t Case ID:%d case name:%s\n\r", 39502U, "Atomic - update page-directory and page-table entries_01");
 #endif
+
+#ifdef IN_NON_SAFETY_VM
+	printf("\t\t Case ID:%d case name:%s\n\r", 32742u, "Atomic - expose LOCK prefix to VM_003");
+#endif
+
 #ifdef IN_NATIVE
 	printf("\t\t Case ID:%d case name:%s\n\r", 28280U, "Atomic - memory type_uc_01");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28281U, "Atomic - memory type_wc_02");
@@ -1695,7 +1720,6 @@ static void print_case_list()
 	printf("\t\t Case ID:%d case name:%s\n\r", 28258U, "Atomic - read/write a word aligned on 16-bit_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28261U, "Atomic_read/write_a_doubleword_aligned_on_32-bit_03");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28270U, "Atomic - update segment descriptor_01");
-	printf("\t\t Case ID:%d case name:%s\n\r", 39502U, "Atomic - update page-directory and page-table entries_01");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39543U, "Atomic - update page-directory and page-table entries_02");
 #endif
 }
@@ -1703,8 +1727,13 @@ static void print_case_list()
 int main(int ac, char **av)
 {
 	print_case_list();
-#ifdef IN_NON_SAFETY_VM
+
+#if defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE)
 	locked_atomic_rqmid_32739_expose_lock_prefix_02();
+	locked_atomic_rqmid_39502_update_page_directory_and_page_table_entries_01();
+#endif
+
+#ifdef IN_NON_SAFETY_VM
 	locked_atomic_rqmid_32742_expose_unlock_prefix_03();
 #endif
 #ifdef IN_NATIVE
@@ -1723,7 +1752,6 @@ int main(int ac, char **av)
 	locked_atomic_rqmid_37873_unaligned_accesses_to_cached_memory_64_bit_03();
 	locked_atomic_rqmid_28265_16_bit_accesses_to_uncached_memory_locations_01();
 	locked_atomic_rqmid_28270_update_segment_descriptor_01();
-	locked_atomic_rqmid_39502_update_page_directory_and_page_table_entries_01();
 	locked_atomic_rqmid_39543_update_page_directory_and_page_table_entries_02();
 #endif
 	return report_summary();

@@ -384,3 +384,238 @@ paging_rqmid_37208_changes_cr4_pae_001()
 	free_page(gpa);
 	report("%s", exception_vector()	== PF_VECTOR, __FUNCTION__);
 }
+
+/**
+ * @brief case name: Invalidate TLB When vCPU changes CR0.PG_001
+ *
+ * Summary: Config 4-level paging structure, then write value to GVA,
+ * after clear P bit in PTE related with GVA. we still can access GVA normally
+ * for paging frame information is cached in TLB. After changing CR0.PG,
+ * we will get #PF because TLB is invalidated and get PTE directly from memory.
+ *
+ * NOTE: when we in	64bit mode,	trying to clear	PG will	trigger	#GP, so	we run this	case in	32bit mode.
+ */
+static void paging_rqmid_37210_changes_cr0_pg_001()
+{
+	ulong cr0 =	read_cr0();
+	volatile u8	*gva = (volatile u8	*)malloc(sizeof(u8));
+	assert(gva != NULL);
+
+	*gva = WRITE_INITIAL_VALUE;
+
+	set_page_control_bit((void *)gva, PAGE_PTE,	PAGE_P_FLAG, 0,	false);
+
+	u8 got = *gva;
+	assert_msg(got == WRITE_INITIAL_VALUE, "got	%#x	!= %#x", got, WRITE_INITIAL_VALUE);
+
+	write_cr0(cr0 ^	X86_CR0_PG);
+
+	asm volatile(ASM_TRY("1f")
+		"mov %0, %%al\n"
+		"1:"
+		::"m"(*gva)
+		);
+
+	write_cr0(cr0);
+	report("%s", exception_vector()	== PF_VECTOR, __func__);
+
+	/* resume environment */
+	set_page_control_bit((void *)gva, PAGE_PDE,	PAGE_P_FLAG, 1,	true);
+	free_gva((void *)gva);
+}
+
+#define PDE_256M_COUNT 64  //64 * 1K * 4K = 256M
+#define PDE_1G_COUNT 256  //256 * 1K * 4K = 1G
+#define PTE_COUNT (PDE_1G_COUNT << PGDIR_WIDTH)
+
+#define TEST_GVA_OK (200 << 20)
+#define TEST_GPA_OK TEST_GVA_OK
+#define TEST_GVA_NG (500 << 20)
+#define TEST_GPA_NG TEST_GVA_NG
+
+static ulong old_cr3 = 0;
+static ulong pdes[PDE_1G_COUNT] __attribute__((aligned(4096)));
+static ulong ptes[PTE_COUNT] __attribute__((aligned(4096)));
+
+static inline void set_pde(int index)
+{
+	assert(index < PDE_1G_COUNT);
+	pdes[index] = (ulong)(ptes + (index << PGDIR_WIDTH)) | 0x7;
+}
+
+static inline void set_pte(int index)
+{
+	assert(index < PTE_COUNT);
+	ptes[index] = (index << PAGE_SHIFT) | 0x1e7;
+}
+
+void map_ng_address(bool map_next_page)
+{
+	int index = PGDIR_OFFSET(TEST_GVA_NG, 2);
+	set_pde(index);
+	ulong *pde = (ulong *)(pdes[index] & (~PGDIR_MASK));
+	index = PGDIR_OFFSET(TEST_GVA_NG, 1);
+	pde[index] = TEST_GPA_OK | 0x1e7;
+	if (map_next_page) {
+		pde[index + 1] = pde[index] + PAGE_SIZE;
+	}
+}
+
+static inline void *get_next_page(void *gva)
+{
+	u8 *gva_ptr = (u8 *)gva;
+	return gva_ptr + PAGE_SIZE;
+}
+
+static void map_page_table()
+{
+	old_cr3 = read_cr3();
+
+	memset(pdes, 0, sizeof(ulong) * PDE_1G_COUNT);
+	for (int i = 0; i < PDE_256M_COUNT; i++) {
+		set_pde(i);
+	}
+
+	memset(ptes, 0, sizeof(ulong) * PTE_COUNT);
+	for (int i = 0; i < PTE_COUNT; i++) {
+		set_pte(i);
+	}
+
+	write_cr3(virt_to_phys(pdes));
+}
+
+static int read_memory_checking(void *p, u8 *val)
+{
+	u8 value = 0xFF;
+	asm volatile(
+		ASM_TRY("1f")
+		"movb (%[p]), %[value]\n"
+		"1:"
+		: [value]"=r"(value) : [p]"r"(p));
+	*val = value;
+	return exception_vector();
+}
+
+static int write_memory_checking(void *p, u8 value)
+{
+	assert(p != NULL);
+	asm volatile(ASM_TRY("1f")
+		"movb %[value], (%[p])\n"
+		"1:"
+		: : [value]"r"(value), [p]"r"(p));
+	return exception_vector();
+}
+
+/**
+ * @brief case name: Invalidate TLB when guest page level protection 001
+ *
+ * Summary: Access to a linear address in guest which exceeds the memory range of page table,
+ *  but still in the scope of EPT, and then check if TLB is invalidated.
+ */
+static void paging_rqmid_47015_page_level_protection_inv_tlb(void)
+{
+	int success_count = 0;
+	u8 magic = 0x55;
+	void *gva = (void *)TEST_GVA_OK;
+
+	map_page_table();
+
+	u8 vector = write_memory_checking(gva, magic);
+	if (vector == NO_EXCEPTION) {
+		success_count++;
+	} else {
+		printf("Failed to write magic: 0x%x, vector: %d\n", magic, vector);
+	}
+
+	u8 value = 0xFF;
+	gva = (void *)TEST_GVA_NG;
+	vector = read_memory_checking(gva, &value);
+	if (vector == PF_VECTOR) {
+		success_count++;
+	} else {
+		printf("#PF was NOT generated, vector: %d\n", vector);
+	}
+
+	map_ng_address(false);
+	vector = read_memory_checking(gva, &value);
+	if (vector == NO_EXCEPTION) {
+		success_count++;
+	} else {
+		printf("Failed to read magic: 0x%x, vector: %d\n", magic, vector);
+	}
+
+	int result = (3 == success_count) && (magic == value);
+	if (!result) {
+		printf("success_count=%d, value=0x%x\n", success_count, value);
+	}
+
+	write_cr3(old_cr3);
+	report("%s", result, __func__);
+}
+
+/**
+ * @brief case name: Invalidate paging structure cache when guest page level protection 001
+ *
+ * Summary: Access to a linear address in guest which exceeds the memory range of page table,
+ * but still in the scope of EPT, and then check if paging structure cache is invalidated. 
+ */
+static void paging_rqmid_47016_page_level_protection_inv_psc(void)
+{
+	int success_count = 0;
+	u8 magic1 = 0x55;
+	u8 magic2 = 0xAA;
+	void *gva = (void *)TEST_GVA_OK;
+	void *gvan = get_next_page(gva);
+
+	map_page_table();
+
+	u8 vector = write_memory_checking(gva, magic1);
+	if (vector == NO_EXCEPTION) {
+		success_count++;
+	} else {
+		printf("Failed to write magic: 0x%x, vector: %d\n", magic1, vector);
+	}
+
+	vector = write_memory_checking(gvan, magic2);
+	if (vector == NO_EXCEPTION) {
+		success_count++;
+	} else {
+		printf("Failed to write magic: 0x%x, vector: %d\n", magic2, vector);
+	}
+
+	gva = (void *)TEST_GVA_NG;
+	gvan = get_next_page(gva);
+
+	u8 value1 = 0xFF;
+	u8 value2 = 0xFF;
+	vector = read_memory_checking(gva, &value1);
+	if (vector == PF_VECTOR) {
+		success_count++;
+	} else {
+		printf("#PF was NOT generated, vector: %d\n", vector);
+	}
+
+	map_ng_address(true);
+
+	vector = read_memory_checking(gva, &value1);
+	if (vector == NO_EXCEPTION) {
+		success_count++;
+	} else {
+		printf("Failed to read magic: 0x%x, vector: %d\n", magic1, vector);
+	}
+
+	vector = read_memory_checking(gvan, &value2);
+	if (vector == NO_EXCEPTION) {
+		success_count++;
+	} else {
+		printf("Failed to read magic: 0x%x, vector: %d\n", magic2, vector);
+	}
+
+	int result = (5 == success_count) && (magic1 == value1) && (magic2 == value2);
+	if (!result) {
+		printf("success_count=%d, value1=0x%x, value2=0x%x\n", success_count, value1, value2);
+	}
+
+	write_cr3(old_cr3);
+	report("%s", result, __func__);
+}

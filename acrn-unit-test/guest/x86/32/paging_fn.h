@@ -41,3 +41,24 @@
 	.name = "Invalidate Paging Structure Cache when vCPU changes CR4.PAE",
 	.fn = paging_rqmid_37208_changes_cr4_pae_001
 },
+
+{
+	.suit_id = 365,
+	.case_id = 37210,
+	.name = "Invalidate TLB when vCPU changes CR0.PG",
+	.fn = paging_rqmid_37210_changes_cr0_pg_001
+},
+
+{
+	.suit_id = 376,
+	.case_id = 47015,
+	.name = "Invalidate TLB when guest page level protection 001",
+	.fn = paging_rqmid_47015_page_level_protection_inv_tlb
+},
+
+{
+	.suit_id = 376,
+	.case_id = 47016,
+	.name = "Invalidate paging structure cache when guest page level protection 001",
+	.fn = paging_rqmid_47016_page_level_protection_inv_psc
+},

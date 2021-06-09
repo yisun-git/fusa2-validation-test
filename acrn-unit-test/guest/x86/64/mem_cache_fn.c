@@ -5,6 +5,7 @@
  *
  * This work is licensed under the terms of the GNU GPL, version 2.
  */
+#include "segmentation.h"
 
 #ifdef DUMP_CACHE_NATIVE_DATA
 #define DUMP_CACHE_DATA(msg) \
@@ -16,6 +17,82 @@
 #define DUMP_CACHE_DATA(msg)
 #endif
 
+/**
+ * @brief In 64-bit mode,Select USB device BAR0 as the test object.
+ *       Write the value 0xDFFF_0000 to the BAR0 register of USB device.
+ *       Read the HCIVERSION register of USB device
+ *       If HCIVERSION register value is 0x100, pass,otherwize fail
+ * none
+ * Application Constraints: Only for USB.
+ *
+ * @param none
+ *
+ * @return OK. seccessed,pci_mem_address value is valid
+ *
+ * @retval (-1) fialed,pci_mem_address value is invalid
+ */
+int pci_mem_get(void *pci_mem_address)
+{
+	union pci_bdf bdf = {.bits = {.b = 0, .d = 0x14, .f = 0} };
+	uint32_t bar_base;
+	uint32_t reg_val;
+	int ret = OK;
+
+	pci_pdev_write_cfg(bdf, PCI_PCIR_BAR(0), 4, BAR_REMAP_USB_BASE);
+
+	reg_val = pci_pdev_read_cfg(bdf, PCI_PCIR_BAR(0), 4);
+	DBG_INFO("R reg[%xH] = [%xH]", PCI_PCIR_BAR(0), reg_val);
+
+	bar_base = PCI_BAR_MASK & reg_val;
+
+	reg_val = pci_pdev_read_mem(bdf, (bar_base + USB_HCIVERSION), 2);
+	if (0x100 != reg_val) {
+		DBG_ERRO("R mem[%xH] != [%xH]", bar_base + USB_HCIVERSION, 0x100);
+		ret = ERROR;
+	}
+
+	if (OK == ret) {
+		*((uint64_t *)pci_mem_address) = BAR_REMAP_USB_BASE;
+	}
+
+	return ret;
+}
+
+static u32 try_rdmsr(u32 msr, u64 *value)
+{
+	u32 a, d;
+	asm volatile (ASM_TRY("1f")
+		"rdmsr\n\t"
+		"1:"
+		: "=a"(a), "=d"(d) : "c"(msr) : "memory");
+
+	if (value) {
+		*value = ((u64)d << 32) | a;
+	}
+
+	return (exception_error_code() << 16) | exception_vector();
+}
+
+static u32 try_wrmsr(u32 msr, u64 value)
+{
+	u32 a = value;
+	u32 d = (value >> 32);
+
+	asm volatile (ASM_TRY("1f")
+		"wrmsr\n\t"
+		"1:"
+		: : "a"(a), "d"(d), "c"(msr) : "memory");
+
+	return (exception_error_code() << 16) | exception_vector();
+}
+
+static bool try_read_write_msr(u32 msr, u64 value)
+{
+	if (try_rdmsr(msr, NULL) == GP_VECTOR) {
+		return try_wrmsr(msr, value) == GP_VECTOR;
+	}
+	return false;
+}
 
 /**
  * @brief Construct non canonical address
@@ -1596,6 +1673,8 @@ void cache_rqmid_36873_memory_mapped_guest_physical_normal(void)
 	report("%s CR0 cd and nw bit shoud not be set.\n",
 		~(cr0 & CR0_BIT_CD) && ~(cr0 & CR0_BIT_CD),  __FUNCTION__);
 
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
+
 	ret1 = cache_order_read_test(CACHE_L1_READ_WB, cache_l1_size);
 	ret2 = cache_order_read_test(CACHE_L2_READ_WB, cache_l2_size);
 	ret3 = cache_order_read_test(CACHE_L3_READ_WB, cache_l3_size);
@@ -1616,7 +1695,7 @@ void cache_rqmid_36873_memory_mapped_guest_physical_normal(void)
 }
 
 /**
- * @brief cache_rqmid_36873_memory_mapped_guest_physical_normal
+ * @brief cache_rqmid_36876_device_mapped_guest_physical_normal
  *
  * When a vCPU accesses a guest address range, the guest CR0.CD is 0H,
  * the guest CR0.NW is 0H, the guest CR0.PG is 0H and the guest address
@@ -1649,7 +1728,7 @@ void cache_rqmid_36876_device_mapped_guest_physical_normal(void)
 
 		/*Cache size 4k*/
 		ret1 = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
-		ret2 = cache_order_read_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		ret2 = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
 		report("%s device mapped physical \n", (ret1 == true) && (ret2 == true),
 			__FUNCTION__);
 	}
@@ -1658,7 +1737,7 @@ void cache_rqmid_36876_device_mapped_guest_physical_normal(void)
 }
 
 /**
- * @brief cache_rqmid_36873_memory_mapped_guest_physical_normal
+ * @brief cache_rqmid_36886_empty_mapped_guest_physical_normal
  *
  * When a vCPU accesses a guest address range, the guest CR0.CD is 0H,
  * the guest CR0.NW is 0H, the guest CR0.PG is 0H and the guest address
@@ -1685,7 +1764,7 @@ void cache_rqmid_36886_empty_mapped_guest_physical_normal(void)
 
 	/*Cache size 4k*/
 	ret1 = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
-	ret2 = cache_order_read_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+	ret2 = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
 	report("%s device mapped physical \n", (ret1 == true) && (ret2 == true),
 		__FUNCTION__);
 
@@ -1718,6 +1797,543 @@ void cache_rqmid_36865_mtrr_general_support(void)
 	u32 edx = id.d & (1 << 12);
 
 	report("%s, Hide MTTR general support from any VM.\n", edx == 0x0, __FUNCTION__);
+}
+
+/**
+ * @brief case name: Cache control MTRR general support_002
+ *
+ * Summary: ACRN hypervisor shall hide MTTR general support from any VM.
+ */
+void cache_rqmid_24333_mtrr_general_support_002(void)
+{
+	bool result = try_read_write_msr(IA32_MTRR_DEF_TYPE, 1 << 11);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR general support_003
+ *
+ * Summary: ACRN hypervisor shall hide MTTR general support from any VM.
+ */
+void cache_rqmid_24343_mtrr_general_support_003(void)
+{
+	bool result = try_read_write_msr(IA32_MTRRCAP_MSR, 0x3);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR general support_004
+ *
+ * Summary: ACRN hypervisor shall hide MTTR general support from any VM.
+ */
+void cache_rqmid_24344_mtrr_general_support_004(void)
+{
+	bool result1 = try_read_write_msr(IA32_MTRR_PHYSBASE0, 0x0000000000000006);
+	bool result2 = try_read_write_msr(IA32_MTRR_PHYSMASK0, 0x0000000FFC000800);
+	report("%s()", result1 && result2, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR general support_005
+ *
+ * Summary: ACRN hypervisor shall hide MTTR general support from any VM.
+ */
+void cache_rqmid_25036_mtrr_general_support_005(void)
+{
+	bool result = try_read_write_msr(IA32_MTRR_DEF_TYPE, 0x1);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR fixed range registers_001
+ *
+ * Summary: ACRN hypervisor shall hide MTRR fixed range registers from any VM.
+ */
+void cache_rqmid_24334_mtrr_fixed_range_registers_001(void)
+{
+	bool result = try_read_write_msr(IA32_MTRRCAP_MSR, 1 << 8);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR fixed range registers_002
+ *
+ * Summary: ACRN hypervisor shall hide MTRR fixed range registers from any VM.
+ */
+void cache_rqmid_24335_mtrr_fixed_range_registers_002(void)
+{
+	bool result = try_read_write_msr(IA32_MTRR_DEF_TYPE, 1 << 10);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR fixed range registers_003
+ *
+ * Summary: ACRN hypervisor shall hide MTRR fixed range registers from any VM.
+ */
+void cache_rqmid_24336_mtrr_fixed_range_registers_003(void)
+{
+	bool result = try_read_write_msr(IA32_MTRR_FIX64K_00000, 0x00000);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR fixed range registers_004
+ *
+ * Summary: ACRN hypervisor shall hide MTRR fixed range registers from any VM.
+ */
+void cache_rqmid_24337_mtrr_fixed_range_registers_004(void)
+{
+	bool result = try_read_write_msr(IA32_MTRR_FIX16K_80000, 0x80000);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name: Cache control MTRR fixed range registers_005
+ *
+ * Summary: ACRN hypervisor shall hide MTRR fixed range registers from any VM.
+ */
+void cache_rqmid_24338_mtrr_fixed_range_registers_005(void)
+{
+	bool result = try_read_write_msr(IA32_MTRR_FIX4K_C0000, 0xC0000);
+	report("%s()", result, __func__);
+}
+
+/**
+ * @brief case name:Cache control PAT controls_001
+ *
+ * Summary: ACRN hypervisor shall expose PAT controls to any VM
+ * CPUID.01.EDX.PAT field[bit 16] should be 01H(support)
+ * Read/Write IA32_PAT MSR register to valid memory type no exception
+ */
+void cache_rqmid_24447_pat_controls(void)
+{
+	struct cpuid cpuid1;
+	u64 ia32_pat_test;
+	bool ret = true;
+
+	cpuid1 = cpuid(1);
+
+	if (!(cpuid1.d & (1<<16))) {
+		ret = false;
+	}
+
+	ia32_pat_test = rdmsr(IA32_PAT_MSR);
+	debug_print("ia32_pat_test 0x%lx \n", ia32_pat_test);
+	wrmsr(IA32_PAT_MSR, (ia32_pat_test&(~0x00))); /*bit 0-7 set to 0(UC)*/
+
+	report("%s PAT controls (%s)", ret, __FUNCTION__, ret ? "present" : "ABSENT");
+}
+
+/**
+ * @brief case name:Cache control CLFLUSH instruction_001
+ *
+ * Summary: Hypervisor shall expose clflush instruction,
+ * CPUID.1.CLFLUSH flag Field[bit 19] should be 01H(support)
+ * execute clflush instruction no exception.
+ */
+void cache_rqmid_24045_clflush(void)
+{
+	struct cpuid cpuid1;
+	bool ret = true;
+
+	long target = 0x11223344;
+	cpuid1 = cpuid(1);
+
+	/* CLFLUSH */
+	if (!(cpuid1.d & (1U << 19))) {
+		ret = false;
+	}
+
+	asm volatile("clflush (%0)" : : "b" (&target));
+
+	report("%s clflush (%s)", ret, __FUNCTION__, ret ? "present" : "absent");
+}
+
+bool check_benchmark(enum cache_size_type type, u64 average)
+{
+	bool ret = true;
+	u64 ave = cache_bench[type].ave;
+	u64 std = cache_bench[type].std;
+#if 0
+	if ((average < (ave - STD_FACTOR * std))
+		|| (average > (ave + STD_FACTOR * std))) {
+		ret = false;
+	}
+#else
+	(void)std;
+	if ((average < ((ave * (100 - ERROR_RANG)) / 100))
+		|| (average > ((ave * (100 + ERROR_RANG)) / 100))) {
+		ret = false;
+	}
+#endif
+	return ret;
+}
+
+/**
+ * @brief case name:Cache control cache invalidation instructions_003
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Disorder read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute wbinvd instruction reflush cache,
+ * 5. Disorder read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in wbinvd benchmark interval (average-3 *stdev, average+3*stdev), 
+ * wbinvd benchmark get from native,refer wbinvd test on native
+ */
+void cache_rqmid_26912_invalidation_003(void)
+{
+	int i;
+	bool ret = true;
+
+	tsc_delay_delta_total = 0;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
+		asm_wbinvd();
+		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+
+	ret = check_benchmark(CACHE_WBINVD_DIS_READ, tsc_delay_delta_total);
+
+	if (ret != true) {
+		printf("delta =%ld\n", tsc_delay_delta_total);
+	}
+
+	report("%s wbinvd wb disorder test", ret, __FUNCTION__);
+}
+
+/**
+ * @brief case name:Cache control CLFLUSH instruction_003
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Disorder read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute wbinvd instruction reflush cache,
+ * 5. Disorder read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in CLFLUSH benchmark interval (average-3 *stdev, average+3*stdev), 
+ * CLFLUSH benchmark get from native,refer  CLFLUSH  test on native
+ */
+void cache_rqmid_29878_clflush_003(void)
+{
+	int i;
+	bool ret = true;
+
+	tsc_delay_delta_total = 0;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0); /*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
+		clflush_all_line(cache_l3_size);
+		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+
+	ret = check_benchmark(CACHE_CLFLUSH_DIS_READ, tsc_delay_delta_total);
+
+	if (ret != true) {
+		printf("delta =%ld\n", tsc_delay_delta_total);
+	}
+
+	report("%s clflush wb disorder test", ret, __FUNCTION__);
+}
+
+/**
+ * @brief case name:Cache control CLFLUSHOPT instruction_003
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Disorder read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute wbinvd instruction reflush cache,
+ * 5. Disorder read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in CLFLUSHOPT benchmark interval (average-3 *stdev, average+3*stdev), 
+ * CLFLUSHOPT benchmark get from native,refer CLFLUSHOPT test on native
+ */
+void cache_rqmid_29879_clflushopt_003(void)
+{
+	int i;
+	bool ret = true;
+
+	tsc_delay_delta_total = 0;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
+		clflushopt_all_line(cache_l3_size);
+		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+
+	ret = check_benchmark(CACHE_CLFLUSHOPT_DIS_READ, tsc_delay_delta_total);
+
+	if (ret != true) {
+		printf("delta =%ld\n", tsc_delay_delta_total);
+	}
+
+	report("%s clflushopt wb disorder test", ret, __FUNCTION__);
+}
+
+/**
+ * @brief case name:Cache control access to empty-mapped guest linear addresses in normal cache mode_002
+ *
+ * Summary: When a vCPU accesses a guest address range, the guest CR0.CD is 0H, the guest
+ * CR0.NW is 0H, the guest CR0.PG is 1H and the guest address range maps to none,
+ * ACRN hypervisor shall guarantee that the access follows caching and read/write policy
+ * of normal cache mode with effective memory type being UC.
+ *
+ * 1. Allocate an array a1 at 64G linear addresses, a1 with 0x200000 elements, each of size 8 bytes,
+ * 2. Modify a1 array memory type to WB.
+ * 3. Order write the first 32KB of the a1 array 41 times, record each tsc_delay data.
+ *    Remove the first test data and calculate the average TSC delay for the next 40 times.
+ * 4. Order write the first 256KB of the a1 array 41 times, record each tsc_delay data.
+ *    Remove the first test data and calculate the average TSC delay for the next 40 times.
+ * 5. Order write the first 8MB of the a1 array 41 times, record each tsc_delay data.
+ *    Remove the first test data and calculate the average TSC delay for the next 40 times.
+ * 6. Order write the entire a1 array 41 times, record each tsc_delay data.
+ *    Remove the first test data and calculate the average TSC delay for the next 40 times.
+ * Tsc delay average should be slower than the UC benchmark
+ * data interval (average-3 *stdev, average+3*stdev), UC benchmark data (average, stdev )
+ * get from native, refer Memory type test on native
+ */
+void cache_rqmid_27030_map_to_none_linear(void)
+{
+	int i = 0;
+	bool ret[8] = { false };
+
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
+	cache_setup_mmu_range(phys_to_virt(read_cr3()), 1ul<<36, (1ul << 30)); /*64G-65G  map to none*/
+
+	/*Cache size L1*/
+	ret[0] = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
+
+	/*Cache size L2*/
+	ret[1] = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
+
+	/*Cache size L3*/
+	ret[2] = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
+
+	/*Cache size over L3*/
+	ret[3] = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+
+	/*Cache size L1*/
+	ret[4] = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
+
+	/*Cache size L2*/
+	ret[5] = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
+
+	/*Cache size L3*/
+	ret[6] = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
+
+	/*Cache size over L3*/
+	ret[7] = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+
+	for (; i < 8; i++) {
+		if (!ret[i]) {
+			printf("ret[%d] = %d\n", i, ret[i]);
+			break;
+		}
+	}
+	report("%s()\n", i == 8, __FUNCTION__);
+}
+
+void wbinvd_ring3(void *data)
+{
+	do_at_ring3(asm_wbinvd, "");
+}
+
+void invd_ring3(void *data)
+{
+	do_at_ring3(asm_invd, "");
+}
+
+/**
+ * @brief case name:Cache control cache invalidation instructions exception_003
+ *
+ * Summary: In protect mode and ring3 environment, execute wbinvd will generate #GP(0). 
+ */
+void cache_rqmid_27065_invalidation_exception_003(void)
+{
+	bool ret = test_for_exception(GP_VECTOR, wbinvd_ring3, NULL);
+	report("%s ring3 execute wbinvd generate #GP(0)", ret, __FUNCTION__);
+}
+
+/**
+ * @brief case name:Cache control cache invalidation instructions exception_004
+ *
+ * Summary: In protect mode, execute wbinvd with the lock prefix generates #UD.
+ */
+void cache_rqmid_27066_invalidation_exception_004(void)
+{
+	bool ret = test_for_exception(UD_VECTOR, asm_wbinvd_lock, NULL);
+	report("%s execute wbinvd with the lock prefix generates #UD", ret, __FUNCTION__);
+}
+
+
+/**
+ * @brief case name:INVD instruction exception_003
+ *
+ * Summary: In protect mode and ring3 environment, execute invd will generate #GP(0). 
+ */
+void cache_rqmid_27070_invd_exception_003(void)
+{
+	bool ret = test_for_exception(GP_VECTOR, invd_ring3, NULL);
+	report("%s ring3 execute invd generate #GP(0)", ret, __FUNCTION__);
+}
+
+/**
+ * @brief case name:INVD instruction exception_004
+ *
+ * Summary: In protect mode, execute invd with the lock prefix generate #UD.
+ */
+void cache_rqmid_27071_invd_exception_004(void)
+{
+	bool ret = test_for_exception(UD_VECTOR, asm_invd_lock, NULL);
+	report("%s execute invd with the lock prefix generates #UD", ret, __FUNCTION__);
+}
+
+void write_cr0_p(void *data)
+{
+	u32 *cr0 = data;
+	write_cr0(*cr0);
+}
+
+/**
+ * @brief case name:Cache control invalid cache operating mode configuration_001
+ *
+ * Summary: Read CR0, change the value of CR0.CD is 0H and CR0.NW is 1H, write the new value to CR0 generate #GP(0).
+ */
+void cache_rqmid_23982_cd_nw_control(void)
+{
+	u32 cr0 = read_cr0();
+	cr0 &= ~(1 << CR0_BIT_CD); /* clean CD*/
+	cr0 |= (1 << CR0_BIT_NW); /*set NW*/
+
+	bool ret = test_for_exception(GP_VECTOR, (trigger_func)write_cr0_p, (void *)&cr0);
+	report("%s CR0.CD=0, CR0.NW=1 generate #GP(0)", ret, __func__);
+}
+
+#define FIRST_SPARE_SEL 0x50
+/**
+ * @brief Construct non canonical address
+ *
+ * Set the 63rd bit of a variable for the SS segment address to 1
+ * Execute CLFLUSH will generate #SS(0).
+ */
+void cache_clflush_non_canonical_ss(void *data)
+{
+#if 0
+	u64 addr = (u64)&cache_test_array[0];
+	addr ^= (0xFFFFULL << 63); // a non-canonical address.
+	asm volatile("clflush %%ss:(%0)" : : "b" (addr));
+#else
+	u64 non_addr = (0xFFFFULL << 63); // a non-canonical address.
+	struct descriptor_table_ptr old_gdt_desc;
+	sgdt(&old_gdt_desc);
+	set_gdt64_entry(FIRST_SPARE_SEL, non_addr, SEGMENT_LIMIT_ALL,
+		SEGMENT_PRESENT_SET | DESCRIPTOR_TYPE_SYS | DESCRIPTOR_PRIVILEGE_LEVEL_0 |
+		DESCRIPTOR_TYPE_CODE_OR_DATA | SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
+		GRANULARITY_SET | L_64_BIT_CODE_SEGMENT);
+	lgdt(&old_gdt_desc);
+	write_ss(FIRST_SPARE_SEL);
+	asm volatile("clflush %ss:0x1000000");
+#endif
+}
+
+/**
+ * @brief case name:Cache control CLFLUSH instruction_exception_002
+ *
+ * Summary: If a memory address referencing the SS segment is in a non-canonical form,
+ * execute CLFLUSH will generate #SS(0). 
+ */
+void cache_rqmid_27074_clflush_exception_002(void)
+{
+	report("%s", false, __func__); // crash
+	return;
+	bool ret = test_for_exception(SS_VECTOR, cache_clflush_non_canonical_ss, NULL);
+	write_ss(read_ds());
+	report("%s CLFLUSH #SS(0) exception\n", ret, __func__);
+}
+
+/**
+ * @brief case name:Cache control CLFLUSH instruction exception_003
+ *
+ * Summary: In 64bit mode, execute clflush for a non-canonical address generate GP(0).
+ */
+void cache_rqmid_27075_clflush_exception_003(void)
+{
+	u64 addr = (u64)&cache_test_array[0];
+	addr ^= (0xFFFFULL << 63); // a non-canonical address.
+	bool ret = test_for_exception(GP_VECTOR, (trigger_func)asm_clflush, (void *)addr);
+	report("%s()", ret, __func__);
+}
+
+/**
+ * @brief case name:Cache control CLFLUSHOPT instruction_exception_001
+ *
+ * Summary: If the memory address is in a non-canonical form, execute CLFLUSHOPT will generate #GP(0). 
+ */
+void cache_rqmid_27084_clflushopt_exception_001(void)
+{
+	u64 addr = (u64)&cache_test_array[0];
+	addr ^= (0xFFFFULL << 63); // a non-canonical address.
+	bool ret = test_for_exception(GP_VECTOR, (trigger_func)asm_clflushopt, (void *)addr);
+	report("%s()", ret, __func__);
+}
+
+/**
+ * @brief case name:Cache control CLFLUSHOPT instruction_exception_002
+ *
+ * Summary: If a memory address referencing the SS segment is in a non-canonical form,
+ * execute CLFLUSHOPT will generate #SS(0). 
+ */
+void cache_rqmid_27085_clflushopt_exception_002(void)
+{
+	report("%s", false, __func__); // crash
+	return;
+	bool ret = test_for_exception(SS_VECTOR, cache_clflush_non_canonical_ss, NULL);
+	write_ss(read_ds());
+	report("%s CLFLUSHOPT #SS(0) exception",  ret, __func__);
+}
+
+/**
+ * @brief case name: Cache control system management range register_002
+ *
+ * Summary: ACRN hypervisor shall hide MTRR system management range register from any VM.
+ */
+void cache_rqmid_24342_system_management_range_register_002(void)
+{
+	bool ret1 = try_read_write_msr(IA32_SMRR_PHYSBASE_MSR, 0x0000000006000006);
+	bool ret2 = try_read_write_msr(IA32_SMRR_PHYSMASK_MSR, 0x000000FFFFC00800);
+	report("%s()", ret1 && ret2, __func__);
+}
+
+/**
+ * @brief case name:Cache control L1 data cache context mode_002
+ *
+ * Summary: Not support L1 data cache context mode,s
+ * write IA32_MISC_ENABLE.L1 data cache context mode field[bit 24] to 1 generate #GP(0).
+ */
+void cache_rqmid_24192_l1_data_cache_context_mode(void)
+{
+	bool ret = try_read_write_msr(IA32_MISC_ENABLE, 1 << 24);
+	report("%s()", ret, __func__);
 }
 
 /**
@@ -1765,13 +2381,9 @@ void cache_rqmid_36867_mtrr_write_combining_memory_type_support(void)
 	 * Read IA32_MTRRCAP_MSR will cause GP(0), can't test bit 10.
 	 */
 
-	bool ret = false;
-	u32 msr = IA32_MTRRCAP_MSR;
-	ret = test_for_exception(GP_VECTOR, readmsr, &msr);
+	bool ret = try_read_write_msr(IA32_MTRRCAP_MSR, 1 << 10);
 
-	report("%s, Hide MTRR write-combining memory type support from any VM.\n",
-		ret == true,
-		__FUNCTION__);
+	report("%s, Hide MTRR write-combining memory type support from any VM.", ret, __FUNCTION__);
 }
 
 /**
@@ -1792,13 +2404,9 @@ void cache_rqmid_36868_system_management_range_register(void)
 	 * Read IA32_MTRRCAP_MSR will cause GP(0), can't test bit 11.
 	 */
 
-	bool ret = false;
-	u32 msr = IA32_MTRRCAP_MSR;
-	ret = test_for_exception(GP_VECTOR, readmsr, &msr);
+	bool ret = try_read_write_msr(IA32_MTRRCAP_MSR, 1 << 11);
 
-	report("%s, Hide MTRR system management range register from any VM.\n",
-		ret == true,
-		__FUNCTION__);
+	report("%s, Hide MTRR system management range register from any VM.", ret, __FUNCTION__);
 }
 
 /**
@@ -1808,10 +2416,8 @@ void cache_rqmid_36868_system_management_range_register(void)
  */
 void cache_rqmid_36870_l3_cache_control(void)
 {
-	u64 misc_enable_msr = rdmsr(IA32_MISC_ENABLE);
-	u64 l3_enabled = misc_enable_msr & (1 << 6);
-
-	report("%s, Hide L3 cache control from any VM.\n", l3_enabled == 0x0, __FUNCTION__);
+	bool ret = try_read_write_msr(IA32_MISC_ENABLE, 1 << 6);
+	report("%s, Hide L3 cache control from any VM.", ret, __FUNCTION__);
 }
 
 /**
@@ -1823,8 +2429,9 @@ void cache_rqmid_36871_clwb_instruction(void)
 {
 	struct cpuid id = cpuid_indexed(0x07, 0);
 	u32 ebx = id.b & (1 << 24);
-
-	report("%s, Hide CLWB instruction from any VM.\n", ebx == 0x0, __FUNCTION__);
+	long target;
+	bool ret = test_for_exception(UD_VECTOR, asm_clwb, &target);
+	report("%s, Hide CLWB instruction from any VM.\n", (ebx == 0x0) && ret, __FUNCTION__);
 }
 
 /**
@@ -1840,7 +2447,7 @@ void cache_rqmid_36856_cache_invalidation_instructions(void)
 	fun = asm_wbinvd;
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
 
-	report("%s, Execute wbinvd successfully.\n", ret == false, __FUNCTION__);
+	report("%s, Execute wbinvd successfully.", ret == false, __FUNCTION__);
 }
 
 /**
@@ -1853,7 +2460,7 @@ void cache_rqmid_36857_cflushopt_instruction(void)
 	struct cpuid id = cpuid_indexed(0x07, 0);
 	u32 ebx = id.b & (1 << 23);
 
-	report("%s, Expose CLFLUSHOPT instruction to any VM.\n", ebx != 0x0, __FUNCTION__);
+	report("%s, Expose CLFLUSHOPT instruction to any VM.", ebx != 0x0, __FUNCTION__);
 
 	/* Test CLFLUSHOPT behaviors
 	 */
@@ -1863,7 +2470,7 @@ void cache_rqmid_36857_cflushopt_instruction(void)
 	fun = asm_clflushopt;
 	ret = test_for_exception(GP_VECTOR, fun, NULL);
 
-	report("%s, Execute clflushopt successfully.\n", ret == false, __FUNCTION__);
+	report("%s, Execute clflushopt successfully.", ret == false, __FUNCTION__);
 }
 
 /**
@@ -1876,7 +2483,7 @@ void cache_rqmid_36860_prefetchw_instruction(void)
 	struct cpuid id = cpuid_indexed(0x80000001, 0);
 	u32 ecx = id.c & (1 << 8);
 
-	report("%s, Expose PREFETCHW instruction to any VM.\n", ecx != 0x0, __FUNCTION__);
+	report("%s, Expose PREFETCHW instruction to any VM.", ecx != 0x0, __FUNCTION__);
 }
 
 /**
@@ -1888,8 +2495,12 @@ void cache_rqmid_36863_pat_controls(void)
 {
 	struct cpuid id = cpuid_indexed(0x01, 0);
 	u32 edx = id.d & (1 << 16);
-
-	report("%s, Expose PAT controls to any VM.\n", edx != 0x0, __FUNCTION__);
+	u64 patval = 0;
+	u32 ret = try_rdmsr(IA32_PAT_MSR, &patval);
+	if (ret == NO_EXCEPTION) {
+		ret = try_wrmsr(IA32_PAT_MSR, (patval & (~0xFF)) | 0x02);
+	}
+	report("%s, Expose PAT controls to any VM.", (edx != 0x0) && (ret == GP_VECTOR), __FUNCTION__);
 }
 
 /**
@@ -1956,6 +2567,32 @@ static struct case_fun_index cache_control_cases[] = {
 	{36874, cache_rqmid_36874_invalid_cache_mode},
 	{23985, cache_rqmid_23985_invd},
 	{36877, cache_rqmid_36877_no_fill_cache_mode},
+	{23982, cache_rqmid_23982_cd_nw_control},
+	{24342, cache_rqmid_24342_system_management_range_register_002},
+	{24333, cache_rqmid_24333_mtrr_general_support_002},
+	{24343, cache_rqmid_24343_mtrr_general_support_003},
+	{24344, cache_rqmid_24344_mtrr_general_support_004},
+	{25036, cache_rqmid_25036_mtrr_general_support_005},
+	{24334, cache_rqmid_24334_mtrr_fixed_range_registers_001},
+	{24335, cache_rqmid_24335_mtrr_fixed_range_registers_002},
+	{24336, cache_rqmid_24336_mtrr_fixed_range_registers_003},
+	{24337, cache_rqmid_24337_mtrr_fixed_range_registers_004},
+	{24338, cache_rqmid_24338_mtrr_fixed_range_registers_005},
+	{24192, cache_rqmid_24192_l1_data_cache_context_mode},
+	{24447, cache_rqmid_24447_pat_controls},
+	{24045, cache_rqmid_24045_clflush},
+	{26912, cache_rqmid_26912_invalidation_003},
+	{29878, cache_rqmid_29878_clflush_003},
+	{29879, cache_rqmid_29879_clflushopt_003},
+	{27030, cache_rqmid_27030_map_to_none_linear},
+	{27065, cache_rqmid_27065_invalidation_exception_003},
+	{27066, cache_rqmid_27066_invalidation_exception_004},
+	{27070, cache_rqmid_27070_invd_exception_003},
+	{27071, cache_rqmid_27071_invd_exception_004},
+	{27074, cache_rqmid_27074_clflush_exception_002},
+	{27075, cache_rqmid_27075_clflush_exception_003},
+	{27084, cache_rqmid_27084_clflushopt_exception_001},
+	{27085, cache_rqmid_27085_clflushopt_exception_002},
 };
 #else
 static struct case_fun_index cache_control_cases[] = {

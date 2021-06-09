@@ -37,6 +37,17 @@ struct far_pointer32 {
 		(((vec) == vecter) && ((ecode) == err_code)), vecter, err_code);\
 } while (0)
 
+#define TRY_FLUSH(ins, addr) do {\
+	u8 vecter = NO_EXCEPTION;\
+	asm volatile(\
+		ASM_TRY("1f")\
+		ins " (%0)\n"\
+		"1:"\
+		: : "b" (addr));\
+	vecter = exception_vector();\
+	report_ex(ins ", vector=%u", (GP_VECTOR == vecter), vecter);\
+} while (0)
+
 /**
  * Table32 - row 1
  * In v8086 or real mode, move a memory operand effective address, which is outside the range 0
@@ -121,6 +132,61 @@ __noinline void v8086_rqmid_46065_segmentation_table34_002(void)
 	REQUEST_IRQ_EX(GP_VECTOR, beyond_cs_limit_handler, 0);
 }
 
+/**
+ * @brief case name: Real-address and virtual-8086 mode address translation_001
+ *
+ * Summary: In real mode, the processor does not truncate such an address and uses it
+ * as a physical address. (Note, however, that for IA-32 processors beginning with the
+ * Intel486 processor, the A20M# signal can be used in real-address mode to mask address
+ * line A20, thereby mimicking the 20-bit wrap-around behavior of the 8086 processor.)
+ *
+ * A magic 0xfeedbabe was written at 0x10f000 in protected mode.
+ * (0xffff << 4) + 0xf010 = 0x10f000
+ */
+void rmode_rqmid_33916_address_translation_001(void)
+{
+	u32 magic = 0;
+	asm volatile (
+		"movw $0xffff, %%ax\n"
+		 "movw %%ax, %%fs\n"
+		 ASM_TRY("1f")
+		 "movl %%fs:0xf010, %%ebx\n"
+		"1:\n"
+		 "movw $0, %%ax\n"
+		 "movw %%ax, %%fs\n"
+		: "=b"(magic)
+		:
+		: "memory"
+		);
+	u8 vecter = exception_vector();
+	report_ex("vector=%u, magic=0x%x",
+		(NO_EXCEPTION == vecter) && (0xfeedbabe == magic), vecter, magic);
+}
+
+/**
+ * @brief case name: Cache control CLFLUSH instruction_exception_008
+ *
+ * Summary: In real mode, if any part of the operand lies outside the effective
+ * address space from 0 to FFFFH, execute clflush will generate #GP.
+ */
+void cache_rqmid_27082_clflush_exception_009(void)
+{
+	u32 a1 = 0x10001;
+	TRY_FLUSH("clflush", a1);
+}
+
+/**
+ * @brief case name: Cache control CLFLUSHOPT instruction_exception_011
+ *
+ * Summary: In real mode, if any part of the operand lies outside the effective
+ * address space from 0 to FFFFH, execute clflushopt will generate #GP.
+ */
+void cache_rqmid_27091_clflushopt_exception_011(void)
+{
+	u32 a1 = 0x10001;
+	TRY_FLUSH("clflushopt", a1);
+}
+
 void main(void)
 {
 	printf("## real mode main() ##\n");
@@ -131,6 +197,8 @@ void main(void)
 	v8086_rqmid_46056_segmentation_table32_004();
 	v8086_rqmid_46061_segmentation_table34_001();
 	v8086_rqmid_46065_segmentation_table34_002();
-
+	rmode_rqmid_33916_address_translation_001();
+	cache_rqmid_27082_clflush_exception_009();
+	cache_rqmid_27091_clflushopt_exception_011();
 	report_summary();
 }
