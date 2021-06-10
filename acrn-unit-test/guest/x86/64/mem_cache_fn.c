@@ -17,47 +17,6 @@
 #define DUMP_CACHE_DATA(msg)
 #endif
 
-/**
- * @brief In 64-bit mode,Select USB device BAR0 as the test object.
- *       Write the value 0xDFFF_0000 to the BAR0 register of USB device.
- *       Read the HCIVERSION register of USB device
- *       If HCIVERSION register value is 0x100, pass,otherwize fail
- * none
- * Application Constraints: Only for USB.
- *
- * @param none
- *
- * @return OK. seccessed,pci_mem_address value is valid
- *
- * @retval (-1) fialed,pci_mem_address value is invalid
- */
-int pci_mem_get(void *pci_mem_address)
-{
-	union pci_bdf bdf = {.bits = {.b = 0, .d = 0x14, .f = 0} };
-	uint32_t bar_base;
-	uint32_t reg_val;
-	int ret = OK;
-
-	pci_pdev_write_cfg(bdf, PCI_PCIR_BAR(0), 4, BAR_REMAP_USB_BASE);
-
-	reg_val = pci_pdev_read_cfg(bdf, PCI_PCIR_BAR(0), 4);
-	DBG_INFO("R reg[%xH] = [%xH]", PCI_PCIR_BAR(0), reg_val);
-
-	bar_base = PCI_BAR_MASK & reg_val;
-
-	reg_val = pci_pdev_read_mem(bdf, (bar_base + USB_HCIVERSION), 2);
-	if (0x100 != reg_val) {
-		DBG_ERRO("R mem[%xH] != [%xH]", bar_base + USB_HCIVERSION, 0x100);
-		ret = ERROR;
-	}
-
-	if (OK == ret) {
-		*((uint64_t *)pci_mem_address) = BAR_REMAP_USB_BASE;
-	}
-
-	return ret;
-}
-
 static u32 try_rdmsr(u32 msr, u64 *value)
 {
 	u32 a, d;
@@ -1965,6 +1924,8 @@ bool check_benchmark(enum cache_size_type type, u64 average)
 	if ((average < ((ave * (100 - ERROR_RANG)) / 100))
 		|| (average > ((ave * (100 + ERROR_RANG)) / 100))) {
 		ret = false;
+		printf("average=%ld, not in [%ld, %ld]\n", average,
+			((ave * (100 - ERROR_RANG)) / 100), ((ave * (100 + ERROR_RANG)) / 100));
 	}
 #endif
 	return ret;
@@ -1997,15 +1958,12 @@ void cache_rqmid_26912_invalidation_003(void)
 		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
 		asm_wbinvd();
 		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay[i] = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += tsc_delay[i];
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
-
+	DUMP_CACHE_DATA("WBINVD DIS READ");
 	ret = check_benchmark(CACHE_WBINVD_DIS_READ, tsc_delay_delta_total);
-
-	if (ret != true) {
-		printf("delta =%ld\n", tsc_delay_delta_total);
-	}
 
 	report("%s wbinvd wb disorder test", ret, __FUNCTION__);
 }
@@ -2037,15 +1995,12 @@ void cache_rqmid_29878_clflush_003(void)
 		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
 		clflush_all_line(cache_l3_size);
 		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay[i] = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += tsc_delay[i];
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
-
+	DUMP_CACHE_DATA("CLFLUSH DIS READ");
 	ret = check_benchmark(CACHE_CLFLUSH_DIS_READ, tsc_delay_delta_total);
-
-	if (ret != true) {
-		printf("delta =%ld\n", tsc_delay_delta_total);
-	}
 
 	report("%s clflush wb disorder test", ret, __FUNCTION__);
 }
@@ -2077,15 +2032,12 @@ void cache_rqmid_29879_clflushopt_003(void)
 		tsc_delay_before[i] = disorder_access_size(cache_l3_size);
 		clflushopt_all_line(cache_l3_size);
 		tsc_delay_after[i] = disorder_access_size(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay[i] = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += tsc_delay[i];
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
-
+	DUMP_CACHE_DATA("CLFLUSHOPT DIS READ");
 	ret = check_benchmark(CACHE_CLFLUSHOPT_DIS_READ, tsc_delay_delta_total);
-
-	if (ret != true) {
-		printf("delta =%ld\n", tsc_delay_delta_total);
-	}
 
 	report("%s clflushopt wb disorder test", ret, __FUNCTION__);
 }
@@ -2114,6 +2066,9 @@ void cache_rqmid_29879_clflushopt_003(void)
  */
 void cache_rqmid_27030_map_to_none_linear(void)
 {
+#define test_and_check(type, func, size) \
+	check_benchmark(type, func(type, size))
+
 	int i = 0;
 	bool ret[8] = { false };
 
@@ -2609,12 +2564,10 @@ static struct case_fun_index cache_control_cases[] = {
 	{27027, cache_rqmid_27027_map_to_device_linear_uc},
 	{27028, cache_rqmid_27028_map_to_device_linear_uc},
 	{36877, cache_rqmid_36877_no_fill_cache_mode},
+	{26912, cache_rqmid_26912_invalidation_003},
+	{29878, cache_rqmid_29878_clflush_003},
+	{29879, cache_rqmid_29879_clflushopt_003},
 };
-
-void dump_cache_bentch_mark_64(long rqmid)
-{
-	cache_fun_exec(cache_control_cases, sizeof(cache_control_cases)/sizeof(cache_control_cases[0]), rqmid);
-}
 #endif
 
 static void print_cache_control_case_list_64()
@@ -2632,6 +2585,9 @@ static void print_cache_control_case_list_64()
 
 void cache_test_64(long rqmid)
 {
+#ifdef DUMP_CACHE_NATIVE_DATA
+	printf("==== Dumping benchmark data ====\n");
+#endif
 	print_cache_control_case_list_64();
 
 	cache_fun_exec(cache_control_cases, sizeof(cache_control_cases)/sizeof(cache_control_cases[0]), rqmid);

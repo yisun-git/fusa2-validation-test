@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0
  */
+int pci_mem_get(void *pci_mem_address);
 
 static long target;
 

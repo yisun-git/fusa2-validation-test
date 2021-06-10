@@ -1984,10 +1984,10 @@ static void applicaton_constraints_rqmid_46514_support_IA32_VMX_EPT_VPID_CAP01()
 
 	/*
 	 * CPUID_01H.ECX[bit 5] A value of 1 indicates that the processor supports this technology
-	 * The IA32_VMX_EPT_VPID_CAP MSR exists only on processors that support the 1-setting of the “activate secondary
-	 * controls” VM-execution control (only if bit 63 of the IA32_VMX_PROCBASED_CTLS MSR is 1) and that support
-	 * either the 1-setting of the “enable EPT” VM-execution control (only if bit 33 of the IA32_VMX_PROCBASED_CTLS2
-	 * MSR is 1) or the 1-setting of the “enable VPID” VM-execution control (only if bit 37 of the
+	 * The IA32_VMX_EPT_VPID_CAP MSR exists only on processors that support the 1-setting of the activate secondary
+	 * controls VM-execution control (only if bit 63 of the IA32_VMX_PROCBASED_CTLS MSR is 1) and that support
+	 * either the 1-setting of the enable EPT VM-execution control (only if bit 33 of the IA32_VMX_PROCBASED_CTLS2
+	 * MSR is 1) or the 1-setting of the enable VPID VM-execution control (only if bit 37 of the
 	 * IA32_VMX_PROCBASED_CTLS2 MSR is 1).
 	 */
 	if (!((c & (1ul << 5)) && (msr1 & (1ul << 63)) && ((msr2 & (1ul << 33)) || (msr2 & (1ul << 37))))) {
@@ -2350,12 +2350,12 @@ static void applicaton_constraints_rqmid_46573_INVVPID_instruction_shall_be_avai
 }
 
 /*
- * @brief case name:Physical platform shall guarantee TURBO mode is disabled in BIOS_01
+ * @brief case name: Hyper-threading disable_001
  *
  * Summary:Physical platform shall guarantee TURBO mode is disabled in BIOS.
  *
  */
-static void applicaton_constraints_rqmid_46567_check_TURBO_mode_is_disabled()
+static void applicaton_constraints_rqmid_46567_hyper_threading_disabled()
 {
 	u64 msr;
 	int chk = 0;
@@ -2453,7 +2453,7 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 46573,
 			"INVVPID instruction shall be available on the physical platform_01");
 	printf("\t\t Case ID:%d case name:%s\n\r", 46567,
-			"Physical platform shall guarantee TURBO mode is disabled in BIOS_01");
+			"Hyper-threading disable_001");
 #endif
 	printf("\t\t \n\r \n\r");
 }
@@ -2505,7 +2505,7 @@ int main(void)
 	applicaton_constraints_rqmid_46527_the_val_of_physical_RTC_register_BH_is_2H_01();
 	applicaton_constraints_rqmid_46572_INVEPT_and_INVEPT_type_be_available_01();
 	applicaton_constraints_rqmid_46573_INVVPID_instruction_shall_be_available_01();
-	applicaton_constraints_rqmid_46567_check_TURBO_mode_is_disabled();
+	applicaton_constraints_rqmid_46567_hyper_threading_disabled();
 #endif
 	return report_summary();
 }
