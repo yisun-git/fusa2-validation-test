@@ -126,8 +126,8 @@ void ap_main(void)
 
 
 #ifdef IN_NATIVE
-#define CACHE_IN_NATIVE
-#define DUMP_CACHE_NATIVE_DATA
+//uncommented this line when dumping data
+//#define DUMP_CACHE_NATIVE_DATA
 #endif
 
 //#define NO_PAGING_TESTS
@@ -154,11 +154,11 @@ u64 cache_over_l3_size = CACHE_OVE_L3_SIZE;	/* 16M/8 */
 u64 cache_malloc_size = CACHE_MALLOC_SIZE;			/* 16M/8 */
 
 u64 *cache_test_array = NULL;
-u64 tsc_delay[CACHE_TEST_TIME_MAX] = {0,};
+s64 tsc_delay[CACHE_TEST_TIME_MAX] = {0,};
 u64 tsc_delay_before[CACHE_TEST_TIME_MAX] = {0,};
 u64 tsc_delay_after[CACHE_TEST_TIME_MAX] = {0,};
 u64 tsc_delay_delta[CACHE_TEST_TIME_MAX] = {0,};
-u64 tsc_delay_delta_total = 0;
+s64 tsc_delay_delta_total = 0;
 u64 tsc_delay_delta_stdev = 0;
 
 // Change the error range from 5% to 10% based on CCB.
@@ -295,12 +295,9 @@ struct cache_data cache_bench[CACHE_SIZE_TYPE_MAX] = {
 	[CACHE_L2_WRITE_UC_NOFILL] = {38486918UL, 23787UL},
 	[CACHE_L3_WRITE_UC_NOFILL] = {1233621698UL, 32034UL},
 	[CACHE_OVER_L3_WRITE_UC_NOFILL] = {4935051359UL, 46002UL},
-	[CACHE_CLFLUSH_READ] = {300314UL, 1219UL},
-	[CACHE_CLFLUSH_DIS_READ] = {6202172UL, 17674UL},
-	[CACHE_CLFLUSHOPT_READ] = {300002UL, 1204UL},
-	[CACHE_CLFLUSHOPT_DIS_READ] = {6207999UL, 11483UL},
-	[CACHE_WBINVD_READ] = {304443UL, 1647UL},
-	[CACHE_WBINVD_DIS_READ] = {6199389UL, 14449UL},
+	[CACHE_WBINVD_DIS_READ] = {6196967UL, 29754UL},
+	[CACHE_CLFLUSH_DIS_READ] = {6242130UL, 47578UL},
+	[CACHE_CLFLUSHOPT_DIS_READ] = {6229482UL, 33186UL},
 };
 
 struct case_fun_index {
@@ -707,19 +704,57 @@ void clear_cache()
 }
 
 #ifdef __x86_64__
-#ifndef CACHE_IN_NATIVE
-/* test case which should run under 64bit  */
-#include "64/mem_cache_fn.c"
-#else
-# ifdef DUMP_CACHE_NATIVE_DATA
-#include "64/mem_cache_fn.c"
-# endif
-/* native test cases */
-#include "64/mem_cache_native.c"
+/**
+ * @brief In 64-bit mode,Select USB device BAR0 as the test object.
+ *       Write the value 0xDFFF_0000 to the BAR0 register of USB device.
+ *       Read the HCIVERSION register of USB device
+ *       If HCIVERSION register value is 0x100, pass,otherwize fail
+ * none
+ * Application Constraints: Only for USB.
+ *
+ * @param none
+ *
+ * @return OK. seccessed,pci_mem_address value is valid
+ *
+ * @retval (-1) fialed,pci_mem_address value is invalid
+ */
+int pci_mem_get(void *pci_mem_address)
+{
+	union pci_bdf bdf = {.bits = {.b = 0, .d = 0x14, .f = 0} };
+	uint32_t bar_base;
+	uint32_t reg_val;
+	int ret = OK;
+
+	pci_pdev_write_cfg(bdf, PCI_PCIR_BAR(0), 4, BAR_REMAP_USB_BASE);
+
+	reg_val = pci_pdev_read_cfg(bdf, PCI_PCIR_BAR(0), 4);
+	DBG_INFO("R reg[%xH] = [%xH]", PCI_PCIR_BAR(0), reg_val);
+
+	bar_base = PCI_BAR_MASK & reg_val;
+
+	reg_val = pci_pdev_read_mem(bdf, (bar_base + USB_HCIVERSION), 2);
+	if (0x100 != reg_val) {
+		DBG_ERRO("R mem[%xH] != [%xH]", bar_base + USB_HCIVERSION, 0x100);
+		ret = ERROR;
+	}
+
+	if (OK == ret) {
+		*((uint64_t *)pci_mem_address) = BAR_REMAP_USB_BASE;
+	}
+
+	return ret;
+}
+#endif
+
+#ifdef __x86_64__
+#  if defined(IN_NATIVE) && !defined(DUMP_CACHE_NATIVE_DATA)
+#    include "64/mem_cache_native.c" /* native test cases */
+#  else
+#    include "64/mem_cache_fn.c"
 #endif
 #elif __i386__
 /*test case which should run  under 32bit  */
-#include "32/mem_cache_fn.c"
+#  include "32/mem_cache_fn.c"
 #endif
 
 #ifdef __x86_64__
@@ -971,7 +1006,7 @@ void cache_test_init_startup(long rqmid)
 	cache_fun_exec(case_fun, sizeof(case_fun)/sizeof(case_fun[0]), rqmid);
 }
 
-#ifndef CACHE_IN_NATIVE
+#ifndef IN_NATIVE
 
 void cache_test_no_paging_tests(long rqmid)
 {
@@ -994,7 +1029,7 @@ void cache_test_no_paging_tests(long rqmid)
 	cache_fun_exec(case_fun, sizeof(case_fun)/sizeof(case_fun[0]), rqmid);
 }
 
-#endif // CACHE_IN_NATIVE
+#endif // IN_NATIVE
 
 #else
 void save_unchanged_reg(void)
@@ -1017,7 +1052,7 @@ int main(int ac, char **av)
 #ifdef __x86_64__
 	setup_idt();
 
-#ifndef CACHE_IN_NATIVE
+#ifndef IN_NATIVE
 #ifdef NO_PAGING_TESTS
 	cache_test_no_paging_tests(rqmid);
 #endif
@@ -1045,15 +1080,11 @@ int main(int ac, char **av)
 
 	//delay(10);
 #ifdef __x86_64__
-#ifndef CACHE_IN_NATIVE
-	cache_test_64(rqmid);
-#else
-# ifdef DUMP_CACHE_NATIVE_DATA
-	dump_cache_bentch_mark_64(rqmid);
-# else
+#  if defined(IN_NATIVE) && !defined(DUMP_CACHE_NATIVE_DATA)
 	cache_test_native(rqmid);
-# endif
-#endif
+#  else
+	cache_test_64(rqmid);
+#  endif
 #elif defined(__i386__)
 	cache_test_32(rqmid);
 #endif

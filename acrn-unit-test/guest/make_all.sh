@@ -11,7 +11,7 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
         exception_mpx_ra_b6 exception_sse_b6 exception_sse_pt_ra_b6"
 
 #BUILD_64BIT_FEATURE="mem_cache"
-BUILD_32BIT_FEATURE="segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
+BUILD_32BIT_FEATURE="mem_cache segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
 	segmentation interrupt_triple_fault v8086_protect exception_avx_pt exception_avx_pt_b6 exception_avx_pt_ra_b6 exception_fpu_pt \
         exception_fpu_pt_b6 exception_fpu_pt_ra_b6 exception_gp_pt exception_gp_pt_b6 exception_gp_pt_ra exception_gp_pt_ra_b6 \
         exception_mmx_pt exception_mmx_pt_ra_b6 exception_mpx_pt exception_mpx_pt_b6 exception_mpx_pt_ra_b6 exception_sse_pt exception_sse_pt_ra_b6 \
