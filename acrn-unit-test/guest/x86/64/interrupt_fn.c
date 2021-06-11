@@ -971,6 +971,8 @@ static void interru_df_pf(const char *fun)
  */
 __attribute__((unused)) static void interrupt_rqmid_38001_df_pf(void)
 {
+	report("%s() -- VM shutdown", false, __func__); // crash
+	return;
 	interru_df_pf(__FUNCTION__);
 }
 
@@ -3134,7 +3136,7 @@ static void test_interrupt_64(void)
 	interrupt_rqmid_39157_p4_p6_001();
 #ifdef IN_NON_SAFETY_VM
 	/* non-safety VM shutdowns, no information can be print */
-	//interrupt_rqmid_38001_df_pf();
+	interrupt_rqmid_38001_df_pf();
 #endif
 #ifdef IN_SAFETY_VM
 	interrupt_rqmid_38002_df_pf();	//safety call bsp_fatal_error()

@@ -244,6 +244,8 @@ static int check_rflags()
  */
 static void interrupt_rqmid_40025_expose_exception_mc_001(void)
 {
+	report("%s() -- unhandled #GP", false, __func__); // crash
+	return;
 	int check = 0;
 	u64 dump_func_size = 0;
 	u64 tmp_rip;
