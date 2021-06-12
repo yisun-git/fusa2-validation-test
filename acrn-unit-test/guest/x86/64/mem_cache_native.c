@@ -2835,12 +2835,12 @@ struct case_fun_index cache_control_native_cases[] = {
 	{27487, cache_rqmid_27487_native_clflushopt},   //clflushopt disorder
 	{27488, cache_rqmid_27488_native_invalidation}, //invalidation disorder
 	{27489, cache_rqmid_27489_native_clflush},      //clflush disorder
-	{27965, cache_rqmid_27965_native_has_l1d_cache},
 	{28742, cache_rqmid_28742_native_pat_uc},
 	{28744, cache_rqmid_28744_native_pat_uc},
 	{28746, cache_rqmid_28746_native_pat_wb},
 	{28747, cache_rqmid_28747_native_pat_uc},
 #endif
+	{27965, cache_rqmid_27965_native_has_l1d_cache},
 	{27968, cache_rqmid_27968_native_l3_cache_indexing},
 	{27970, cache_rqmid_27970_native_l1i_cache_number_of_sets},
 	{27971, cache_rqmid_27971_native_l1d_cache_number_of_ways},
