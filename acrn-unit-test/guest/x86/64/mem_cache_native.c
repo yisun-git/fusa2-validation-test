@@ -52,99 +52,6 @@ void cache_rqmid_24445_native_PREFETCHW_native(void)
 }
 
 /**
- * @brief case name:Cache control CLFLUSH instruction_002
- *
- * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
- * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
- * 2. Set a3 array memory type is wb,
- * 3. Order read a3 array fill L3 cache, record tsc_delay,
- * 4. Execute CLFLUSH instruction reflush cache,
- * 5. Order read a3 array again, record tsc_delay.
- * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
- * average should in CLFLUSH benchmark interval (average-3 *stdev, average+3*stdev), 
- * CLFLUSH benchmark get from native,refer CLFLUSH test on native
- */
-void cache_rqmid_25314_native_clflush(void)
-{
-	int i;
-	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
-
-	/*fill cache*/
-	read_mem_cache_test(cache_l3_size);
-	tsc_delay_delta_total = 0;
-	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
-		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
-		clflush_all_line(cache_l3_size);
-		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
-	}
-	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
-	printf("native clflush read average is %ld\r\n", tsc_delay_delta_total);
-}
-
-/**
- * @brief case name:Cache control CLFLUSHOPT instruction_002
- *
- * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
- * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
- * 2. Set a3 array memory type is wb,
- * 3. Order read a3 array fill L3 cache, record tsc_delay,
- * 4. Execute CLFLUSHOPT instruction reflush cache,
- * 5. Order read a3 array again, record tsc_delay.
- * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
- * average should in CLFLUSHOPT benchmark interval (average-3 *stdev, average+3*stdev), 
- * CLFLUSHOPT benchmark get from native,refer CLFLUSHOPT test on native
- */
-void cache_rqmid_25472_native_clflushopt(void)
-{
-	int i;
-	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
-
-	/*fill cache*/
-	read_mem_cache_test(cache_l3_size);
-	tsc_delay_delta_total = 0;
-	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
-		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
-		clflushopt_all_line(cache_l3_size);
-		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
-	}
-	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
-	printf("native clflushopt read average is %ld\r\n", tsc_delay_delta_total);
-}
-
-/**
- * @brief case name:Cache control cache invalidation instructions_002
- *
- * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
- * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
- * 2. Set a3 array memory type is wb,
- * 3. Order read a3 array fill L3 cache, record tsc_delay,
- * 4. Execute wbinvd instruction reflush cache,
- * 5. Order read a3 array again, record tsc_delay.
- * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
- * average should in wbinvd benchmark interval (average-3 *stdev, average+3*stdev), 
- * wbinvd benchmark get from native,refer wbinvd test on native
- */
-void cache_rqmid_26891_native_invalidation(void)
-{
-	int i;
-	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
-
-	/*fill cache*/
-	read_mem_cache_test(cache_l3_size);
-	tsc_delay_delta_total = 0;
-	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
-		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
-		asm_wbinvd();
-		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
-	}
-	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
-	printf("native wbinvd read average is %ld\r\n", tsc_delay_delta_total);
-}
-
-/**
  * @brief case name:Memory type test on native L1_WB_001
  *
  * Summary: This part verifies different memory type and instructions will invalid cache on native,
@@ -2787,9 +2694,6 @@ struct case_fun_index cache_control_native_cases[] = {
 	{24443, cache_rqmid_24443_native_cache_parameters_in_cpuid02},
 	{24445, cache_rqmid_24445_native_PREFETCHW_native},
 #ifdef DUMP_CACHE_NATIVE_DATA
-	{25314, cache_rqmid_25314_native_clflush},
-	{25472, cache_rqmid_25472_native_clflushopt},
-	{26891, cache_rqmid_26891_native_invalidation},
 	{26913, cache_rqmid_26913_native_l1_wb},
 	{26917, cache_rqmid_26917_native_l1_wc},
 	{26919, cache_rqmid_26919_native_l1_wc},

@@ -2475,6 +2475,106 @@ void cache_rqmid_36864_guest_clflush_clflushopt_line_size(void)
 		__FUNCTION__, cache_line_size * 8);
 }
 
+
+/**
+ * @brief case name:Cache control CLFLUSH instruction_002
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Order read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute CLFLUSH instruction reflush cache,
+ * 5. Order read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in CLFLUSH benchmark interval (average-3 *stdev, average+3*stdev), 
+ * CLFLUSH benchmark get from native,refer CLFLUSH test on native
+ */
+void cache_rqmid_25314_clflush(void)
+{
+	int i;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
+		clflush_all_line(cache_l3_size);
+		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+	DUMP_CACHE_DATA("CLFLUSH READ");
+	bool ret = check_benchmark(CACHE_CLFLUSH_READ, tsc_delay_delta_total);
+	report("%s clflush wb order test", ret, __func__);
+}
+
+/**
+ * @brief case name:Cache control CLFLUSHOPT instruction_002
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Order read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute CLFLUSHOPT instruction reflush cache,
+ * 5. Order read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in CLFLUSHOPT benchmark interval (average-3 *stdev, average+3*stdev), 
+ * CLFLUSHOPT benchmark get from native,refer CLFLUSHOPT test on native
+ */
+void cache_rqmid_25472_clflushopt(void)
+{
+	int i;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
+		clflushopt_all_line(cache_l3_size);
+		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+	DUMP_CACHE_DATA("CLFLUSHOPT READ");
+	bool ret = check_benchmark(CACHE_CLFLUSHOPT_READ, tsc_delay_delta_total);
+	report("%s clflushopt wb order test", ret, __func__);
+}
+
+/**
+ * @brief case name:Cache control cache invalidation instructions_002
+ *
+ * Summary: ACRN hypervisor shall expose cache invalidation instructions to any VM,
+ * 1. Allocate an array a3 with 0x100000 elements, each of size 8 bytes,
+ * 2. Set a3 array memory type is wb,
+ * 3. Order read a3 array fill L3 cache, record tsc_delay,
+ * 4. Execute wbinvd instruction reflush cache,
+ * 5. Order read a3 array again, record tsc_delay.
+ * repeat steps 3 to 5 40 times and calculate the average value of each tsc_delay.
+ * average should in wbinvd benchmark interval (average-3 *stdev, average+3*stdev), 
+ * wbinvd benchmark get from native,refer wbinvd test on native
+ */
+void cache_rqmid_26891_invalidation(void)
+{
+	int i;
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);/*index 0 is wb*/
+
+	/*fill cache*/
+	read_mem_cache_test(cache_l3_size);
+	tsc_delay_delta_total = 0;
+	for (i = 0; i < CACHE_TEST_TIME_MAX; i++) {
+		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
+		asm_wbinvd();
+		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
+		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+	}
+	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
+	DUMP_CACHE_DATA("WBINVD READ");
+	bool ret = check_benchmark(CACHE_WBINVD_READ, tsc_delay_delta_total);
+	report("%s wbinvd wb order test", ret, __func__);
+}
+
 #ifndef DUMP_CACHE_NATIVE_DATA
 static struct case_fun_index cache_control_cases[] = {
 	{23873, cache_rqmid_23873_check_l1_dcache_parameters},
@@ -2548,6 +2648,9 @@ static struct case_fun_index cache_control_cases[] = {
 	{27075, cache_rqmid_27075_clflush_exception_003},
 	{27084, cache_rqmid_27084_clflushopt_exception_001},
 	{27085, cache_rqmid_27085_clflushopt_exception_002},
+	{25314, cache_rqmid_25314_clflush},
+	{25472, cache_rqmid_25472_clflushopt},
+	{26891, cache_rqmid_26891_invalidation},
 };
 #else
 static struct case_fun_index cache_control_cases[] = {
@@ -2567,6 +2670,9 @@ static struct case_fun_index cache_control_cases[] = {
 	{26912, cache_rqmid_26912_invalidation_003},
 	{29878, cache_rqmid_29878_clflush_003},
 	{29879, cache_rqmid_29879_clflushopt_003},
+	{25314, cache_rqmid_25314_clflush},
+	{25472, cache_rqmid_25472_clflushopt},
+	{26891, cache_rqmid_26891_invalidation},
 };
 #endif
 
