@@ -460,9 +460,7 @@ static void device_passthrough_rqmid_29338_PCIe_device_USB_controller_message_co
 	/*3.Compare the value, the message control register [bit 8:7]  should be 1.*/
 	report("%s", ((target_data >> 7) & 0x3u) == 0x1u, __FUNCTION__);
 }
-#endif
 
-#ifdef IN_SAFETY_VM
 /*
  * @brief case name:PCIe Ethernet controller subsystem ID_001
  *
@@ -473,7 +471,7 @@ static void device_passthrough_rqmid_29281_PCIe_Ethernet_controller_subsystem_ID
 {
 	uint32_t value = 0;
 	bool is_pass = false;
-	value = pci_pdev_read_cfg(ethernet_bdf, PCI_SUB_SYSTEM_ID_OFFSET, PCI_SUB_SYSTEM_ID_BYTE);
+	value = pci_pdev_read_cfg(ethernet_bdf_native, PCI_SUB_SYSTEM_ID_OFFSET, PCI_SUB_SYSTEM_ID_BYTE);
 	if (value == ETH_SUB_SYSTEM_ID_VALUE) {
 		is_pass = true;
 	}
@@ -491,14 +489,16 @@ static void device_passthrough_rqmid_29282_PCIe_Ethernet_controller_subsystem_ve
 {
 	uint32_t value = 0;
 	bool is_pass = false;
-	value = pci_pdev_read_cfg(ethernet_bdf, PCI_SUB_SYS_VENDOR_OFFSET, PCI_SUB_SYS_VENDOR_BYTE);
+	value = pci_pdev_read_cfg(ethernet_bdf_native, PCI_SUB_SYS_VENDOR_OFFSET, PCI_SUB_SYS_VENDOR_BYTE);
 	if (value == ETH_SUB_SYSTEM_VENDOR_ID_VALUE) {
 		is_pass = true;
 	}
 	report("%s", is_pass, __FUNCTION__);
 	return;
 }
+#endif
 
+#ifdef IN_SAFETY_VM
 /*
  * @brief case name:PCIe System Time Control High Register_001
  *
@@ -2604,6 +2604,8 @@ int main()
 	device_passthrough_rqmid_29300_PCIe_USB_BAR_read_write_001();
 	device_passthrough_rqmid_29274_PCIe_Ethenet_reserve_BAR_001();
 	device_passthrough_rqmid_29301_PCIe_USB_reserve_BAR_001();
+	device_passthrough_rqmid_29281_PCIe_Ethernet_controller_subsystem_ID_001();
+	device_passthrough_rqmid_29282_PCIe_Ethernet_controller_subsystem_vendor_ID_001();
 #endif
 //621:Device Application constraint end
 
@@ -2627,8 +2629,6 @@ int main()
 
 //521:Device pass-through_ACRN shall guarantee that the vCPU gets fixed value start
 #ifdef IN_SAFETY_VM
-	device_passthrough_rqmid_29281_PCIe_Ethernet_controller_subsystem_ID_001();
-	device_passthrough_rqmid_29282_PCIe_Ethernet_controller_subsystem_vendor_ID_001();
 	device_passthrough_rqmid_29514_PCIe_System_Time_Control_High_Register_001();
 	device_passthrough_rqmid_29289_PCIe_Lock_LAN_Disable_001();
 	device_passthrough_rqmid_29518_PCIe_LAN_Disable_Control_001();

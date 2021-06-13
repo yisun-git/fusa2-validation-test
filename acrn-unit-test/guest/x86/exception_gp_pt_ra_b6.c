@@ -621,6 +621,10 @@ int main(void)
 	setup_idt();
 	setup_ring_env();
 	set_handle_exception();
+#ifdef IN_NATIVE
+	gp_pt_ra_b6_17();
+	gp_pt_ra_b6_18();
+#else
 	gp_pt_ra_b6_0();
 	gp_pt_ra_b6_1();
 	gp_pt_ra_b6_2();
@@ -638,8 +642,6 @@ int main(void)
 	gp_pt_ra_b6_14();
 	gp_pt_ra_b6_15();
 	gp_pt_ra_b6_16();
-	gp_pt_ra_b6_17();
-	gp_pt_ra_b6_18();
-
+#endif
 	return report_summary();
 }

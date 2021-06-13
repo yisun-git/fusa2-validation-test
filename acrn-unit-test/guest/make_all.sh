@@ -19,24 +19,24 @@ BUILD_32BIT_FEATURE="mem_cache segmentation paging general_purpose mmx cpumode f
 BUILD_REAL_MODE_FEATURE="rmode_v8086 rmode_seg"
 BUILD_V8086_FEATURE="v8086_part1 v8086_part2 v8086_part3 v8086_seg"
 
-BUILD_NATIVE_64_FEATURE="xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
+BUILD_NATIVE_64_FEATURE="pmu_fu tsc xsave device_passthrough sse pt info_leakage safety_analysis_cat machine_check debug_features \
 	mem_cache taskmanagement idle_block local_apic rtc segmentation paging memory_order misc_cpuid tsx locked_atomic \
-	fpu mmx general_purpose sgx avx application_constraints"
+	fpu mmx general_purpose sgx avx application_constraints exception_gp_pt_b6 exception_gp_pt_ra_b6"
 
 BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt \
 	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec hsi_inter_remap"
 
-BUILD_NATIVE_32_FEATURE="taskmanagement general_purpose"
+BUILD_NATIVE_32_FEATURE="paging taskmanagement general_purpose exception_gp_pt_b6 exception_gp_pt_ra_b6"
 BUILD_NATIVE_32_FEATURE="$BUILD_NATIVE_32_FEATURE hsi_mem_mgmt hsi_gp"
 BUILD_NATIVE_REAL_MODE_FEATURE="hsi_mem_mgmt hsi_gp_rmode"
 
 # The image size cannot be more than 64K in 16-bit mode, so split the cases in one file into several parts if needed.
 # the last character of the feature name, is the max index number of the splitted parts.
-# for example, 'exception_sse_ra_2' means exception_sse_ra.c can be used for compiling 3 images for test.
+# for example, 'exception_sse_ra_3' means exception_sse_ra.c can be used for compiling 4 images for test.
 BUILD_AUTO_GEN_REAL_MODE_FEATURE="exception_avx_pt_ra_b6_0 exception_avx_ra_0 exception_fpu_pt_ra_b6_0 exception_fpu_ra_0 \
         exception_fpu_ra_b6_0 exception_gp_pt_ra_0 exception_gp_pt_ra_b6_0 exception_gp_ra_1 exception_mmx_pt_ra_b6_0 \
         exception_mmx_ra_0 exception_mpx_pt_ra_b6_0 exception_mpx_ra_1 exception_mpx_ra_b6_0 exception_sse_pt_ra_b6_1 \
-        exception_sse_ra_2"
+        exception_sse_ra_3"
 BUILD_AUTO_GEN_V8086_FEATURE="exception_gp_v8_0 exception_sse_v8_1"
 
 RESULT=0
@@ -190,6 +190,10 @@ done
            echo "FAILED TO MAKE $i"
        exit $RESULT
        fi
+
+./make32_real_mode_native.sh rmode_v8086
+./make32_real_mode_native.sh exception_gp_pt_ra_b6
+./make32_v8086_native.sh v8086_part1
 
 mv x86/obj/memory_order.bzimage x86/obj/memory_order_multi_case.bzimage
 mv x86/obj/memory_order_native_64.elf x86/obj/memory_order_multi_case.elf

@@ -1032,7 +1032,7 @@ static void paging_rqmid_32308_write_protect_support_004()
 /**
  * @brief case name:Write Protect Support_003
  *
- * Summary: When supervisor-mode access, set CR0.WP to be 1 and set read only pages£¬
+ * Summary: When supervisor-mode access, set CR0.WP to be 1 and set read only pages
  *	    data wirte to supervisor-mode address shall generate #PF
  */
 static void paging_rqmid_32309_write_protect_support_003()
@@ -2261,4 +2261,9 @@ static void paging_rqmid_32349_4level_1G_page_support()
 	*pdpte = old_val;
 	mb();
 	write_cr0(read_cr0());
+}
+
+static void paging_rqmid_35133_page_size_extension_support_constraint_AC_001()
+{
+	report("%s", ((cpuid(1).d)>>3)&1, __func__);
 }

@@ -626,6 +626,18 @@ static void check_cpuid(void)
 
 #endif
 
+#ifdef __x86_64__
+static void gp_rqmid_37960_syscall_enable(void)
+{
+	//SYSCALL Enable: IA32_EFER.SCE (R/W) (bit0) Enables SYSCALL/SYSRET instructions in 64-bit mode.
+	uint32_t orig_efer = rdmsr(0xC0000080); //IA32_EFER;
+	wrmsr(0xC0000080, orig_efer | 0x01);
+	uint32_t changed_efer = rdmsr(0xC0000080);
+	printf("IA32_EFER: orig=0x%x, changed to 0x%x\n", orig_efer, changed_efer);
+
+	report("Test Case: 37960", ((orig_efer & 0X01) == 0) && ((changed_efer & 0x01) == 0x01));
+}
+#endif
 
 #if defined(IN_NATIVE)
 #if defined(__x86_64__)
@@ -806,14 +818,6 @@ static void verify_constraints(void)
 	edx = cpuid(0x80000001).d;
 	report("Test Case: 35199", ((edx & (1 << 11)) != 0));
 
-	//SYSCALL Enable: IA32_EFER.SCE (R/W) (bit0) Enables SYSCALL/SYSRET instructions in 64-bit mode.
-	uint32_t orig_efer = rdmsr(0xC0000080); //IA32_EFER;
-	wrmsr(0xC0000080, orig_efer | 0x01);
-	uint32_t changed_efer = rdmsr(0xC0000080);
-	printf("IA32_EFER: orig=0x%x, changed to 0x%x\n", orig_efer, changed_efer);
-
-	report("Test Case: 37960", ((orig_efer & 0X01) == 0) && ((changed_efer & 0x01) == 0x01));
-
 	verify_syscall_sysret();
 #else
 	verify_sysenter_sysexit();
@@ -830,6 +834,10 @@ int main(void)
 	setup_ring_env();
 
 	setup_idt();
+
+#ifdef __x86_64__
+	gp_rqmid_37960_syscall_enable();
+#endif
 
 #if defined(IN_NATIVE)
 	verify_constraints();

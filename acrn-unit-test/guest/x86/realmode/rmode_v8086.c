@@ -575,12 +575,11 @@ void v8086_rqmid_hide(void)
 void print_case_list(void)
 {
 	print_serial("v8086 feature case list:\n\r");
+	print_serial("\t\tCase ID:37950 case name:Real and virtual-8086 mode execution environment_001_1\n\r");
+#ifndef IN_NATIVE
 	print_serial("\t\tCase ID:33906 case name:ACRN hypervisor shall ");
 	print_serial("expose real-address mode interrupt handling to any VM_001\n\r");
-#ifndef IN_NATIVE
 	print_serial("\t\tCase ID:33876 case name:When a vCPU reads CPUID.01H_002\n\r");
-#endif
-	print_serial("\t\tCase ID:37950 case name:Real and virtual-8086 mode execution environment_001_1\n\r");
 	print_serial("\t\tCase ID:37953 case name:Real and virtual-8086 mode execution environment_002_1\n\r");
 	print_serial("\t\tCase ID:37958 case name:Real and virtual-8086 mode execution environment_003_1\n\r");
 	print_serial("\t\tCase ID:37951 case name:Real and virtual-8086 mode execution environment_004_1\n\r");
@@ -593,20 +592,21 @@ void print_case_list(void)
 	print_serial("\t\tCase ID:38256 case name:Real and virtual-8086 mode execution environment_011\n\r");
 	print_serial("\t\tCase ID:37946 case name:write CR4 and the new guest CR4.VME is 1H_002\n\r");
 	print_serial("\t\tCase ID:37945 case name:write CR4 and the new guest CR4.PVI is 1H_002\n\r");
+#endif
 }
 
 void main(void)
 {
 	set_handle_exception();
 	print_case_list();
-
+#ifdef IN_NATIVE
+	v8086_rqmid_37950_envir_001_1();
+#else
 	v8086_rqmid_33906_test();
-#ifndef IN_NATIVE
 	v8086_rqmid_33876_read_CPUID_01H_002();
-#endif
 	v8086_rqmid_envir();
 	v8086_rqmid_hide();
-
+#endif
 	report_summary();
 
 	asm volatile("hlt\n\t");

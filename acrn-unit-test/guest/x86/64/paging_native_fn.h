@@ -150,4 +150,15 @@
 	.name = "The physical platform doesn't support protection keys_001",
 	.fn = paging_rqmid_40363_protection_keys_not_support_hysical_platform_constraint_AC_001
 },
-
+{
+	.suit_id = 377,
+	.case_id = 23895,
+	.name = "physical address width",
+	.fn = paging_rqmid_23895_check_physical_address_width
+},
+{
+	.suit_id = 367,
+	.case_id = 32347,
+	.name = "4-level paging 4K page support",
+	.fn = paging_rqmid_32347_4level_4K_page_support
+},
