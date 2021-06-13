@@ -247,7 +247,10 @@ static __unused void gp_ra_instruction_17(const char *msg)
 	test_for_r_exception(GP_VECTOR, test_exeed_64K_hold_jbe, NULL);
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_1
 static __unused void gp_ra_instruction_18(const char *msg)
 {
 	u8 a = 1;
@@ -313,10 +316,7 @@ static __unused void gp_ra_instruction_24(const char *msg)
 				: : "m" (addr_m16_16));
 	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
 }
-//Modified manually: add the conditional compilation for the size limit.
-#endif
 
-#ifdef PHASE_1
 static __unused void gp_ra_instruction_25(const char *msg)
 {
 	addr_m16_16.selector = 0;
@@ -703,7 +703,10 @@ static __unused void gp_ra_17(void)
 	write_cr3(cr3);
 	write_cr4(cr4);
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_1
 static __unused void gp_ra_18(void)
 {
 	u32 cr0 = read_cr0();
@@ -824,10 +827,7 @@ static __unused void gp_ra_24(void)
 	write_cr3(cr3);
 	write_cr4(cr4);
 }
-//Modified manually: add the conditional compilation for the size limit.
-#endif
 
-#ifdef PHASE_1
 static __unused void gp_ra_25(void)
 {
 	u32 cr0 = read_cr0();
@@ -1038,6 +1038,8 @@ int main(void)
 	gp_ra_15();
 	gp_ra_16();
 	gp_ra_17();
+	#endif
+	#ifdef PHASE_1
 	gp_ra_18();
 	gp_ra_19();
 	gp_ra_20();
@@ -1045,8 +1047,6 @@ int main(void)
 	gp_ra_22();
 	gp_ra_23();
 	gp_ra_24();
-	#endif
-	#ifdef PHASE_1
 	gp_ra_25();
 	gp_ra_26();
 	gp_ra_27();

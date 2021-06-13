@@ -418,7 +418,10 @@ static __unused void sse_ra_instruction_40(const char *msg)
 				:  : [input_1] "m" (unsigned_32));
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_2
 TEST_SSE_NM(MOVSLDUP, "%%xmm1");
 static __unused void sse_ra_instruction_41(const char *msg)
 {
@@ -481,10 +484,7 @@ static __unused void sse_ra_instruction_49(const char *msg)
 	test_for_exception(MF_VECTOR, test_PSHUFB_mf, NULL);
 	report("%s", (exception_vector() == MF_VECTOR), __FUNCTION__);
 }
-//Modified manually: add the conditional compilation for the size limit.
-#endif
 
-#ifdef PHASE_2
 TEST_SSE_UD(PSHUFB, "%%mm1");
 static __unused void sse_ra_instruction_50(const char *msg)
 {
@@ -526,7 +526,10 @@ static __unused void sse_ra_instruction_55(const char *msg)
 				:  : [input_1] "m" (unsigned_128));
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_3
 TEST_SSE_EXCEED_64K_GP(PSADBW, "%%mm1");
 static __unused void sse_ra_instruction_56(const char *msg)
 {
@@ -1823,7 +1826,10 @@ static __unused void sse_ra_40(void)
 	#endif
 	asm volatile("fninit");
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_2
 static __unused void sse_ra_41(void)
 {
 	u32 cr0 = read_cr0();
@@ -2065,10 +2071,7 @@ static __unused void sse_ra_49(void)
 	#endif
 	asm volatile("fninit");
 }
-//Modified manually: add the conditional compilation for the size limit.
-#endif
 
-#ifdef PHASE_2
 static __unused void sse_ra_50(void)
 {
 	u32 cr0 = read_cr0();
@@ -2230,7 +2233,10 @@ static __unused void sse_ra_55(void)
 	#endif
 	asm volatile("fninit");
 }
+//Modified manually: add the conditional compilation for the size limit.
+#endif
 
+#ifdef PHASE_3
 static __unused void sse_ra_56(void)
 {
 	u32 cr0 = read_cr0();
@@ -2735,6 +2741,8 @@ int main(void)
 	sse_ra_38();
 	sse_ra_39();
 	sse_ra_40();
+	#endif
+	#ifdef PHASE_2
 	sse_ra_41();
 	sse_ra_42();
 	sse_ra_43();
@@ -2744,14 +2752,14 @@ int main(void)
 	sse_ra_47();
 	sse_ra_48();
 	sse_ra_49();
-	#endif
-	#ifdef PHASE_2
 	sse_ra_50();
 	sse_ra_51();
 	sse_ra_52();
 	sse_ra_53();
 	sse_ra_54();
 	sse_ra_55();
+	#endif
+	#ifdef PHASE_3
 	sse_ra_56();
 	sse_ra_57();
 	sse_ra_58();

@@ -31,6 +31,19 @@ asm(".code16gcc");
 } while (0)
 
 /**
+ * @brief case name: Real-address and virtual-8086 mode address translation_003.
+ *
+ * Summary: In V8086 mode and real-address mode,  access a memory with an offset greater than
+ * 0 -0xFFFFH, a pseudo-protection faults (interrupt 12 or 13) will be generated.
+ *
+ */
+__noinline void v8086_rqmid_40491_check_offset_out_of_range(void)
+{
+	TRY_SEGMENT(fs);
+}
+
+#ifndef IN_NATIVE
+/**
  * @brief Case name: ACRN hypervisor shall expose virtual-8086 mode paging to any VM_001.
  *
  * Summary:Paging of Virtual-8086 Tasks.
@@ -62,18 +75,6 @@ __noinline void v8086_rqmid_38307_envir_010_1(void)
 	u32 val = 0;
 	asm volatile("mov $" xstr(MAGIC_DWORD) ", %0\n" : "=rm"(val) : : "memory");
 	report_ex("val = 0x%x", val == MAGIC_DWORD, val);
-}
-
-/**
- * @brief case name: Real-address and virtual-8086 mode address translation_003.
- *
- * Summary: In V8086 mode and real-address mode,  access a memory with an offset greater than
- * 0 -0xFFFFH, a pseudo-protection faults (interrupt 12 or 13) will be generated.
- *
- */
-__noinline void v8086_rqmid_40491_check_offset_out_of_range(void)
-{
-	TRY_SEGMENT(fs);
 }
 
 __noinline u8 v8086_check_addr_translation(u16 segment, u16 offset)
@@ -353,10 +354,16 @@ __noinline void v8086_rqmid_38133_expose_io_protection_008_2(void)
 {
 	TRY_INSTRUCTION(GP_VECTOR, "int $24\n");
 }
+#endif
 
 extern u32 v8086_iopl;
 void v8086_main(void)
 {
+#ifdef IN_NATIVE
+	v8086_rqmid_40491_check_offset_out_of_range();
+	report_summary();
+	send_cmd(FUNC_V8086_EXIT);
+#else
 	u32 iopl = v8086_iopl & X86_EFLAGS_IOPL3;
 
 	if (X86_EFLAGS_IOPL3 == iopl) {
@@ -394,5 +401,6 @@ void v8086_main(void)
 		report_summary();
 		send_cmd(FUNC_V8086_EXIT);
 	}
+#endif
 }
 

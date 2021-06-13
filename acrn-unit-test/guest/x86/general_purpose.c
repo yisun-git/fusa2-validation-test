@@ -158,7 +158,74 @@ void ap_main(void)
 }
 #endif
 
+#ifdef __x86_64__
+/*
+ * @brief case name: Physical table lookup instructions support_001.
+ *
+ * Summary: Table lookup instructions shall be available on the physical platform.
+ */
+static int xlat_execute(void)
+{
+	__attribute__((aligned(64)))u64 addr;
+	u64 *add = &addr;
+	asm volatile(ASM_TRY("1f")
+		     "xlat %[add]\n"
+		     "1:"
+		     : [add]"=m"(add) : :);
+	return exception_vector();
+}
+
+static int xlatb_execute(void)
+{
+	asm volatile(ASM_TRY("1f")
+		     "xlatb\n"
+		     "1:"
+		     :  : :);
+	return exception_vector();
+}
+
+/*
+ * @brief case name:Physical shift and rotate instructions support_001.
+ *
+ * Summary: Shift and rotate instructions shall be available on the physical platform.
+ * SAL, SHL, SAR, SHR,SHLD, SHRD,ROL, ROR, RCL, RCR can be executed normally.
+ */
+static void  gp_rqmid_31253_shift_and_rotate_physical_support(void)
+{
+	TRY_INSTRUCTION("sal $1,%%eax\n");
+	TRY_INSTRUCTION("shl $1,%%eax\n");
+	TRY_INSTRUCTION("sar $1,%%eax\n");
+	TRY_INSTRUCTION("shr $1,%%eax\n");
+	TRY_INSTRUCTION("shld $1,%%eax,%%edx\n");
+	TRY_INSTRUCTION("shrd $1,%%eax,%%edx\n");
+	TRY_INSTRUCTION("rol %%eax\n");
+	TRY_INSTRUCTION("ror %%eax\n");
+	TRY_INSTRUCTION("rcl %%eax\n");
+	TRY_INSTRUCTION("rcr %%eax\n");
+
+	report("%s", true, __FUNCTION__);
+}
+
 /*--------------------------------Test case------------------------------------*/
+static void  gp_rqmid_31282_table_lookup_physical_support(void)
+{
+	report("%s", ((xlat_execute() == PASS) && (xlatb_execute() == PASS)), __FUNCTION__);
+}
+
+/*
+ * @brief case name:The physical platform supports LZCNT instruction_001
+ *
+ * Summary: LZCNT instruction shall be available on the physical platform.
+ *
+ */
+static void gp_rqmid_39004_cpuid_eax80000001_ecx0_001()
+{
+	u32 result;
+	result = cpuid_indexed(0x80000001, 0).c;
+	report("%s", ((result >> 5) & 1), __FUNCTION__);
+}
+#endif
+
 #ifdef IN_NATIVE
 #ifdef __x86_64__
 /*
@@ -180,19 +247,6 @@ static void  gp_rqmid_38975_msr_access_physical_support(void)
 	CHECK_REPORT();
 
 	report("%s", true, __FUNCTION__);
-}
-
-/*
- * @brief case name:The physical platform supports LZCNT instruction_001
- *
- * Summary: LZCNT instruction shall be available on the physical platform.
- *
- */
-static void gp_rqmid_39004_cpuid_eax80000001_ecx0_001()
-{
-	u32 result;
-	result = cpuid_indexed(0x80000001, 0).c;
-	report("%s", (result >> 5 & 1), __FUNCTION__);
 }
 
 /*
@@ -297,37 +351,6 @@ static void gp_rqmid_38979_processor_identification_instructions_001()
 	/*restore origin value*/
 	write_rflags(old_value);
 }
-
-/*
- * @brief case name: Physical table lookup instructions support_001.
- *
- * Summary: Table lookup instructions shall be available on the physical platform.
- */
-static int xlat_execute(void)
-{
-	__attribute__((aligned(64)))u64 addr;
-	u64 *add = &addr;
-	asm volatile(ASM_TRY("1f")
-		     "xlat %[add]\n"
-		     "1:"
-		     : [add]"=m"(add) : :);
-	return exception_vector();
-}
-
-static int xlatb_execute(void)
-{
-	asm volatile(ASM_TRY("1f")
-		     "xlatb\n"
-		     "1:"
-		     :  : :);
-	return exception_vector();
-}
-
-static void  gp_rqmid_31282_table_lookup_physical_support(void)
-{
-	report("%s", xlat_execute() == PASS && xlatb_execute() == PASS, __FUNCTION__);
-}
-
 
 /*
  * @brief case name: Physical address computation instructions support_001.
@@ -496,28 +519,6 @@ static void  gp_rqmid_31242_binary_arithmetic_physical_support(void)
 	TRY_INSTRUCTION("imul %%eax\n");
 	TRY_INSTRUCTION("div %%eax\n");
 	TRY_INSTRUCTION("idiv %%eax\n");
-
-	report("%s", true, __FUNCTION__);
-}
-
-/*
- * @brief case name:Physical shift and rotate instructions support_001.
- *
- * Summary: Shift and rotate instructions shall be available on the physical platform.
- * SAL, SHL, SAR, SHR,SHLD, SHRD,ROL, ROR, RCL, RCR can be executed normally.
- */
-static void  gp_rqmid_31253_shift_and_rotate_physical_support(void)
-{
-	TRY_INSTRUCTION("sal $1,%%eax\n");
-	TRY_INSTRUCTION("shl $1,%%eax\n");
-	TRY_INSTRUCTION("sar $1,%%eax\n");
-	TRY_INSTRUCTION("shr $1,%%eax\n");
-	TRY_INSTRUCTION("shld $1,%%eax,%%edx\n");
-	TRY_INSTRUCTION("shrd $1,%%eax,%%edx\n");
-	TRY_INSTRUCTION("rol %%eax\n");
-	TRY_INSTRUCTION("ror %%eax\n");
-	TRY_INSTRUCTION("rcl %%eax\n");
-	TRY_INSTRUCTION("rcr %%eax\n");
 
 	report("%s", true, __FUNCTION__);
 }
@@ -2343,6 +2344,9 @@ int main(void)
 #else
 #ifdef __x86_64__
 	/*--------------------------64 bit--------------------------*/
+	gp_rqmid_31253_shift_and_rotate_physical_support();
+	gp_rqmid_31282_table_lookup_physical_support();
+	gp_rqmid_39004_cpuid_eax80000001_ecx0_001();
 	gp_rqmid_31522_binary_arithmetic_div_normal_059();
 	gp_rqmid_31315_data_transfer_mov_gp_007();
 	do_at_ring1(gp_rqmid_31318_data_transfer_mov_gp_008, "");

@@ -2501,7 +2501,8 @@ void cache_rqmid_25314_clflush(void)
 		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
 		clflush_all_line(cache_l3_size);
 		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay[i] = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += tsc_delay[i];
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("CLFLUSH READ");
@@ -2534,7 +2535,8 @@ void cache_rqmid_25472_clflushopt(void)
 		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
 		clflushopt_all_line(cache_l3_size);
 		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay[i] = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += tsc_delay[i];
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("CLFLUSHOPT READ");
@@ -2567,7 +2569,8 @@ void cache_rqmid_26891_invalidation(void)
 		tsc_delay_before[i] = read_mem_cache_test(cache_l3_size);
 		asm_wbinvd();
 		tsc_delay_after[i] = read_mem_cache_test(cache_l3_size);
-		tsc_delay_delta_total += tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay[i] = tsc_delay_after[i] - tsc_delay_before[i];
+		tsc_delay_delta_total += tsc_delay[i];
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("WBINVD READ");
@@ -2577,36 +2580,6 @@ void cache_rqmid_26891_invalidation(void)
 
 #ifndef DUMP_CACHE_NATIVE_DATA
 static struct case_fun_index cache_control_cases[] = {
-	{23873, cache_rqmid_23873_check_l1_dcache_parameters},
-	{23874, cache_rqmid_23874_check_l1_icache_parameters},
-	{23875, cache_rqmid_23875_check_l2_ucache_parameters},
-	{23876, cache_rqmid_23876_check_l3_ucache_parameters},
-	{23877, cache_rqmid_23877_check_no_cache_parameters},
-	{24189, cache_rqmid_24189_l1_data_cache_context_mode},
-	{26972, cache_rqmid_26972_guest_linear_normal_wb},
-	{26973, cache_rqmid_26973_guest_linear_normal_wb},
-	{26974, cache_rqmid_26974_guest_linear_normal_wc},
-	{26975, cache_rqmid_26975_guest_linear_normal_wc},
-	{26976, cache_rqmid_26976_guest_linear_normal_wt},
-	{26977, cache_rqmid_26977_guest_linear_normal_wt},
-	{26978, cache_rqmid_26978_guest_linear_normal_wp},
-	{26979, cache_rqmid_26979_guest_linear_normal_wp},
-	{26980, cache_rqmid_26980_guest_linear_normal_uc},
-	{26981, cache_rqmid_26981_guest_linear_normal_uc},
-#if 0
-	{27018, cache_rqmid_27018_map_to_device_linear_wb},
-	{27019, cache_rqmid_27019_map_to_device_linear_wb},
-	{27020, cache_rqmid_27020_map_to_device_linear_wc},
-	{27021, cache_rqmid_27021_map_to_device_linear_wc},
-	{27022, cache_rqmid_27022_map_to_device_linear_wt},
-	{27023, cache_rqmid_27023_map_to_device_linear_wt},
-	{27024, cache_rqmid_27024_map_to_device_linear_wp},
-	{27026, cache_rqmid_27026_map_to_device_linear_wp},
-	{27027, cache_rqmid_27027_map_to_device_linear_uc},
-	{27028, cache_rqmid_27028_map_to_device_linear_uc},
-	{36875, cache_rqmid_36875_empty_mapped_guest_linear_normal},
-#endif
-	{28100, cache_rqmid_28100_wt_wp_shall_be_the_same},
 	{27073, cache_rqmid_27073_clflush_exception},
 	{36865, cache_rqmid_36865_mtrr_general_support},
 	{36866, cache_rqmid_36866_mtrr_fixed_range_registers},
@@ -2621,7 +2594,6 @@ static struct case_fun_index cache_control_cases[] = {
 	{36864, cache_rqmid_36864_guest_clflush_clflushopt_line_size},
 	{36874, cache_rqmid_36874_invalid_cache_mode},
 	{23985, cache_rqmid_23985_invd},
-	{36877, cache_rqmid_36877_no_fill_cache_mode},
 	{23982, cache_rqmid_23982_cd_nw_control},
 	{24342, cache_rqmid_24342_system_management_range_register_002},
 	{24333, cache_rqmid_24333_mtrr_general_support_002},
@@ -2639,8 +2611,28 @@ static struct case_fun_index cache_control_cases[] = {
 	{26912, cache_rqmid_26912_invalidation_003},
 	{29878, cache_rqmid_29878_clflush_003},
 	{29879, cache_rqmid_29879_clflushopt_003},
+	{25314, cache_rqmid_25314_clflush},
+	{25472, cache_rqmid_25472_clflushopt},
+	{26891, cache_rqmid_26891_invalidation},
+	{23873, cache_rqmid_23873_check_l1_dcache_parameters},
+	{23874, cache_rqmid_23874_check_l1_icache_parameters},
+	{23875, cache_rqmid_23875_check_l2_ucache_parameters},
+	{23876, cache_rqmid_23876_check_l3_ucache_parameters},
+	{23877, cache_rqmid_23877_check_no_cache_parameters},
+	{24189, cache_rqmid_24189_l1_data_cache_context_mode},
+	{26972, cache_rqmid_26972_guest_linear_normal_wb},
+	{26973, cache_rqmid_26973_guest_linear_normal_wb},
+	{26974, cache_rqmid_26974_guest_linear_normal_wc},
+	{26975, cache_rqmid_26975_guest_linear_normal_wc},
+	{26976, cache_rqmid_26976_guest_linear_normal_wt},
+	{26977, cache_rqmid_26977_guest_linear_normal_wt},
+	{26978, cache_rqmid_26978_guest_linear_normal_wp},
+	{26979, cache_rqmid_26979_guest_linear_normal_wp},
+	{26980, cache_rqmid_26980_guest_linear_normal_uc},
+	{26981, cache_rqmid_26981_guest_linear_normal_uc}, // slow
+	{36877, cache_rqmid_36877_no_fill_cache_mode}, // slow
 	{27030, cache_rqmid_27030_map_to_none_linear},
-	{27065, cache_rqmid_27065_invalidation_exception_003},
+	{27065, cache_rqmid_27065_invalidation_exception_003}, // the following cases are exceptions
 	{27066, cache_rqmid_27066_invalidation_exception_004},
 	{27070, cache_rqmid_27070_invd_exception_003},
 	{27071, cache_rqmid_27071_invd_exception_004},
@@ -2648,12 +2640,29 @@ static struct case_fun_index cache_control_cases[] = {
 	{27075, cache_rqmid_27075_clflush_exception_003},
 	{27084, cache_rqmid_27084_clflushopt_exception_001},
 	{27085, cache_rqmid_27085_clflushopt_exception_002},
-	{25314, cache_rqmid_25314_clflush},
-	{25472, cache_rqmid_25472_clflushopt},
-	{26891, cache_rqmid_26891_invalidation},
+#if 0
+	{27018, cache_rqmid_27018_map_to_device_linear_wb},
+	{27019, cache_rqmid_27019_map_to_device_linear_wb},
+	{27020, cache_rqmid_27020_map_to_device_linear_wc},
+	{27021, cache_rqmid_27021_map_to_device_linear_wc},
+	{27022, cache_rqmid_27022_map_to_device_linear_wt},
+	{27023, cache_rqmid_27023_map_to_device_linear_wt},
+	{27024, cache_rqmid_27024_map_to_device_linear_wp},
+	{27026, cache_rqmid_27026_map_to_device_linear_wp},
+	{27027, cache_rqmid_27027_map_to_device_linear_uc},
+	{27028, cache_rqmid_27028_map_to_device_linear_uc},
+	{36875, cache_rqmid_36875_empty_mapped_guest_linear_normal},
+	{28100, cache_rqmid_28100_wt_wp_shall_be_the_same},
+#endif
 };
 #else
 static struct case_fun_index cache_control_cases[] = {
+	{26912, cache_rqmid_26912_invalidation_003},
+	{29878, cache_rqmid_29878_clflush_003},
+	{29879, cache_rqmid_29879_clflushopt_003},
+	{25314, cache_rqmid_25314_clflush},
+	{25472, cache_rqmid_25472_clflushopt},
+	{26891, cache_rqmid_26891_invalidation},
 	{26972, cache_rqmid_26972_guest_linear_normal_wb},
 	{26973, cache_rqmid_26973_guest_linear_normal_wb},
 	{26974, cache_rqmid_26974_guest_linear_normal_wc},
@@ -2667,12 +2676,6 @@ static struct case_fun_index cache_control_cases[] = {
 	{27027, cache_rqmid_27027_map_to_device_linear_uc},
 	{27028, cache_rqmid_27028_map_to_device_linear_uc},
 	{36877, cache_rqmid_36877_no_fill_cache_mode},
-	{26912, cache_rqmid_26912_invalidation_003},
-	{29878, cache_rqmid_29878_clflush_003},
-	{29879, cache_rqmid_29879_clflushopt_003},
-	{25314, cache_rqmid_25314_clflush},
-	{25472, cache_rqmid_25472_clflushopt},
-	{26891, cache_rqmid_26891_invalidation},
 };
 #endif
 

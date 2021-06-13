@@ -295,3 +295,48 @@ paging_rqmid_40363_protection_keys_not_support_hysical_platform_constraint_AC_00
 	report("%s", 0 == ((cpuid(CPUID_LEAF_SEFFE).c >> CPUID_FEATURE_SEFFE_PKU) & 1), __func__);
 }
 
+/**
+ * @brief case name:CPUID.80000008H:EAX[7:0]_001
+ *
+ * Summary: Execute CPUID.80000008H:EAX[7:0] to get the physical-address width
+ *		supported by the processor, it shall be 39.
+ */
+static void paging_rqmid_23895_check_physical_address_width()
+{
+	bool is_pass = false;
+
+	if ((cpuid(0x80000008).a & 0xff) == PHYSICAL_ADDRESS_WIDTH) {
+		is_pass = true;
+	}
+
+	report("paging_rqmid_23895_check_physical_address_width", is_pass);
+}
+
+static void paging_rqmid_32347_4level_4K_page_support()
+{
+	volatile u8 *gva = malloc(PAGE_SIZE);
+	volatile u8 *gpa;
+	pgd_t *pgd = (pgd_t *)read_cr3();
+	u32 pte = *get_pte(pgd, (void *)gva);
+	u32 i;
+
+	assert(gva);
+	assert_msg(((pte>>7)&1) == 0, "pte: %#x", pte);
+
+	for (i = 0; i < PAGE_SIZE; i++) {
+		gpa = (volatile u8 *)(uintptr_t)virt_to_pte_phys(pgd, (void *)(gva + i));
+		*gpa = i & 0xff;
+	}
+
+	for (i = 0; i < PAGE_SIZE; i++) {
+		u8 got = gva[i];
+		if (got != (i & 0xff)) {
+			printf("%d: %x != %x\n", i, got, i & 0xff);
+			break;
+		}
+	}
+
+	report("%s", (i == PAGE_SIZE), __func__);
+
+	free((void *)gva);
+}

@@ -511,3 +511,10 @@
 	.name = "4-level paging 1G page support",
 	.fn = paging_rqmid_32349_4level_1G_page_support
 },
+
+{
+	.suit_id = 613,
+	.case_id = 35133,
+	.name = "Page Size Extension support on physical platform",
+	.fn = paging_rqmid_35133_page_size_extension_support_constraint_AC_001
+},

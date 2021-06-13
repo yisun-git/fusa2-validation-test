@@ -73,7 +73,7 @@ class LogParser(object):
         self.test_times = test_times
         self.data = []
         self.str_enums = {}
-        self.data_pattern = re.compile(r'\[.+\] line=\d+ (\d+)')
+        self.data_pattern = re.compile(r'\[.+\] line=\d+ (-*\d+)')
         self.average_pattern = re.compile(r'native (.+) average is (\d+)')
         utils.fread_lines(self.map_file, LogParser.add_str_enum, self)
 
@@ -146,7 +146,7 @@ class LogParser(object):
             #[CACHE_L1_READ_UC] = {433796UL, 23647UL},
             self.outfile.write('\t[%s] = {%dUL, %dUL},\n' % (enum, average, stdev))
         else:
-            logging.warning('the average(%s) of %s is wrong.', average, enum)
+            logging.warning('the average(%s) of %s does not equal the calculated one(%d).', average, enum, avg)
 
 #################################################################################
 

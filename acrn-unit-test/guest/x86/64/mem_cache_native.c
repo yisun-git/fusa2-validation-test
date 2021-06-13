@@ -7,6 +7,20 @@ int pci_mem_get(void *pci_mem_address);
 
 static long target;
 
+bool check_benchmark_in_native(enum cache_size_type type, u64 average)
+{
+	bool ret = true;
+	u64 ave = cache_bench[type].ave;
+	u64 std = cache_bench[type].std;
+
+	if ((average < (ave - STD_FACTOR * std))
+		|| (average > (ave + STD_FACTOR * std))) {
+		ret = false;
+	}
+
+	return ret;
+}
+
 void wrmsr_p(void *data)
 {
 	struct msr_data *wp = data;
@@ -1328,7 +1342,8 @@ void cache_rqmid_27487_native_clflushopt(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 
-	printf("native clflushopt dis read average is %ld\r\n", tsc_delay_delta_total);
+	bool result = check_benchmark_in_native(CACHE_CLFLUSHOPT_DIS_READ, tsc_delay_delta_total);
+	report("%s", result, __func__);
 }
 
 /**
@@ -1361,7 +1376,8 @@ void cache_rqmid_27488_native_invalidation(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 
-	printf("native wbinvd dis read average is %ld\r\n", tsc_delay_delta_total);
+	bool result = check_benchmark_in_native(CACHE_WBINVD_DIS_READ, tsc_delay_delta_total);
+	report("%s", result, __func__);
 }
 
 /**
@@ -1396,7 +1412,8 @@ void cache_rqmid_27489_native_clflush(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 
-	printf("native clflush dis read average is %ld\r\n", tsc_delay_delta_total);
+	bool result = check_benchmark_in_native(CACHE_CLFLUSH_DIS_READ, tsc_delay_delta_total);
+	report("%s", result, __func__);
 }
 
 /**
@@ -2690,6 +2707,77 @@ void cache_rqmid_28747_native_pat_uc(void)
 	set_mem_cache_type_all(ia32_pat_tmp);
 }
 
+/**
+ * @brief case name:Memory type WT and WP shall be the same_001
+ *
+ * Summary: The physical platform shall guarantee that caching and read/write policy of normal cache mode
+ * with effective memory type being WP is the same as the policy with effective memory type being WT.
+ * 1. WT should in WP benchmark data interval (average-3 *stdev, average+3*stdev),
+ *	  WP benchmark data (average, stdev ) get from native, refer Memory type test on native
+ * 2. WP should in WT benchmark data interval (average-3 *stdev, average+3*stdev),
+ *	  WT benchmark data (average, stdev ) get from native, refer Memory type test on native
+ */
+void cache_rqmid_28100_wt_wp_shall_be_the_same(void)
+{
+	bool ret1 = true;
+	bool ret2 = true;
+	bool ret3 = true;
+	bool ret4 = true;
+	bool retwt = true;
+	bool retwp = true;
+
+	/*Set memory type to WT*/
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK2);
+
+	/*Cache size L1*/
+	ret1 = cache_order_read_test(CACHE_L1_READ_WP, cache_l1_size);
+
+	/*Cache size L2*/
+	ret2 = cache_order_read_test(CACHE_L2_READ_WP, cache_l2_size);
+
+	/*Cache size L3*/
+	ret3 = cache_order_read_test(CACHE_L3_READ_WP, cache_l3_size);
+
+	/*Cache size over L3*/
+	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WP, cache_over_l3_size);
+	if ((ret1 != true) || (ret2 != true) || (ret3 != true) || (ret4 != true)) {
+		retwt = false;
+	}
+
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK1);
+
+	/*Cache size L1*/
+	ret1 = cache_order_read_test(CACHE_L1_READ_WT, cache_l1_size);
+
+	/*Cache size L2*/
+	ret2 = cache_order_read_test(CACHE_L2_READ_WT, cache_l2_size);
+
+	/*Cache size L3*/
+	ret3 = cache_order_read_test(CACHE_L3_READ_WT, cache_l3_size);
+
+	/*Cache size over L3*/
+	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WT, cache_over_l3_size);
+	if ((ret1 != true) || (ret2 != true) || (ret3 != true) || (ret4 != true)) {
+		retwt = false;
+	}
+
+	report("%s\n", (retwt == true) && (retwp == true), __FUNCTION__);
+}
+
+/**
+ * @brief case name: CLWB_instruction_001
+ *
+ * Summary: ACRN hypervisor shall hide CLWB instruction from any VM.
+ */
+void cache_rqmid_36871_clwb_instruction(void)
+{
+	struct cpuid id = cpuid_indexed(0x07, 0);
+	u32 ebx = id.b & (1 << 24);
+	long target;
+	bool ret = test_for_exception(UD_VECTOR, asm_clwb, &target);
+	report("%s, Hide CLWB instruction from any VM.\n", (ebx == 0x0) && ret, __FUNCTION__);
+}
+
 struct case_fun_index cache_control_native_cases[] = {
 	{24443, cache_rqmid_24443_native_cache_parameters_in_cpuid02},
 	{24445, cache_rqmid_24445_native_PREFETCHW_native},
@@ -2736,14 +2824,14 @@ struct case_fun_index cache_control_native_cases[] = {
 	{26992, cache_rqmid_26992_native_l1_wb},
 	{27027, cache_rqmid_27027_native_map_to_device_linear_uc},
 	{27028, cache_rqmid_27028_native_map_to_device_linear_uc},
-	{27487, cache_rqmid_27487_native_clflushopt},   //clflushopt disorder
-	{27488, cache_rqmid_27488_native_invalidation}, //invalidation disorder
-	{27489, cache_rqmid_27489_native_clflush},      //clflush disorder
 	{28742, cache_rqmid_28742_native_pat_uc},
 	{28744, cache_rqmid_28744_native_pat_uc},
 	{28746, cache_rqmid_28746_native_pat_wb},
 	{28747, cache_rqmid_28747_native_pat_uc},
 #endif
+	{27487, cache_rqmid_27487_native_clflushopt},     //clflushopt disorder
+	{27488, cache_rqmid_27488_native_invalidation}, //invalidation disorder
+	{27489, cache_rqmid_27489_native_clflush},            //clflush disorder
 	{27965, cache_rqmid_27965_native_has_l1d_cache},
 	{27968, cache_rqmid_27968_native_l3_cache_indexing},
 	{27970, cache_rqmid_27970_native_l1i_cache_number_of_sets},
@@ -2789,6 +2877,8 @@ struct case_fun_index cache_control_native_cases[] = {
 	{28095, cache_rqmid_28095_native_deterministic_cache_parameters},
 	{28096, cache_rqmid_28096_native_deterministic_cache_parameters},
 	{28097, cache_rqmid_28097_native_clflush_clflushopt_line_size},
+	{28100, cache_rqmid_28100_wt_wp_shall_be_the_same},
+	{36871, cache_rqmid_36871_clwb_instruction},
 };
 
 static void print_cache_control_native_case_list_64()

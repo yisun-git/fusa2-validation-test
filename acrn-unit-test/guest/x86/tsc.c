@@ -234,11 +234,17 @@ void read_bp_startup(void)
  * Ch17.17 vol3 SDM
  *
  */
- #define EXPnomTSCFreq 0x16C2154
+#ifdef IN_NATIVE
+#define EXPnomTSCFreq 0x0
+#else
+#define EXPnomTSCFreq 0x16C2154
+#endif
 static void tsc_rqmid_24416_nom_crystal_clock_freq(void)
 {
 	u32 nomFreq = cpuid(0x15).c;
-
+	if (nomFreq != EXPnomTSCFreq) {
+		printf("The expected value: 0x%x, the actual value: 0x%x\n", EXPnomTSCFreq, nomFreq);
+	}
 	report("\t\t%s", nomFreq == EXPnomTSCFreq, __FUNCTION__);
 }
 
