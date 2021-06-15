@@ -52,8 +52,13 @@ modifylds:
 	$(SRCDIR)/scripts/modify_lds.sh $(START_A)
 
 %.elf: modifylds %_prelink.o $(FLATLIBS) $(SRCDIR)/x86/flat.lds $(cstart.o)
+ifneq ($(FILE_NAME), hsi_16_64_cpumode)
 	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/flat.lds \
 		$(filter %.o, $^) $(FLATLIBS)
+else
+	$(CC) $(CFLAGS) -nostdlib -o $@ -Wl,-T,$(SRCDIR)/x86/flat_hsi.lds \
+		$(filter %.o, $^) $(FLATLIBS)
+endif
 	@chmod a-x $@
 
 %.flat: %.elf
