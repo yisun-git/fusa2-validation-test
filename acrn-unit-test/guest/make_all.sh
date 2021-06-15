@@ -227,5 +227,4 @@ cp x86/obj/*  x86/
 
 echo "final make result for all images:"
 echo $RESULT
-
 exit $RESULT
