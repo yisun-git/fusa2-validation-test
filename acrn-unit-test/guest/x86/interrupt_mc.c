@@ -242,10 +242,8 @@ static int check_rflags()
  * the saved contents of EIP registers point to the instruction that generated the exception,
  * and EFLAGS.TF, EFLAGS.VM, EFLAGS.RF, EFLAGS.NT is cleared after EFLAGS is saved on the stack
  */
-static void interrupt_rqmid_40025_expose_exception_mc_001(void)
+__unused static void interrupt_rqmid_40025_expose_exception_mc_001(void)
 {
-	report("%s() -- unhandled #GP", false, __func__); // crash
-	return;
 	int check = 0;
 	u64 dump_func_size = 0;
 	u64 tmp_rip;
@@ -321,13 +319,13 @@ static void interrupt_rqmid_40025_expose_exception_mc_001(void)
 }
 
 
-static void print_case_list(void)
+__unused static void print_case_list(void)
 {
 	printf("Case ID:%d case name:%s\n\r", 40025,
 		"Expose exception and interrupt handling_MC_001");
 }
 
-static void test_interrupt(void)
+__unused static void test_interrupt(void)
 {
 	interrupt_rqmid_40025_expose_exception_mc_001();
 }
@@ -335,7 +333,12 @@ static void test_interrupt(void)
 void ap_main(void)
 {
 	/* Enable CR4.MCE for AP*/
-	write_cr4(read_cr4() | X86_CR4_MCE);
+	/* write_cr4(read_cr4() | X86_CR4_MCE); */
+	while (1)
+	{
+		asm volatile("pause");
+	}
+
 }
 
 int main(void)
@@ -344,9 +347,15 @@ int main(void)
 	setup_ring_env();
 	setup_idt();
 
+#ifdef IN_SAFETY_VM
 	print_case_list();
 
 	test_interrupt();
 
 	return report_summary();
+#elif IN_NON_SAFETY_VM
+	while (1) {
+		asm volatile("pause");
+	}
+#endif
 }
