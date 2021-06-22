@@ -27,6 +27,7 @@ endif
 
 FILE_NAME_GP = $(shell echo $(FILE_NAME) | grep "general_purpose")
 FILE_NAME_PAGING = $(shell echo $(FILE_NAME) | grep "paging")
+FILE_NAME_TSC =  $(shell echo $(FILE_NAME) | grep "tsc")
 
 ifeq ($(VM), safety)
     export ENTRY_OFFSET = 0x100000
@@ -74,6 +75,10 @@ endif
 
 ifneq ($(FILE_NAME_PAGING), )
 	CFLAGS += -DIN_PAGING_TEST
+endif
+
+ifneq ($(FILE_NAME_TSC), )
+	CFLAGS += -DIN_TSC_TEST
 endif
 
 libgcc := $(shell $(CC) --print-libgcc-file-name)
