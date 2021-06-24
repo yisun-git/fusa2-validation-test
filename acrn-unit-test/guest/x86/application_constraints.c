@@ -756,6 +756,7 @@ uint16_t lapic_num = 0;
 uint16_t ioapic_num = 0;
 uint32_t bp_apicid = 0xff;
 extern uint8_t stext;
+extern uint8_t edata;
 #define MULTIBOOT_STARTUP_EIP_ADDR	(0x6004)
 
 #ifdef IN_NATIVE
@@ -945,14 +946,13 @@ static void applicaton_constraints_rqmid_46562_check_mods_in_multiboot_01(void)
 {
 	uint32_t ret;
 
-	/*Because of the image is 16 byte alignment, we need to add 8 bytes here*/
-	uint32_t start = (uint32_t)(uint64_t)&stext + 0x8;
+	uint32_t start = (uint32_t)(uint64_t)&stext;
+	uint32_t end_addr = (uint32_t)(uint64_t)&edata;
 
 	/* 0xc is the length of multiboot header */
-	if ((mi_mods_count == 2)
-		&& (mi_mods[0].mm_mod_start >= 0x100000)
-		&& (mi_mods[1].mm_mod_start > mi_mods[0].mm_mod_end)
-		&& (start > mi_mods[1].mm_mod_end)) {
+	if ((mi_mods_count == 2) && (start > 0x100000)
+		&& (mi_mods[0].mm_mod_start >= end_addr)
+		&& (mi_mods[1].mm_mod_start >= mi_mods[0].mm_mod_end)) {
 		ret = true;
 	} else {
 		ret = false;
