@@ -86,7 +86,7 @@ static void lds_p(void *data)
 	);
 }
 
-static void gs_normal_test(void)
+__unused static void gs_normal_test(void)
 {
 	struct lseg_st64 seg;
 	uint64_t val = 0;
@@ -121,8 +121,6 @@ static void gs_normal_test(void)
  */
 static void segmentation_rqmid_35235_lds_ud_table1_01()
 {
-	gs_normal_test();
-
 	bool ret1 = test_for_exception(UD_VECTOR, lds_p, NULL);
 
 	report("\t\t %s", (ret1 == true), __FUNCTION__);
