@@ -728,6 +728,7 @@ void wr_cr0(void *data)
  */
 void cache_rqmid_36874_invalid_cache_mode(void)
 {
+	need_full_reflush = false;
 	u32 cr0 = read_cr0();
 	bool ret = false;
 
@@ -959,6 +960,7 @@ void cache_rqmid_36877_no_fill_cache_mode(void)
 #undef SUB_REPORT
 }
 
+#if defined(IN_NON_SAFETY_VM) || defined(DUMP_CACHE_NATIVE_DATA)
 /**
  * @brief case name:Cache control access to device-mapped guest linear addresses in normal cache mode_WB_001
  *
@@ -997,11 +999,11 @@ void cache_rqmid_27018_map_to_device_linear_wb(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK0, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
+		ret = cache_order_read_check(CACHE_DEVICE_4K_READ, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s read test\n", (ret == true), __FUNCTION__);
+	report("%s read test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1043,11 +1045,11 @@ void cache_rqmid_27019_map_to_device_linear_wb(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK0, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		ret = cache_order_write_check(CACHE_DEVICE_4K_WRITE, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s write test\n", (ret == true), __FUNCTION__);
+	report("%s write test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1088,11 +1090,11 @@ void cache_rqmid_27020_map_to_device_linear_wc(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK3, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
+		ret = cache_order_read_check(CACHE_DEVICE_4K_READ, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s read test\n", (ret == true), __FUNCTION__);
+	report("%s read test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1134,11 +1136,11 @@ void cache_rqmid_27021_map_to_device_linear_wc(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK3, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		ret = cache_order_write_check(CACHE_DEVICE_4K_WRITE, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s write test\n", (ret == true), __FUNCTION__);
+	report("%s write test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1179,11 +1181,11 @@ void cache_rqmid_27022_map_to_device_linear_wt(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK2, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
+		ret = cache_order_read_check(CACHE_DEVICE_4K_READ, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s read test\n", (ret == true), __FUNCTION__);
+	report("%s read test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1225,11 +1227,11 @@ void cache_rqmid_27023_map_to_device_linear_wt(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK2, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		ret = cache_order_write_check(CACHE_DEVICE_4K_WRITE, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s write test\n", (ret == true), __FUNCTION__);
+	report("%s write test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1270,11 +1272,11 @@ void cache_rqmid_27024_map_to_device_linear_wp(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK1, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
+		ret = cache_order_read_check(CACHE_DEVICE_4K_READ, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s read test\n", (ret == true), __FUNCTION__);
+	report("%s read test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1316,11 +1318,11 @@ void cache_rqmid_27026_map_to_device_linear_wp(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK1, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		ret = cache_order_write_check(CACHE_DEVICE_4K_WRITE, cache_4k_size, true);
 	}
 
 	cache_test_array = tmp;
-	report("%s write test\n", (ret == true), __FUNCTION__);
+	report("%s write test", (ret == true), __FUNCTION__);
 }
 
 /**
@@ -1346,6 +1348,8 @@ void cache_rqmid_27027_map_to_device_linear_uc(void)
 	u64 *tmp = cache_test_array;
 	int r;
 
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
+
 	r = pci_mem_get((void *)&cache_test_array);
 	if (r != 0) {
 		cache_test_array = tmp;
@@ -1361,12 +1365,12 @@ void cache_rqmid_27027_map_to_device_linear_uc(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK4, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
+		ret = cache_order_read_check(CACHE_DEVICE_4K_READ, cache_4k_size, true);
 		DUMP_CACHE_DATA("DEVICE 4K READ");
 	}
 
 	cache_test_array = tmp;
-	report("%s read test\n", (ret == true), __FUNCTION__);
+	report("%s read test", ret, __FUNCTION__);
 }
 
 /**
@@ -1392,6 +1396,8 @@ void cache_rqmid_27028_map_to_device_linear_uc(void)
 	u64 *tmp = cache_test_array;
 	int r;
 
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
+
 	r = pci_mem_get((void *)&cache_test_array);
 	if (r != 0) {
 		cache_test_array = tmp;
@@ -1408,14 +1414,14 @@ void cache_rqmid_27028_map_to_device_linear_uc(void)
 		set_memory_type_pt(cache_test_array, PT_MEMORY_TYPE_MASK4, 4096);
 
 		/*Cache size 4k*/
-		ret = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
+		ret = cache_order_write_check(CACHE_DEVICE_4K_WRITE, cache_4k_size, true);
 		DUMP_CACHE_DATA("DEVICE 4K WRITE");
 	}
 
 	cache_test_array = tmp;
-	report("%s write test\n", (ret == true), __FUNCTION__);
+	report("%s write test", ret, __FUNCTION__);
 }
-
+#endif
 
 #if 0
 /**
@@ -1589,7 +1595,7 @@ void cache_rqmid_36875_empty_mapped_guest_linear_normal(void)
 		(ret4 == true), __FUNCTION__);
 }
 
-#if 0
+
 void cache_disable_paging()
 {
 	write_cr0_bybit(X86_CR0_PG, 0);
@@ -1607,7 +1613,14 @@ void cache_enable_paging()
 	asm_wbinvd();
 	flush_tlb();
 }
-#endif
+
+bool set_cr0_cd_nw(void)
+{
+	write_cr0_bybit(CR0_BIT_CD, 0);
+	write_cr0_bybit(CR0_BIT_NW, 0);
+	u32 cr0 = read_cr0();
+	return ((cr0 & (1 << CR0_BIT_CD)) == 0) && ((cr0 & (1 << CR0_BIT_NW)) == 0);
+}
 
 /**
  * @brief cache_rqmid_36873_memory_mapped_guest_physical_normal
@@ -1624,33 +1637,72 @@ void cache_rqmid_36873_memory_mapped_guest_physical_normal(void)
 	bool ret2 = true;
 	bool ret3 = true;
 	bool ret4 = true;
-	u32 cr0;
 
-	write_cr0_bybit(CR0_BIT_CD, 0);
-	write_cr0_bybit(CR0_BIT_NW, 0);
-	cr0 = read_cr0();
-	report("%s CR0 cd and nw bit shoud not be set.\n",
-		~(cr0 & CR0_BIT_CD) && ~(cr0 & CR0_BIT_CD),  __FUNCTION__);
+	cache_disable_paging();
+
+	if (!set_cr0_cd_nw()) {
+		report("%s CR0 cd and nw bit shoud not be set.\n",  false, __func__);
+		return;
+	}
 
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK0);
 
-	ret1 = cache_order_read_test(CACHE_L1_READ_WB, cache_l1_size);
-	ret2 = cache_order_read_test(CACHE_L2_READ_WB, cache_l2_size);
-	ret3 = cache_order_read_test(CACHE_L3_READ_WB, cache_l3_size);
-	ret4 = cache_order_read_test(CACHE_OVER_L3_READ_WB, cache_over_l3_size);
+	ret1 = cache_order_read_check(CACHE_L1_READ_WB_NP, cache_l1_size, true);
+	DUMP_CACHE_DATA("L1 WB READ NOPAGE");
+	if (!ret1) {
+		printf("order read l1 failed\n");
+	}
 
-	report("%s READ Test.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	ret2 = cache_order_read_check(CACHE_L2_READ_WB_NP, cache_l2_size, true);
+	DUMP_CACHE_DATA("L2 WB READ NOPAGE");
+	if (!ret2) {
+		printf("order read l2 failed\n");
+	}
 
-	ret1 = cache_order_write_test(CACHE_L1_WRITE_WB, cache_l1_size);
-	ret2 = cache_order_write_test(CACHE_L2_WRITE_WB, cache_l2_size);
-	ret3 = cache_order_write_test(CACHE_L3_WRITE_WB, cache_l3_size);
-	ret4 = cache_order_write_test(CACHE_OVER_L3_WRITE_WB, cache_over_l3_size);
+	ret3 = cache_order_read_check(CACHE_L3_READ_WB_NP, cache_l3_size, true);
+	DUMP_CACHE_DATA("L3 WB READ NOPAGE");
+	if (!ret3) {
+		printf("order read l3 failed\n");
+	}
 
-	report("%s Write test.\n",
-		(ret1 == true) && (ret2 == true) && (ret3 == true) &&
-		(ret4 == true), __FUNCTION__);
+	ret4 = cache_order_read_check(CACHE_OVER_L3_READ_WB_NP, cache_over_l3_size, true);
+	DUMP_CACHE_DATA("OVER L3 WB READ NOPAGE");
+	if (!ret4) {
+		printf("order read over l3 failed\n");
+	}
+
+	if (!(ret1 && ret2 && ret3 && ret4)) {
+		report("%s READ Test.\n",  false, __func__);
+		return;
+	}
+
+	ret1 = cache_order_write_check(CACHE_L1_WRITE_WB_NP, cache_l1_size, true);
+	DUMP_CACHE_DATA("L1 WB WRITE NOPAGE");
+	if (!ret1) {
+		printf("order write l1 failed\n");
+	}
+
+	ret2 = cache_order_write_check(CACHE_L2_WRITE_WB_NP, cache_l2_size, true);
+	DUMP_CACHE_DATA("L2 WB WRITE NOPAGE");
+	if (!ret2) {
+		printf("order write l2 failed\n");
+	}
+
+	ret3 = cache_order_write_check(CACHE_L3_WRITE_WB_NP, cache_l3_size, true);
+	DUMP_CACHE_DATA("L3 WB WRITE NOPAGE");
+	if (!ret3) {
+		printf("order write l3 failed\n");
+	}
+
+	ret4 = cache_order_write_check(CACHE_OVER_L3_WRITE_WB_NP, cache_over_l3_size, true);
+	DUMP_CACHE_DATA("OVER L3 WB WRITE NOPAGE");
+	if (!ret4) {
+		printf("order write over l3 failed\n");
+	}
+
+	report("%s Write test.\n", (ret1 && ret2 && ret3 && ret4), __func__);
+
+	cache_enable_paging();
 }
 
 /**
@@ -1667,31 +1719,36 @@ void cache_rqmid_36876_device_mapped_guest_physical_normal(void)
 	bool ret1 = true;
 	bool ret2 = true;
 	u64 *tmp = cache_test_array;
-	int r;
-	u32 cr0;
 
-	write_cr0_bybit(CR0_BIT_CD, 0);
-	write_cr0_bybit(CR0_BIT_NW, 0);
-	cr0 = read_cr0();
-	report("%s CR0 cd and nw bit shoud not be set.\n",
-		~(cr0 & CR0_BIT_CD) && ~(cr0 & CR0_BIT_CD), __FUNCTION__);
+	cache_disable_paging();
 
-	r = pci_mem_get((void *)&cache_test_array);
-	if (r != 0) {
-		cache_test_array = tmp;
-		report("%s can't get pci mem address\n", 0, __FUNCTION__);
+	if (!set_cr0_cd_nw()) {
+		report("%s CR0 cd and nw bit shoud not be set.\n",  false, __func__);
 		return;
 	}
-	else {
-		// cache_test_array += 601;	/* 601*8=0x3008*/
 
-		/*Cache size 4k*/
-		ret1 = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
-		ret2 = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
-		report("%s device mapped physical \n", (ret1 == true) && (ret2 == true),
-			__FUNCTION__);
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
+
+	if (pci_mem_get((void *)&cache_test_array) != OK) {
+		cache_test_array = tmp;
+		report("%s can't get pci mem address\n", 0, __func__);
+		return;
 	}
 
+	/*Cache size 4k*/
+	ret1 = cache_order_read_check(CACHE_DEVICE_4K_READ, cache_4k_size, true);
+	if (!ret1) {
+		printf("order read failed\n");
+	}
+
+	ret2 = cache_order_write_check(CACHE_DEVICE_4K_WRITE, cache_4k_size, true);
+	if (!ret2) {
+		printf("order write failed\n");
+	}
+
+	report("%s device mapped physical \n", (ret1 && ret2), __func__);
+
+	cache_enable_paging();
 	cache_test_array = tmp;
 }
 
@@ -1706,27 +1763,40 @@ void cache_rqmid_36876_device_mapped_guest_physical_normal(void)
  */
 void cache_rqmid_36886_empty_mapped_guest_physical_normal(void)
 {
-	bool ret1 = true;
-	bool ret2 = true;
+	bool ret1 = false;
+	bool ret2 = false;
 	u64 *tmp = cache_test_array;
-	u32 cr0;
 
-	cache_test_array = (u64 *) (1ul << 36);
+	//empty-mapped memory is out of physical memory
+	cache_test_array = (u64 *)0x0000123456780000;
 
-	write_cr0_bybit(CR0_BIT_CD, 0);
-	write_cr0_bybit(CR0_BIT_NW, 0);
-	cr0 = read_cr0();
-	report("%s CR0 cd and nw bit shoud not be set.\n",
-		~(cr0 & CR0_BIT_CD) && ~(cr0 & CR0_BIT_CD), __FUNCTION__);
+	cache_disable_paging();
 
-	// cache_test_array += 601;	/* 601*8=0x3008*/
+	if (!set_cr0_cd_nw()) {
+		report("%s CR0 cd and nw bit shoud not be set.\n",  false, __func__);
+		return;
+	}
+
+	// goto end for #PF
+	goto end;
+
+	set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
 
 	/*Cache size 4k*/
-	ret1 = cache_order_read_test(CACHE_DEVICE_4K_READ, cache_4k_size);
-	ret2 = cache_order_write_test(CACHE_DEVICE_4K_WRITE, cache_4k_size);
-	report("%s device mapped physical \n", (ret1 == true) && (ret2 == true),
-		__FUNCTION__);
+	ret1 = cache_order_read_check(CACHE_DEVICE_4K_READ, cache_4k_size, true);
+	if (!ret1) {
+		printf("order read failed\n");
+	}
 
+	ret2 = cache_order_write_check(CACHE_DEVICE_4K_WRITE, cache_4k_size, true);
+	if (!ret2) {
+		printf("order write failed\n");
+	}
+
+end:
+	report("%s device mapped physical \n", (ret1 && ret2), __func__);
+
+	cache_enable_paging();
 	cache_test_array = tmp;
 }
 
@@ -1740,7 +1810,10 @@ void cache_rqmid_27073_clflush_exception(void)
 {
 	bool ret = true;
 
-	read_mem_cache_test_time_invd(cache_l1_size, 1);
+	for (int i = 0; i < cache_l1_size; i++) {
+		asm_read_access_memory(&cache_test_array[i]);
+	}
+
 	ret = test_for_exception(GP_VECTOR, cache_clflush_non_canonical, NULL);
 	report("%s CLFLUSH #GP(0) exception\n", ret == true, __FUNCTION__);
 }
@@ -1909,28 +1982,6 @@ void cache_rqmid_24045_clflush(void)
 	report("%s clflush (%s)", ret, __FUNCTION__, ret ? "present" : "absent");
 }
 
-bool check_benchmark(enum cache_size_type type, u64 average)
-{
-	bool ret = true;
-	u64 ave = cache_bench[type].ave;
-	u64 std = cache_bench[type].std;
-#if 0
-	if ((average < (ave - STD_FACTOR * std))
-		|| (average > (ave + STD_FACTOR * std))) {
-		ret = false;
-	}
-#else
-	(void)std;
-	if ((average < ((ave * (100 - ERROR_RANG)) / 100))
-		|| (average > ((ave * (100 + ERROR_RANG)) / 100))) {
-		ret = false;
-		printf("average=%ld, not in [%ld, %ld]\n", average,
-			((ave * (100 - ERROR_RANG)) / 100), ((ave * (100 + ERROR_RANG)) / 100));
-	}
-#endif
-	return ret;
-}
-
 /**
  * @brief case name:Cache control cache invalidation instructions_003
  *
@@ -1963,7 +2014,7 @@ void cache_rqmid_26912_invalidation_003(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("WBINVD DIS READ");
-	ret = check_benchmark(CACHE_WBINVD_DIS_READ, tsc_delay_delta_total);
+	ret = check_benchmark(CACHE_WBINVD_DIS_READ, tsc_delay_delta_total, cache_l3_size);
 
 	report("%s wbinvd wb disorder test", ret, __FUNCTION__);
 }
@@ -2000,7 +2051,7 @@ void cache_rqmid_29878_clflush_003(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("CLFLUSH DIS READ");
-	ret = check_benchmark(CACHE_CLFLUSH_DIS_READ, tsc_delay_delta_total);
+	ret = check_benchmark(CACHE_CLFLUSH_DIS_READ, tsc_delay_delta_total, cache_l3_size);
 
 	report("%s clflush wb disorder test", ret, __FUNCTION__);
 }
@@ -2037,7 +2088,7 @@ void cache_rqmid_29879_clflushopt_003(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("CLFLUSHOPT DIS READ");
-	ret = check_benchmark(CACHE_CLFLUSHOPT_DIS_READ, tsc_delay_delta_total);
+	ret = check_benchmark(CACHE_CLFLUSHOPT_DIS_READ, tsc_delay_delta_total, cache_l3_size);
 
 	report("%s clflushopt wb disorder test", ret, __FUNCTION__);
 }
@@ -2066,38 +2117,46 @@ void cache_rqmid_29879_clflushopt_003(void)
  */
 void cache_rqmid_27030_map_to_none_linear(void)
 {
-#define test_and_check(type, func, size) \
-	check_benchmark(type, func(type, size))
-
 	int i = 0;
 	bool ret[8] = { false };
 
+	u64 *old = cache_test_array;
+
 	set_mem_cache_type(PT_MEMORY_TYPE_MASK4);
-	cache_setup_mmu_range(phys_to_virt(read_cr3()), 1ul<<36, (1ul << 30)); /*64G-65G  map to none*/
+
+	//empty-mapped memory is out of physical memory
+	cache_test_array = (u64 *)0x0000123456780000;
+	phys_addr_t pa = (phys_addr_t)(1UL << 29);
+	cache_setup_mmu_range(phys_to_virt(read_cr3()), pa, 0x1000);
+
+	// goto end for #PF
+	goto end;
 
 	/*Cache size L1*/
-	ret[0] = cache_order_read_test(CACHE_L1_READ_UC, cache_l1_size);
+	ret[0] = cache_order_read_check(CACHE_L1_READ_UC, cache_l1_size, true);
 
 	/*Cache size L2*/
-	ret[1] = cache_order_read_test(CACHE_L2_READ_UC, cache_l2_size);
+	ret[1] = cache_order_read_check(CACHE_L2_READ_UC, cache_l2_size, true);
 
 	/*Cache size L3*/
-	ret[2] = cache_order_read_test(CACHE_L3_READ_UC, cache_l3_size);
+	ret[2] = cache_order_read_check(CACHE_L3_READ_UC, cache_l3_size, true);
 
 	/*Cache size over L3*/
-	ret[3] = cache_order_read_test(CACHE_OVER_L3_READ_UC, cache_over_l3_size);
+	ret[3] = cache_order_read_check(CACHE_OVER_L3_READ_UC, cache_over_l3_size, true);
 
 	/*Cache size L1*/
-	ret[4] = cache_order_write_test(CACHE_L1_WRITE_UC, cache_l1_size);
+	ret[4] = cache_order_write_check(CACHE_L1_WRITE_UC, cache_l1_size, true);
 
 	/*Cache size L2*/
-	ret[5] = cache_order_write_test(CACHE_L2_WRITE_UC, cache_l2_size);
+	ret[5] = cache_order_write_check(CACHE_L2_WRITE_UC, cache_l2_size, true);
 
 	/*Cache size L3*/
-	ret[6] = cache_order_write_test(CACHE_L3_WRITE_UC, cache_l3_size);
+	ret[6] = cache_order_write_check(CACHE_L3_WRITE_UC, cache_l3_size, true);
 
 	/*Cache size over L3*/
-	ret[7] = cache_order_write_test(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size);
+	ret[7] = cache_order_write_check(CACHE_OVER_L3_WRITE_UC, cache_over_l3_size, true);
+
+	cache_test_array = old;
 
 	for (; i < 8; i++) {
 		if (!ret[i]) {
@@ -2105,6 +2164,8 @@ void cache_rqmid_27030_map_to_none_linear(void)
 			break;
 		}
 	}
+
+end:
 	report("%s()\n", i == 8, __FUNCTION__);
 }
 
@@ -2204,7 +2265,7 @@ void cache_clflush_non_canonical_ss(void *data)
 	set_gdt64_entry(FIRST_SPARE_SEL, non_addr, SEGMENT_LIMIT_ALL,
 		SEGMENT_PRESENT_SET | DESCRIPTOR_TYPE_SYS | DESCRIPTOR_PRIVILEGE_LEVEL_0 |
 		DESCRIPTOR_TYPE_CODE_OR_DATA | SEGMENT_TYPE_CODE_EXE_READ_ACCESSED,
-		GRANULARITY_SET | L_64_BIT_CODE_SEGMENT);
+		GRANULARITY_CLEAR | L_64_BIT_CODE_SEGMENT);
 	lgdt(&old_gdt_desc);
 	write_ss(FIRST_SPARE_SEL);
 	asm volatile("clflush %ss:0x1000000");
@@ -2287,7 +2348,13 @@ void cache_rqmid_24342_system_management_range_register_002(void)
  */
 void cache_rqmid_24192_l1_data_cache_context_mode(void)
 {
-	bool ret = try_read_write_msr(IA32_MISC_ENABLE, 1 << 24);
+	bool ret = true;
+	u32 ecx = cpuid(1).c;
+	printf("ecx = 0x%x\n", ecx);
+	//CPUID.1.ECX.CNXT-ID(bit 10: L1 Context ID).
+	if ((ecx & (1 << 10)) != 0) {
+		ret = try_read_write_msr(IA32_MISC_ENABLE, 1 << 24);
+	}
 	report("%s()", ret, __func__);
 }
 
@@ -2506,7 +2573,7 @@ void cache_rqmid_25314_clflush(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("CLFLUSH READ");
-	bool ret = check_benchmark(CACHE_CLFLUSH_READ, tsc_delay_delta_total);
+	bool ret = check_benchmark(CACHE_CLFLUSH_READ, tsc_delay_delta_total, cache_l3_size);
 	report("%s clflush wb order test", ret, __func__);
 }
 
@@ -2540,7 +2607,7 @@ void cache_rqmid_25472_clflushopt(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("CLFLUSHOPT READ");
-	bool ret = check_benchmark(CACHE_CLFLUSHOPT_READ, tsc_delay_delta_total);
+	bool ret = check_benchmark(CACHE_CLFLUSHOPT_READ, tsc_delay_delta_total, cache_l3_size);
 	report("%s clflushopt wb order test", ret, __func__);
 }
 
@@ -2574,52 +2641,19 @@ void cache_rqmid_26891_invalidation(void)
 	}
 	tsc_delay_delta_total /= CACHE_TEST_TIME_MAX;
 	DUMP_CACHE_DATA("WBINVD READ");
-	bool ret = check_benchmark(CACHE_WBINVD_READ, tsc_delay_delta_total);
+	bool ret = check_benchmark(CACHE_WBINVD_READ, tsc_delay_delta_total, cache_l3_size);
 	report("%s wbinvd wb order test", ret, __func__);
 }
 
 #ifndef DUMP_CACHE_NATIVE_DATA
 static struct case_fun_index cache_control_cases[] = {
-	{27073, cache_rqmid_27073_clflush_exception},
-	{36865, cache_rqmid_36865_mtrr_general_support},
-	{36866, cache_rqmid_36866_mtrr_fixed_range_registers},
-	{36867, cache_rqmid_36867_mtrr_write_combining_memory_type_support},
-	{36868, cache_rqmid_36868_system_management_range_register},
-	{36870, cache_rqmid_36870_l3_cache_control},
-	{36871, cache_rqmid_36871_clwb_instruction},
-	{36856, cache_rqmid_36856_cache_invalidation_instructions},
-	{36857, cache_rqmid_36857_cflushopt_instruction},
-	{36860, cache_rqmid_36860_prefetchw_instruction},
-	{36863, cache_rqmid_36863_pat_controls},
-	{36864, cache_rqmid_36864_guest_clflush_clflushopt_line_size},
-	{36874, cache_rqmid_36874_invalid_cache_mode},
-	{23985, cache_rqmid_23985_invd},
-	{23982, cache_rqmid_23982_cd_nw_control},
-	{24342, cache_rqmid_24342_system_management_range_register_002},
-	{24333, cache_rqmid_24333_mtrr_general_support_002},
-	{24343, cache_rqmid_24343_mtrr_general_support_003},
-	{24344, cache_rqmid_24344_mtrr_general_support_004},
-	{25036, cache_rqmid_25036_mtrr_general_support_005},
-	{24334, cache_rqmid_24334_mtrr_fixed_range_registers_001},
-	{24335, cache_rqmid_24335_mtrr_fixed_range_registers_002},
-	{24336, cache_rqmid_24336_mtrr_fixed_range_registers_003},
-	{24337, cache_rqmid_24337_mtrr_fixed_range_registers_004},
-	{24338, cache_rqmid_24338_mtrr_fixed_range_registers_005},
-	{24192, cache_rqmid_24192_l1_data_cache_context_mode},
-	{24447, cache_rqmid_24447_pat_controls},
-	{24045, cache_rqmid_24045_clflush},
+	//the follow cases are for testing benchmark
 	{26912, cache_rqmid_26912_invalidation_003},
 	{29878, cache_rqmid_29878_clflush_003},
 	{29879, cache_rqmid_29879_clflushopt_003},
 	{25314, cache_rqmid_25314_clflush},
 	{25472, cache_rqmid_25472_clflushopt},
 	{26891, cache_rqmid_26891_invalidation},
-	{23873, cache_rqmid_23873_check_l1_dcache_parameters},
-	{23874, cache_rqmid_23874_check_l1_icache_parameters},
-	{23875, cache_rqmid_23875_check_l2_ucache_parameters},
-	{23876, cache_rqmid_23876_check_l3_ucache_parameters},
-	{23877, cache_rqmid_23877_check_no_cache_parameters},
-	{24189, cache_rqmid_24189_l1_data_cache_context_mode},
 	{26972, cache_rqmid_26972_guest_linear_normal_wb},
 	{26973, cache_rqmid_26973_guest_linear_normal_wb},
 	{26974, cache_rqmid_26974_guest_linear_normal_wc},
@@ -2629,17 +2663,57 @@ static struct case_fun_index cache_control_cases[] = {
 	{26978, cache_rqmid_26978_guest_linear_normal_wp},
 	{26979, cache_rqmid_26979_guest_linear_normal_wp},
 	{26980, cache_rqmid_26980_guest_linear_normal_uc},
+#ifdef IN_NON_SAFETY_VM
+	{27027, cache_rqmid_27027_map_to_device_linear_uc},
+	{27028, cache_rqmid_27028_map_to_device_linear_uc},
+	{36876, cache_rqmid_36876_device_mapped_guest_physical_normal},
+#endif
+	{36873, cache_rqmid_36873_memory_mapped_guest_physical_normal},
 	{26981, cache_rqmid_26981_guest_linear_normal_uc}, // slow
 	{36877, cache_rqmid_36877_no_fill_cache_mode}, // slow
-	{27030, cache_rqmid_27030_map_to_none_linear},
+	//the follow cases are for testing cpuid and exception.
+	{36856, cache_rqmid_36856_cache_invalidation_instructions},
+	{36874, cache_rqmid_36874_invalid_cache_mode},
+	{23873, cache_rqmid_23873_check_l1_dcache_parameters},
+	{23874, cache_rqmid_23874_check_l1_icache_parameters},
+	{23875, cache_rqmid_23875_check_l2_ucache_parameters},
+	{23876, cache_rqmid_23876_check_l3_ucache_parameters},
+	{23877, cache_rqmid_23877_check_no_cache_parameters},
+	{23982, cache_rqmid_23982_cd_nw_control},
+	{23985, cache_rqmid_23985_invd},
+	{24045, cache_rqmid_24045_clflush},
+	{24189, cache_rqmid_24189_l1_data_cache_context_mode},
+	{24192, cache_rqmid_24192_l1_data_cache_context_mode},
+	{24333, cache_rqmid_24333_mtrr_general_support_002},
+	{24334, cache_rqmid_24334_mtrr_fixed_range_registers_001},
+	{24335, cache_rqmid_24335_mtrr_fixed_range_registers_002},
+	{24336, cache_rqmid_24336_mtrr_fixed_range_registers_003},
+	{24337, cache_rqmid_24337_mtrr_fixed_range_registers_004},
+	{24338, cache_rqmid_24338_mtrr_fixed_range_registers_005},
+	{24342, cache_rqmid_24342_system_management_range_register_002},
+	{24343, cache_rqmid_24343_mtrr_general_support_003},
+	{24344, cache_rqmid_24344_mtrr_general_support_004},
+	{24447, cache_rqmid_24447_pat_controls},
+	{25036, cache_rqmid_25036_mtrr_general_support_005},
 	{27065, cache_rqmid_27065_invalidation_exception_003}, // the following cases are exceptions
 	{27066, cache_rqmid_27066_invalidation_exception_004},
 	{27070, cache_rqmid_27070_invd_exception_003},
 	{27071, cache_rqmid_27071_invd_exception_004},
+	{27073, cache_rqmid_27073_clflush_exception},
 	{27074, cache_rqmid_27074_clflush_exception_002},
 	{27075, cache_rqmid_27075_clflush_exception_003},
 	{27084, cache_rqmid_27084_clflushopt_exception_001},
 	{27085, cache_rqmid_27085_clflushopt_exception_002},
+	{36857, cache_rqmid_36857_cflushopt_instruction},
+	{36860, cache_rqmid_36860_prefetchw_instruction},
+	{36863, cache_rqmid_36863_pat_controls},
+	{36864, cache_rqmid_36864_guest_clflush_clflushopt_line_size},
+	{36865, cache_rqmid_36865_mtrr_general_support},
+	{36866, cache_rqmid_36866_mtrr_fixed_range_registers},
+	{36867, cache_rqmid_36867_mtrr_write_combining_memory_type_support},
+	{36868, cache_rqmid_36868_system_management_range_register},
+	{36870, cache_rqmid_36870_l3_cache_control},
+	{36871, cache_rqmid_36871_clwb_instruction},
 #if 0
 	{27018, cache_rqmid_27018_map_to_device_linear_wb},
 	{27019, cache_rqmid_27019_map_to_device_linear_wb},
@@ -2649,8 +2723,6 @@ static struct case_fun_index cache_control_cases[] = {
 	{27023, cache_rqmid_27023_map_to_device_linear_wt},
 	{27024, cache_rqmid_27024_map_to_device_linear_wp},
 	{27026, cache_rqmid_27026_map_to_device_linear_wp},
-	{27027, cache_rqmid_27027_map_to_device_linear_uc},
-	{27028, cache_rqmid_27028_map_to_device_linear_uc},
 	{36875, cache_rqmid_36875_empty_mapped_guest_linear_normal},
 	{28100, cache_rqmid_28100_wt_wp_shall_be_the_same},
 #endif
@@ -2676,6 +2748,7 @@ static struct case_fun_index cache_control_cases[] = {
 	{27027, cache_rqmid_27027_map_to_device_linear_uc},
 	{27028, cache_rqmid_27028_map_to_device_linear_uc},
 	{36877, cache_rqmid_36877_no_fill_cache_mode},
+	{36873, cache_rqmid_36873_memory_mapped_guest_physical_normal},
 };
 #endif
 
@@ -2694,6 +2767,7 @@ static void print_cache_control_case_list_64()
 
 void cache_test_64(long rqmid)
 {
+	setup_ring_env();
 #ifdef DUMP_CACHE_NATIVE_DATA
 	printf("==== Dumping benchmark data ====\n");
 #endif

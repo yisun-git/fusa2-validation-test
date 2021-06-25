@@ -41,7 +41,12 @@
 	.name = "Invalidate Paging Structure Cache when vCPU changes CR4.PAE",
 	.fn = paging_rqmid_37208_changes_cr4_pae_001
 },
-
+{
+	.suit_id = 365,
+	.case_id = 29529,
+	.name = "Invalidate TLB when vCPU changes CR4.PAE",
+	.fn = paging_rqmid_29529_cr4_pae_invalidate_tlb
+},
 {
 	.suit_id = 365,
 	.case_id = 37210,

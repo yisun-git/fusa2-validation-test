@@ -386,6 +386,42 @@ paging_rqmid_37208_changes_cr4_pae_001()
 }
 
 /**
+ * @brief case name:Invalidate TLB When vCPU changes CR4.PAE_001
+ *
+ * Summary: Config 4-level paging structure, then write value to gva1,
+ *          after clear P bit in PTE related with gva1. we still can access gva1
+ *          normally for paging frame information is cached in TLB. After changing CR4.PAE,
+ *          we will get #PF because TLB is invalidated and get PTE directly from memory.
+ */
+static void paging_rqmid_29529_cr4_pae_invalidate_tlb()
+{
+	volatile u8 *gva = (volatile u8 *)(3ul << 30);
+	u8 *gpa = (u8 *)alloc_page();
+	u64 *cr3 = enter_pae();
+
+	// setup mapping
+	install_pae_page(cr3, (phys_addr_t)(uintptr_t)gpa, (u64)(uintptr_t)gva);
+	// reload pdptes
+	write_cr3(virt_to_phys(cr3));
+
+	*gva = WRITE_INITIAL_VALUE;
+	u8 got = *gva;
+	assert_msg(got == WRITE_INITIAL_VALUE, "got %#x != %#x", got, WRITE_INITIAL_VALUE);
+
+	exit_pae();
+
+	asm volatile(ASM_TRY("1f")
+		"mov (%0), %%al\n"
+		"1:"
+		:
+		: "rm" (gva)
+		);
+
+	free_page(gpa);
+	report("%s", exception_vector()	== PF_VECTOR, __func__);
+}
+
+/**
  * @brief case name: Invalidate TLB When vCPU changes CR0.PG_001
  *
  * Summary: Config 4-level paging structure, then write value to GVA,

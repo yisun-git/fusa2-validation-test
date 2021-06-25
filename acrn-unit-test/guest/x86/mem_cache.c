@@ -25,6 +25,7 @@
 #include "pci_util.h"
 #include "delay.h"
 #include "mem_cache.h"
+#include "pci_check.h"
 
 static volatile int cur_case_id = 0;
 static volatile int wait_ap = 0;
@@ -235,6 +236,15 @@ enum cache_size_type {
 	CACHE_L3_WRITE_UC_NOFILL,
 	CACHE_OVER_L3_WRITE_UC_NOFILL,
 
+	CACHE_L1_READ_WB_NP,
+	CACHE_L2_READ_WB_NP,
+	CACHE_L3_READ_WB_NP,
+	CACHE_OVER_L3_READ_WB_NP,
+	CACHE_L1_WRITE_WB_NP,
+	CACHE_L2_WRITE_WB_NP,
+	CACHE_L3_WRITE_WB_NP,
+	CACHE_OVER_L3_WRITE_WB_NP,
+
 	CACHE_SIZE_TYPE_MAX
 };
 
@@ -245,62 +255,70 @@ struct cache_data {
 
 /* The cache_bench is auto-generated, don't modify it. */
 struct cache_data cache_bench[CACHE_SIZE_TYPE_MAX] = {
-	[CACHE_L1_READ_WB] = {2560UL, 15UL},
-	[CACHE_L2_READ_WB] = {19426UL, 28UL},
-	[CACHE_L3_READ_WB] = {675476UL, 833UL},
-	[CACHE_OVER_L3_READ_WB] = {3666292UL, 37846UL},
-	[CACHE_L1_WRITE_WB] = {2557UL, 4UL},
-	[CACHE_L2_WRITE_WB] = {21825UL, 24UL},
-	[CACHE_L3_WRITE_WB] = {771910UL, 41UL},
-	[CACHE_OVER_L3_WRITE_WB] = {5752519UL, 110370UL},
-	[CACHE_L1_READ_WC] = {433170UL, 23392UL},
-	[CACHE_L2_READ_WC] = {3477941UL, 29848UL},
-	[CACHE_L3_READ_WC] = {111316584UL, 31384UL},
-	[CACHE_OVER_L3_READ_WC] = {445268734UL, 41716UL},
-	[CACHE_L1_WRITE_WC] = {4143UL, 5076UL},
-	[CACHE_L2_WRITE_WC] = {30042UL, 10379UL},
-	[CACHE_L3_WRITE_WC] = {932772UL, 10974UL},
-	[CACHE_OVER_L3_WRITE_WC] = {3731429UL, 31028UL},
-	[CACHE_L1_READ_WT] = {2557UL, 8UL},
-	[CACHE_L2_READ_WT] = {19427UL, 26UL},
-	[CACHE_L3_READ_WT] = {674432UL, 714UL},
-	[CACHE_OVER_L3_READ_WT] = {3641870UL, 29937UL},
-	[CACHE_L1_WRITE_WT] = {337424UL, 39UL},
-	[CACHE_L2_WRITE_WT] = {2698110UL, 149UL},
-	[CACHE_L3_WRITE_WT] = {86333631UL, 487UL},
-	[CACHE_OVER_L3_WRITE_WT] = {345333003UL, 1058UL},
-	[CACHE_L1_READ_WP] = {2559UL, 16UL},
-	[CACHE_L2_READ_WP] = {19426UL, 21UL},
-	[CACHE_L3_READ_WP] = {674288UL, 805UL},
-	[CACHE_OVER_L3_READ_WP] = {3643198UL, 30915UL},
-	[CACHE_L1_WRITE_WP] = {337288UL, 98UL},
-	[CACHE_L2_WRITE_WP] = {2698050UL, 143UL},
-	[CACHE_L3_WRITE_WP] = {86333673UL, 562UL},
-	[CACHE_OVER_L3_WRITE_WP] = {345332327UL, 1028UL},
-	[CACHE_L1_READ_UC] = {433123UL, 23184UL},
-	[CACHE_L2_READ_UC] = {3478140UL, 29570UL},
-	[CACHE_L3_READ_UC] = {111316117UL, 26150UL},
-	[CACHE_OVER_L3_READ_UC] = {445265526UL, 45915UL},
-	[CACHE_L1_WRITE_UC] = {337324UL, 106UL},
-	[CACHE_L2_WRITE_UC] = {2698060UL, 127UL},
-	[CACHE_L3_WRITE_UC] = {86333552UL, 428UL},
-	[CACHE_OVER_L3_WRITE_UC] = {345332296UL, 1051UL},
-	[CACHE_DEVICE_4K_READ] = {2137200UL, 1410UL},
-	[CACHE_DEVICE_4K_WRITE] = {1676843UL, 106UL},
-	[CACHE_L1_READ_UC_NOFILL] = {4227973UL, 27216UL},
-	[CACHE_L2_READ_UC_NOFILL] = {33784325UL, 28594UL},
-	[CACHE_L3_READ_UC_NOFILL] = {1082165184UL, 492825UL},
-	[CACHE_OVER_L3_READ_UC_NOFILL] = {4329701862UL, 1756279UL},
-	[CACHE_L1_WRITE_UC_NOFILL] = {4742538UL, 27985UL},
-	[CACHE_L2_WRITE_UC_NOFILL] = {37863646UL, 22167UL},
-	[CACHE_L3_WRITE_UC_NOFILL] = {1214153310UL, 202567UL},
-	[CACHE_OVER_L3_WRITE_UC_NOFILL] = {4860005672UL, 659474UL},
-	[CACHE_WBINVD_DIS_READ] = {7524837UL, 50203UL},
-	[CACHE_CLFLUSH_DIS_READ] = {7574270UL, 59542UL},
-	[CACHE_CLFLUSHOPT_DIS_READ] = {7562634UL, 69426UL},
-	[CACHE_WBINVD_READ] = {304443UL, 1647UL},
-	[CACHE_CLFLUSH_READ] = {350844UL, 1219UL},
-	[CACHE_CLFLUSHOPT_READ] = {350691UL, 1204UL},
+	[CACHE_WBINVD_DIS_READ] = {7021109UL, 42683UL},
+	[CACHE_CLFLUSH_DIS_READ] = {7046514UL, 58359UL},
+	[CACHE_CLFLUSHOPT_DIS_READ] = {7052986UL, 71652UL},
+	[CACHE_CLFLUSH_READ] = {227986UL, 10616UL},
+	[CACHE_CLFLUSHOPT_READ] = {226888UL, 12769UL},
+	[CACHE_WBINVD_READ] = {228336UL, 12064UL},
+	[CACHE_L1_READ_WB] = {2558UL, 13UL},
+	[CACHE_L2_READ_WB] = {19426UL, 27UL},
+	[CACHE_L3_READ_WB] = {674525UL, 721UL},
+	[CACHE_OVER_L3_READ_WB] = {3418355UL, 24450UL},
+	[CACHE_L1_WRITE_WB] = {2558UL, 8UL},
+	[CACHE_L2_WRITE_WB] = {21819UL, 24UL},
+	[CACHE_L3_WRITE_WB] = {771832UL, 43UL},
+	[CACHE_OVER_L3_WRITE_WB] = {3616057UL, 25896UL},
+	[CACHE_L1_READ_WC] = {408570UL, 17620UL},
+	[CACHE_L2_READ_WC] = {3277414UL, 22237UL},
+	[CACHE_L3_READ_WC] = {104875347UL, 19948UL},
+	[CACHE_OVER_L3_READ_WC] = {419505126UL, 28996UL},
+	[CACHE_L1_WRITE_WC] = {2726UL, 5UL},
+	[CACHE_L2_WRITE_WC] = {20454UL, 5446UL},
+	[CACHE_L3_WRITE_WC] = {652779UL, 17215UL},
+	[CACHE_OVER_L3_WRITE_WC] = {2722064UL, 23453UL},
+	[CACHE_L1_READ_WT] = {2559UL, 16UL},
+	[CACHE_L2_READ_WT] = {19429UL, 27UL},
+	[CACHE_L3_READ_WT] = {675452UL, 775UL},
+	[CACHE_OVER_L3_READ_WT] = {3485130UL, 22857UL},
+	[CACHE_L1_WRITE_WT] = {337422UL, 67UL},
+	[CACHE_L2_WRITE_WT] = {2698363UL, 111UL},
+	[CACHE_L3_WRITE_WT] = {86342331UL, 436UL},
+	[CACHE_OVER_L3_WRITE_WT] = {345367105UL, 991UL},
+	[CACHE_L1_READ_WP] = {2560UL, 18UL},
+	[CACHE_L2_READ_WP] = {19427UL, 29UL},
+	[CACHE_L3_READ_WP] = {675192UL, 786UL},
+	[CACHE_OVER_L3_READ_WP] = {3486184UL, 26253UL},
+	[CACHE_L1_WRITE_WP] = {337440UL, 45UL},
+	[CACHE_L2_WRITE_WP] = {2698349UL, 150UL},
+	[CACHE_L3_WRITE_WP] = {86342175UL, 361UL},
+	[CACHE_OVER_L3_WRITE_WP] = {345366985UL, 1187UL},
+	[CACHE_L1_READ_UC] = {408800UL, 17813UL},
+	[CACHE_L2_READ_UC] = {3277531UL, 21723UL},
+	[CACHE_L3_READ_UC] = {104878307UL, 20331UL},
+	[CACHE_OVER_L3_READ_UC] = {419506887UL, 25985UL},
+	[CACHE_L1_WRITE_UC] = {337422UL, 56UL},
+	[CACHE_L2_WRITE_UC] = {2698354UL, 119UL},
+	[CACHE_L3_WRITE_UC] = {86342121UL, 381UL},
+	[CACHE_OVER_L3_WRITE_UC] = {345367236UL, 1073UL},
+	[CACHE_DEVICE_4K_READ] = {2224392UL, 2330UL},
+	[CACHE_DEVICE_4K_WRITE] = {2224275UL, 2215UL},
+	[CACHE_L1_READ_UC_NOFILL] = {4178334UL, 20730UL},
+	[CACHE_L2_READ_UC_NOFILL] = {33387242UL, 26975UL},
+	[CACHE_L3_READ_UC_NOFILL] = {1068675200UL, 504100UL},
+	[CACHE_OVER_L3_READ_UC_NOFILL] = {4276021631UL, 2162691UL},
+	[CACHE_L1_WRITE_UC_NOFILL] = {4689492UL, 22626UL},
+	[CACHE_L2_WRITE_UC_NOFILL] = {37492123UL, 23790UL},
+	[CACHE_L3_WRITE_UC_NOFILL] = {1200644127UL, 361632UL},
+	[CACHE_OVER_L3_WRITE_UC_NOFILL] = {4807286282UL, 1444816UL},
+	[CACHE_L1_READ_WB_NP] = {2561UL, 18UL},
+	[CACHE_L2_READ_WB_NP] = {19427UL, 25UL},
+	[CACHE_L3_READ_WB_NP] = {675315UL, 990UL},
+	[CACHE_OVER_L3_READ_WB_NP] = {3483300UL, 20862UL},
+	[CACHE_L1_WRITE_WB_NP] = {2559UL, 16UL},
+	[CACHE_L2_WRITE_WB_NP] = {19426UL, 28UL},
+	[CACHE_L3_WRITE_WB_NP] = {675485UL, 691UL},
+	[CACHE_OVER_L3_WRITE_WB_NP] = {3485526UL, 19817UL},
 };
 
 struct case_fun_index {
@@ -565,18 +583,24 @@ bool cache_check_memory_type(u64 average, u64 native_aver, u64 native_std, u64 s
 		ret = false;
 	}
 
+	if (ret != true) {
 #ifdef __x86_64__
-	if (ret != true) {
-		printf("read delta =%ld size=0x%lx [%ld, %ld]\n", tsc_delay_delta_total, size,
-			(native_aver*(100-ERROR_RANG))/100, (native_aver*(100+ERROR_RANG))/100);
-	}
-#elif __i386__
-	if (ret != true) {
-		printf("read delta =%lld size=0x%llx [%lld, %lld]\n", tsc_delay_delta_total, size,
-			(native_aver*(100-ERROR_RANG))/100, (native_aver*(100+ERROR_RANG))/100);
-	}
+		printf("delta =%ld(%ld%%) size=0x%lx [%ld, <%ld>, %ld]\n",
+#else
+		printf("delta =%lld(%lld%%)  size=0x%llx [%lld, <%lld>, %lld]\n",
 #endif
+			tsc_delay_delta_total, (tsc_delay_delta_total * 100) / native_aver, size,
+			(native_aver*(100-ERROR_RANG))/100, native_aver, (native_aver*(100+ERROR_RANG))/100);
+	}
+
 	return ret;
+}
+
+bool check_benchmark(enum cache_size_type type, u64 average, u64 size)
+{
+	u64 ave = cache_bench[type].ave;
+	u64 std = cache_bench[type].std;
+	return cache_check_memory_type(average, ave, std, size);
 }
 
 bool cache_order_read_test(enum cache_size_type type, u64 size)
@@ -636,6 +660,22 @@ bool cache_order_write_test(enum cache_size_type type, u64 size)
 	return ret;
 }
 
+bool cache_order_read_check(enum cache_size_type type, u64 size, bool wbinvd)
+{
+	if (wbinvd) {
+		asm_wbinvd();
+	}
+	return check_benchmark(type, cache_order_read(type, size), size);
+}
+
+bool cache_order_write_check(enum cache_size_type type, u64 size, bool wbinvd)
+{
+	if (wbinvd) {
+		asm_wbinvd();
+	}
+	return check_benchmark(type, cache_order_read(type, size), size);
+}
+
 int get_bit_range(u32 r, int start, int end)
 {
 	int mask = 0;
@@ -677,6 +717,7 @@ void clflushopt_all_line(u64 size)
 	}
 }
 
+static bool need_full_reflush = true;
 void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 {
 	int i;
@@ -689,6 +730,9 @@ void cache_fun_exec(struct case_fun_index *case_fun, int size, long rqmid)
 		}
 
 		if (rqmid == 0) {
+			if (need_full_reflush) {
+				mem_cache_reflush_cache();
+			}
 			case_fun[i].func();
 		}
 	}
@@ -707,6 +751,20 @@ void clear_cache()
 }
 
 #ifdef __x86_64__
+static struct pci_dev pci_devs[MAX_PCI_DEV_NUM];
+static u32 nr_pci_devs = MAX_PCI_DEV_NUM;
+bool enum_pci_devs(void)
+{
+	// Enumerate PCI devices to pci_devs
+	pci_pdev_enumerate_dev(pci_devs, &nr_pci_devs);
+	if (nr_pci_devs == 0) {
+		printf("pci_pdev_enumerate_dev finds no devs!");
+		return ERROR;
+	}
+	printf("\nFind PCI devs nr_pci_devs = %d \n", nr_pci_devs);
+	return OK;
+}
+
 /**
  * @brief In 64-bit mode,Select USB device BAR0 as the test object.
  *       Write the value 0xDFFF_0000 to the BAR0 register of USB device.
@@ -723,10 +781,21 @@ void clear_cache()
  */
 int pci_mem_get(void *pci_mem_address)
 {
-	union pci_bdf bdf = {.bits = {.b = 0, .d = 0x14, .f = 0} };
+	union pci_bdf bdf = { 0 };
 	uint32_t bar_base;
 	uint32_t reg_val;
 	int ret = OK;
+
+	if (MAX_PCI_DEV_NUM == nr_pci_devs) {
+		ret = enum_pci_devs();
+		if (ERROR == ret) {
+			return ERROR;
+		}
+	}
+
+	if (!get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf)) {
+		return ERROR;
+	}
 
 	pci_pdev_write_cfg(bdf, PCI_PCIR_BAR(0), 4, BAR_REMAP_USB_BASE);
 
@@ -1008,32 +1077,6 @@ void cache_test_init_startup(long rqmid)
 
 	cache_fun_exec(case_fun, sizeof(case_fun)/sizeof(case_fun[0]), rqmid);
 }
-
-#ifndef IN_NATIVE
-
-void cache_test_no_paging_tests(long rqmid)
-{
-	int i;
-
-	struct case_fun_index case_fun[] = {
-		{36873, cache_rqmid_36873_memory_mapped_guest_physical_normal},
-		{36876, cache_rqmid_36876_device_mapped_guest_physical_normal},
-		{36886, cache_rqmid_36886_empty_mapped_guest_physical_normal},
-	};
-
-	printf("cache 64bit No Paging tests list:\n\r");
-
-	for (i = 0; i < (sizeof(case_fun)/sizeof(case_fun[0])); i++) {
-		printf("Case ID: %d\n", case_fun[i].rqmid);
-	}
-
-	printf("\n");
-
-	cache_fun_exec(case_fun, sizeof(case_fun)/sizeof(case_fun[0]), rqmid);
-}
-
-#endif // IN_NATIVE
-
 #else
 void save_unchanged_reg(void)
 {
@@ -1055,11 +1098,6 @@ int main(int ac, char **av)
 #ifdef __x86_64__
 	setup_idt();
 
-#ifndef IN_NATIVE
-#ifdef NO_PAGING_TESTS
-	cache_test_no_paging_tests(rqmid);
-#endif
-#endif
 	/*default PAT entry value 0007040600070406*/
 	set_mem_cache_type_all(0x0000000001040506);
 	setup_vm();
@@ -1094,6 +1132,7 @@ int main(int ac, char **av)
 
 	free(cache_test_array);
 	cache_test_array = NULL;
+
 	return report_summary();
 
 }

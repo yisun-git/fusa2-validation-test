@@ -2942,7 +2942,7 @@ bool local_apic_rqmid_27651_expose_tsc_deadline_timer_mode_support_001(bool prin
  *  time.
  *
  * when change timer mode ,it should set IA32_TSCDEADLINE MSR to 0H.
- * To change timer mode to one shot mode 
+ * To change timer mode to one shot mode.
  * @param None
  *
  * @retval None
@@ -6005,8 +6005,10 @@ int main(int ac, char **av)
 	local_apic_rqmid_27716_ignore_icr_write_of_level_bit();
 	local_apic_rqmid_27714_ignore_icr_write_of_trigger_mode_bit();
 	local_apic_rqmid_27531_ignore_write_of_eoi_when_isr_is_0h();
+#ifdef IN_SAFETY_VM
 	local_apic_rqmid_39017_ignore_MSI_with_vector_0FFH();
 	local_apic_rqmid_39040_ignore_MSI_while_software_diabled();
+#endif
 	/*strategy---------475: Local APIC Inject #GP(0)-----------------------*/
 	local_apic_rqmid_27600_read_only_ppr();
 	local_apic_rqmid_27593_read_only_apic_base();
