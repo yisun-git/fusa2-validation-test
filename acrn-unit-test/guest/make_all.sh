@@ -184,7 +184,7 @@ do
         fi
 done
 
-./make_qemu.sh;
+./make_qemu_safety.sh machine_check;
        make_result=$?
        if [ $make_result -ne 0 ]; then
            RESULT=$make_result

@@ -1458,11 +1458,11 @@ static void handle_mc_check(struct ex_regs *regs)
 static void MCA_rqmid_33845_expose_valid_error_reporting_registers_bank_MSRs_safte_vm_004()
 {
 
-#define MC5_STATUS_ERR_REPORT_QEMU	0xbe00000000800400ULL
+#define MC5_STATUS_ERR_REPORT_QEMU	0xb200000000800400ULL
 #define MC5_ADDR_ERR_REPORT_QEMU	0xbe00000000800400ULL
 #define MC5_MISC_ERR_REPORT_QEMU	0x1
 #define MCG_CAP_ERR_REPORT_QEMU		0x40aULL
-#define MCG_STATUS_ERR_REPORT_QEMU	0x4ULL
+#define MCG_STATUS_ERR_REPORT_QEMU	0x0ULL
 
 	handler old;
 	u64 cr4;
@@ -1914,7 +1914,7 @@ static void print_case_list(void)
 {
 	printf("machine check feature case list:\n\r");
 #ifdef QEMU
-	printf("\t Case ID:%d case name:%s\n\r", 33485,
+	printf("\t Case ID:%d case name:%s\n\r", 33845,
 		   "expose valid error reporting registers bank MSRs safte-vm 004");
 #elif IN_NATIVE
 	printf("\t Case ID:%d case name:%s\n\r", 36510,
