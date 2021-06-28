@@ -8,7 +8,7 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 	misc_msr interrupt_mc misc_cpuid tsx multiboot_low cpumode exception_avx_b6 exception_avx_pt_b6 exception_avx_pt_ra_b6 \
         exception_fpu_b6 exception_fpu_pt_b6 exception_fpu_pt_ra_b6 exception_fpu_ra_b6 exception_gp_b6 exception_gp_pt_b6 \
         exception_gp_pt_ra_b6 exception_mmx_b6 exception_mmx_pt_ra_b6 exception_mpx_b6 exception_mpx_pt_b6 exception_mpx_pt_ra_b6 \
-        exception_mpx_ra_b6 exception_sse_b6 exception_sse_pt_ra_b6"
+        exception_mpx_ra_b6 exception_sse_b6 exception_sse_pt_ra_b6 interrupt_df_pf"
 
 #BUILD_64BIT_FEATURE="mem_cache"
 BUILD_32BIT_FEATURE="mem_cache segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
@@ -24,7 +24,8 @@ BUILD_NATIVE_64_FEATURE="pmu_fu tsc xsave device_passthrough sse pt info_leakage
 	fpu mmx general_purpose sgx avx application_constraints exception_gp_pt_b6 exception_gp_pt_ra_b6"
 
 BUILD_NATIVE_64_FEATURE="$BUILD_NATIVE_64_FEATURE hsi_mem_paging_access_low hsi_multi_proc_mgmt hsi_mem_mgmt \
-	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec hsi_inter_remap hsi_16_64_cpumode"
+	hsi_inter_mgmt hsi_inter_control hsi_local_apic hsi_peripherals hsi_gp hsi_virtual_spec hsi_inter_remap \
+		hsi_16_64_cpumode hsi_gp_cpumode"
 
 BUILD_NATIVE_32_FEATURE="paging taskmanagement general_purpose exception_gp_pt_b6 exception_gp_pt_ra_b6"
 BUILD_NATIVE_32_FEATURE="$BUILD_NATIVE_32_FEATURE hsi_mem_mgmt hsi_gp"
@@ -183,7 +184,7 @@ do
         fi
 done
 
-./make_qemu.sh;
+./make_qemu_safety.sh machine_check;
        make_result=$?
        if [ $make_result -ne 0 ]; then
            RESULT=$make_result
@@ -227,5 +228,4 @@ cp x86/obj/*  x86/
 
 echo "final make result for all images:"
 echo $RESULT
-
 exit $RESULT

@@ -971,8 +971,6 @@ static void interru_df_pf(const char *fun)
  */
 __attribute__((unused)) static void interrupt_rqmid_38001_df_pf(void)
 {
-	report("%s() -- VM shutdown", false, __func__); // crash
-	return;
 	interru_df_pf(__FUNCTION__);
 }
 
@@ -2924,7 +2922,7 @@ static void interrupt_rqmid_39157_p4_p6_001(void)
 	execption_inc_len = 0;
 }
 
-static void print_case_list_64(void)
+__unused static void print_case_list_64(void)
 {
 	printf("\t Interrupt feature 64-Bits Mode case list:\n\r");
 
@@ -3032,17 +3030,13 @@ static void print_case_list_64(void)
 	printf("Case ID:%d case name:%s\n\r", 39087, "Set EFLAGS.RF_001");
 	printf("Case ID:%d case name:%s\n\r", 39157,
 		"Expose priority among simultaneous exceptions and interrupts_P4_P6_001");
-#ifdef IN_NON_SAFETY_VM
-		printf("Case ID:%d case name:%s\n\r", 38001,
-			"Page fault while handling #DF in non-safety VM_001");
-#endif
 #ifdef IN_SAFETY_VM
 		printf("Case ID:%d case name:%s\n\r", 38002,
 			"Page fault while handling #DF in safety VM_001");
 #endif
 }
 
-static void test_ap_interrupt_64(void)
+__unused static void test_ap_interrupt_64(void)
 {
 	while (1) {
 		switch (current_case_id) {
@@ -3068,7 +3062,7 @@ static void test_ap_interrupt_64(void)
 	}
 }
 
-static void test_interrupt_64(void)
+__unused static void test_interrupt_64(void)
 {
 	/* __x86_64__*/
 	interrupt_rqmid_24028_idtr_startup();
@@ -3134,10 +3128,6 @@ static void test_interrupt_64(void)
 	interrupt_rqmid_38460_expose_instruction_breakpoints_004();
 	interrupt_rqmid_39087_set_eflags_rf_001();
 	interrupt_rqmid_39157_p4_p6_001();
-#ifdef IN_NON_SAFETY_VM
-	/* non-safety VM shutdowns, no information can be print */
-	interrupt_rqmid_38001_df_pf();
-#endif
 #ifdef IN_SAFETY_VM
 	interrupt_rqmid_38002_df_pf();	//safety call bsp_fatal_error()
 #endif

@@ -65,7 +65,9 @@ else ifeq ($(VM), non-safety)
     CFLAGS += -DIN_NON_SAFETY_VM
 else ifeq ($(NATIVE), yes)
 	CFLAGS += -DIN_NATIVE
-else ifeq ($(QEMU), 1)
+endif
+
+ifeq ($(QEMU), 1)
 	CFLAGS += -DQEMU
 endif
 

@@ -25,6 +25,7 @@ mov %edx, (STARTUP_IA32_P5_MC_ADDR_HIGH_ADDR)
 mov %cr4, %eax
 mov %eax, (STARTUP_CR4_REG_ADDR)
 
+#ifndef QEMU
 #ifdef IN_SAFETY_VM
 #dump MSR IA32_MCi_STATUS(0<=i<=9))
 mov $MSR_IA32_MC0_STATUS,%ecx
@@ -51,4 +52,5 @@ dump_mci_ctl2:
    add $0x04, %ebx
    cmp $STARTUP_IA32_MC3_CTL2_ADDR, %ebx
    jle dump_mci_ctl2
+#endif
 #endif

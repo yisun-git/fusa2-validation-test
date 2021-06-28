@@ -64,7 +64,7 @@
     insmod ext2
 
     echo 'Loading native unit test ...'
-    multiboot /boot/xxx.elf
+    multiboot --quirk-modules-after-kernel /boot/xxx.elf
  }
  ```
 
