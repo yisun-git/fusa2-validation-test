@@ -140,6 +140,10 @@ MSR_GS_BASE = 0xc0000101
 
 .globl start
 start:
+#ifdef BP_HLT_TEST
+	hlt
+#endif
+
 #ifdef BP_STARTUP_CHECK
 	#include BP_STARTUP_CHECK
 #endif
@@ -222,6 +226,9 @@ gdt32_end:
 
 .code16
 sipi_entry:
+#ifdef AP_HLT_TEST
+	hlt
+#endif
 #ifdef AP_INIT_CHECK
 	#include AP_INIT_CHECK
 #endif
