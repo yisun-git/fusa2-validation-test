@@ -486,6 +486,8 @@ void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_benchmark_002(void
 	}
 	else
 	{
+		printf("0x%lx is not in [0x%lx, 0x%lx]\n",
+			tsc_average2, (tsc_average1 - 3*tsc_stdevv1), (tsc_average1 + 3*tsc_stdevv1));
 		report("\t\t %s", 0, __FUNCTION__);
 	}
 	return;

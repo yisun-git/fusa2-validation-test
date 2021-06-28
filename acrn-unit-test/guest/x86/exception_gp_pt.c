@@ -3938,7 +3938,7 @@ int main(void)
 	gp_pt_12();
 	gp_pt_13();
 	gp_pt_14();
-	gp_pt_15();
+	//delete unused case: gp_pt_15
 	gp_pt_16();
 	gp_pt_17();
 	gp_pt_18();

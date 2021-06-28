@@ -1791,9 +1791,18 @@ static __unused void gp_b6_instruction_88(const char *msg)
 
 static __unused void gp_b6_instruction_89(const char *msg)
 {
+	u8 expected_vector = GP_VECTOR;
+	if ((cpuid(0x1).c & (1 << 13)) > 0) {
+		printf("CMPXCHG16B is available.\n");
+		expected_vector = NO_EXCEPTION;
+	}
 	asm volatile(ASM_TRY("1f") "CMPXCHG8B %[output]\n" "1:"
 				: [output] "=m" (unsigned_64) : );
-	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
+	u8 vector = exception_vector();
+	if (vector != expected_vector) {
+		printf("vector=%d\n", vector);
+	}
+	report("%s", (vector == expected_vector), __FUNCTION__);
 }
 
 static __unused void gp_b6_instruction_90(const char *msg)
@@ -3693,9 +3702,18 @@ static __unused void gp_b6_instruction_348(const char *msg)
 
 static __unused void gp_b6_instruction_349(const char *msg)
 {
+	u8 expected_vector = UD_VECTOR;
+	if ((cpuid(0x80000001).c & (1 << 0)) > 0) {
+		printf("LAHF and SAHF are available.\n");
+		expected_vector = NO_EXCEPTION;
+	}
 	asm volatile(ASM_TRY("1f") "SAHF\n" "1:"
 				: : );
-	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+	u8 vector = exception_vector();
+	if (vector != expected_vector) {
+		printf("vector=%d\n", vector);
+	}
+	report("%s", (vector == expected_vector), __FUNCTION__);
 }
 
 static __unused void gp_b6_instruction_350(const char *msg)
@@ -6041,7 +6059,7 @@ static __unused void gp_b6_89(void)
 	u32 cr3 = read_cr3();
 	u32 cr4 = read_cr4();
 	u32 cr8 = read_cr8();
-	condition_CPUID_CMPXCHG16B_set_to_0();
+	//condition_CPUID_CMPXCHG16B_set_to_0();
 	do_at_ring0(gp_b6_instruction_89, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -11623,7 +11641,7 @@ static __unused void gp_b6_349(void)
 	u32 cr3 = read_cr3();
 	u32 cr4 = read_cr4();
 	u32 cr8 = read_cr8();
-	condition_CPUID_LAHF_SAHF_0();
+	//condition_CPUID_LAHF_SAHF_0();
 	do_at_ring0(gp_b6_instruction_349, "");
 	write_cr0(cr0);
 	write_cr2(cr2);
@@ -12843,15 +12861,7 @@ int main(void)
 	gp_b6_49();
 	gp_b6_50();
 	gp_b6_51();
-	gp_b6_52();
-	gp_b6_53();
-	gp_b6_54();
-	gp_b6_55();
-	gp_b6_56();
-	gp_b6_57();
-	gp_b6_58();
-	gp_b6_59();
-	gp_b6_60();
+	//delete unused cases: gp_b6_52 ... gp_b6_60
 	gp_b6_61();
 	gp_b6_62();
 	gp_b6_63();

@@ -1025,7 +1025,7 @@ int main(void)
 	gp_ra_2();
 	gp_ra_3();
 	gp_ra_4();
-	gp_ra_5();
+	//delete unused case: gp_ra_5
 	gp_ra_6();
 	gp_ra_7();
 	gp_ra_8();
@@ -1051,7 +1051,7 @@ int main(void)
 	gp_ra_26();
 	gp_ra_27();
 	gp_ra_28();
-	gp_ra_29();
+	//delete unused case: gp_ra_29
 	gp_ra_30();
 	gp_ra_31();
 	gp_ra_32();

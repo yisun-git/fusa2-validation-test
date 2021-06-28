@@ -60,18 +60,17 @@ static __unused void gp_v8_instruction_0(const char *msg)
 static __unused void gp_v8_instruction_1(const char *msg)
 {
 	u16  value = 0;
-	u32 cr4 = read_cr4() | CR4_UMIP;
-	//Modified manually: cannot set CR4.UMIP to 1 for hypervisor issue, it'll crash.
-	//write_cr4(cr4);
-	if (cr4 & CR4_UMIP) {
-		asm volatile(ASM_TRY("1f")
-					"SMSW %0\n" "1:\n"
-					: "=m"(value) : : "memory");
-		u8 vector = exception_vector();
-		report_ex("vector=%d", GP_VECTOR == vector,  vector);
-	} else {
-		report_ex("cr4=0x%x", 0, cr4);
+	u32 cr4 = read_cr4();
+	u8 expected_vector = GP_VECTOR;
+	if ((cr4 & CR4_UMIP) == 0) {
+		printf("User-Mode Instruction Prevention is clear.\n");
+		expected_vector = NO_EXCEPTION;
 	}
+	asm volatile(ASM_TRY("1f")
+				"SMSW %0\n" "1:\n"
+				: "=m"(value) : : "memory");
+	u8 vector = exception_vector();
+	report_ex("vector=%d", vector == expected_vector,  vector);
 }
 
 static __unused void gp_v8_instruction_2(const char *msg)
@@ -149,7 +148,7 @@ static __unused void gp_v8_3(void)
 void v8086_main(void)
 {
 	#ifdef PHASE_0
-	gp_v8_0();
+	//delete unused case: gp_v8_0
 	gp_v8_1();
 	gp_v8_2();
 	gp_v8_3();
