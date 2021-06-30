@@ -445,6 +445,7 @@ void infoleak_rqmid_33619_mitigate_L1TF_variant_affecting_VMM_benchmark_001(void
 	return;
 }
 
+#define ERROR_RANG 15
 /**
  * @brief Case name: SFR-08 ACRN hypervisor shall mitigate the L1TF variant affecting VMM_benchmark_002
  *
@@ -480,17 +481,12 @@ void infoleak_rqmid_33617_mitigate_L1TF_variant_affecting_VMM_benchmark_002(void
 	}
 	tsc_average2 = tsc_average;
 
-	if ((tsc_average2 > (tsc_average1 - 3*tsc_stdevv1)) && (tsc_average2 < (tsc_average1 + 3*tsc_stdevv1)))
-	{
-		report("\t\t %s", 1, __FUNCTION__);
-	}
-	else
-	{
-		printf("0x%lx is not in [0x%lx, 0x%lx]\n",
-			tsc_average2, (tsc_average1 - 3*tsc_stdevv1), (tsc_average1 + 3*tsc_stdevv1));
-		report("\t\t %s", 0, __FUNCTION__);
-	}
-	return;
+	int64_t lower_val = (tsc_average1 * (100 - ERROR_RANG)) / 100;
+	int64_t upper_val = (tsc_average1 * (100 + ERROR_RANG)) / 100;
+	bool result = (lower_val < tsc_average2) && (tsc_average2 < upper_val);
+	printf("tsc_average2=%ld(%ld%%) [%ld, <%ld>, %ld]\n",
+			tsc_average2, (tsc_average2 * 100) / tsc_average1, lower_val, tsc_average1, upper_val);
+	report("\t\t %s", result, __FUNCTION__);
 }
 
 static u32 bp_eax_ia32_spec_ctrl = 0xff;

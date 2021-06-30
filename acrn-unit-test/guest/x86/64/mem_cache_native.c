@@ -16,16 +16,9 @@ static long target;
 
 bool check_benchmark_in_native(enum cache_size_type type, u64 average)
 {
-	bool ret = true;
 	u64 ave = cache_bench[type].ave;
 	u64 std = cache_bench[type].std;
-
-	if ((average < (ave - STD_FACTOR * std))
-		|| (average > (ave + STD_FACTOR * std))) {
-		ret = false;
-	}
-
-	return ret;
+	return cache_check_memory_type(average, ave, std, 0);
 }
 
 void wrmsr_p(void *data)
@@ -69,7 +62,7 @@ void cache_rqmid_24445_native_PREFETCHW_native(void)
 	expected = cpuid.c & (1U << 8); /* PREFETCHW */
 	/* clwb (%rbx): */
 	asm volatile("prefetchw (%0)" : : "b"(&target));
-	report("%s prefetchw (%s)\n", expected == 1, __FUNCTION__, expected ? "present" : "ABSENT");
+	report("%s prefetchw (%s)\n", expected > 0, __FUNCTION__, expected ? "present" : "ABSENT");
 }
 
 /**
