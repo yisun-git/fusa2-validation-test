@@ -3,6 +3,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0
  */
+#include "string.h"
+
+struct va_pa_map {
+	void *va;
+	phys_addr_t pa;
+};
+
 int pci_mem_get(void *pci_mem_address);
 
 static long target;
@@ -2778,6 +2785,107 @@ void cache_rqmid_36871_clwb_instruction(void)
 	report("%s, Hide CLWB instruction from any VM.\n", (ebx == 0x0) && ret, __FUNCTION__);
 }
 
+
+#define PAGE_ALIAS_VIRT_ADDR   (0xffffffff00000000)
+#define MALLOC_SIZE_64K         (0x10000)
+#define MAGIC_NUM_0             (0x11)
+#define MAGIC_NUM_1             (0x22)
+#define MAGIC_NUM_2             (0x33)
+#define MAGIC_NUM_3             (0x44)
+/**
+ * @brief case name: Assumed failure due to page aliasing_001
+ *
+ * Summary: The physical platform shall guarantee that mapping a single physical page to multiple
+ * different linear addresses with different memory types only affects the consistency of the physical page.
+ */
+void cache_rqmid_28103_native_page_aliasing_001(void)
+{
+	bool result = true;
+	int i;
+	phys_addr_t pa;
+	unsigned pages;
+	void *a1_va;
+	void *a2_va;
+	struct va_pa_map va_pa_array[MALLOC_SIZE_64K/PAGE_SIZE + 1];
+	void *va = (void *)PAGE_ALIAS_VIRT_ADDR;
+
+	pages = MALLOC_SIZE_64K / PAGE_SIZE;
+	for (i = 0;  i < pages; i++) {
+		pa = virt_to_phys(alloc_page());
+		install_page(phys_to_virt(read_cr3()), pa, va);
+		va_pa_array[i].pa = pa;
+		va_pa_array[i].va = va;
+		va += PAGE_SIZE;
+	}
+
+	/* enable caches */
+	write_cr0_bybit(CR0_BIT_CD, 0);
+	write_cr0_bybit(CR0_BIT_NW, 0);
+
+	/*default PAT entry value 0007040600070406*/
+	set_mem_cache_type_all(0x0000000001040506);
+
+	/* Clear the whole 64K memory */
+	va = (void *)PAGE_ALIAS_VIRT_ADDR;
+	memset(va, 0, MALLOC_SIZE_64K);
+	/* Set initial magic number */
+	memset(va_pa_array[2].va, MAGIC_NUM_0, PAGE_SIZE);
+	memset(va_pa_array[9].va, MAGIC_NUM_1, PAGE_SIZE);
+	memset(va_pa_array[10].va, MAGIC_NUM_2, PAGE_SIZE);
+	memset(va_pa_array[11].va, MAGIC_NUM_3, PAGE_SIZE);
+
+	/* Mapping a1_va & a2_va to the same physical addr(va_pa_array[2].pa) */
+	a1_va = va_pa_array[2].va;
+	a2_va = va_pa_array[10].va;
+	pa = va_pa_array[2].pa;
+	install_page(phys_to_virt(read_cr3()), pa, a2_va);
+
+	/* Modify a1 array memory type to WB */
+	set_mem_cache_type_addr(a1_va, PT_MEMORY_TYPE_MASK0, PAGE_SIZE);
+
+	/* Modify a2 array memory type to UC */
+	set_mem_cache_type_addr(a2_va, PT_MEMORY_TYPE_MASK4, PAGE_SIZE);
+
+	/* Check the previous page before a2_va should not be impacted by the page-alias */
+	va = va_pa_array[9].va;
+	for (i = 0; i < PAGE_SIZE; i++) {
+		if (*(volatile u8 *)(va + i) != MAGIC_NUM_1) {
+			result = false;
+			goto end;
+		}
+	}
+
+	/* Check a2_va has been mapped to the same physical address with a1_va */
+	va = va_pa_array[10].va;
+	for (i = 0; i < PAGE_SIZE; i++) {
+		if (*(volatile u8 *)(va + i) != MAGIC_NUM_0) {
+			result = false;
+			goto end;
+		}
+	}
+
+	/* Check a1_va should not be impacted by the page-alias */
+	va = va_pa_array[2].va;
+	for (i = 0; i < PAGE_SIZE; i++) {
+		if (*(volatile u8 *)(va + i) != MAGIC_NUM_0) {
+			result = false;
+			goto end;
+		}
+	}
+
+	/* Check the next page after a2_va should not be impacted by the page-alias */
+	va = va_pa_array[11].va;
+	for (i = 0; i < PAGE_SIZE; i++) {
+		if (*(volatile u8 *)(va + i) != MAGIC_NUM_3) {
+			result = false;
+			goto end;
+		}
+	}
+
+end:
+	report("%s()", result, __func__);
+}
+
 struct case_fun_index cache_control_native_cases[] = {
 	{24443, cache_rqmid_24443_native_cache_parameters_in_cpuid02},
 	{24445, cache_rqmid_24445_native_PREFETCHW_native},
@@ -2879,6 +2987,7 @@ struct case_fun_index cache_control_native_cases[] = {
 	{28097, cache_rqmid_28097_native_clflush_clflushopt_line_size},
 	{28100, cache_rqmid_28100_wt_wp_shall_be_the_same},
 	{36871, cache_rqmid_36871_clwb_instruction},
+	{28103, cache_rqmid_28103_native_page_aliasing_001},
 };
 
 static void print_cache_control_native_case_list_64()
