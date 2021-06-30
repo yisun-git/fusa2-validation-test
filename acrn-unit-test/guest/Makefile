@@ -71,6 +71,13 @@ ifeq ($(QEMU), 1)
 	CFLAGS += -DQEMU
 endif
 
+ifeq ($(BP_HLT), 1)
+	CFLAGS += -DBP_HLT_TEST
+endif
+ifeq ($(AP_HLT), 1)
+	CFLAGS += -DAP_HLT_TEST
+endif
+
 ifneq ($(FILE_NAME_GP), )
 	CFLAGS += -DIN_GP_TEST
 endif
