@@ -293,7 +293,15 @@ static void gp_rqmid_38977_cpuid_random_number_generate_instructions_001()
 	result2 = cpuid_indexed(0x07, 0).b;
 
 	if (get_bit(result1, 30) && get_bit(result2, 18)) {
-		report("%s", true, __FUNCTION__);
+		ulong random1 = 0;
+		ulong random2 = 0;
+		asm volatile(ASM_TRY("1f")
+			"rdrand %0\n"
+			"rdrand %1\n"
+			"1:"
+			: "=rm"(random1), "=rm"(random2)
+			);
+		report("%s", (NO_EXCEPTION == exception_vector()) && (random1 != random2), __FUNCTION__);
 	} else {
 		report("%s", false, __FUNCTION__);
 	}

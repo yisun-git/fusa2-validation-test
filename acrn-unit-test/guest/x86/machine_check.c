@@ -1432,6 +1432,20 @@ static void MCA_rqmid_36779_write_LMCE_ON_bit_of_IA32_FEATURE_CONTROL_001()
 	report("%s", 1, __FUNCTION__);
 }
 
+/*
+ * @brief case name: read IA32_MCG_CAP
+ *
+ *Summary:
+ *	 Under 64 bit mode, ACRN hypervisor shall expose common Machine Check MSRs to any VM.
+ *
+ */
+static void MCA_rqmid_36883_read_IA32_MCG_CAP_001()
+{
+	u64 val;
+	/* Accessing MSR_IA32_MCG_CAP */
+	int vector = rdmsr_checking(MSR_IA32_MCG_CAP, &val);
+	report("%s: line[%d]", (vector != GP_VECTOR), __func__, __LINE__);
+}
 
 #ifdef QEMU
 static volatile bool handled_mc_ex = false;
@@ -1909,6 +1923,7 @@ void test_mca(void)
 	MCA_rqmid_36780_write_IA32_P5_MC_ADDR_with_non_zero_001();
 	MCA_rqmid_37648_expose_MC_common_MSRs_001();
 	MCA_rqmid_36779_write_LMCE_ON_bit_of_IA32_FEATURE_CONTROL_001();
+	MCA_rqmid_36883_read_IA32_MCG_CAP_001();
 }
 static void print_case_list(void)
 {
@@ -1992,7 +2007,7 @@ static void print_case_list(void)
 	printf("\t Case ID:%d case name:%s\n\r", 36880,
 		   "Write 1H to CR4.MCE for non-safety VM");
 	printf("\t Case ID:%d case name:%s\n\r", 36883,
-		   "Access Error-Reporting register bank MSRs to non-safety VM");
+		   "Read IA32_MCG_CAP");
 	printf("\t Case ID:%d case name:%s\n\r", 36792,
 		   "Read CR4.MCE bit for non-safety VM");
 	printf("\t Case ID:%d case name:%s\n\r", 36797,

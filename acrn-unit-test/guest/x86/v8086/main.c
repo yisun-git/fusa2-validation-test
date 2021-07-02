@@ -162,6 +162,7 @@ void handle_intr21(void)
 	u32 gs = 0xff;
 	u32 esp = 0xff;
 	u32 flags = 0xff;
+	u32 eip = 0xff;
 	struct int_regs *regs;
 
 	asm volatile (
@@ -179,6 +180,7 @@ void handle_intr21(void)
 	regs = ((struct int_regs *)&ring0stacktop) - 1;
 	esp = read_v8086_esp();
 	flags = read_input_val();
+	eip = read_output_val();
 
 	*temp_value = MAGIC_DWORD;
 	/* current GS == 0, FS == 0, ES == 0, DS == 0 */
@@ -187,16 +189,17 @@ void handle_intr21(void)
 		if ((regs->gs == 0) && (regs->fs == 0) &&
 			(regs->ds == 0) && (regs->es == 0) &&
 			(regs->ss == 0) && (regs->cs == 0) &&
-			(regs->esp == esp) && ((regs->eflags & 0xffff) == flags)) {
+			(regs->esp == esp) && (regs->eip == eip) &&
+			((regs->eflags & 0xffff) == flags)) {
 			*temp_value = read_flags();
 		}
 	}
 
 	if (MAGIC_DWORD == *temp_value) {
-		printf("\tgs=%u,fs=%u,ds=%u,es=%u,esp=0x%x,eflags=0x%x\n",
-			gs, fs, ds, es, esp, flags);
-		printf("\tgs=%u,fs=%u,ds=%u,es=%u,esp=0x%x,eflags=0x%x,ss=%u,cs=%u\n",
-			regs->gs, regs->fs, regs->ds, regs->es, regs->esp, regs->eflags, regs->ss, regs->cs);
+		printf("\tgs=%u,fs=%u,ds=%u,es=%u,esp=0x%x,eflags=0x%x,eip=0x%x\n",
+			gs, fs, ds, es, esp, flags, eip);
+		printf("\tgs=%u,fs=%u,ds=%u,es=%u,esp=0x%x,eflags=0x%x,ss=%u,cs=%u,eip=0x%x\n",
+			regs->gs, regs->fs, regs->ds, regs->es, regs->esp, regs->eflags, regs->ss, regs->cs, regs->eip);
 	}
 }
 
@@ -261,6 +264,8 @@ __noinline void v8_set_igdt(void)
 	u8 access = (value >> 16) & 0xff;
 	u8 selector = (22 == vector ? VM86_CS_DPL_SEL : VM86_CS_CONFORM_SEL);
 
+	//make to enter v8086_main() twice!
+	//printf("%s: vector=%u, gate_type=%u, access=0x%x\n", __func__, vector, gate_type, access);
 	switch (vector) {
 	case 21:
 		set_idt_entry_ex(vector, asm_exc_handler, DPL_3, read_cs(), gate_type);

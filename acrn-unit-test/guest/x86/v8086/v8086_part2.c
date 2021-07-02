@@ -360,8 +360,9 @@ __noinline void v8086_rqmid_33813_interrupt_handling_001(void)
 
 	write_v8086_esp();
 	write_input_val(read_flags());
-
+	write_output_val(((u32)&&int_eip) - 4); //len(4) is from: "66 83 c4 10: add $0x10,%esp"
 	asm volatile("int $21\n\t");
+int_eip:
 	/* VM, RF, NT, TF, IF of eflags is 0 */
 	report_ex("eflags = 0x%x", (MAGIC_DWORD != *temp_value) &&
 		(*temp_value & (X86_EFLAGS_VM | X86_EFLAGS_RF | X86_EFLAGS_NT | X86_EFLAGS_IF | X86_EFLAGS_TF)) == 0,
@@ -424,17 +425,17 @@ __noinline void v8086_rqmid_38116_interrupt_handling_003_1(void)
 __noinline void v8086_rqmid_38113_interrupt_handling_001_1(void)
 {
 	set_igdt(21, SYS_SEGMENT_AND_GATE_DESCRIPTOR_32BIT_TRAPGATE, 0);
-
+	write_output_val(((u32)&&int_eip) - 4); //len(4) is from: "66 83 c4 10: add $0x10,%esp"
 	u32 flags = read_flags();
 	write_v8086_esp();
 	write_input_val(flags);
 
 	asm volatile("int $21\n\t");
-
+int_eip:
 	/* IF of eflags is not changed */
-	report_ex("eflags = 0x%x", (MAGIC_DWORD != *temp_value) &&
+	report_ex("flags = 0x%x, eflags = 0x%x", (MAGIC_DWORD != *temp_value) &&
 		(*temp_value & (X86_EFLAGS_VM | X86_EFLAGS_RF | X86_EFLAGS_NT | X86_EFLAGS_TF)) == 0 &&
-		(*temp_value & X86_EFLAGS_IF) == (flags & X86_EFLAGS_IF), *temp_value);
+		(*temp_value & X86_EFLAGS_IF) == (flags & X86_EFLAGS_IF), flags, *temp_value);
 	clear_v8086_esp();
 }
 

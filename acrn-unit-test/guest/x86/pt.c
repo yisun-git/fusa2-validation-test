@@ -670,7 +670,6 @@ int main(void)
 	print_case_list();
 #ifdef IN_NATIVE
 
-	pt_rqmid_27268_guest_cpuid_pt_bit_001();
 #ifdef __x86_64__
 	pt_rqmid_36849_Guest_PTWRITE_002();
 #else
