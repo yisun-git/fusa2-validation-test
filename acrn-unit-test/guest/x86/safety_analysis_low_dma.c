@@ -1,3 +1,4 @@
+#define NEED_CRC
 #include "safety_analysis.h"
 #include "crc32.c"
 
@@ -18,10 +19,10 @@ static __unused void safety_analysis_rqmid_33883_mitigation_Spatial_Interface_Me
 	uint64_t size = 0UL;
 	bool is_pass = false;
 	uint32_t mem_crc32 = 0U;
-	size = (end - start) / 4;
+	size = FILL_DATA_COUNT;
 
 #ifdef IN_NON_SAFETY_VM
-	write_mem_data(start, size, FILL_DATA_START_0);
+	write_mem_data_ex(start, end, size, FILL_DATA_START_0);
 	/*add this delay to let safety-vm write over*/
 	busy_delay(10000);
 #endif
@@ -29,11 +30,11 @@ static __unused void safety_analysis_rqmid_33883_mitigation_Spatial_Interface_Me
 #ifdef IN_SAFETY_VM
 	/*add this delay to let non-safety-vm write first*/
 	busy_delay(10000);
-	write_mem_data(start, size, FILL_DATA_START_1);
+	write_mem_data_ex(start, end, size, FILL_DATA_START_1);
 #endif
 
 	/*caculate crc32 of memory area to check overlap */
-	mem_crc32 = Crc32_ComputeBuf(0, (void *)start, size * 4);
+	mem_crc32 = calc_crc32(start, end, size);
 
 #ifdef IN_NON_SAFETY_VM
 	is_pass = (mem_crc32 == FILL_DATA_CRC32_0) ? true : false;
@@ -43,7 +44,10 @@ static __unused void safety_analysis_rqmid_33883_mitigation_Spatial_Interface_Me
 	is_pass = (mem_crc32 == FILL_DATA_CRC32_1) ? true : false;
 #endif
 
-	DUMP_DATA_U32("Dump Head Memory 0x00000000UL", (start), 64);
+#ifdef NEED_CRC
+	dump_mem(start, end, size);
+#endif
+
 	printf("\nWrite_Read_Coherence_State: %d", is_pass);
 	printf("\nMemory_CRC32: %x \n", mem_crc32);
 
@@ -51,6 +55,7 @@ static __unused void safety_analysis_rqmid_33883_mitigation_Spatial_Interface_Me
 	and read address range:[0x00000000, 0x10000000) \n");
 	printf("\ncompare it with the dump data respectively,\
 	if both equal, then pass.\n");
+	report("%s()", is_pass, __func__);
 
 	int count = 0;
 	while (count < PCI_CARD_DETECT_NUM) {

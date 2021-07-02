@@ -7,11 +7,6 @@ endif
 
 export ENTRY_OFFSET = 0x1000800
 export START_A = 0x1000800 + SIZEOF_HEADERS
-FILE_NAME1 = $(shell echo $(FILE_NAME) | grep "safety_analysis_low")
-ifneq ($(FILE_NAME1), )
-    export ENTRY_OFFSET = 0x11000800
-    export START_A = 0x11000800 + SIZEOF_HEADERS
-endif
 
 FILE_NAME_HSI = $(shell echo $(FILE_NAME) | grep "hsi_mem_paging_access_low")
 ifneq ($(FILE_NAME_HSI), )
@@ -32,15 +27,22 @@ FILE_NAME_TSC =  $(shell echo $(FILE_NAME) | grep "tsc")
 ifeq ($(VM), safety)
     export ENTRY_OFFSET = 0x100000
     export START_A = 1M
-ifneq ($(FILE_NAME1), )
-    export ENTRY_OFFSET = 0x10100000
-    export START_A = 0x10100000
-endif
 endif
 
 ifeq ($(V8086), v8086_mode)
     export ENTRY_OFFSET = 0x4000
     export START_A = 0x4000 + SIZEOF_HEADERS
+endif
+
+FILE_NAME_SAFETY_ANALYSIS = $(shell echo $(FILE_NAME) | grep "safety_analysis_low")
+ifneq ($(FILE_NAME_SAFETY_ANALYSIS), )
+  ifeq ($(VM), safety)
+    export ENTRY_OFFSET = 0x11000800
+    export START_A = 0x11000800 + SIZEOF_HEADERS
+  else ifeq ($(VM), non-safety)
+    export ENTRY_OFFSET = 0x10100000
+    export START_A = 0x10100000 + SIZEOF_HEADERS
+  endif
 endif
 
 include config.mak
