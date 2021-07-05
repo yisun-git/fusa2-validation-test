@@ -40,6 +40,7 @@ static u32 bp_edx_tscaux_greg_64;
 static u32 bp_eax_tsc_greg_64;
 static u32 bp_edx_tsc_greg_64;
 static u32 bp_cr4_greg_long;
+static u64 ap_tsc_adjust_val;
 extern char sipi_cnt; /*count sipi */
 
 u64 g_temp_bp_tsc[ARRY_LEN] = {0};
@@ -221,6 +222,11 @@ void read_bp_startup(void)
 	asm ("mov (0x8130) ,%%eax\n\t"
 		"mov %%eax,%0\n\t"
 		: "=q"(bp_cr4_greg_long));
+}
+
+void read_ap_init_val(void)
+{
+	ap_tsc_adjust_val =  *(volatile u64 *)INIT_TSCADJ_LOW_ADDR;
 }
 
 
@@ -554,15 +560,17 @@ static void __unused tsc_rqmid_25226_cr4_tsd_init_value()
  */
 static void __unused tsc_rqmid_45987_IA32_TSC_ADJUST_init_value()
 {
-	volatile u64 tscadj = *((u64 *)INIT_TSCADJ_LOW_ADDR);
+	volatile u64 tscadj;
 	bool is_pass = true;
 
-	if (tscadj != 0x0) {
+
+	if (ap_tsc_adjust_val != 0x0) {
 		is_pass = false;
 	}
 
 	notify_modify_and_read_init_value(45987);
 	tscadj = *((u64 *)INIT_TSCADJ_LOW_ADDR);
+
 	if (tscadj != TSCADJ_UNCHANGE_NEW_VALUE) {
 		is_pass = false;
 	}
@@ -678,6 +686,7 @@ static void test_tsc(void)
 {
 
 	read_bp_startup();
+	read_ap_init_val();
 #ifdef IN_NON_SAFETY_VM
 	tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value();
 	tsc_rqmid_25226_cr4_tsd_init_value();
