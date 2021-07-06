@@ -4,7 +4,7 @@ make clean
 ./configure --arch=x86_64
 export FILE_NAME=$1
 echo "make x86/"$1".bzimage"
-make x86/$1.raw VM=non-safety AP_HLT=1
+make x86/$1.bzimage VM=non-safety AP_HLT=1
 make_result=$?
 if [ $make_result != 0 ]; then
 	exit $make_result
