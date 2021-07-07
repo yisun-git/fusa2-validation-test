@@ -33,7 +33,9 @@
 #define FILL_DATA_CRC32_0	(0x6351c057U)
 #define FILL_DATA_CRC32_1	(0xc2766ce4U)
 #define FILL_DATA_COUNT	(0x40)
-#define RSVD_MEM (0x1000)
+#define RSVD_START_MEM (0x1000)
+#define RSVE_END_MEM (0x100)  //SP605 card can not read the last 160 bytes, so ignore it
+
 static inline int busy_delay(uint32_t ms)
 {
 	volatile unsigned int i, j;
@@ -51,10 +53,10 @@ static inline uint64_t gen_start_addr(int index, uint64_t start, uint64_t end, u
 	case 1:
 		return (start + end) >> 1;
 	case 2:
-		return end - (count * sizeof(uint32_t));
+		return (end -  RSVE_END_MEM) - (count * sizeof(uint32_t));
 	case 0:
 	default:
-		return ((start < RSVD_MEM) ? RSVD_MEM : start);
+		return ((start < RSVD_START_MEM) ? RSVD_START_MEM : start);
 	}
 }
 
