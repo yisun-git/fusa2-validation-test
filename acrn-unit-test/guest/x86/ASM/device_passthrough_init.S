@@ -1,3 +1,10 @@
+/* Only read init values in one AP. */
+mov $1,%eax
+cpuid
+shr $24, %ebx
+cmp $2, %ebx
+jnz 1f
+
 #ifdef IN_NON_SAFETY_VM
 /*AP USB BAR0*/
 mov $0x80000810,%eax
@@ -63,3 +70,5 @@ in (%dx),%ax
 movzwl %ax,%eax
 mov %eax,(0x702c)
 #endif
+
+1:
