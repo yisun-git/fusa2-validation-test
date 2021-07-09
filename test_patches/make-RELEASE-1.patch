@@ -1,0 +1,3745 @@
+From cede9496da81f275921f7c35632bc7482c9f03b2 Mon Sep 17 00:00:00 2001
+From: Mingqiang Chi <mingqiang.chi@intel.com>
+Date: Thu, 24 Jun 2021 03:02:13 -0400
+Subject: [PATCH] make RELEASE=1
+
+Signed-off-by: Mingqiang Chi <mingqiang.chi@intel.com>
+---
+ hypervisor/release/config_release.h |   11 +
+ hypervisor/release/console.c        |  216 ++++--
+ hypervisor/release/lib.h            |   65 ++
+ hypervisor/release/printf.c         |  741 ++++++++++++++++++
+ hypervisor/release/shell.c          | 1112 +++++++++++++++++++++++++++
+ hypervisor/release/shell_priv.h     |  121 +++
+ hypervisor/release/string.c         |  250 ++++++
+ hypervisor/release/uart16550.c      |  250 +++++-
+ hypervisor/release/uart16550_priv.h |  136 ++++
+ hypervisor/release/vuart.c          |  594 ++++++++++++--
+ hypervisor/release/vuart.h          |   84 ++
+ 11 files changed, 3417 insertions(+), 163 deletions(-)
+ create mode 100755 hypervisor/release/config_release.h
+ mode change 100644 => 100755 hypervisor/release/console.c
+ create mode 100755 hypervisor/release/lib.h
+ create mode 100755 hypervisor/release/printf.c
+ create mode 100755 hypervisor/release/shell.c
+ create mode 100755 hypervisor/release/shell_priv.h
+ create mode 100755 hypervisor/release/string.c
+ mode change 100644 => 100755 hypervisor/release/uart16550.c
+ create mode 100755 hypervisor/release/uart16550_priv.h
+ mode change 100644 => 100755 hypervisor/release/vuart.c
+ create mode 100755 hypervisor/release/vuart.h
+
+diff --git a/hypervisor/release/config_release.h b/hypervisor/release/config_release.h
+new file mode 100755
+index 00000000..c22faaad
+--- /dev/null
++++ b/hypervisor/release/config_release.h
+@@ -0,0 +1,11 @@
++#ifndef CONFIG_DEBUG
++#define CONFIG_DEBUG
++
++#undef CONFIG_COM_BASE
++
++#define CONFIG_SERIAL_LEGACY 1
++#define CONFIG_SERIAL_PIO_BASE 0x3f8UL
++#define CONFIG_COM_BASE 0x3f8U
++#define CONFIG_CONSOLE_LOGLEVEL_DEFAULT 5U
++
++#endif /* CONFIG_DEBUG */
+diff --git a/hypervisor/release/console.c b/hypervisor/release/console.c
+old mode 100644
+new mode 100755
+index 9c92274b..5b5fe4a7
+--- a/hypervisor/release/console.c
++++ b/hypervisor/release/console.c
+@@ -6,104 +6,160 @@
+ 
+ #include <types.h>
+ #include <pci.h>
+-#include <console.h>
++#include <shell.h>
++#include <timer.h>
++#include <irq.h>
++#include <timer.h>
++#include <logmsg.h>
++#include <acrn_hv_defs.h>
++#include <vm.h>
++#include <vmx.h>
++#include <vmexit.h>
++#include "vuart.h"
++#include "uart16550_priv.h"
++#include "lib.h"
+ 
+-/**
+- * @addtogroup debug
+- *
+- * @{
+- */
++#define CONSOLE_KICK_TIMER_TIMEOUT  40UL /* timeout is 40ms*/
+ 
+-/**
+- * @file
+- * @brief This file implements the functions related to console operations, including initialization, timer set-up, and
+- * task kick-off.
+- *
+- * This file is decomposed into the following functions:
+- *
+- * - console_init()         Initialize the hypervisor console which is solely for debugging. No operation in release
+- *                          version.
+- * - console_setup_timer()  Set up a periodic timer to handle inputs from and outputs to the serial console.
+- *                          No operation in release version.
+- * - console_kick()         Kick the hypervisor virtual console which is solely for debugging. No operation in release
+- *                          version.
+- * - shell_init()           Initialize the hypervisor shell which is solely for debugging. No operation in release
+- *                          version.
+- */
++#define MSR_IA32_VMX_MISC_VMX_PREEMPTION_DIVISOR   0x1FUL
++
++#define VMX_PINBASED_CTLS_ACTIVATE_VMX_PREEMPTION_TIMER     (1U << 6)
++
++#define VMX_EXIT_CTLS_SAVE_PTMR	(1U << 22U)
++
++#define VMX_GUEST_VMX_PREEMPTION_TIMER_VALUE	0x0000482EU
++
++extern struct vm_exit_dispatch dispatch_table[];
++
++#define CONSOLE_CPU_ID    3
++/* Switching key combinations for shell and uart console */
++#define GUEST_CONSOLE_TO_HV_SWITCH_KEY      0       /* CTRL + SPACE */
++uint16_t console_vmid = ACRN_INVALID_VMID;
++
++static uint32_t vmx_preemption_timer_value = 0;
+ 
+-/**
+- * @brief Initialize the hypervisor console which is solely for debugging. No operation in release version.
+- *
+- * @return None
+- *
+- * @pre N/A
+- *
+- * @post N/A
+- *
+- * @mode HV_INIT
+- *
+- * @reentrancy Unspecified
+- * @threadsafety Unspecified
+- */
+ void console_init(void)
+ {
++	uart16550_init(false);
++}
++
++void console_putc(const char *ch)
++{
++	(void)uart16550_puts(ch, 1U);
++}
++
++
++size_t console_write(const char *s, size_t len)
++{
++	return  uart16550_puts(s, len);
++}
++
++char console_getc(void)
++{
++	return uart16550_getc();
+ }
+ 
+ /**
+- * @brief Set up a periodic timer to handle inputs from and outputs to the serial console. No operation in release
+- * version.
+- *
+- * @return None
+- *
+- * @pre N/A
+- *
+- * @post N/A
+- *
+- * @mode HV_INIT, HV_OPERATIONAL
+- *
+- * @reentrancy Unspecified
+- * @threadsafety Unspecified
++ * @pre vu != NULL
++ * @pre vu->active == true
+  */
+-void console_setup_timer(void)
++void vuart_console_rx_chars(struct acrn_vuart *vu)
+ {
++	char ch = -1;
++
++	/* Get data from physical uart */
++	ch = uart16550_getc();
++
++	if (ch == GUEST_CONSOLE_TO_HV_SWITCH_KEY) {
++		/* Switch the console */
++		console_vmid = ACRN_INVALID_VMID;
++		printf("\r\n\r\n ---Entering ACRN SHELL---\r\n");
++	}
++	if (ch != -1) {
++		vuart_putchar(vu, ch);
++	}
++
+ }
+ 
+ /**
+- * @brief Kick the hypervisor virtual console which is solely for debugging. No operation in release version.
+- *
+- * @return None
+- *
+- * @pre N/A
+- *
+- * @post N/A
+- *
+- * @mode HV_TERMINATION
+- *
+- * @reentrancy Unspecified
+- * @threadsafety Unspecified
++ * @pre vu != NULL
+  */
++void vuart_console_tx_chars(struct acrn_vuart *vu)
++{
++	char c;
++
++	while ((c = vuart_getchar(vu)) != -1) {
++		printf("%c", c);
++	}
++}
++
++struct acrn_vuart *vuart_console_active(void)
++{
++	struct acrn_vm *vm = NULL;
++	struct acrn_vuart *vu = NULL;
++
++	if (console_vmid < CONFIG_MAX_VM_NUM) {
++		vm = get_vm_from_vmid(console_vmid);
++		if (vm->state != VM_POWERED_OFF) {
++			vu = vm_console_vuart(vm);
++		}
++	}
++
++	return ((vu != NULL) && vu->active) ? vu : NULL;
++}
++
+ void console_kick(void)
+ {
++	if (get_pcpu_id() == CONSOLE_CPU_ID) {
++		struct acrn_vuart *vu;
++
++		/* Kick HV-Shell and Uart-Console tasks */
++		vu = vuart_console_active();
++		if (vu != NULL) {
++			/* serial Console Rx operation */
++			vuart_console_rx_chars(vu);
++			/* serial Console Tx operation */
++			vuart_console_tx_chars(vu);
++		} else {
++			shell_kick();
++		}
++	}
+ }
+ 
+-/**
+- * @brief Initialize the hypervisor shell which is solely for debugging. No operation in release version.
+- *
+- * @return None
+- *
+- * @pre N/A
+- *
+- * @post N/A
+- *
+- * @mode HV_INIT
+- *
+- * @reentrancy Unspecified
+- * @threadsafety Unspecified
+- */
+-void shell_init(void)
++int32_t vmx_preemption_timer_expired_handler(struct acrn_vcpu *vcpu)
+ {
++	console_kick();
++	exec_vmwrite(VMX_GUEST_VMX_PREEMPTION_TIMER_VALUE, vmx_preemption_timer_value);
++	vcpu_retain_rip(vcpu);
++	return 0;
+ }
+ 
+-/**
+- * @}
+- */
++void console_setup_timer(void)
++{
++	if (get_pcpu_id() == CONSOLE_CPU_ID) {
++		uint64_t ia32_vmx_misc;
++		uint32_t exec_ctrl, exit_ctrl, vmx_preemption_divisor;
++
++		ia32_vmx_misc = msr_read(MSR_IA32_VMX_MISC);
++		vmx_preemption_divisor = 1U << (ia32_vmx_misc & MSR_IA32_VMX_MISC_VMX_PREEMPTION_DIVISOR);
++		vmx_preemption_timer_value = us_to_ticks(CONSOLE_KICK_TIMER_TIMEOUT * 1000) / vmx_preemption_divisor;
++
++		exec_ctrl = exec_vmread32(VMX_PIN_VM_EXEC_CONTROLS);
++		exec_vmwrite32(VMX_PIN_VM_EXEC_CONTROLS, exec_ctrl | VMX_PINBASED_CTLS_ACTIVATE_VMX_PREEMPTION_TIMER);
++		exit_ctrl = exec_vmread32(VMX_EXIT_CONTROLS);
++		exec_vmwrite32(VMX_EXIT_CONTROLS, exit_ctrl | VMX_EXIT_CTLS_SAVE_PTMR);
++		exec_vmwrite(VMX_GUEST_VMX_PREEMPTION_TIMER_VALUE, vmx_preemption_timer_value);
++
++		dispatch_table[VMX_EXIT_REASON_VMX_PREEMPTION_TIMER_EXPIRED].handler = vmx_preemption_timer_expired_handler;
++	}
++}
++
++void suspend_console(void)
++{
++	msr_write(MSR_IA32_TSC_DEADLINE, 0UL);
++}
++
++void resume_console(void)
++{
++	msr_write(MSR_IA32_TSC_DEADLINE, rdtsc() + us_to_ticks(5000));
++}
+diff --git a/hypervisor/release/lib.h b/hypervisor/release/lib.h
+new file mode 100755
+index 00000000..6d7b9ff2
+--- /dev/null
++++ b/hypervisor/release/lib.h
+@@ -0,0 +1,65 @@
++/*
++ * Copyright (C) 2018 Intel Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef LIB_H
++#define LIB_H
++
++#include <vcpu.h>
++#include <vm.h>
++
++union u_qword {
++	struct {
++		uint32_t low;
++		uint32_t high;
++	} dwords;
++
++	uint64_t qword;
++
++};
++
++typedef signed char int8_t;
++typedef signed long int64_t;
++
++/* MACRO related to string */
++#define ULONG_MAX	((uint64_t)(~0UL))	/* 0xFFFFFFFF */
++#define LONG_MAX	(ULONG_MAX >> 1U)	/* 0x7FFFFFFF */
++#define LONG_MIN	(~LONG_MAX)		/* 0x80000000 */
++
++#define va_start	__builtin_va_start
++#define va_end		__builtin_va_end
++typedef __builtin_va_list va_list;
++
++void printf(const char *fmt, ...);
++size_t vsnprintf(char *dst_arg, size_t sz_arg, const char *fmt, va_list args);
++size_t snprintf(char *dest, size_t sz, const char *fmt, ...);
++
++int64_t strtol_deci(const char *nptr);
++uint64_t strtoul_hex(const char *nptr);
++int32_t strcmp(const char *s1_arg, const char *s2_arg);
++char *strncpy_s(char *d_arg, size_t dmax, const char *s_arg, size_t slen_arg);
++char *strchr(char *s_arg, char ch);
++
++static inline bool is_space(char c)
++{
++	return ((c == ' ') || (c == '\t'));
++}
++
++#define ACRN_INVALID_VMID (0xffffU)
++
++size_t console_write(const char *s, size_t len);
++void console_putc(const char *ch);
++char console_getc(void);
++
++void shell_kick(void);
++
++static inline uint64_t vcpu_get_cr2(const struct acrn_vcpu *vcpu)
++{
++	return vcpu->arch.context.run_ctx.cr2;
++}
++
++void register_testdev(struct acrn_vm *vm);
++
++#endif/* LIB_H */
+diff --git a/hypervisor/release/printf.c b/hypervisor/release/printf.c
+new file mode 100755
+index 00000000..d4692e8b
+--- /dev/null
++++ b/hypervisor/release/printf.c
+@@ -0,0 +1,741 @@
++/*
++ * Copyright (C) 2018 Intel Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <types.h>
++#include <rtl.h>
++#include <util.h>
++#include <console.h>
++#include "lib.h"
++
++/* Command for the emit function: copy string to output. */
++#define PRINT_CMD_COPY			0x00000000U
++
++/* Command for the emit function: fill output with first character. */
++#define PRINT_CMD_FILL			0x00000001U
++
++/** Structure used to call back emit lived in print_param */
++struct snprint_param {
++	/** The destination buffer. */
++	char *dst;
++	/** The size of the destination buffer. */
++	uint32_t sz;
++	/** Counter for written chars. */
++	uint32_t wrtn;
++};
++
++/* Structure used to parse parameters and variables to subroutines. */
++struct print_param {
++	/* A pointer to the function that is used to emit characters. */
++	void (*emit)(size_t, const char *, uint32_t, struct snprint_param *);
++	/* An opaque pointer that is passed as forth argument to the emit
++	 * function.
++	 */
++        struct snprint_param *data;
++	/* Contains variables which are recalculated for each argument. */
++	struct {
++		/* A bitfield with the parsed format flags. */
++		uint32_t flags;
++		/* The parsed format width. */
++		uint32_t width;
++		/* The parsed format precision. */
++		uint32_t precision;
++		/* The bitmask for unsigned values. */
++		uint64_t mask;
++		/* A pointer to the preformated value. */
++		const char *value;
++		/* The number of characters in the preformated value buffer. */
++		uint32_t valuelen;
++		/* A pointer to the values prefix. */
++		const char *prefix;
++		/* The number of characters in the prefix buffer. */
++		uint32_t prefixlen;
++	} vars;
++};
++
++#ifndef NULL
++#define NULL ((void *) 0)
++#endif
++
++#define PRINT_STRING_MAX_LEN		4096U
++
++#define HEX_DIGITS_LEN			17U
++
++/** Use upper case letters for hexadecimal format. */
++#define PRINT_FLAG_UPPER		0x00000001U
++
++/** Use alternate form. */
++#define PRINT_FLAG_ALTERNATE_FORM 	0x00000002U
++
++/** Use '0' instead of ' ' for padding. */
++#define PRINT_FLAG_PAD_ZERO		0x00000004U
++
++/** Use left instead of right justification. */
++#define PRINT_FLAG_LEFT_JUSTIFY		0x00000008U
++
++/** Always use the sign as prefix. */
++#define PRINT_FLAG_SIGN			0x00000010U
++
++/** Use ' ' as prefix if no sign is used. */
++#define PRINT_FLAG_SPACE		0x00000020U
++
++/** The original value was a (unsigned) char. */
++#define PRINT_FLAG_CHAR			0x00000040U
++
++/** The original value was a (unsigned) short. */
++#define PRINT_FLAG_SHORT		0x00000080U
++
++/** The original value was a (unsigned) long. 64bit on ACRN also */
++#define PRINT_FLAG_LONG			0x00000200U
++
++/** The original value was a (unsigned) long long. */
++#define PRINT_FLAG_LONG_LONG		0x00000200U
++
++/** The value is interpreted as unsigned. */
++#define PRINT_FLAG_UINT32		0x00000400U
++
++/** The characters to use for upper case hexadecimal conversion.
++ *
++ *  Note that this array is 17 bytes long. The first 16 characters
++ *  are used to convert a 4 bit number to a printable character.
++ *  The last character is used to determine the prefix for the
++ *  alternate form.
++ */
++
++static const char upper_hex_digits[] = {
++	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
++	'A', 'B', 'C', 'D', 'E', 'F', 'X'
++};
++
++/** The characters to use for lower case hexadecimal conversion.
++ *
++ *  Note that this array is 17 bytes long. The first 16 characters
++ *  are used to convert a 4 bit number to a printable character.
++ *  The last character is used to determine the prefix for the
++ *  alternate form.
++ */
++
++static const char lower_hex_digits[] = {
++	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
++	'a', 'b', 'c', 'd', 'e', 'f', 'x'
++};
++
++static const char *get_param(const char *s_arg, uint32_t *x)
++{
++	const char *s = s_arg;
++	*x = 0U;
++
++	/* ignore '-' for negative numbers, it will be handled in flags*/
++	if (*s == '-') {
++		++s;
++	}
++
++	/* parse uint32_teger */
++	while ((*s >= '0') && (*s <= '9')) {
++		char delta = *s - '0';
++		*x = ((*x) * 10U) + (uint32_t)delta;
++		s++;
++	}
++
++	return s;
++}
++
++static const char *get_flags(const char *s_arg, uint32_t *flags)
++{
++	const char *s = s_arg;
++	/* contains the flag characters */
++	static const char flagchars[5] = "#0- +";
++	/* contains the numeric flags for the characters above */
++	static const uint32_t fl[sizeof(flagchars)] = {
++		PRINT_FLAG_ALTERNATE_FORM,	/* # */
++		PRINT_FLAG_PAD_ZERO,	/* 0 */
++		PRINT_FLAG_LEFT_JUSTIFY,	/* - */
++		PRINT_FLAG_SPACE,	/* ' ' */
++		PRINT_FLAG_SIGN		/* + */
++	};
++	uint32_t i;
++	bool found;
++
++	/* parse multiple flags */
++	while ((*s) != '\0') {
++		/*
++		 * Get index of flag.
++		 * Terminate loop if no flag character was found.
++		 */
++		found = false;
++		for (i = 0U; i < sizeof(flagchars); i++) {
++			if (*s == flagchars[i]) {
++				found = true;
++				break;
++			}
++		}
++		if (!found) {
++			break;
++		}
++
++		/* apply matching flags and continue with the next character */
++		++s;
++		*flags |= fl[i];
++	}
++
++	/* Spec says that '-' has a higher priority than '0' */
++	if ((*flags & PRINT_FLAG_LEFT_JUSTIFY) != 0U) {
++		*flags &= ~PRINT_FLAG_PAD_ZERO;
++	}
++
++	/* Spec says that '+' has a higher priority than ' ' */
++	if ((*flags & PRINT_FLAG_SIGN) != 0U) {
++		*flags &= ~PRINT_FLAG_SPACE;
++	}
++
++	return s;
++}
++
++static const char *get_length_modifier(const char *s_arg,
++			uint32_t *flags, uint64_t *mask)
++{
++	const char *s = s_arg;
++	if (*s == 'h') {
++		/* check for h[h] (char/short) */
++		s++;
++		if (*s == 'h') {
++			*flags |= PRINT_FLAG_CHAR;
++			*mask = 0x000000FFU;
++			++s;
++		} else {
++			*flags |= PRINT_FLAG_SHORT;
++			*mask = 0x0000FFFFU;
++		}
++	} else if (*s == 'l') {
++		/* check for l[l] (long/long long) */
++		s++;
++		if (*s == 'l') {
++			*flags |= PRINT_FLAG_LONG_LONG;
++			++s;
++		} else {
++			*flags |= PRINT_FLAG_LONG;
++		}
++	} else {
++		/* No length modifiers found. */
++	}
++
++	return s;
++}
++
++static void format_number(struct print_param *param)
++{
++	/* contains the character used for padding */
++	char pad;
++	/* effective width of the result */
++	uint32_t width;
++	/* number of characters to insert for width (w) and precision (p) */
++	uint32_t p = 0U, w = 0U;
++
++	/* initialize variables */
++	width = param->vars.valuelen + param->vars.prefixlen;
++
++	/* calculate additional characters for precision */
++	if (param->vars.precision > width) {
++		p = param->vars.precision - width;
++	}
++
++	/* calculate additional characters for width */
++	if (param->vars.width > (width + p)) {
++		w = param->vars.width - (width + p);
++	}
++
++	/* handle case of right justification */
++	if ((param->vars.flags & PRINT_FLAG_LEFT_JUSTIFY) == 0U) {
++		/* assume ' ' as padding character */
++		pad = ' ';
++
++		/*
++		 * if padding with 0 is used, we have to emit the prefix (if any
++		 * ) first to achieve the expected result. However, if a blank is
++		 * used for padding, the prefix is emitted after the padding.
++		 */
++
++		if ((param->vars.flags & PRINT_FLAG_PAD_ZERO) != 0U) {
++			/* use '0' for padding */
++			pad = '0';
++
++			/* emit prefix, return early if an error occurred */
++			param->emit(PRINT_CMD_COPY, param->vars.prefix,
++					param->vars.prefixlen, param->data);
++
++			/* invalidate prefix */
++			param->vars.prefix = NULL;
++			param->vars.prefixlen = 0U;
++		}
++
++		/* fill the width with the padding character, return early if
++		 * an error occurred
++		 */
++		param->emit(PRINT_CMD_FILL, &pad, w, param->data);
++	}
++
++	/* emit prefix (if any), return early in case of an error */
++	param->emit(PRINT_CMD_COPY, param->vars.prefix,
++			param->vars.prefixlen, param->data);
++
++	/* insert additional 0's for precision, return early if an error
++	 * occurred
++	 */
++	param->emit(PRINT_CMD_FILL, "0", p, param->data);
++
++	/* emit the pre-calculated result, return early in case of an error */
++	param->emit(PRINT_CMD_COPY, param->vars.value,
++			param->vars.valuelen, param->data);
++
++	/* handle left justification */
++	if ((param->vars.flags & PRINT_FLAG_LEFT_JUSTIFY) != 0U) {
++		/* emit trailing blanks, return early in case of an error */
++		param->emit(PRINT_CMD_FILL, " ", w, param->data);
++	}
++
++}
++
++static void print_pow2(struct print_param *param,
++		uint64_t v_arg, uint32_t shift)
++{
++	uint64_t v = v_arg;
++	/* max buffer required for octal representation of uint64_t long */
++	char digitbuff[22];
++	/* Insert position for the next character+1 */
++	char *pos = digitbuff + sizeof(digitbuff);
++	/* buffer for the 0/0x/0X prefix */
++	char prefix[2];
++	/* pointer to the digits translation table */
++	const char (*digits)[HEX_DIGITS_LEN];
++	/* mask to extract next character */
++	uint64_t mask;
++
++	/* calculate mask */
++	mask = (1UL << shift) - 1UL;
++
++	/* determine digit translation table */
++	digits = ((param->vars.flags & PRINT_FLAG_UPPER) != 0U) ? &upper_hex_digits : &lower_hex_digits;
++
++	/* apply mask for short/char */
++	v &= param->vars.mask;
++
++	/* determine prefix for alternate form */
++	if ((v == 0UL) &&
++		((param->vars.flags & PRINT_FLAG_ALTERNATE_FORM) != 0U)) {
++		prefix[0] = '0';
++		param->vars.prefix = prefix;
++		param->vars.prefixlen = 1U;
++
++		if (shift == 4U) {
++			param->vars.prefixlen = 2U;
++			prefix[1] = (*digits)[16];
++		}
++	}
++
++	/* determine digits from right to left */
++	do {
++		pos--;
++		*pos = (*digits)[(v & mask)];
++		v >>= shift;
++	} while (v != 0UL);
++
++	/* assign parameter and apply width and precision */
++	param->vars.value = pos;
++	param->vars.valuelen = (digitbuff + sizeof(digitbuff)) - pos;
++
++	format_number(param);
++
++	param->vars.value = NULL;
++	param->vars.valuelen = 0U;
++
++}
++
++static void print_decimal(struct print_param *param, int64_t value)
++{
++	/* max. required buffer for uint64_t long in decimal format */
++	char digitbuff[20];
++	/* pointer to the next character position (+1) */
++	char *pos = digitbuff + sizeof(digitbuff);
++	/* current value in 32/64 bit */
++	union u_qword v;
++	/* next value in 32/64 bit */
++	union u_qword nv;
++
++	/* assume an unsigned 64 bit value */
++	v.qword = ((uint64_t)value) & param->vars.mask;
++
++	/*
++	 * assign sign and correct value if value is negative and
++	 * value must be interpreted as signed
++	 */
++	if (((param->vars.flags & PRINT_FLAG_UINT32) == 0U) && (value < 0)) {
++		v.qword = (uint64_t)-value;
++		param->vars.prefix = "-";
++		param->vars.prefixlen = 1U;
++	}
++
++	/* determine sign if explicit requested in the format string */
++	if (param->vars.prefix == NULL) {
++		if ((param->vars.flags & PRINT_FLAG_SIGN) != 0U) {
++			param->vars.prefix = "+";
++			param->vars.prefixlen = 1U;
++		} else if ((param->vars.flags & PRINT_FLAG_SPACE) != 0U) {
++			param->vars.prefix = " ";
++			param->vars.prefixlen = 1U;
++		} else {
++			/* No prefix specified. */
++		}
++	}
++
++	/* process 64 bit value as long as needed */
++	while (v.dwords.high != 0U) {
++		/* determine digits from right to left */
++		pos--;
++		*pos = (char)(v.qword % 10UL) + '0';
++		v.qword = v.qword / 10UL;
++	}
++
++	nv.dwords.low = v.dwords.low;
++	/* process 32 bit (or reduced 64 bit) value */
++	do {
++		/* determine digits from right to left. The compiler should be
++		 * able to handle a division and multiplication by the constant
++		 * 10.
++		 */
++		pos--;
++		*pos = (char)(nv.dwords.low % 10U) + '0';
++		nv.dwords.low = nv.dwords.low / 10U;
++	} while (nv.dwords.low != 0U);
++
++	/* assign parameter and apply width and precision */
++	param->vars.value = pos;
++	param->vars.valuelen = (digitbuff + sizeof(digitbuff)) - pos;
++
++	format_number(param);
++
++	param->vars.value = NULL;
++	param->vars.valuelen = 0U;
++
++}
++
++static void print_string(const struct print_param *param, const char *s)
++{
++	/* the length of the string (-1) if unknown */
++	uint32_t len;
++	/* the number of additional characters to insert to reach the required
++	 * width
++	 */
++	uint32_t w = 0U;
++
++	len = strnlen_s(s, PRINT_STRING_MAX_LEN);
++
++	/* precision gives the max. number of characters to emit. */
++	if ((param->vars.precision != 0U) && (len > param->vars.precision)) {
++		len = param->vars.precision;
++	}
++
++	/* calculate the number of additional characters to get the required
++	 * width
++	 */
++	if ((param->vars.width > 0U) && (param->vars.width > len)) {
++		w = param->vars.width - len;
++	}
++
++	/* emit additional characters for width, return early if an error
++	 * occurred
++	 */
++	if ((param->vars.flags & PRINT_FLAG_LEFT_JUSTIFY) == 0U) {
++		param->emit(PRINT_CMD_FILL, " ", w, param->data);
++	}
++
++	param->emit(PRINT_CMD_COPY, s, len, param->data);
++
++	/* emit additional characters on the right, return early if an error
++	 * occurred
++	 */
++	if ((param->vars.flags & PRINT_FLAG_LEFT_JUSTIFY) != 0U) {
++		param->emit(PRINT_CMD_FILL, " ", w, param->data);
++	}
++
++}
++
++void do_print(const char *fmt_arg, struct print_param *param,
++		__builtin_va_list args)
++{
++	const char *fmt = fmt_arg;
++
++	/* temp. storage for the next character */
++	char ch;
++	/* temp. pointer to the start of an analysed character sequence */
++	const char *start;
++
++	/* main loop: analyse until there are no more characters */
++	while ((*fmt) != '\0') {
++		/* mark the current position and search the next '%' */
++		start = fmt;
++
++		while (((*fmt) != '\0') && (*fmt != '%')) {
++			fmt++;
++		}
++
++		/*
++		 * pass all characters until the next '%' to the emit function.
++		 * Return early if the function fails
++		 */
++			param->emit(PRINT_CMD_COPY, start, fmt - start,
++				param->data);
++
++		/* continue only if the '%' character was found */
++		if (*fmt == '%') {
++			/* mark current position in the format string */
++			start = fmt;
++			fmt++;
++
++			/* initialize the variables for the next argument */
++			(void)memset(&(param->vars), 0U, sizeof(param->vars));
++			param->vars.mask = 0xFFFFFFFFFFFFFFFFUL;
++
++			/*
++			 * analyze the format specification:
++			 *   - get the flags
++			 *   - get the width
++			 *   - get the precision
++			 *   - get the length modifier
++			 */
++			fmt = get_flags(fmt, &(param->vars.flags));
++			fmt = get_param(fmt, &(param->vars.width));
++
++			if (*fmt == '.') {
++				fmt++;
++				fmt = get_param(fmt, &(param->vars.precision));
++			}
++
++			fmt = get_length_modifier(fmt, &(param->vars.flags),
++						&(param->vars.mask));
++			ch = *fmt;
++			fmt++;
++
++			/* a single '%'? => print out a single '%' */
++			if (ch == '%') {
++				param->emit(PRINT_CMD_COPY, &ch, 1U,
++						param->data);
++			} else if ((ch == 'd') || (ch == 'i')) {
++			/* decimal number */
++				if ((param->vars.flags &
++					PRINT_FLAG_LONG_LONG) != 0U) {
++					print_decimal(param,
++						__builtin_va_arg(args, int64_t));
++				} else {
++					print_decimal(param,
++						__builtin_va_arg(args, int32_t));
++				}
++			}
++			/* unsigned decimal number */
++			else if (ch == 'u') {
++				param->vars.flags |= PRINT_FLAG_UINT32;
++				if ((param->vars.flags &
++					PRINT_FLAG_LONG_LONG) != 0U) {
++					print_decimal(param,
++						(int64_t)__builtin_va_arg(args,
++						uint64_t));
++				} else {
++					print_decimal(param,
++						(int64_t)__builtin_va_arg(args,
++						uint32_t));
++				}
++			}
++			/* hexadecimal number */
++			else if ((ch == 'X') || (ch == 'x')) {
++				if (ch == 'X') {
++					param->vars.flags |= PRINT_FLAG_UPPER;
++				}
++				if ((param->vars.flags &
++					PRINT_FLAG_LONG_LONG) != 0U) {
++					print_pow2(param,
++						__builtin_va_arg(args,
++						uint64_t), 4U);
++				} else {
++					print_pow2(param,
++						__builtin_va_arg(args,
++						uint32_t), 4U);
++				}
++			}
++			/* string argument */
++			else if (ch == 's') {
++				const char *s = __builtin_va_arg(args, char *);
++
++				if (s == NULL) {
++					s = "(null)";
++				}
++				print_string(param, s);
++			}
++			/* single character argument */
++			else if (ch == 'c') {
++				char c[2];
++
++				c[0] = __builtin_va_arg(args, int32_t);
++				c[1] = 0;
++				print_string(param, c);
++			}
++			/* default: print the format specifier as it is */
++			else {
++				param->emit(PRINT_CMD_COPY, start,
++						fmt - start, param->data);
++			}
++		}
++	}
++
++}
++
++static void
++charmem(size_t cmd, const char *s_arg, uint32_t sz, struct snprint_param *param)
++{
++	const char *s = s_arg;
++	/* pointer to the destination */
++	char *p = param->dst + param->wrtn;
++	/* characters actually written */
++	uint32_t n = 0U;
++
++	/* copy mode ? */
++	if (cmd == PRINT_CMD_COPY) {
++		if (sz > 0U) {
++			while (((*s) != '\0') && (n < sz)) {
++				if (n < (param->sz - param->wrtn)) {
++					*p = *s;
++				}
++				p++;
++				s++;
++				n++;
++			}
++		}
++
++		param->wrtn += n;
++	}
++	/* fill mode */
++	else {
++		n = (sz < (param->sz - param->wrtn)) ? sz : 0U;
++		param->wrtn += sz;
++		(void)memset(p, (uint8_t)*s, n);
++	}
++
++}
++
++size_t vsnprintf(char *dst_arg, size_t sz_arg, const char *fmt, va_list args)
++{
++	char *dst = dst_arg;
++	uint32_t sz = sz_arg;
++	size_t res = 0U;
++
++
++	/* struct to store all necessary parameters */
++	struct print_param param;
++
++	/* struct to store snprintf specific parameters */
++	struct snprint_param snparam;
++
++	/* initialize parameters */
++	(void)memset(&snparam, 0U, sizeof(snparam));
++	snparam.dst = dst;
++	snparam.sz = sz;
++	(void)memset(&param, 0U, sizeof(param));
++	param.emit = charmem;
++	param.data = &snparam;
++
++	/* execute the printf()*/
++	do_print(fmt, &param, args);
++
++	/* ensure the written string is NULL terminated */
++	if (snparam.wrtn < sz) {
++		snparam.dst[snparam.wrtn] = '\0';
++	}
++	else {
++		snparam.dst[sz - 1] = '\0';
++	}
++
++	/* return the number of chars which would be written */
++	res = snparam.wrtn;
++
++	/* done */
++	return res;
++}
++
++size_t snprintf(char *dest, size_t sz, const char *fmt, ...)
++{
++	/* variable argument list needed for do_print() */
++	va_list args;
++	/* the result of this function */
++	size_t res;
++
++	va_start(args, fmt);
++
++	/* execute the printf() */
++	res = vsnprintf(dest, sz, fmt, args);
++
++	/* destroy parameter list */
++	va_end(args);
++
++	/* done */
++	return res;
++}
++
++static void
++charout(size_t cmd, const char *s_arg, uint32_t sz_arg, struct snprint_param *param)
++{
++	const char *s = s_arg;
++	uint32_t sz = sz_arg;
++	/* pointer to an integer to store the number of characters */
++	size_t nchars = param->wrtn;
++	/* working pointer */
++	const char *p = s;
++	size_t len;
++
++	/* copy mode ? */
++	if (cmd == PRINT_CMD_COPY) {
++		if (sz > 0U) { /* copy 'sz' characters */
++			len = console_write(s, sz);
++			s += len;
++		}
++
++		nchars += (s - p);
++	} else {
++		/* fill mode */
++		nchars += sz;
++		while (sz != 0U) {
++			console_putc(s);
++			sz--;
++		}
++	}
++	param->wrtn = nchars;
++}
++
++void vprintf(const char *fmt, va_list args)
++{
++	/* struct to store all necessary parameters */
++	struct print_param param;
++	struct snprint_param snparam;
++
++	/* initialize parameters */
++	(void)memset(&snparam, 0U, sizeof(snparam));
++	(void)memset(&param, 0U, sizeof(param));
++	param.emit = charout;
++	param.data = &snparam;
++
++	/* execute the printf() */
++	do_print(fmt, &param, args);
++}
++
++void printf(const char *fmt, ...)
++{
++	/* variable argument list needed for do_print() */
++	va_list args;
++
++	va_start(args, fmt);
++
++	/* execute the printf() */
++	vprintf(fmt, args);
++
++	/* destroy parameter list */
++	va_end(args);
++}
+diff --git a/hypervisor/release/shell.c b/hypervisor/release/shell.c
+new file mode 100755
+index 00000000..6ab24f4b
+--- /dev/null
++++ b/hypervisor/release/shell.c
+@@ -0,0 +1,1112 @@
++/*
++ * Copyright (C) 2018 Intel Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <types.h>
++#include <errno.h>
++#include <bits.h>
++#include <irq.h>
++#include <io.h>
++#include <console.h>
++#include <per_cpu.h>
++#include <vmx.h>
++#include <cpuid.h>
++#include <ptdev.h>
++#include <vm.h>
++#include <logmsg.h>
++#include <version.h>
++#include "vuart.h"
++#include "shell_priv.h"
++#include "lib.h"
++#include "config_release.h"
++#include "pgtable.h"
++#include "idt.h"
++
++#define TEMP_STR_SIZE		60U
++#define MAX_STR_SIZE		256U
++#define SHELL_PROMPT_STR	"ACRN:\\>"
++
++#define SHELL_LOG_BUF_SIZE		(PAGE_SIZE * MAX_PCPU_NUM / 2U)
++static char shell_log_buf[SHELL_LOG_BUF_SIZE];
++
++static uint64_t save_exception_entry;
++
++/* Input Line Other - Switch to the "other" input line (there are only two
++ * input lines total).
++ */
++#define SHELL_INPUT_LINE_OTHER(v)	(((v) + 1U) & 0x1U)
++
++static int32_t shell_cmd_help(__unused int32_t argc, __unused char **argv);
++static int32_t shell_version(__unused int32_t argc, __unused char **argv);
++static int32_t shell_list_vm(__unused int32_t argc, __unused char **argv);
++static int32_t shell_list_vcpu(__unused int32_t argc, __unused char **argv);
++static int32_t shell_vcpu_dumpreg(int32_t argc, char **argv);
++static int32_t shell_dumpmem(int32_t argc, char **argv);
++static int32_t shell_to_vm_console(int32_t argc, char **argv);
++static int32_t shell_show_ptdev_info(__unused int32_t argc, __unused char **argv);
++static int32_t shell_loglevel(int32_t argc, char **argv);
++static int32_t shell_cpuid(int32_t argc, char **argv);
++static int32_t shell_trigger_reboot(int32_t argc, char **argv);
++static int32_t shell_rdmsr(int32_t argc, char **argv);
++static int32_t shell_wrmsr(int32_t argc, char **argv);
++static int shell_start_test(int argc, char **argv);
++static int shell_stop_test(__unused int argc, __unused char **argv);
++static int shell_inject_mc(__unused int argc, __unused char **argv);
++
++static struct shell_cmd shell_cmds[] = {
++	{
++		.str		= SHELL_CMD_HELP,
++		.cmd_param	= SHELL_CMD_HELP_PARAM,
++		.help_str	= SHELL_CMD_HELP_HELP,
++		.fcn		= shell_cmd_help,
++	},
++	{
++		.str		= SHELL_CMD_VERSION,
++		.cmd_param	= SHELL_CMD_VERSION_PARAM,
++		.help_str	= SHELL_CMD_VERSION_HELP,
++		.fcn		= shell_version,
++	},
++	{
++		.str		= SHELL_CMD_VM_LIST,
++		.cmd_param	= SHELL_CMD_VM_LIST_PARAM,
++		.help_str	= SHELL_CMD_VM_LIST_HELP,
++		.fcn		= shell_list_vm,
++	},
++	{
++		.str		= SHELL_CMD_VCPU_LIST,
++		.cmd_param	= SHELL_CMD_VCPU_LIST_PARAM,
++		.help_str	= SHELL_CMD_VCPU_LIST_HELP,
++		.fcn		= shell_list_vcpu,
++	},
++	{
++		.str		= SHELL_CMD_VCPU_DUMPREG,
++		.cmd_param	= SHELL_CMD_VCPU_DUMPREG_PARAM,
++		.help_str	= SHELL_CMD_VCPU_DUMPREG_HELP,
++		.fcn		= shell_vcpu_dumpreg,
++	},
++	{
++		.str		= SHELL_CMD_DUMPMEM,
++		.cmd_param	= SHELL_CMD_DUMPMEM_PARAM,
++		.help_str	= SHELL_CMD_DUMPMEM_HELP,
++		.fcn		= shell_dumpmem,
++	},
++	{
++		.str		= SHELL_CMD_VM_CONSOLE,
++		.cmd_param	= SHELL_CMD_VM_CONSOLE_PARAM,
++		.help_str	= SHELL_CMD_VM_CONSOLE_HELP,
++		.fcn		= shell_to_vm_console,
++	},
++	{
++		.str		= SHELL_CMD_PTDEV,
++		.cmd_param	= SHELL_CMD_PTDEV_PARAM,
++		.help_str	= SHELL_CMD_PTDEV_HELP,
++		.fcn		= shell_show_ptdev_info,
++	},
++	{
++		.str		= SHELL_CMD_LOG_LVL,
++		.cmd_param	= SHELL_CMD_LOG_LVL_PARAM,
++		.help_str	= SHELL_CMD_LOG_LVL_HELP,
++		.fcn		= shell_loglevel,
++	},
++	{
++		.str		= SHELL_CMD_CPUID,
++		.cmd_param	= SHELL_CMD_CPUID_PARAM,
++		.help_str	= SHELL_CMD_CPUID_HELP,
++		.fcn		= shell_cpuid,
++	},
++	{
++		.str		= SHELL_CMD_REBOOT,
++		.cmd_param	= SHELL_CMD_REBOOT_PARAM,
++		.help_str	= SHELL_CMD_REBOOT_HELP,
++		.fcn		= shell_trigger_reboot,
++	},
++	{
++		.str		= SHELL_CMD_RDMSR,
++		.cmd_param	= SHELL_CMD_RDMSR_PARAM,
++		.help_str	= SHELL_CMD_RDMSR_HELP,
++		.fcn		= shell_rdmsr,
++	},
++	{
++		.str		= SHELL_CMD_WRMSR,
++		.cmd_param	= SHELL_CMD_WRMSR_PARAM,
++		.help_str	= SHELL_CMD_WRMSR_HELP,
++		.fcn		= shell_wrmsr,
++	},
++	{
++		.str		= SHELL_CMD_START_TEST,
++		.cmd_param	= SHELL_CMD_START_TEST_PARAM,
++		.help_str	= SHELL_CMD_START_TEST_HELP,
++		.fcn		= shell_start_test,
++	},
++	{
++		.str		= SHELL_CMD_STOP_TEST,
++		.cmd_param	= SHELL_CMD_STOP_TEST_PARAM,
++		.help_str	= SHELL_CMD_STOP_TEST_HELP,
++		.fcn		= shell_stop_test,
++	},
++	{
++		.str		= SHELL_CMD_INJECT_MC,
++		.cmd_param	= SHELL_CMD_INJECT_MC_PARAM,
++		.help_str	= SHELL_CMD_INJECT_MC_HELP,
++		.fcn		= shell_inject_mc,
++	},
++};
++
++/* The initial log level*/
++uint16_t console_loglevel = CONFIG_CONSOLE_LOGLEVEL_DEFAULT;
++
++static struct shell hv_shell;
++static struct shell *p_shell = &hv_shell;
++
++static int32_t string_to_argv(char *argv_str, void *p_argv_mem,
++		__unused uint32_t argv_mem_size,
++		uint32_t *p_argc, char ***p_argv)
++{
++	uint32_t argc;
++	char **argv;
++	char *p_ch;
++
++	/* Setup initial argument values. */
++	argc = 0U;
++	argv = NULL;
++
++	/* Ensure there are arguments to be processed. */
++	if (argv_str == NULL) {
++		*p_argc = argc;
++		*p_argv = argv;
++		return -EINVAL;
++	}
++
++	/* Process the argument string (there is at least one element). */
++	argv = (char **)p_argv_mem;
++	p_ch = argv_str;
++
++	/* Remove all spaces at the beginning of cmd*/
++	while (*p_ch == ' ') {
++		p_ch++;
++	}
++
++	while (*p_ch != 0) {
++		/* Add argument (string) pointer to the vector. */
++		argv[argc] = p_ch;
++
++		/* Move past the vector entry argument string (in the
++		 * argument string).
++		 */
++		while ((*p_ch != ' ') && (*p_ch != ',') && (*p_ch != 0)) {
++			p_ch++;
++		}
++
++		/* Count the argument just processed. */
++		argc++;
++
++		/* Check for the end of the argument string. */
++		if (*p_ch != 0) {
++			/* Terminate the vector entry argument string
++			 * and move to the next.
++			 */
++			*p_ch = 0;
++			/* Remove all space in middile of cmdline */
++			p_ch++;
++			while (*p_ch == ' ') {
++				p_ch++;
++			}
++		}
++	}
++
++	/* Update return parameters */
++	*p_argc = argc;
++	*p_argv = argv;
++
++	return 0;
++}
++
++static struct shell_cmd *shell_find_cmd(const char *cmd_str)
++{
++	uint32_t i;
++	struct shell_cmd *p_cmd = NULL;
++
++	for (i = 0U; i < p_shell->cmd_count; i++) {
++		p_cmd = &p_shell->cmds[i];
++		if (strcmp(p_cmd->str, cmd_str) == 0) {
++			return p_cmd;
++		}
++	}
++	return NULL;
++}
++
++static char shell_getc(void)
++{
++	return console_getc();
++}
++
++static void shell_puts(const char *string_ptr)
++{
++	/* Output the string */
++	(void)console_write(string_ptr, strnlen_s(string_ptr,
++				SHELL_STRING_MAX_LEN));
++}
++
++static uint16_t sanitize_vmid(uint16_t vmid)
++{
++	uint16_t sanitized_vmid = vmid;
++	char temp_str[TEMP_STR_SIZE];
++
++	if (vmid >= CONFIG_MAX_VM_NUM) {
++		snprintf(temp_str, MAX_STR_SIZE,
++			"VM ID given exceeds the MAX_VM_NUM(%u), using 0 instead\r\n",
++			CONFIG_MAX_VM_NUM);
++		shell_puts(temp_str);
++		sanitized_vmid = 0U;
++	}
++
++	return sanitized_vmid;
++}
++
++static void shell_handle_special_char(char ch)
++{
++	switch (ch) {
++	/* Escape character */
++	case 0x1b:
++		/* Consume the next 2 characters */
++		(void) shell_getc();
++		(void) shell_getc();
++		break;
++	default:
++		/*
++		 * Only the Escape character is treated as special character.
++		 * All the other characters have been handled properly in
++		 * shell_input_line, so they will not be handled in this API.
++		 * Gracefully return if prior case clauses have not been met.
++		 */
++		break;
++	}
++}
++
++static bool shell_input_line(void)
++{
++	bool done = false;
++	char ch;
++
++	ch = shell_getc();
++
++	/* Check character */
++	switch (ch) {
++	/* Backspace */
++	case '\b':
++		/* Ensure length is not 0 */
++		if (p_shell->input_line_len > 0U) {
++			/* Reduce the length of the string by one */
++			p_shell->input_line_len--;
++
++			/* Null terminate the last character to erase it */
++			p_shell->input_line[p_shell->input_line_active]
++					[p_shell->input_line_len] = 0;
++
++			/* Echo backspace */
++			shell_puts("\b");
++
++			/* Send a space + backspace sequence to delete
++			 * character
++			 */
++			shell_puts(" \b");
++		}
++		break;
++
++	/* Carriage-return */
++	case '\r':
++		/* Echo carriage return / line feed */
++		shell_puts("\r\n");
++
++		/* Set flag showing line input done */
++		done = true;
++
++		/* Reset command length for next command processing */
++		p_shell->input_line_len = 0U;
++		break;
++
++	/* Line feed */
++	case '\n':
++		/* Do nothing */
++		break;
++
++	/* All other characters */
++	default:
++		/* Ensure data doesn't exceed full terminal width */
++		if (p_shell->input_line_len < SHELL_CMD_MAX_LEN) {
++			/* See if a "standard" prINTable ASCII character received */
++			if ((ch >= 32) && (ch <= 126)) {
++				/* Add character to string */
++				p_shell->input_line[p_shell->input_line_active]
++						[p_shell->input_line_len] = ch;
++				/* Echo back the input */
++				shell_puts(&p_shell->input_line
++						[p_shell->input_line_active]
++						[p_shell->input_line_len]);
++
++				/* Move to next character in string */
++				p_shell->input_line_len++;
++			} else {
++				/* call special character handler */
++				shell_handle_special_char(ch);
++			}
++		} else {
++			/* Echo carriage return / line feed */
++			shell_puts("\r\n");
++
++			/* Set flag showing line input done */
++			done = true;
++
++			/* Reset command length for next command processing */
++			p_shell->input_line_len = 0U;
++
++		}
++		break;
++	}
++
++
++	return done;
++}
++
++static int32_t shell_process_cmd(const char *p_input_line)
++{
++	int32_t status = -EINVAL;
++	struct shell_cmd *p_cmd;
++	char cmd_argv_str[SHELL_CMD_MAX_LEN + 1U];
++	int32_t cmd_argv_mem[sizeof(char *) * ((SHELL_CMD_MAX_LEN + 1U) >> 1U)];
++	int32_t cmd_argc;
++	char **cmd_argv;
++
++	/* Copy the input line INTo an argument string to become part of the
++	 * argument vector.
++	 */
++	(void)strncpy_s(&cmd_argv_str[0], SHELL_CMD_MAX_LEN + 1U, p_input_line, SHELL_CMD_MAX_LEN);
++	cmd_argv_str[SHELL_CMD_MAX_LEN] = 0;
++
++	/* Build the argv vector from the string. The first argument in the
++	 * resulting vector will be the command string itself.
++	 */
++
++	/* NOTE: This process is destructive to the argument string! */
++
++	(void) string_to_argv(&cmd_argv_str[0],
++			(void *) &cmd_argv_mem[0],
++			sizeof(cmd_argv_mem), (void *)&cmd_argc, &cmd_argv);
++
++	/* Determine if there is a command to process. */
++	if (cmd_argc != 0) {
++		/* See if command is in cmds supported */
++		p_cmd = shell_find_cmd(cmd_argv[0]);
++		if (p_cmd == NULL) {
++			shell_puts("\r\nError: Invalid command.\r\n");
++			return -EINVAL;
++		}
++
++		status = p_cmd->fcn(cmd_argc, &cmd_argv[0]);
++		if (status == -EINVAL) {
++			shell_puts("\r\nError: Invalid parameters.\r\n");
++		} else if (status != 0) {
++			shell_puts("\r\nCommand launch failed.\r\n");
++		} else {
++			/* No other state currently, do nothing */
++		}
++	}
++
++	return status;
++}
++
++static int32_t shell_process(void)
++{
++	int32_t status;
++	char *p_input_line;
++
++	/* Check for the repeat command character in active input line.
++	 */
++	if (p_shell->input_line[p_shell->input_line_active][0] == '.') {
++		/* Repeat the last command (using inactive input line).
++		 */
++		p_input_line =
++			&p_shell->input_line[SHELL_INPUT_LINE_OTHER
++				(p_shell->input_line_active)][0];
++	} else {
++		/* Process current command (using active input line). */
++		p_input_line =
++			&p_shell->input_line[p_shell->input_line_active][0];
++
++		/* Switch active input line. */
++		p_shell->input_line_active =
++			SHELL_INPUT_LINE_OTHER(p_shell->input_line_active);
++	}
++
++	/* Process command */
++	status = shell_process_cmd(p_input_line);
++
++	/* Now that the command is processed, zero fill the input buffer */
++	(void)memset((void *) p_shell->input_line[p_shell->input_line_active],
++			0, SHELL_CMD_MAX_LEN + 1U);
++
++	/* Process command and return result to caller */
++	return status;
++}
++
++
++void shell_kick(void)
++{
++	static bool is_cmd_cmplt = true;
++
++	/* At any given instance, UART may be owned by the HV
++	 * OR by the guest that has enabled the vUart.
++	 * Show HV shell prompt ONLY when HV owns the
++	 * serial port.
++	 */
++	/* Prompt the user for a selection. */
++	if (is_cmd_cmplt) {
++		shell_puts(SHELL_PROMPT_STR);
++	}
++
++	/* Get user's input */
++	is_cmd_cmplt = shell_input_line();
++
++	/* If user has pressed the ENTER then process
++	 * the command
++	 */
++	if (is_cmd_cmplt) {
++		/* Process current input line. */
++		(void)shell_process();
++	}
++}
++
++
++void shell_init(void)
++{
++	p_shell->cmds = shell_cmds;
++	p_shell->cmd_count = ARRAY_SIZE(shell_cmds);
++
++	/* Zero fill the input buffer */
++	(void)memset((void *)p_shell->input_line[p_shell->input_line_active], 0U,
++			SHELL_CMD_MAX_LEN + 1U);
++}
++
++#define SHELL_ROWS	10
++#define MAX_INDENT_LEN	16U
++static int32_t shell_cmd_help(__unused int32_t argc, __unused char **argv)
++{
++	uint16_t spaces;
++	struct shell_cmd *p_cmd = NULL;
++	char space_buf[MAX_INDENT_LEN + 1];
++
++	/* Print title */
++	shell_puts("\r\nRegistered Commands:\r\n\r\n");
++
++	pr_dbg("shell: Number of registered commands = %u in %s\n",
++		p_shell->cmd_count, __func__);
++
++	(void)memset(space_buf, ' ', sizeof(space_buf));
++	/* Proceed based on the number of registered commands. */
++	if (p_shell->cmd_count == 0U) {
++		/* No registered commands */
++		shell_puts("NONE\r\n");
++	} else {
++		int32_t i = 0;
++		uint32_t j;
++
++		for (j = 0U; j < p_shell->cmd_count; j++) {
++			p_cmd = &p_shell->cmds[j];
++
++			/* Check if we've filled the screen with info */
++			/* i + 1 used to avoid 0%SHELL_ROWS=0 */
++			if (((i + 1) % SHELL_ROWS) == 0) {
++				/* Pause before we continue on to the next
++				 * page.
++				 */
++
++				/* Print message to the user. */
++				shell_puts("<*** Hit any key to continue ***>");
++
++				/* Wait for a character from user (NOT USED) */
++				(void)shell_getc();
++
++				/* Print a new line after the key is hit. */
++				shell_puts("\r\n");
++			}
++
++			i++;
++
++			/* Output the command string */
++			shell_puts("  ");
++			shell_puts(p_cmd->str);
++
++			/* Calculate spaces needed for alignment */
++			spaces = MAX_INDENT_LEN - strnlen_s(p_cmd->str, MAX_INDENT_LEN - 1);
++
++			space_buf[spaces] = '\0';
++			shell_puts(space_buf);
++			space_buf[spaces] = ' ';
++
++			/* Display parameter info if applicable. */
++			if (p_cmd->cmd_param != NULL) {
++				shell_puts(p_cmd->cmd_param);
++			}
++
++			/* Display help text if available. */
++			if (p_cmd->help_str != NULL) {
++				shell_puts(" - ");
++				shell_puts(p_cmd->help_str);
++			}
++			shell_puts("\r\n");
++		}
++	}
++
++	shell_puts("\r\n");
++
++	return 0;
++}
++
++static int32_t shell_version(__unused int32_t argc, __unused char **argv)
++{
++	char temp_str[MAX_STR_SIZE];
++
++	snprintf(temp_str, MAX_STR_SIZE, "HV version %s-%s-%s %s (daily tag: %s) build by %s\r\n",
++			HV_FULL_VERSION, HV_BUILD_TIME, HV_BUILD_VERSION, HV_BUILD_TYPE, HV_DAILY_TAG, HV_BUILD_USER);
++	shell_puts(temp_str);
++
++	(void)memset((void *)temp_str, 0, MAX_STR_SIZE);
++	snprintf(temp_str, MAX_STR_SIZE, "API version %u.%u\r\n", HV_API_MAJOR_VERSION, HV_API_MINOR_VERSION);
++	shell_puts(temp_str);
++
++	return 0;
++}
++
++static int32_t shell_list_vm(__unused int32_t argc, __unused char **argv)
++{
++	char temp_str[MAX_STR_SIZE];
++	struct acrn_vm *vm;
++	struct acrn_vm_config *vm_config;
++	uint16_t vm_id;
++	char state[32];
++
++	shell_puts("\r\nVM_ID VM_NAME                          VM_STATE");
++	shell_puts("\r\n===== ================================ ========\r\n");
++
++	for (vm_id = 0U; vm_id < CONFIG_MAX_VM_NUM; vm_id++) {
++		vm = get_vm_from_vmid(vm_id);
++		switch (vm->state) {
++		case VM_CREATED:
++			(void)strncpy_s(state, 32U, "Created", 32U);
++			break;
++		case VM_STARTED:
++			(void)strncpy_s(state, 32U, "Started", 32U);
++			break;
++		case VM_PAUSED:
++			(void)strncpy_s(state, 32U, "Paused", 32U);
++			break;
++		case VM_POWERED_OFF:
++			(void)strncpy_s(state, 32U, "Off", 32U);
++			break;
++		default:
++			(void)strncpy_s(state, 32U, "Unknown", 32U);
++			break;
++		}
++		vm_config = get_vm_config(vm_id);
++		if (vm->state != VM_POWERED_OFF) {
++			snprintf(temp_str, MAX_STR_SIZE, "   %-3d %-32s %-8s\r\n",
++				vm_id, vm_config->name, state);
++
++			/* Output information for this task */
++			shell_puts(temp_str);
++		}
++	}
++
++	return 0;
++}
++
++static int32_t shell_list_vcpu(__unused int32_t argc, __unused char **argv)
++{
++	char temp_str[MAX_STR_SIZE];
++	struct acrn_vm *vm;
++	struct acrn_vcpu *vcpu;
++	char state[32];
++	uint16_t i;
++	uint16_t idx;
++
++	shell_puts("\r\nVM ID    PCPU ID    VCPU ID    VCPU ROLE    VCPU STATE"
++		"\r\n=====    =======    =======    =========    ==========\r\n");
++
++	for (idx = 0U; idx < CONFIG_MAX_VM_NUM; idx++) {
++		vm = get_vm_from_vmid(idx);
++		if (vm->state == VM_POWERED_OFF) {
++			continue;
++		}
++		foreach_vcpu(i, vm, vcpu) {
++			switch (vcpu->state) {
++			case VCPU_INIT:
++				(void)strncpy_s(state, 32U, "Init", 32U);
++				break;
++			case VCPU_RUNNING:
++				(void)strncpy_s(state, 32U, "Running", 32U);
++				break;
++			case VCPU_ZOMBIE:
++				(void)strncpy_s(state, 32U, "Zombie", 32U);
++				break;
++			default:
++				(void)strncpy_s(state, 32U, "Unknown", 32U);
++			}
++			/* Create output string consisting of VM name
++			 * and VM id
++			 */
++			snprintf(temp_str, MAX_STR_SIZE,
++					"  %-9d %-10d %-7hu %-12s %-16s\r\n",
++					vm->vm_id,
++					pcpuid_from_vcpu(vcpu),
++					vcpu->vcpu_id,
++					is_vcpu_bsp(vcpu) ?
++					"PRIMARY" : "SECONDARY",
++					state);
++			/* Output information for this task */
++			shell_puts(temp_str);
++		}
++	}
++
++	return 0;
++}
++
++#define DUMPREG_SP_SIZE	32
++/* the input 'data' must != NULL and indicate a vcpu structure pointer */
++static void vcpu_dumpreg(void *data)
++{
++	struct vcpu_dump *dump = data;
++	struct acrn_vcpu *vcpu = dump->vcpu;
++	char *str = dump->str;
++	size_t len, size = dump->str_max;
++
++	len = snprintf(str, size,
++		"=  VM ID %d ==== CPU ID %hu========================\r\n"
++		"=  RIP=0x%016llx  RSP=0x%016llx RFLAGS=0x%016llx\r\n"
++		"=  CR0=0x%016llx  CR2=0x%016llx\r\n"
++		"=  CR3=0x%016llx  CR4=0x%016llx\r\n"
++		"=  RAX=0x%016llx  RBX=0x%016llx RCX=0x%016llx\r\n"
++		"=  RDX=0x%016llx  RDI=0x%016llx RSI=0x%016llx\r\n"
++		"=  RBP=0x%016llx  R8=0x%016llx R9=0x%016llx\r\n"
++		"=  R10=0x%016llx  R11=0x%016llx R12=0x%016llx\r\n"
++		"=  R13=0x%016llx  R14=0x%016llx  R15=0x%016llx\r\n",
++		vcpu->vm->vm_id, vcpu->vcpu_id,
++		vcpu_get_rip(vcpu),
++		vcpu_get_gpreg(vcpu, CPU_REG_RSP),
++		vcpu_get_rflags(vcpu),
++		vcpu_get_cr0(vcpu), vcpu_get_cr2(vcpu),
++		exec_vmread(VMX_GUEST_CR3), vcpu_get_cr4(vcpu),
++		vcpu_get_gpreg(vcpu, CPU_REG_RAX),
++		vcpu_get_gpreg(vcpu, CPU_REG_RBX),
++		vcpu_get_gpreg(vcpu, CPU_REG_RCX),
++		vcpu_get_gpreg(vcpu, CPU_REG_RDX),
++		vcpu_get_gpreg(vcpu, CPU_REG_RDI),
++		vcpu_get_gpreg(vcpu, CPU_REG_RSI),
++		vcpu_get_gpreg(vcpu, CPU_REG_RBP),
++		vcpu_get_gpreg(vcpu, CPU_REG_R8),
++		vcpu_get_gpreg(vcpu, CPU_REG_R9),
++		vcpu_get_gpreg(vcpu, CPU_REG_R10),
++		vcpu_get_gpreg(vcpu, CPU_REG_R11),
++		vcpu_get_gpreg(vcpu, CPU_REG_R12),
++		vcpu_get_gpreg(vcpu, CPU_REG_R13),
++		vcpu_get_gpreg(vcpu, CPU_REG_R14),
++		vcpu_get_gpreg(vcpu, CPU_REG_R15));
++	if (len >= size) {
++		goto overflow;
++	}
++	size -= len;
++	str += len;
++
++	/* copy_from_gva fail */
++	len = snprintf(str, size, "Cannot handle user gva yet!\r\n");
++	if (len >= size) {
++		goto overflow;
++	}
++	size -= len;
++	str += len;
++
++	return;
++
++overflow:
++	printf("buffer size could not be enough! please check!\n");
++}
++
++static int32_t shell_vcpu_dumpreg(int32_t argc, char **argv)
++{
++	int32_t status = 0;
++	uint16_t vm_id;
++	uint16_t vcpu_id;
++	struct acrn_vm *vm;
++	struct acrn_vcpu *vcpu;
++	uint64_t mask = 0UL;
++	struct vcpu_dump dump;
++
++	/* User input invalidation */
++	if (argc != 3) {
++		shell_puts("Please enter cmd with <vm_id, vcpu_id>\r\n");
++		status = -EINVAL;
++		goto out;
++	}
++
++	status = strtol_deci(argv[1]);
++	if (status < 0) {
++		goto out;
++	}
++	vm_id = sanitize_vmid((uint16_t)status);
++	vcpu_id = (uint16_t)strtol_deci(argv[2]);
++
++	vm = get_vm_from_vmid(vm_id);
++	if (vm->state == VM_POWERED_OFF) {
++		shell_puts("No vm found in the input <vm_id, vcpu_id>\r\n");
++		status = -EINVAL;
++		goto out;
++	}
++
++	if (vcpu_id >= vm->hw.created_vcpus) {
++		shell_puts("vcpu id is out of range\r\n");
++		status = -EINVAL;
++		goto out;
++	}
++
++	vcpu = vcpu_from_vid(vm, vcpu_id);
++	if (vcpu->state == VCPU_OFFLINE) {
++		shell_puts("vcpu is offline\r\n");
++		status = -EINVAL;
++		goto out;
++	}
++
++	dump.vcpu = vcpu;
++	dump.str = shell_log_buf;
++	dump.str_max = SHELL_LOG_BUF_SIZE;
++	if (pcpuid_from_vcpu(vcpu) == get_pcpu_id()) {
++		vcpu_dumpreg(&dump);
++	} else {
++		bitmap_set_nolock(pcpuid_from_vcpu(vcpu), &mask);
++		/* smp_call_function(mask, vcpu_dumpreg, &dump); */
++	}
++	shell_puts(shell_log_buf);
++	status = 0;
++
++out:
++	return status;
++}
++
++#define MAX_MEMDUMP_LEN		(32U * 8U)
++static int32_t shell_dumpmem(int32_t argc, char **argv)
++{
++	uint64_t addr;
++	uint64_t *ptr;
++	uint32_t i, length;
++	char temp_str[MAX_STR_SIZE];
++
++	/* User input invalidation */
++	if ((argc != 2) && (argc != 3)) {
++		return -EINVAL;
++	}
++
++	addr = strtoul_hex(argv[1]);
++	length = (uint32_t)strtol_deci(argv[2]);
++	if (length > MAX_MEMDUMP_LEN) {
++		shell_puts("over max length, round back\r\n");
++		length = MAX_MEMDUMP_LEN;
++	}
++
++	snprintf(temp_str, MAX_STR_SIZE,
++		"Dump physical memory addr: 0x%016llx, length %d:\r\n",
++		addr, length);
++	shell_puts(temp_str);
++
++	ptr = (uint64_t *)addr;
++	for (i = 0U; i < (length >> 5U); i++) {
++		snprintf(temp_str, MAX_STR_SIZE,
++			"=  0x%016llx  0x%016llx  0x%016llx  0x%016llx\r\n",
++			*(ptr + (i * 4U)), *(ptr + ((i * 4U) + 1U)),
++			*(ptr + ((i * 4U) + 2U)), *(ptr + ((i * 4U) + 3U)));
++		shell_puts(temp_str);
++	}
++
++	if ((length & 0x1fU) != 0U) {
++		snprintf(temp_str, MAX_STR_SIZE,
++			"=  0x%016llx  0x%016llx  0x%016llx 0x%016llx\r\n",
++			*(ptr + (i * 4U)), *(ptr + ((i * 4U) + 1U)),
++			*(ptr + ((i * 4U) + 2U)), *(ptr + ((i * 4U) + 3U)));
++		shell_puts(temp_str);
++	}
++
++	return 0;
++}
++
++static int32_t shell_to_vm_console(int32_t argc, char **argv)
++{
++	char temp_str[TEMP_STR_SIZE];
++	uint16_t vm_id = 0U;
++
++	struct acrn_vm *vm;
++	struct acrn_vuart *vu;
++
++	if (argc == 2U) {
++		vm_id = sanitize_vmid(strtol_deci(argv[1]));
++	}
++
++	/* Get the virtual device node */
++	vm = get_vm_from_vmid(vm_id);
++	if (vm->state == VM_POWERED_OFF) {
++		shell_puts("VM is not valid \n");
++		return -EINVAL;
++	}
++	vu = vm_console_vuart(vm);
++	if (!vu->active) {
++		shell_puts("vuart console is not active \n");
++		return 0;
++	}
++	console_vmid = vm_id;
++	/* Output that switching to SOS shell */
++	snprintf(temp_str, TEMP_STR_SIZE, "\r\n----- Entering VM %d Shell -----\r\n", vm_id);
++
++	shell_puts(temp_str);
++
++	return 0;
++}
++
++#define MSI_DATA_TRGRMODE_LEVEL		0x1U	/* Trigger Mode: Level */
++#define INVALID_INTERRUPT_PIN	0xffffffffU
++
++static int32_t shell_show_ptdev_info(__unused int32_t argc, __unused char **argv)
++{
++	return 0;
++}
++
++static int32_t shell_loglevel(int32_t argc, char **argv)
++{
++	char str[MAX_STR_SIZE] = {0};
++
++	switch (argc) {
++	case 2:
++		console_loglevel = (uint16_t)strtol_deci(argv[1]);
++		break;
++	case 1:
++		snprintf(str, MAX_STR_SIZE, "console_loglevel: %u\r\n",
++			console_loglevel);
++		shell_puts(str);
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return 0;
++}
++
++static int32_t shell_cpuid(int32_t argc, char **argv)
++{
++	char str[MAX_STR_SIZE] = {0};
++	uint32_t leaf, subleaf = 0;
++	uint32_t eax, ebx, ecx, edx;
++
++	if (argc == 2) {
++		leaf = (uint32_t)strtoul_hex(argv[1]);
++	} else if (argc == 3) {
++		leaf = (uint32_t)strtoul_hex(argv[1]);
++		subleaf = (uint32_t)strtoul_hex(argv[2]);
++	} else {
++		shell_puts("Please enter correct cmd with "
++			"cpuid <leaf> [subleaf]\r\n");
++		return -EINVAL;
++	}
++
++	cpuid_subleaf(leaf, subleaf, &eax, &ebx, &ecx, &edx);
++	snprintf(str, MAX_STR_SIZE,
++		"cpuid leaf: 0x%x, subleaf: 0x%x, 0x%x:0x%x:0x%x:0x%x\r\n",
++		leaf, subleaf, eax, ebx, ecx, edx);
++
++	shell_puts(str);
++
++	return 0;
++}
++
++static int32_t shell_trigger_reboot(int32_t argc, char **argv)
++{
++	(void)argc;
++	(void)argv;
++
++	pio_write8(0x6U, 0xcf9U);
++
++	return 0;
++}
++
++static int32_t shell_rdmsr(int32_t argc, char **argv)
++{
++	int32_t ret = 0;
++	uint32_t msr_index = 0;
++	uint64_t val = 0;
++	char str[MAX_STR_SIZE] = {0};
++
++	switch (argc) {
++	case 2:
++		/* rdmsr <MSR_INDEX> */
++		msr_index = (uint32_t)strtoul_hex(argv[1]);
++		break;
++	default:
++		ret = -EINVAL;
++	}
++
++	if (ret == 0) {
++		val = msr_read(msr_index);
++		snprintf(str, MAX_STR_SIZE, "rdmsr(0x%x):0x%llx\n", msr_index, val);
++		shell_puts(str);
++	}
++
++	return ret;
++}
++
++static int32_t shell_wrmsr(int32_t argc, char **argv)
++{
++	int32_t ret = 0;
++	uint32_t msr_index = 0;
++	uint64_t val = 0;
++
++	switch (argc) {
++	case 3:
++		/* wrmsr <MSR_INDEX> <VALUE>*/
++		msr_index = (uint32_t)strtoul_hex(argv[1]);
++		val = strtoul_hex(argv[2]);
++		break;
++	default:
++		ret = -EINVAL;
++	}
++
++	if (ret == 0) {
++		msr_write(msr_index, val);
++	}
++
++	return ret;
++}
++
++static int shell_start_test(int argc, char **argv)
++{
++	struct acrn_vm *vm = get_vm_from_vmid(0U);
++
++	if (vm->state == VM_POWERED_OFF) {
++		struct acrn_vm_config *vm_config = get_vm_config(0U);
++
++		char *buf = vm_config->os_config.bootargs;
++		size_t sz = MAX_BOOTARGS_SIZE;
++		int i;
++
++		buf[0] = '\0';
++		for (i = 1; i < argc; i++) {
++			size_t len = strnlen_s(argv[i], sz);
++			char ending = (i < argc - 1) ?  ' ' : '\0';
++
++			memcpy_s(buf, sz, argv[i], len);
++			buf[len] = ending;
++
++			sz -= len + 1;
++			buf += len + 1;
++		}
++
++		(void)prepare_vm(0U, vm_config);
++	} else {
++		shell_puts("Unit test VM already exists.\r\n");
++	}
++
++	return 0;
++}
++
++static int shell_stop_test(__unused int argc, __unused char **argv)
++{
++	struct acrn_vm *vm = get_vm_from_vmid(0U);
++
++	if (vm->state != VM_POWERED_OFF) {
++		(void)shutdown_vm(vm);
++	} else {
++		shell_puts("Unit test VM does not exist.\r\n");
++	}
++
++	return 0;
++}
++
++void set_idt_entry_offset(int vec, uint64_t addr, uint64_t idt_base, bool is_save)
++{
++	union idt_64_descriptor *idt_desc;
++
++	idt_desc = (union idt_64_descriptor *)idt_base;
++
++	if (is_save) {
++		save_exception_entry = idt_desc[vec].fields.low32.bits.offset_15_0
++			| (idt_desc[vec].fields.high32.bits.offset_31_16 << 16U)
++			| ((uint64_t)idt_desc[vec].fields.offset_63_32 << 32U);
++	}
++
++	idt_desc[vec].fields.offset_63_32 = addr >> 32U;
++	idt_desc[vec].fields.high32.bits.offset_31_16 = addr >> 16U;
++	idt_desc[vec].fields.low32.bits.offset_15_0 = addr & 0xffffUL;
++
++	printf("entry=0x%lx save_entry=0x%lx address=0x%lx\n", addr, save_exception_entry, &idt_desc[vec]);
++}
++
++void reset_idt_entry_offset(int vec, uint64_t idt_base)
++{
++	if (save_exception_entry != 0UL) {
++		set_idt_entry_offset(vec, save_exception_entry, idt_base, false);
++	}
++}
++
++void shell_dispatch_exception(struct intr_excp_ctx *ctx)
++{
++	pr_fatal("find exception vector=%ld error_code=%lx rip=%lx cs=%lx\n",
++			ctx->vector, ctx->error_code, ctx->rip, ctx->cs);
++}
++
++asm (".pushsection .text\n\t"
++	"__handle_exception:\n\t"
++	"push %r15; push %r14; push %r13; push %r12\n\t"
++	"push %r11; push %r10; push %r9; push %r8\n\t"
++	"push %rdi; push %rsi; push %rbp; push %rsp;\n\t"
++	"push %rbx; push %rdx; push %rcx; push %rax\n\t"
++	/* Put current stack pointer into 1st param register (rdi) */
++	"movq %rsp, %rdi\n\t"
++	"call	shell_dispatch_exception\n\t"
++	"popq %rax; popq %rcx; popq %rdx; popq %rbx\n\t"
++	"popq %rsp; popq %rbp; popq %rsi; popq %rdi\n\t"
++	"popq %r8;  popq %r9;  popq %r10; popq %r11\n\t"
++	"popq %r12; popq %r13; popq %r14; popq %r15\n\t"
++	/* Skip vector and error code*/
++	"add     $16, %rsp\n\t"
++	"iretq\n\t"
++	".popsection"
++);
++
++/* push pseudo error code */
++#define EX(NAME, N) extern char NAME##_fault;	\
++	asm (".pushsection .text\n\t"		\
++		#NAME"_fault:\n\t"		\
++		"pushq  $0x0\n\t"		\
++		"pushq $"#N"\n\t"		\
++		"jmp __handle_exception\n\t"	\
++		".popsection")
++
++EX(mc, 18);
++
++#define TRIG_MC_MAGIC_ADDR_START  0xde000000UL
++#define TRIG_MC_MAGIC_ADDR_END    0xde066000UL
++static int shell_inject_mc(__unused int argc, __unused char **argv)
++{
++	uint64_t hpa;
++	uint64_t *hva;
++	uint64_t idt_base;
++
++	idt_base = sidt();
++	set_idt_entry_offset(IDT_MC, (uint64_t)&mc_fault, idt_base, true);
++
++	stac();
++	for (hpa = TRIG_MC_MAGIC_ADDR_START; hpa < TRIG_MC_MAGIC_ADDR_END; hpa += 0x1000UL) {
++		hva = hpa2hva(hpa);
++		pr_info("hva=0x%lx\n", hva);
++		*(uint64_t *)hva = 0x1122334455667788UL;
++	}
++	clac();
++
++	reset_idt_entry_offset(IDT_MC, idt_base);
++	return 0;
++}
+diff --git a/hypervisor/release/shell_priv.h b/hypervisor/release/shell_priv.h
+new file mode 100755
+index 00000000..02181083
+--- /dev/null
++++ b/hypervisor/release/shell_priv.h
+@@ -0,0 +1,121 @@
++/*
++ * Copyright (C) 2018 Intel Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef SHELL_PRIV_H
++#define SHELL_PRIV_H
++
++#include <spinlock.h>
++
++#define SHELL_CMD_MAX_LEN		100U
++#define SHELL_STRING_MAX_LEN		(PAGE_SIZE << 2U)
++
++extern uint16_t console_vmid;
++
++/* Shell Command Function */
++typedef int32_t (*shell_cmd_fn_t)(int32_t argc, char **argv);
++
++/* Shell Command */
++struct shell_cmd {
++	char *str;		/* Command string */
++	char *cmd_param;	/* Command parameter string */
++	char *help_str;		/* Help text associated with the command */
++	shell_cmd_fn_t fcn;	/* Command call-back function */
++
++};
++
++/* Shell Control Block */
++struct shell {
++	char input_line[2][SHELL_CMD_MAX_LEN + 1U];	/* current & last */
++	uint32_t input_line_len;	/* Length of current input line */
++	uint32_t input_line_active;	/* Active input line index */
++	struct shell_cmd *cmds;	/* cmds supported */
++	uint32_t cmd_count;		/* Count of cmds supported */
++};
++
++/* Shell Command list with parameters and help description */
++#define SHELL_CMD_HELP			"help"
++#define SHELL_CMD_HELP_PARAM		NULL
++#define SHELL_CMD_HELP_HELP		"Display information about supported hypervisor shell commands"
++
++#define SHELL_CMD_VERSION		"version"
++#define SHELL_CMD_VERSION_PARAM		NULL
++#define SHELL_CMD_VERSION_HELP		"Display the HV version information"
++
++#define SHELL_CMD_VM_LIST		"vm_list"
++#define SHELL_CMD_VM_LIST_PARAM		NULL
++#define SHELL_CMD_VM_LIST_HELP		"List all VMs, displaying the VM ID, name and state"
++
++#define SHELL_CMD_VCPU_LIST		"vcpu_list"
++#define SHELL_CMD_VCPU_LIST_PARAM	NULL
++#define SHELL_CMD_VCPU_LIST_HELP	"List all vCPUs in all VMs"
++
++#define SHELL_CMD_VCPU_DUMPREG		"vcpu_dumpreg"
++#define SHELL_CMD_VCPU_DUMPREG_PARAM	"<vm id, vcpu id>"
++#define SHELL_CMD_VCPU_DUMPREG_HELP	"Dump registers for a specific vCPU"
++
++#define SHELL_CMD_DUMPMEM		"dumpmem"
++#define SHELL_CMD_DUMPMEM_PARAM		"<addr, length>"
++#define SHELL_CMD_DUMPMEM_HELP		"Dump host memory, starting at a given address, and for a given length (in "\
++					"bytes)"
++
++#define SHELL_CMD_VM_CONSOLE		"vm_console"
++#define SHELL_CMD_VM_CONSOLE_PARAM	"<vm id>"
++#define SHELL_CMD_VM_CONSOLE_HELP	"Switch to the VM's console. Use [Ctrl+Spacebar] to return to the ACRN shell "\
++					"console"
++
++#define SHELL_CMD_PTDEV			"pt"
++#define SHELL_CMD_PTDEV_PARAM		NULL
++#define SHELL_CMD_PTDEV_HELP		"Show pass-through device information"
++
++#define SHELL_CMD_REBOOT		"reboot"
++#define SHELL_CMD_REBOOT_PARAM		NULL
++#define SHELL_CMD_REBOOT_HELP		"Trigger a system reboot (immediately)"
++
++#define SHELL_CMD_IOAPIC		"dump_ioapic"
++#define SHELL_CMD_IOAPIC_PARAM		NULL
++#define SHELL_CMD_IOAPIC_HELP		"Show native IOAPIC information"
++
++#define SHELL_CMD_VIOAPIC		"vioapic"
++#define SHELL_CMD_VIOAPIC_PARAM		"<vm id>"
++#define SHELL_CMD_VIOAPIC_HELP		"Show virtual IOAPIC (vIOAPIC) information for a specific VM"
++
++#define SHELL_CMD_LOG_LVL		"loglevel"
++#define SHELL_CMD_LOG_LVL_PARAM		"[<console_loglevel> [<mem_loglevel> [npk_loglevel]]]"
++#define SHELL_CMD_LOG_LVL_HELP		"No argument: get the level of logging for the console, memory and npk. Set "\
++					"the level by giving (up to) 3 parameters between 0 and 6 (verbose)"
++
++#define SHELL_CMD_CPUID			"cpuid"
++#define SHELL_CMD_CPUID_PARAM		"<leaf> [subleaf]"
++#define SHELL_CMD_CPUID_HELP		"Display the CPUID leaf [subleaf], in hexadecimal"
++
++#define SHELL_CMD_RDMSR			"rdmsr"
++#define SHELL_CMD_RDMSR_PARAM		"[-p<pcpu_id>]	<msr_index>"
++#define SHELL_CMD_RDMSR_HELP		"Read the MSR at msr_index (in hexadecimal) for CPU ID pcpu_id"
++
++#define SHELL_CMD_WRMSR			"wrmsr"
++#define SHELL_CMD_WRMSR_PARAM		"[-p<pcpu_id>]	<msr_index> <value>"
++#define SHELL_CMD_WRMSR_HELP		"Write value (in hexadecimal) to the MSR at msr_index (in hexadecimal) for CPU"\
++					" ID pcpu_id"
++
++#define SHELL_CMD_START_TEST		"start_test"
++#define SHELL_CMD_START_TEST_PARAM	"<test ID>"
++#define SHELL_CMD_START_TEST_HELP	"start-test <test ID>, with <test ID> being a string"
++
++#define SHELL_CMD_STOP_TEST		"stop_test"
++#define SHELL_CMD_STOP_TEST_PARAM	NULL
++#define SHELL_CMD_STOP_TEST_HELP	"stop-test"
++
++#define SHELL_CMD_INJECT_MC		"inject_mc"
++#define SHELL_CMD_INJECT_MC_PARAM	NULL
++#define SHELL_CMD_INJECT_MC_HELP	"inject_mc"
++
++struct vcpu_dump {
++	struct acrn_vcpu *vcpu;
++	char *str;
++	uint32_t str_max;
++};
++
++#endif /* SHELL_PRIV_H */
+diff --git a/hypervisor/release/string.c b/hypervisor/release/string.c
+new file mode 100755
+index 00000000..1d61151e
+--- /dev/null
++++ b/hypervisor/release/string.c
+@@ -0,0 +1,250 @@
++/*
++ * Copyright (C) 2018 Intel Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <types.h>
++#include <rtl.h>
++#include <logmsg.h>
++#include "lib.h"
++
++/*
++ * Convert a string to a long integer - decimal support only.
++ */
++int64_t strtol_deci(const char *nptr)
++{
++	const char *s = nptr;
++	char c;
++	uint64_t acc, cutoff, cutlim;
++	int32_t neg = 0, any;
++	uint64_t base = 10UL;
++
++	/*
++	 * Skip white space and pick up leading +/- sign if any.
++	 */
++	do {
++		c = *s;
++		s++;
++	} while (is_space(c));
++
++	if (c == '-') {
++		neg = 1;
++		c = *s;
++		s++;
++	} else if (c == '+') {
++		c = *s;
++		s++;
++	} else {
++		/* No sign character. */
++	}
++
++	/*
++	 * Compute the cutoff value between legal numbers and illegal
++	 * numbers.  That is the largest legal value, divided by the
++	 * base.  An input number that is greater than this value, if
++	 * followed by a legal input character, is too big.  One that
++	 * is equal to this value may be valid or not; the limit
++	 * between valid and invalid numbers is then based on the last
++	 * digit.  For instance, if the range for longs is
++	 * [-2147483648..2147483647] and the input base is 10,
++	 * cutoff will be set to 214748364 and cutlim to either
++	 * 7 (neg==0) or 8 (neg==1), meaning that if we have accumulated
++	 * a value > 214748364, or equal but the next digit is > 7 (or 8),
++	 * the number is too big, and we will return a range error.
++	 *
++	 * Set any if any `digits' consumed; make it negative to indicate
++	 * overflow.
++	 */
++	cutoff = (neg != 0) ? LONG_MIN : LONG_MAX;
++	cutlim = cutoff % base;
++	cutoff /= base;
++	acc = 0UL;
++	any = 0;
++
++	while ((c >= '0') && (c <= '9')) {
++		c -= '0';
++		if ((acc > cutoff) ||
++			((acc == cutoff) && ((uint64_t)c > cutlim))) {
++			any = -1;
++			break;
++		} else {
++			acc *= base;
++			acc += (uint64_t)c;
++		}
++
++		c = *s;
++		s++;
++	}
++
++	if (any < 0) {
++		acc = (neg != 0) ? LONG_MIN : LONG_MAX;
++	} else if (neg != 0) {
++		acc = ~acc + 1UL;
++	} else {
++		/* There is no overflow and no leading '-' exists. In such case
++		 * acc already holds the right number. No action required. */
++	}
++	return (long)acc;
++}
++
++static inline char hex_digit_value(char ch)
++{
++	char c;
++	if (('0' <= ch) && (ch <= '9')) {
++		c = ch - '0';
++	} else if (('a' <= ch) && (ch <= 'f')) {
++		c = ch - 'a' + 10;
++	} else if (('A' <= ch) && (ch <= 'F')) {
++		c = ch - 'A' + 10;
++	} else {
++		c = -1;
++	}
++	return c;
++}
++
++/*
++ * Convert a string to an uint64_t integer - hexadecimal support only.
++ */
++uint64_t strtoul_hex(const char *nptr)
++{
++	const char *s = nptr;
++	char c, digit;
++	uint64_t acc, cutoff, cutlim;
++	uint64_t base = 16UL;
++	int32_t any;
++
++	/*
++	 * See strtol for comments as to the logic used.
++	 */
++	do {
++		c = *s;
++		s++;
++	} while (is_space(c));
++
++	if ((c == '0') && ((*s == 'x') || (*s == 'X'))) {
++		c = s[1];
++		s += 2;
++	}
++
++	cutoff = ULONG_MAX / base;
++	cutlim = ULONG_MAX % base;
++	acc = 0UL;
++	any = 0;
++	digit = hex_digit_value(c);
++	while (digit >= 0) {
++		if ((acc > cutoff) || ((acc == cutoff) && ((uint64_t)digit > cutlim))) {
++			any = -1;
++			break;
++		} else {
++			acc *= base;
++			acc += (uint64_t)digit;
++		}
++
++		c = *s;
++		s++;
++		digit = hex_digit_value(c);
++	}
++
++	if (any < 0) {
++		acc = ULONG_MAX;
++	}
++	return acc;
++}
++
++int32_t strcmp(const char *s1_arg, const char *s2_arg)
++{
++	const char *str1 = s1_arg;
++	const char *str2 = s2_arg;
++
++	while (((*str1) != '\0') && ((*str2) != '\0') && ((*str1) == (*str2))) {
++		str1++;
++		str2++;
++	}
++
++	return *str1 - *str2;
++}
++
++char *strncpy_s(char *d_arg, size_t dmax, const char *s_arg, size_t slen_arg)
++{
++	const char *s = s_arg;
++	char *d = d_arg;
++	char *pret;
++	size_t dest_avail;
++	uint64_t overlap_guard;
++	size_t slen = slen_arg;
++
++	if ((d == NULL) || (s == NULL)) {
++		pr_err("%s: invlaid src or dest buffer", __func__);
++		pret = NULL;
++	} else {
++		pret = d_arg;
++	}
++
++	if (pret != NULL) {
++		if ((dmax == 0U) || (slen == 0U)) {
++			pr_err("%s: invlaid length of src or dest buffer", __func__);
++			pret =  NULL;
++		}
++	}
++
++	/* if d equal to s, just return d; else execute the below code */
++	if ((pret != NULL) && (d != s)) {
++		overlap_guard = (uint64_t)((d > s) ? (d - s - 1) : (s - d - 1));
++		dest_avail = dmax;
++
++		while (dest_avail > 0U) {
++			bool complete = false;
++
++			if (overlap_guard == 0U) {
++				pr_err("%s: overlap happened.", __func__);
++				d--;
++				*d = '\0';
++				pret = NULL;
++				/* copy complete */
++				complete = true;
++			} else {
++				if (slen == 0U) {
++					*d = '\0';
++					/* copy complete */
++					complete = true;
++				} else {
++					*d = *s;
++					if (*d == '\0') {
++						/* copy complete */
++						complete = true;
++					} else {
++						d++;
++						s++;
++						slen--;
++						dest_avail--;
++						overlap_guard--;
++					}
++				}
++			}
++
++			if (complete) {
++				break;
++			}
++		}
++
++		if (dest_avail == 0U) {
++			pr_err("%s: dest buffer has no enough space.", __func__);
++
++			/* to avoid a string that is not null-terminated in dest buffer */
++			pret[dmax - 1] = '\0';
++		}
++	}
++
++	return pret;
++}
++
++char *strchr(char *s_arg, char ch)
++{
++	char *s = s_arg;
++	while ((*s != '\0') && (*s != ch)) {
++		++s;
++	}
++
++	return ((*s) != '\0') ? s : NULL;
++}
+diff --git a/hypervisor/release/uart16550.c b/hypervisor/release/uart16550.c
+old mode 100644
+new mode 100755
+index 70a0e65f..badd8151
+--- a/hypervisor/release/uart16550.c
++++ b/hypervisor/release/uart16550.c
+@@ -1,49 +1,241 @@
+ /*
+- * Copyright (C) 2019 Intel Corporation. All rights reserved.
++ * Copyright (C) 2018 Intel Corporation. All rights reserved.
+  *
+  * SPDX-License-Identifier: BSD-3-Clause
+  */
+ 
+ #include <types.h>
++#include <spinlock.h>
++#include <pci.h>
++#include <pgtable.h>
++#include <io.h>
++#include <mmu.h>
++#include "lib.h"
++#include "config_release.h"
++#include "uart16550_priv.h"
++
++#define MAX_BDF_LEN 8
++
++#if defined(CONFIG_SERIAL_PIO_BASE)
++static bool serial_port_mapped = true;
++static bool uart_enabled = true;
++static uint64_t uart_base_address = CONFIG_SERIAL_PIO_BASE;
++static char pci_bdf_info[MAX_BDF_LEN + 1U];
++#elif defined(CONFIG_SERIAL_PCI_BDF)
++static bool serial_port_mapped;
++static bool uart_enabled = true;
++static uint64_t uart_base_address;
++static char pci_bdf_info[MAX_BDF_LEN + 1U] = CONFIG_SERIAL_PCI_BDF;
++#else
++static bool serial_port_mapped;
++static bool uart_enabled;
++static uint64_t uart_base_address;
++static char pci_bdf_info[MAX_BDF_LEN + 1U];
++#endif
++
++typedef uint32_t uart_reg_t;
++
++static spinlock_t uart_rx_lock;
++static spinlock_t uart_tx_lock;
++static union pci_bdf serial_pci_bdf;
++
++static inline uint32_t pci_bar_offset(uint32_t idx)
++{
++	/** Return the sum of PCIR_BARS and idx left-shifted by 2, which is the offset of the (idx + 1)'th BAR
++	 *  in the PCI configuration space */
++	return PCIR_BARS + (idx << 2U);
++}
++
++/* PCI BDF must follow format: bus:dev.func, for example 0:18.2 */
++static uint16_t get_pci_bdf_value(char *bdf)
++{
++	char *pos;
++	char *start = bdf;
++	char dst[3][4];
++	uint64_t value= 0UL;
++
++	pos = strchr(start, ':');
++	if (pos != NULL) {
++		strncpy_s(dst[0], 3, start, pos -start);
++		start = pos + 1;
++
++		pos = strchr(start, '.');
++		if (pos != NULL) {
++			strncpy_s(dst[1], 3, start, pos -start);
++			start = pos + 1;
++
++			strncpy_s(dst[2], 2, start, 1);
++			value= (strtoul_hex(dst[0]) << 8) | (strtoul_hex(dst[1]) << 3) | strtoul_hex(dst[2]);
++		}
++	}
++
++	return (uint16_t)value;
++}
+ 
+ /**
+- * @addtogroup debug
+- *
+- * @{
++ * @pre uart_enabled == true
+  */
++static inline uint32_t uart16550_read_reg(uint64_t base, uint16_t reg_idx)
++{
++	if (serial_port_mapped) {
++		return pio_read8((uint16_t)base + reg_idx);
++	} else {
++		return mmio_read32((void *)((uint32_t *)hpa2hva(base) + reg_idx));
++	}
++}
+ 
+ /**
+- * @file
+- * @brief This file implements an 16550 UART initialization API that shall be provided by the debug module.
+- *
+- * This file is decomposed into the following functions:
+- *
+- * - uart16550_init(early_boot)   Initialize the 16550 UART which is solely for debugging. No operation in release
+- *                                version.
++ * @pre uart_enabled == true
+  */
++static inline void uart16550_write_reg(uint64_t base, uint32_t val, uint16_t reg_idx)
++{
++	if (serial_port_mapped) {
++		pio_write8((uint8_t)val, (uint16_t)base + reg_idx);
++	} else {
++		mmio_write32(val, (void *)((uint32_t *)hpa2hva(base) + reg_idx));
++	}
++}
++
++static void uart16550_calc_baud_div(uint32_t ref_freq, uint32_t *baud_div_ptr, uint32_t baud_rate_arg)
++{
++	uint32_t baud_rate = baud_rate_arg;
++	uint32_t baud_multiplier = baud_rate < BAUD_460800 ? 16U : 13U;
++
++	if (baud_rate == 0U) {
++		baud_rate = BAUD_115200;
++	}
++	*baud_div_ptr = ref_freq / (baud_multiplier * baud_rate);
++}
+ 
+ /**
+- * @brief Initialize the 16550 UART which is solely for debugging. No operation in release version.
+- *
+- * @param[in]    early_boot Describes whether hypervisor initializes the PCI memory region once before do
+- *                          initialization for physical UART. The physical UART of target validation platform is
+- *                          accessed by port IO. \a early_boot will be useless in target validation platform.
+- *
+- * @return None
+- *
+- * @pre N/A
+- *
+- * @post N/A
+- *
+- * @mode HV_INIT
+- *
+- * @reentrancy Unspecified
+- * @threadsafety Unspecified
++ * @pre uart_enabled == true
+  */
+-void uart16550_init(__unused bool early_boot)
++static void uart16550_set_baud_rate(uint32_t baud_rate)
++{
++	uint32_t baud_div, duart_clock = UART_CLOCK_RATE;
++	uart_reg_t temp_reg;
++
++	/* Calculate baud divisor */
++	uart16550_calc_baud_div(duart_clock, &baud_div, baud_rate);
++
++	/* Enable DLL and DLM registers for setting the Divisor */
++	temp_reg = uart16550_read_reg(uart_base_address, UART16550_LCR);
++	temp_reg |= LCR_DLAB;
++	uart16550_write_reg(uart_base_address, temp_reg, UART16550_LCR);
++
++	/* Write the appropriate divisor value */
++	uart16550_write_reg(uart_base_address, ((baud_div >> 8U) & 0xFFU), UART16550_DLM);
++	uart16550_write_reg(uart_base_address, (baud_div & 0xFFU), UART16550_DLL);
++
++	/* Disable DLL and DLM registers */
++	temp_reg &= ~LCR_DLAB;
++	uart16550_write_reg(uart_base_address, temp_reg, UART16550_LCR);
++}
++
++#define PCIM_BAR_MEM_BASE     0xFFFFFFF0U
++
++void uart16550_init(bool early_boot)
++{
++	if (!uart_enabled) {
++		return;
++	}
++
++	if (!early_boot && !serial_port_mapped) {
++		hv_access_memory_region_update(uart_base_address, PDE_SIZE);
++		return;
++	}
++
++	/* if configure serial PCI BDF, get its base MMIO address */
++	if (!serial_port_mapped) {
++		serial_pci_bdf.value = get_pci_bdf_value(pci_bdf_info);
++		uart_base_address = pci_pdev_read_cfg(serial_pci_bdf, pci_bar_offset(0), 4U) & PCIM_BAR_MEM_BASE;
++	}
++
++	spinlock_init(&uart_rx_lock);
++	spinlock_init(&uart_tx_lock);
++	/* Enable TX and RX FIFOs */
++	uart16550_write_reg(uart_base_address, FCR_FIFOE | FCR_RFR | FCR_TFR, UART16550_FCR);
++
++	/* Set-up data bits / parity / stop bits. */
++	uart16550_write_reg(uart_base_address, (LCR_WL8 | LCR_NB_STOP_BITS_1 | LCR_PARITY_NONE), UART16550_LCR);
++
++	/* Disable interrupts (we use polling) */
++	uart16550_write_reg(uart_base_address, UART_IER_DISABLE_ALL, UART16550_IER);
++
++	/* Set baud rate */
++	uart16550_set_baud_rate(BAUD_115200);
++
++	/* Data terminal ready + Request to send */
++	uart16550_write_reg(uart_base_address, MCR_RTS | MCR_DTR, UART16550_MCR);
++}
++
++char uart16550_getc(void)
+ {
++	char ret = -1;
++
++	if (!uart_enabled) {
++		return ret;
++	}
++
++	spinlock_obtain(&uart_rx_lock);
++
++	/* If a character has been received, read it */
++	if ((uart16550_read_reg(uart_base_address, UART16550_LSR) & LSR_DR) == LSR_DR) {
++		/* Read a character */
++		ret = uart16550_read_reg(uart_base_address, UART16550_RBR);
++
++	}
++	spinlock_release(&uart_rx_lock);
++	return ret;
+ }
+ 
+ /**
+- * @}
++ * @pre uart_enabled == true
+  */
++static void uart16550_putc(char c)
++{
++	uint8_t temp;
++	uint32_t reg;
++
++	/* Ensure there are no further Transmit buffer write requests */
++	do {
++		reg = uart16550_read_reg(uart_base_address, UART16550_LSR);
++	} while ((reg & LSR_THRE) == 0U || (reg & LSR_TEMT) == 0U);
++
++	temp = (uint8_t)c;
++	/* Transmit the character. */
++	uart16550_write_reg(uart_base_address, (uint32_t)temp, UART16550_THR);
++}
++
++size_t uart16550_puts(const char *buf, uint32_t len)
++{
++	uint32_t i;
++	if (!uart_enabled) {
++		return len;
++	}
++	spinlock_obtain(&uart_tx_lock);
++	for (i = 0U; i < len; i++) {
++		/* Transmit character */
++		uart16550_putc(*buf);
++		if (*buf == '\n') {
++			/* Append '\r', no need change the len */
++			uart16550_putc('\r');
++		}
++		buf++;
++	}
++	spinlock_release(&uart_tx_lock);
++	return len;
++}
++
++void uart16550_set_property(bool enabled, bool port_mapped, uint64_t base_addr)
++{
++	uart_enabled = enabled;
++	serial_port_mapped = port_mapped;
++
++	if (port_mapped) {
++		uart_base_address = base_addr;
++	} else {
++		const char *bdf = (const char *)base_addr;
++		strncpy_s(pci_bdf_info, MAX_BDF_LEN + 1U, bdf, MAX_BDF_LEN);
++	}
++}
+diff --git a/hypervisor/release/uart16550_priv.h b/hypervisor/release/uart16550_priv.h
+new file mode 100755
+index 00000000..f8e70513
+--- /dev/null
++++ b/hypervisor/release/uart16550_priv.h
+@@ -0,0 +1,136 @@
++/*
++ * Copyright (C) 2018 Intel Corporation. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef UART16550_PRIV_H
++#define UART16550_PRIV_H
++
++#include <uart16550.h>
++
++/* Register / bit definitions for 16c550 uart */
++/*receive buffer register            | base+00h, dlab=0b r*/
++#define UART16550_RBR           0x00U
++/*transmit holding register          | base+00h, dlab=0b w*/
++#define UART16550_THR           0x00U
++/*divisor least significant byte     | base+00h, dlab=1b rw*/
++#define UART16550_DLL           0x00U
++/*interrupt enable register          | base+01h, dlab=0b rw*/
++#define UART16550_IER           0x01U
++/*divisor most significant byte      | base+01h, dlab=1b rw*/
++#define UART16550_DLM           0x01U
++/*interrupt identification register  | base+02h, dlab=0b r*/
++#define UART16550_IIR           0x02U
++/*fifo control register              | base+02h, dlab=0b w*/
++#define UART16550_FCR           0x02U
++/*line control register              | base+03h, dlab=xb rw*/
++#define UART16550_LCR           0x03U
++/*modem control register, only uart0 | base+04h, dlab=xb rw*/
++#define UART16550_MCR           0x04U
++/*line status register               | base+05h, dlab=xb r*/
++#define UART16550_LSR           0x05U
++/*modem status register, only uart0  | base+06h, dlab=xb r*/
++#define UART16550_MSR           0x06U
++/*scratch pad register               | base+07h, dlab=xb rw*/
++#define UART16550_SCR           0x07U
++
++/* value definitions for IIR */
++#define IIR_FIFO_MASK		0xc0U /* set if FIFOs are enabled */
++#define IIR_RXTOUT		0x0cU
++#define IER_EMSC		0x08U
++#define IIR_RLS			0x06U
++#define IIR_RXRDY		0x04U
++#define IIR_TXRDY		0x02U
++#define IIR_NOPEND		0x01U
++#define IIR_MLSC		0x00U
++
++#define IER_EDSSI		(0x0008U)
++/*enable/disable modem status interrupt*/
++#define IER_ELSI		(0x0004U)
++/*enable/disable receive data error interrupt*/
++#define IER_ETBEI		(0x0002U)
++/*enable/disable transmit data write request interrupt*/
++#define IER_ERBFI		(0x0001U)
++/*enable/disable receive data read request interrupt*/
++
++/* definition for LCR */
++#define LCR_DLAB	(1U << 7U) /*DLAB THR/RBR&IER or DLL&DLM= Bit 7*/
++#define LCR_SB		(1U << 6U) /*break control on/off= Bit 6*/
++#define LCR_SP		(1U << 5U) /*Specifies the operation of parity bit*/
++#define LCR_EPS		(1U << 4U) /*Specifies the logic of a parity bit*/
++#define LCR_PEN		(1U << 3U) /*Specifies whether to add a parity bit*/
++#define LCR_STB		(1U << 2U) /*stop bit length*/
++#define LCR_WL8		(0x03U) /*number of bits of serial data*/
++#define LCR_WL7		(0x02U) /*number of bits of serial data*/
++#define LCR_WL6		(0x01U) /*number of bits of serial data*/
++#define LCR_WL5		(0x00U) /*number of bits of serial data*/
++#define LCR_PARITY_ODD		(LCR_PEN)
++#define LCR_PARITY_NONE		0x0U
++#define LCR_PARITY_EVEN		(LCR_PEN | LCR_EPS)
++#define LCR_NB_STOP_BITS_1	0x0U
++#define LCR_NB_STOP_BITS_2	(LCR_STB)
++
++/* bit definitions for LSR */
++/* at least one error in data within fifo */
++#define LSR_ERR		(1U << 7U)
++/* Transmit data Present */
++#define LSR_TEMT	(1U << 6U)
++/* Transmit data write request present */
++#define LSR_THRE	(1U << 5U)
++/* Break interrupt data Present */
++#define LSR_BI		(1U << 4U)
++/* Framing Error Occurred */
++#define LSR_FE		(1U << 3U)
++/* Parity Error Occurred */
++#define LSR_PE		(1U << 2U)
++/* Overrun error */
++#define LSR_OE		(1U << 1U)
++/* Readable received data is present */
++#define LSR_DR		(1U << 0U)
++
++/* definition for MCR */
++#define MCR_PRESCALE	(1U << 7U) /* only available on 16650 up */
++#define MCR_LOOPBACK	(1U << 4U)
++#define MCR_IE		(1U << 3U)
++#define MCR_IENABLE	MCR_IE
++#define MCR_DRS		(1U << 2U)
++#define MCR_RTS		(1U << 1U) /* Request to Send */
++#define MCR_DTR		(1U << 0U) /* Data Terminal Ready */
++
++/* defifor MSR */
++#define MSR_DCD		(1U << 7U)
++#define MSR_RI		(1U << 6U)
++#define MSR_DSR		(1U << 5U)
++#define MSR_CTS		(1U << 4U)
++#define MSR_DDCD	(1U << 3U)
++#define MSR_TERI	(1U << 2U)
++#define MSR_DDSR	(1U << 1U)
++#define MSR_DCTS	(1U << 0U)
++
++#define MCR_OUT2	(1U << 3U)
++#define MCR_OUT1	(1U << 2U)
++
++#define MSR_DELTA_MASK	0x0FU
++
++/* definition for FCR */
++#define FCR_RX_MASK	0xc0U
++#define FCR_DMA		(1U << 3U)
++#define FCR_TFR		(1U << 2U) /* Reset Transmit Fifo */
++#define FCR_RFR		(1U << 1U) /* Reset Receive Fifo */
++#define FCR_FIFOE	(1U << 0U) /* Fifo Enable */
++
++#define UART_IER_DISABLE_ALL	0x00000000U
++
++#define BAUD_9600      9600U
++#define BAUD_115200    115200U
++#define BAUD_460800    460800U
++
++/* UART oscillator clock */
++#define UART_CLOCK_RATE	1843200U	/* 1.8432 MHz */
++
++char uart16550_getc(void);
++size_t uart16550_puts(const char *buf, uint32_t len);
++void uart16550_set_property(bool enabled, bool port_mapped, uint64_t base_addr);
++
++#endif /* !UART16550_PRIV_H */
+diff --git a/hypervisor/release/vuart.c b/hypervisor/release/vuart.c
+old mode 100644
+new mode 100755
+index 13497628..e0483a08
+--- a/hypervisor/release/vuart.c
++++ b/hypervisor/release/vuart.c
+@@ -29,72 +29,558 @@
+  */
+ 
+ #include <types.h>
++#include <pci.h>
+ #include <vm.h>
+-#include <vuart.h>
++#include <console.h>
++#include <logmsg.h>
++#include "lib.h"
++#include "vuart.h"
++#include "uart16550_priv.h"
++#include "shell_priv.h"
+ 
+-/**
+- * @addtogroup debug
+- *
+- * @{
+- */
++static struct acrn_vuart vuarts[CONFIG_MAX_VM_NUM][MAX_VUART_NUM_PER_VM];
+ 
+-/**
+- * @file
+- * @brief This file declares the functions related to virtual UART operations, including initialization and
+- * deinitialization.
+- *
+- * This file is decomposed into the following functions:
++#define vuart_lock_init(vu)	spinlock_init(&((vu)->lock))
++#define vuart_lock(vu)		spinlock_obtain(&((vu)->lock))
++#define vuart_unlock(vu)	spinlock_release(&((vu)->lock))
++
++static inline void fifo_reset(struct vuart_fifo *fifo)
++{
++	fifo->rindex = 0U;
++	fifo->windex = 0U;
++	fifo->num = 0U;
++}
++
++static inline void fifo_putchar(struct vuart_fifo *fifo, char ch)
++{
++	fifo->buf[fifo->windex] = ch;
++	if (fifo->num < fifo->size) {
++		fifo->windex = (fifo->windex + 1U) % fifo->size;
++		fifo->num++;
++	} else {
++		fifo->rindex = (fifo->rindex + 1U) % fifo->size;
++		fifo->windex = (fifo->windex + 1U) % fifo->size;
++	}
++}
++
++static inline char fifo_getchar(struct vuart_fifo *fifo)
++{
++	char c = -1;
++
++	if (fifo->num > 0U) {
++		c = fifo->buf[fifo->rindex];
++		fifo->rindex = (fifo->rindex + 1U) % fifo->size;
++		fifo->num--;
++	}
++	return c;
++}
++
++static inline uint32_t fifo_numchars(const struct vuart_fifo *fifo)
++{
++	return fifo->num;
++}
++
++void vuart_putchar(struct acrn_vuart *vu, char ch)
++{
++	vuart_lock(vu);
++	fifo_putchar(&vu->rxfifo, ch);
++	vuart_unlock(vu);
++}
++
++char vuart_getchar(struct acrn_vuart *vu)
++{
++	char c;
++
++	vuart_lock(vu);
++	c = fifo_getchar(&vu->txfifo);
++	vuart_unlock(vu);
++	return c;
++}
++
++static inline void vuart_fifo_init(struct acrn_vuart *vu)
++{
++	vu->txfifo.buf = vu->vuart_tx_buf;
++	vu->rxfifo.buf = vu->vuart_rx_buf;
++	vu->txfifo.size = TX_BUF_SIZE;
++	vu->rxfifo.size = RX_BUF_SIZE;
++	fifo_reset(&(vu->txfifo));
++	fifo_reset(&(vu->rxfifo));
++}
++
++/*
++ * The IIR returns a prioritized interrupt reason:
++ * - receive data available
++ * - transmit holding register empty
+  *
+- * - init_vuart(vm, vu_config)   Initialize the hypervisor virtual UART which is solely for debugging. No operation in
+- *                               release version.
+- * - deinit_vuart(vm)            Deinitialize the hypervisor virtual UART which is solely for debugging. No operation
+- *                               in release version.
++ * Return an interrupt reason if one is available.
+  */
++static uint8_t vuart_intr_reason(const struct acrn_vuart *vu)
++{
++	uint8_t ret;
+ 
+-/**
+- * @brief Initialize the hypervisor virtual UART which is solely for debugging. No operation in release version.
+- *
+- * @param[inout]    vm        A pointer to the VM whose virtual UART data structure will be initialized. It will be
+- *                            unused in release version.
+- * @param[in]       vu_config A pointer to virtual UART configuration data structure which is used to configure the
+- *                            vuart. This parameter is not used in release version.
+- *
+- * @return None
+- *
+- * @pre N/A
+- *
+- * @post N/A
+- *
+- * @mode HV_INIT
+- *
+- * @reentrancy Unspecified
+- * @threadsafety Unspecified
++	if (((vu->lsr & LSR_OE) != 0U) && ((vu->ier & IER_ELSI) != 0U)) {
++		ret = IIR_RLS;
++	} else if ((fifo_numchars(&vu->rxfifo) > 0U) && ((vu->ier & IER_ERBFI) != 0U)) {
++		ret = IIR_RXTOUT;
++	} else if (vu->thre_int_pending && ((vu->ier & IER_ETBEI) != 0U)) {
++		ret = IIR_TXRDY;
++	} else if(((vu->msr & MSR_DELTA_MASK) != 0U) && ((vu->ier & IER_EMSC) != 0U)) {
++		ret = IIR_MLSC;
++	} else {
++		ret = IIR_NOPEND;
++	}
++	return ret;
++}
++
++struct acrn_vuart *find_vuart_by_port(struct acrn_vm *vm, uint16_t offset)
++{
++	uint8_t i;
++	struct acrn_vuart *vu, *ret_vu = NULL;
++
++	/* TODO: support pci vuart find */
++	for (i = 0U; i < MAX_VUART_NUM_PER_VM; i++) {
++		vu = &vuarts[vm->vm_id][i];
++		if ((vu->active) && (vu->port_base == (offset & ~0x7U))) {
++			ret_vu = vu;
++			break;
++		}
++	}
++	return ret_vu;
++}
++
++/*
++ * Toggle the COM port's intr pin depending on whether or not we have an
++ * interrupt condition to report to the processor.
+  */
+-void init_vuart(__unused struct acrn_vm *vm, __unused const struct vuart_config *vu_config)
++void vuart_toggle_intr(__unused const struct acrn_vuart *vu)
+ {
+ }
+ 
+-/**
+- * @brief Deinitialize the hypervisor virtual UART which is solely for debugging. No operation in release version.
+- *
+- * @param[inout]    vm A pointer to the VM whose virtual UART data structure will be deinitialized. It will be unused in
+- *                     release version.
+- *
+- * @return None
+- *
+- * @pre N/A
+- *
+- * @post N/A
+- *
+- * @mode HV_TERMINATION
+- *
+- * @reentrancy Unspecified
+- * @threadsafety Unspecified
++static void send_to_target(struct acrn_vuart *vu, uint8_t value_u8)
++{
++	vuart_lock(vu);
++	if (vu->active) {
++		fifo_putchar(&vu->rxfifo, (char)value_u8);
++		vu->thre_int_pending = true;
++		vuart_toggle_intr(vu);
++	}
++	vuart_unlock(vu);
++}
++
++static uint8_t get_modem_status(uint8_t mcr)
++{
++	uint8_t msr;
++
++	if ((mcr & MCR_LOOPBACK) != 0U) {
++		/*
++		 * In the loopback mode certain bits from the MCR are
++		 * reflected back into MSR.
++		 */
++		msr = 0U;
++		if ((mcr & MCR_RTS) != 0U) {
++			msr |= MSR_CTS;
++		}
++		if ((mcr & MCR_DTR) != 0U) {
++			msr |= MSR_DSR;
++		}
++		if ((mcr & MCR_OUT1) != 0U) {
++			msr |= MSR_RI;
++		}
++		if ((mcr & MCR_OUT2) != 0U) {
++			msr |= MSR_DCD;
++		}
++	} else {
++		/*
++		 * Always assert DCD and DSR so tty open doesn't block
++		 * even if CLOCAL is turned off.
++		 */
++		msr = MSR_DCD | MSR_DSR;
++	}
++	return msr;
++}
++
++static uint8_t update_modem_status(uint8_t new_msr, uint8_t old_msr)
++{
++	uint8_t update_msr = old_msr;
++	/*
++	 * Detect if there has been any change between the
++	 * previous and the new value of MSR. If there is
++	 * then assert the appropriate MSR delta bit.
++	 */
++	if (((new_msr & MSR_CTS) ^ (old_msr & MSR_CTS)) != 0U) {
++		update_msr |= MSR_DCTS;
++	}
++	if (((new_msr & MSR_DSR) ^ (old_msr & MSR_DSR)) != 0U) {
++		update_msr |= MSR_DDSR;
++	}
++	if (((new_msr & MSR_DCD) ^ (old_msr & MSR_DCD)) != 0U) {
++		update_msr |= MSR_DDCD;
++	}
++	if (((new_msr & MSR_RI) == 0U) && ((old_msr & MSR_RI) != 0U)) {
++		update_msr |= MSR_TERI;
++	}
++	update_msr &= MSR_DELTA_MASK;
++	update_msr |= new_msr;
++
++	return update_msr;
++}
++
++/*
++ * @pre: vu != NULL
+  */
+-void deinit_vuart(__unused struct acrn_vm *vm)
++static void write_reg(struct acrn_vuart *vu, uint16_t reg, uint8_t value_u8)
++{
++	uint8_t msr;
++
++	vuart_lock(vu);
++	/*
++	 * Take care of the special case DLAB accesses first
++	 */
++	if (((vu->lcr & LCR_DLAB) != 0U) && (reg == UART16550_DLL)) {
++		vu->dll = value_u8;
++	} else if (((vu->lcr & LCR_DLAB) != 0U) && (reg == UART16550_DLM)) {
++		vu->dlh = value_u8;
++	} else {
++		switch (reg) {
++		case UART16550_THR:
++			if ((vu->mcr & MCR_LOOPBACK) != 0U) {
++				fifo_putchar(&vu->rxfifo, (char)value_u8);
++				vu->lsr |= LSR_OE;
++			} else {
++				fifo_putchar(&vu->txfifo, (char)value_u8);
++			}
++			vu->thre_int_pending = true;
++			break;
++		case UART16550_IER:
++			if (((vu->ier & IER_ETBEI) == 0U) && ((value_u8 & IER_ETBEI) != 0U)) {
++				vu->thre_int_pending = true;
++			}
++			/*
++			 * Apply mask so that bits 4-7 are 0
++			 * Also enables bits 0-3 only if they're 1
++			 */
++			vu->ier = value_u8 & 0x0FU;
++			break;
++		case UART16550_FCR:
++			/*
++			 * The FCR_ENABLE bit must be '1' for the programming
++			 * of other FCR bits to be effective.
++			 */
++			if ((value_u8 & FCR_FIFOE) == 0U) {
++				vu->fcr = 0U;
++			} else {
++				if ((value_u8 & FCR_RFR) != 0U) {
++					fifo_reset(&vu->rxfifo);
++				}
++				vu->fcr = value_u8 & (FCR_FIFOE | FCR_DMA | FCR_RX_MASK);
++			}
++			break;
++		case UART16550_LCR:
++			vu->lcr = value_u8;
++			break;
++		case UART16550_MCR:
++			/* Apply mask so that bits 5-7 are 0 */
++			vu->mcr = value_u8 & 0x1FU;
++			msr = get_modem_status(vu->mcr);
++			/*
++			 * Update the value of MSR while retaining the delta
++			 * bits.
++			 */
++			vu->msr = update_modem_status(msr, vu->msr);
++			break;
++		case UART16550_LSR:
++			/*
++			 * Line status register is not meant to be written to
++			 * during normal operation.
++			 */
++			break;
++		case UART16550_MSR:
++			/*
++			 * As far as I can tell MSR is a read-only register.
++			 */
++			break;
++		case UART16550_SCR:
++			vu->scr = value_u8;
++			break;
++		default:
++			/*
++			 * For the reg that is not handled (either a read-only
++			 * register or an invalid register), ignore the write to it.
++			 * Gracefully return if prior case clauses have not been met.
++			 */
++			break;
++		}
++	}
++	vuart_toggle_intr(vu);
++	vuart_unlock(vu);
++}
++
++static void vuart_write(struct acrn_vcpu *vcpu, uint16_t offset_arg,
++			__unused size_t width, uint32_t value)
++{
++	struct acrn_vm *vm = vcpu->vm;
++	uint16_t offset = offset_arg;
++	struct acrn_vuart *vu = find_vuart_by_port(vm, offset);
++	uint8_t value_u8 = (uint8_t)value;
++	struct acrn_vuart *target_vu = NULL;
++
++	if (vu != NULL) {
++		offset -= vu->port_base;
++		target_vu = vu->target_vu;
++
++		if (((vu->mcr & MCR_LOOPBACK) == 0U) &&
++			(offset == UART16550_THR) && (target_vu != NULL)) {
++			send_to_target(target_vu, value_u8);
++		} else {
++			write_reg(vu, offset, value_u8);
++		}
++	}
++}
++
++static void vuart_read(struct acrn_vcpu *vcpu, uint16_t offset_arg,
++			__unused size_t width)
+ {
++	struct acrn_vm *vm = vcpu->vm;
++	uint16_t offset = offset_arg;
++	uint8_t iir, reg, intr_reason;
++	struct acrn_vuart *vu = find_vuart_by_port(vm, offset);
++	struct pio_request *pio_req = &vcpu->req.reqs.pio;
++
++	if (vu != NULL) {
++		offset -= vu->port_base;
++		vuart_lock(vu);
++		/*
++		 * Take care of the special case DLAB accesses first
++		 */
++		if ((vu->lcr & LCR_DLAB) != 0U) {
++			if (offset == UART16550_DLL) {
++				reg = vu->dll;
++			} else if (offset == UART16550_DLM) {
++				reg = vu->dlh;
++			} else {
++				reg = 0U;
++			}
++		} else {
++			switch (offset) {
++			case UART16550_RBR:
++				vu->lsr &= ~LSR_OE;
++				reg = (uint8_t)fifo_getchar(&vu->rxfifo);
++				break;
++			case UART16550_IER:
++				reg = vu->ier;
++				break;
++			case UART16550_IIR:
++				iir = ((vu->fcr & FCR_FIFOE) != 0U) ? IIR_FIFO_MASK : 0U;
++				intr_reason = vuart_intr_reason(vu);
++				/*
++				 * Deal with side effects of reading the IIR register
++				 */
++				if (intr_reason == IIR_TXRDY) {
++					vu->thre_int_pending = false;
++				}
++				iir |= intr_reason;
++				reg = iir;
++				break;
++			case UART16550_LCR:
++				reg = vu->lcr;
++				break;
++			case UART16550_MCR:
++				reg = vu->mcr;
++				break;
++			case UART16550_LSR:
++				/* Transmitter is always ready for more data */
++				vu->lsr |= LSR_TEMT | LSR_THRE;
++				/* Check for new receive data */
++				if (fifo_numchars(&vu->rxfifo) > 0U) {
++					vu->lsr |= LSR_DR;
++				} else {
++					vu->lsr &= ~LSR_DR;
++				}
++				reg = vu->lsr;
++				/* The LSR_OE bit is cleared on LSR read */
++				vu->lsr &= ~LSR_OE;
++				break;
++			case UART16550_MSR:
++				/*
++				 * MSR delta bits are cleared on read
++				 */
++				reg = vu->msr;
++				vu->msr &= ~MSR_DELTA_MASK;
++				break;
++			case UART16550_SCR:
++				reg = vu->scr;
++				break;
++			default:
++				reg = 0xFFU;
++				break;
++			}
++		}
++		vuart_toggle_intr(vu);
++		pio_req->value = (uint32_t)reg;
++		vuart_unlock(vu);
++	}
+ }
+ 
+-/**
+- * @}
++/*
++ * @pre: vuart_idx = 0 or 1
+  */
++static bool vuart_register_io_handler(struct acrn_vm *vm, uint16_t port_base, uint32_t vuart_idx)
++{
++	uint32_t pio_idx;
++	bool ret = true;
++
++	struct vm_io_range range = {
++		.base = port_base,
++		.len = 8U
++	};
++	switch (vuart_idx) {
++	case 0U:
++		pio_idx = UART_PIO_IDX0;
++		break;
++	case 1U:
++		pio_idx = UART_PIO_IDX1;
++		break;
++	default:
++		printf("Not support vuart index %d, will not register \n");
++		ret = false;
++	}
++	if (ret != 0U) {
++		register_pio_emulation_handler(vm, pio_idx, &range, vuart_read, vuart_write);
++	}
++	return ret;
++}
++
++static void vuart_setup(struct acrn_vm *vm,
++		const struct vuart_config *vu_config, uint16_t vuart_idx)
++{
++	uint32_t divisor;
++	struct acrn_vuart *vu = &vuarts[vm->vm_id][vuart_idx];
++
++	/* Set baud rate*/
++	divisor = (UART_CLOCK_RATE / BAUD_115200) >> 4U;
++	vu->dll = (uint8_t)divisor;
++	vu->dlh = (uint8_t)(divisor >> 8U);
++	vu->vm = vm;
++	vuart_fifo_init(vu);
++	vuart_lock_init(vu);
++	vu->thre_int_pending = true;
++	vu->ier = 0U;
++	vuart_toggle_intr(vu);
++	vu->target_vu = NULL;
++	if (vu_config->type == VUART_LEGACY_PIO) {
++		vu->port_base = vu_config->addr.port_base;
++		vu->irq = vu_config->irq;
++		if (vuart_register_io_handler(vm, vu->port_base, vuart_idx) != 0U) {
++			vu->active = true;
++		}
++	} else {
++		/*TODO: add pci vuart support here*/
++		printf("PCI vuart is not support\n");
++	}
++}
++
++static struct acrn_vuart *find_active_target_vuart(const struct vuart_config *vu_config)
++{
++	struct acrn_vm *target_vm = NULL;
++	struct acrn_vuart *target_vu = NULL, *ret_vu = NULL;
++	uint16_t target_vmid, target_vuid;
++
++	target_vmid = vu_config->t_vuart.vm_id;
++	target_vuid = vu_config->t_vuart.vuart_id;
++	if (target_vmid < CONFIG_MAX_VM_NUM) {
++		target_vm = get_vm_from_vmid(target_vmid);
++	}
++
++	if (target_vuid < MAX_VUART_NUM_PER_VM) {
++		target_vu = &vuarts[target_vm->vm_id][target_vuid];
++	}
++
++	if ((target_vu != NULL) && (target_vu->active)) {
++		ret_vu = target_vu;
++	}
++	return ret_vu;
++}
++
++static void vuart_setup_connection(struct acrn_vm *vm,
++		const struct vuart_config *vu_config, uint16_t vuart_idx)
++{
++	struct acrn_vuart *vu, *t_vu;
++
++	vu = &vuarts[vm->vm_id][vuart_idx];
++	if (vu->active) {
++		t_vu = find_active_target_vuart(vu_config);
++		if ((t_vu != NULL) && (t_vu->target_vu == NULL)) {
++			vu->target_vu = t_vu;
++			t_vu->target_vu = vu;
++		}
++	}
++}
++
++void vuart_deinit_connect(struct acrn_vuart *vu)
++{
++	struct acrn_vuart *t_vu = vu->target_vu;
++
++	t_vu->target_vu = NULL;
++	vu->target_vu = NULL;
++}
++
++bool is_vuart_intx(struct acrn_vm *vm, uint32_t intx_pin)
++{
++	uint8_t i;
++	bool ret = false;
++
++	for (i = 0U; i < MAX_VUART_NUM_PER_VM; i++) {
++		if ((vuarts[vm->vm_id][i].active) && (vuarts[vm->vm_id][i].irq == intx_pin)) {
++			ret = true;
++		}
++	}
++	return ret;
++}
++
++void init_vuart(struct acrn_vm *vm, const struct vuart_config *vu_config)
++{
++	uint8_t i;
++
++	for (i = 0U; i < MAX_VUART_NUM_PER_VM; i++) {
++		vuarts[vm->vm_id][i].active = false;
++		/* This vuart is not exist */
++		if ((vu_config[i].type == VUART_LEGACY_PIO) &&
++				(vu_config[i].addr.port_base == INVALID_COM_BASE)) {
++			continue;
++		}
++		vuart_setup(vm, &vu_config[i], i);
++		/*
++		 * The first vuart is used for VM console.
++		 * The rest of vuarts are used for connection.
++		 */
++		if (i != 0U) {
++			vuart_setup_connection(vm, &vu_config[i], i);
++		}
++
++#if 0
++		if (console_vmid == ACRN_INVALID_VMID) {
++			console_vmid = vm->vm_id;
++		}
++#endif
++	}
++
++	/* Take this opportunity to register the testdev */
++	/* register_testdev(vm); */
++}
++
++void deinit_vuart(struct acrn_vm *vm)
++{
++	uint8_t i;
++
++	for (i = 0U; i < MAX_VUART_NUM_PER_VM; i++) {
++		vuarts[vm->vm_id][i].active = false;
++		if (vuarts[vm->vm_id][i].target_vu != NULL) {
++			vuart_deinit_connect(&vuarts[vm->vm_id][i]);
++		}
++	}
++}
++
++struct acrn_vuart *vm_console_vuart(struct acrn_vm *vm)
++{
++	return &vuarts[vm->vm_id][0];
++}
+diff --git a/hypervisor/release/vuart.h b/hypervisor/release/vuart.h
+new file mode 100755
+index 00000000..e319bcb5
+--- /dev/null
++++ b/hypervisor/release/vuart.h
+@@ -0,0 +1,84 @@
++/*-
++ * Copyright (c) 2013 Neel Natu <neel@freebsd.org>
++ * Copyright (c) 2018 Intel Corporation
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY NETAPP, INC ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL NETAPP, INC OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * $FreeBSD$
++ */
++
++#ifndef DEBUG_VUART_H
++#define DEBUG_VUART_H
++
++#include <vuart.h>
++#include <types.h>
++#include <spinlock.h>
++#include <vm_config.h>
++
++#define RX_BUF_SIZE		256U
++#define TX_BUF_SIZE		65536U
++#define INVAILD_VUART_IDX	0xFFU
++
++#define INVALID_COM_BASE	0U
++
++struct vuart_fifo {
++	char *buf;
++	uint32_t rindex;	/* index to read from */
++	uint32_t windex;	/* index to write to */
++	uint32_t num;		/* number of characters in the fifo */
++	uint32_t size;		/* size of the fifo */
++};
++
++struct acrn_vuart {
++	uint8_t data;		/* Data register (R/W) */
++	uint8_t ier;		/* Interrupt enable register (R/W) */
++	uint8_t lcr;		/* Line control register (R/W) */
++	uint8_t mcr;		/* Modem control register (R/W) */
++	uint8_t lsr;		/* Line status register (R/W) */
++	uint8_t msr;		/* Modem status register (R/W) */
++	uint8_t fcr;		/* FIFO control register (W) */
++	uint8_t scr;		/* Scratch register (R/W) */
++	uint8_t dll;		/* Baudrate divisor latch LSB */
++	uint8_t dlh;		/* Baudrate divisor latch MSB */
++
++	struct vuart_fifo rxfifo;
++	struct vuart_fifo txfifo;
++	uint16_t port_base;
++	uint32_t irq;
++	char vuart_rx_buf[RX_BUF_SIZE];
++	char vuart_tx_buf[TX_BUF_SIZE];
++	bool thre_int_pending;	/* THRE interrupt pending */
++	bool active;
++	struct acrn_vuart *target_vu; /* Pointer to target vuart */
++	struct acrn_vm *vm;
++	spinlock_t lock;	/* protects all softc elements */
++};
++
++void vuart_putchar(struct acrn_vuart *vu, char ch);
++char vuart_getchar(struct acrn_vuart *vu);
++
++bool is_vuart_intx(struct acrn_vm *vm, uint32_t intx_pin);
++
++struct acrn_vuart *vm_console_vuart(struct acrn_vm *vm);
++
++#endif /* DEBUG_VUART_H */
+-- 
+2.17.1
+
