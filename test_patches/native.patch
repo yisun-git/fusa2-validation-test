@@ -1,0 +1,24 @@
+diff --git a/acrn-unit-test/guest/x86/cstart.S b/acrn-unit-test/guest/x86/cstart.S
+index f741535..10868a0 100755
+--- a/acrn-unit-test/guest/x86/cstart.S
++++ b/acrn-unit-test/guest/x86/cstart.S
+@@ -209,6 +209,7 @@ smp_init:
+ 
+ 	call fwcfg_get_nb_cpus
+ 	movl %eax, %edx
++	shll $1, %edx //native need
+ 	subl $1, %edx
+ 1:
+ 	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), %eax
+diff --git a/acrn-unit-test/guest/x86/cstart64.S b/acrn-unit-test/guest/x86/cstart64.S
+index 07dd321..bbaac7e 100755
+--- a/acrn-unit-test/guest/x86/cstart64.S
++++ b/acrn-unit-test/guest/x86/cstart64.S
+@@ -316,6 +316,7 @@ smp_init:
+ 
+ 	call fwcfg_get_nb_cpus
+ 	movl %eax, %edx
++	shll $1, %edx //native need
+ 	subl $1, %edx
+ 1:
+ 	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), %eax

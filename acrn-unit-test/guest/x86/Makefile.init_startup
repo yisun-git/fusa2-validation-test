@@ -1,0 +1,250 @@
+CFLAGS += -I $(TEST_DIR)/ASM
+
+$(TEST_DIR)/init_startup_sample.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_sample_init.S\"
+$(TEST_DIR)/init_startup_sample.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_sample_startup.S\"
+$(TEST_DIR)/init_startup_sample.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/init_startup_sample.o: $(TEST_DIR)/init_startup_sample.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/sgx.o: CFLAGS += -DAP_INIT_CHECK=\"sgx_init.S\"
+$(TEST_DIR)/sgx.o: CFLAGS += -DBP_STARTUP_CHECK=\"sgx_startup.S\"
+$(TEST_DIR)/sgx.o: $(TEST_DIR)/sgx.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+
+$(TEST_DIR)/xsave.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_xsave_init.S\"
+$(TEST_DIR)/xsave.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_xsave_startup.S\"
+$(TEST_DIR)/xsave.o: $(TEST_DIR)/xsave.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/tsc.o:CFLAGS += -DBP_STARTUP_CHECK=\"tsc_bp_startup.S\"
+$(TEST_DIR)/tsc.o:CFLAGS += -DAP_INIT_CHECK=\"tsc_ap_init.S\"
+$(TEST_DIR)/tsc.o:$(TEST_DIR)/tsc.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/paging.o: CFLAGS += -DAP_INIT_CHECK=\"paging_init.S\"
+$(TEST_DIR)/paging.o: CFLAGS += -DBP_STARTUP_CHECK=\"paging_startup.S\"
+$(TEST_DIR)/paging.o: $(TEST_DIR)/paging.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/pmu_fu.o: CFLAGS += -DAP_INIT_CHECK=\"pmu_fu_init.S\"
+$(TEST_DIR)/pmu_fu.o: CFLAGS += -DBP_STARTUP_CHECK=\"pmu_fu_startup.S\"
+$(TEST_DIR)/pmu_fu.o: $(TEST_DIR)/pmu_fu.c $(TEST_DIR)/pmu_fu.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/branch_profile.o: CFLAGS += -DAP_INIT_CHECK=\"branch_profile_init.S\"
+$(TEST_DIR)/branch_profile.o: CFLAGS += -DBP_STARTUP_CHECK=\"branch_profile_startup.S\"
+$(TEST_DIR)/branch_profile.o: $(TEST_DIR)/branch_profile.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/device_passthrough.o: CFLAGS += -DAP_INIT_CHECK=\"device_passthrough_init.S\"
+$(TEST_DIR)/device_passthrough.o: CFLAGS += -DBP_STARTUP_CHECK=\"device_passthrough_startup.S\"
+$(TEST_DIR)/device_passthrough.o: $(TEST_DIR)/device_passthrough.c $(TEST_DIR)/device_passthrough.h 
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/machine_check.o: CFLAGS += -DAP_INIT_CHECK=\"mca_init.S\"
+$(TEST_DIR)/machine_check.o: CFLAGS += -DBP_STARTUP_CHECK=\"mca_startup.S\"
+$(TEST_DIR)/machine_check.o: $(TEST_DIR)/machine_check.c $(TEST_DIR)/machine_check.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/fpu.o: CFLAGS += -DAP_INIT_CHECK=\"fpu_init.S\"
+$(TEST_DIR)/fpu.o: CFLAGS += -DBP_STARTUP_CHECK=\"fpu_startup.S\"
+$(TEST_DIR)/fpu.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/fpu.o: $(TEST_DIR)/fpu.c $(TEST_DIR)/fpu.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/cpumode.o: CFLAGS += -DAP_INIT_CHECK=\"cpumode_ap_init.S\"
+$(TEST_DIR)/cpumode.o: CFLAGS += -DBP_STARTUP_CHECK=\"cpumode_bp_startup.S\"
+$(TEST_DIR)/cpumode.o: $(TEST_DIR)/cpumode.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/vmx.o: CFLAGS += -DAP_INIT_CHECK=\"vmx_init.S\"
+$(TEST_DIR)/vmx.o: CFLAGS += -DBP_STARTUP_CHECK=\"vmx_startup.S\"
+$(TEST_DIR)/vmx.o: $(TEST_DIR)/vmx.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/info_leakage.o: CFLAGS += -DAP_INIT_CHECK=\"infoleak_ap_init.S\"
+$(TEST_DIR)/info_leakage.o: CFLAGS += -DBP_STARTUP_CHECK=\"infoleak_bp_startup.S\"
+$(TEST_DIR)/info_leakage.o: $(TEST_DIR)/info_leakage.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/idle_block.o: CFLAGS += -DAP_INIT_CHECK=\"idle_block_init.S\"
+$(TEST_DIR)/idle_block.o: CFLAGS += -DBP_STARTUP_CHECK=\"idle_block_startup.S\"
+$(TEST_DIR)/idle_block.o: $(TEST_DIR)/idle_block.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/sse.o: CFLAGS += -DAP_INIT_CHECK=\"sse_init.S\"
+$(TEST_DIR)/sse.o: CFLAGS += -DBP_STARTUP_CHECK=\"sse_startup.S\"
+$(TEST_DIR)/sse.o: $(TEST_DIR)/sse.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/mem_cache.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_mem_cache_init.S\"
+$(TEST_DIR)/mem_cache.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_mem_cache_startup.S\"
+$(TEST_DIR)/mem_cache.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/mem_cache.o: $(TEST_DIR)/mem_cache.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/pci.o:CFLAGS += -DBP_STARTUP_CHECK=\"pci_startup.S\"
+$(TEST_DIR)/pci.o:CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/pci.o:$(TEST_DIR)/pci.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/avx.o: CFLAGS += -DAP_INIT_CHECK=\"avx_init.S\"
+$(TEST_DIR)/avx.o: CFLAGS += -DBP_STARTUP_CHECK=\"avx_startup.S\"
+$(TEST_DIR)/avx.o: $(TEST_DIR)/avx.c $(TEST_DIR)/avx.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DAP_INIT_CHECK=\"taskmanagement_init.S\"
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DBP_STARTUP_CHECK=\"taskmanagement_startup.S\"
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/taskmanagement.o: $(TEST_DIR)/taskmanagement.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/power_thermal.o: CFLAGS += -DAP_INIT_CHECK=\"power_ap_init.S\"
+$(TEST_DIR)/power_thermal.o: CFLAGS += -DBP_STARTUP_CHECK=\"power_bp_startup.S\"
+$(TEST_DIR)/power_thermal.o: $(TEST_DIR)/power_thermal.c $(TEST_DIR)/power_thermal.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/debug_features.o: CFLAGS += -DAP_INIT_CHECK=\"debug_features_init.S\"
+$(TEST_DIR)/debug_features.o: CFLAGS += -DBP_STARTUP_CHECK=\"debug_features_startup.S\"
+$(TEST_DIR)/debug_features.o: $(TEST_DIR)/debug_features.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/interrupt.o:CFLAGS += -DAP_INIT_CHECK=\"init_startup_interrupt_init.S\"
+$(TEST_DIR)/interrupt.o:CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_interrupt_startup.S\"
+$(TEST_DIR)/interrupt.o:$(TEST_DIR)/interrupt.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/rtc.o: CFLAGS += -DAP_INIT_CHECK=\"init_startup_rtc_init.S\"
+$(TEST_DIR)/rtc.o: CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_rtc_startup.S\"
+$(TEST_DIR)/rtc.o: $(TEST_DIR)/rtc.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/local_apic.o: CFLAGS += -DAP_INIT_CHECK=\"local_apic_init.S\"
+$(TEST_DIR)/local_apic.o: CFLAGS += -DBP_STARTUP_CHECK=\"local_apic_startup.S\"
+$(TEST_DIR)/local_apic.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/local_apic.o: $(TEST_DIR)/local_apic.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/multiboot.o:CFLAGS += -DAP_INIT_CHECK=\"init_startup_multiboot_init.S\"
+$(TEST_DIR)/multiboot.o:CFLAGS += -DBP_STARTUP_CHECK=\"init_startup_multiboot_startup.S\"
+$(TEST_DIR)/multiboot.o:CFLAGS += -DIN_MULTIBOOT_TEST
+$(TEST_DIR)/multiboot.o:$(TEST_DIR)/multiboot.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+	
+$(TEST_DIR)/general_purpose.o: CFLAGS += -DAP_INIT_CHECK=\"gp_init.S\"
+$(TEST_DIR)/general_purpose.o: CFLAGS += -DBP_STARTUP_CHECK=\"gp_startup.S\" -DBP_STARTUP_CHECK_64
+$(TEST_DIR)/general_purpose.o: $(TEST_DIR)/general_purpose.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/misc_msr.o: CFLAGS += -DAP_INIT_CHECK=\"misc_msr_init.S\"
+$(TEST_DIR)/misc_msr.o: CFLAGS += -DBP_STARTUP_CHECK=\"misc_msr_startup.S\"
+$(TEST_DIR)/misc_msr.o: $(TEST_DIR)/misc_msr.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/misc_cpuid.o: CFLAGS += -DAP_INIT_CHECK=\"misc_cpuid_init.S\"
+$(TEST_DIR)/misc_cpuid.o: CFLAGS += -DBP_STARTUP_CHECK=\"misc_cpuid_startup.S\"
+$(TEST_DIR)/misc_cpuid.o: $(TEST_DIR)/misc_cpuid.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/sse.o: CFLAGS += -DAP_INIT_CHECK=\"sse_init.S\"
+$(TEST_DIR)/sse.o: CFLAGS += -DBP_STARTUP_CHECK=\"sse_startup.S\"
+$(TEST_DIR)/sse.o: $(TEST_DIR)/sse.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/segmentation.o: CFLAGS += -DAP_INIT_CHECK=\"Segmentation_AP_Init.S\"
+$(TEST_DIR)/segmentation.o: CFLAGS += -DBP_STARTUP_CHECK=\"Segmentation_BP_Init.S\"
+$(TEST_DIR)/segmentation.o: $(TEST_DIR)/segmentation.c $(TEST_DIR)/../lib/x86/segmentation.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/mp_initialization.o: CFLAGS += -DAP_INIT_CHECK=\"mp_initialization_init.S\"
+$(TEST_DIR)/mp_initialization.o: $(TEST_DIR)/mp_initialization.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/smx.o: CFLAGS += -DAP_INIT_CHECK=\"smx_init.S\"
+$(TEST_DIR)/smx.o: CFLAGS += -DBP_STARTUP_CHECK=\"smx_startup.S\"
+$(TEST_DIR)/smx.o: $(TEST_DIR)/smx.c $(TEST_DIR)/smx.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/v8086_protect.o: CFLAGS += -DAP_INIT_CHECK=\"v8086_init.S\"
+$(TEST_DIR)/v8086_protect.o: CFLAGS += -DBP_STARTUP_CHECK=\"v8086_startup.S\"
+$(TEST_DIR)/v8086_protect.o: $(TEST_DIR)/v8086_protect.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/application_constraints.o: CFLAGS += -DBP_STARTUP_CHECK=\"application_constraints_eip.S\"
+$(TEST_DIR)/application_constraints.o: $(TEST_DIR)/application_constraints.c
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
+$(TEST_DIR)/hsi_gp_cpumode.o: CFLAGS += -DBP_STARTUP_CHECK=\"hsi_gp_bp_cpumode.S\"
+$(TEST_DIR)/hsi_gp_cpumode.o: $(TEST_DIR)/hsi_gp_cpumode.c $(TEST_DIR)/hsi_gp_cpumode.h
+	@rm -rf  $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<

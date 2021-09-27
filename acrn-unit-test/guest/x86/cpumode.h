@@ -1,0 +1,12 @@
+#ifndef _CPUMODE_H_
+#define _CPUMODE_H_
+
+#define STARTUP_CR0_ADDR	 (0x6000)
+#define STARTUP_IA32_EFER_ADDR	 (0x6010)
+#define STARTUP_EFLAGS_ADDR	 (0x6018)
+
+#define INIT_CR0_ADDR		 (0x7000)
+#define INIT_IA32_EFER_LOW_ADDR	 (0x7010)
+#define INIT_IA32_EFER_HIGH_ADDR (0x7014)
+#define INIT_EFLAGS_ADDR	 (0x7018)
+#endif

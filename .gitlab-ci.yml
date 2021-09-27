@@ -1,0 +1,74 @@
+stages:
+- scan
+- build
+- test
+- deploy
+
+
+check_coding_style:
+  stage: scan
+  script:
+    - echo "start to check coding style ..."
+    - cd acrn-unit-test/guest/scripts
+    - ./checkfolder.sh ../../../acrn-unit-test/
+  only:
+    - merge_requests
+
+
+acrn_clang_tidy_job:
+  stage: scan
+  script:
+    - echo "start to check coding guideline violations ..."
+    - pwd
+    - mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+    - cp -r ../acrn-unit-test/* acrn-unit-test/
+    - cd acrn-unit-test/guest/
+    - make codescan
+  only: 
+    - merge_requests
+
+
+build_job:
+  stage: build
+  script:
+    - echo "start to build ..."
+    - pwd
+    - mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+    - cp -r ../acrn-unit-test/* acrn-unit-test/
+    - cd acrn-unit-test/guest/
+    - /opt/acrn-ebtool/docker_run.sh ubuntu:v2.0 "./make_all.sh"
+  dependencies: 
+    - acrn_clang_tidy_job
+  artifacts:
+    paths:
+      - github/acrn-unit-test/guest/x86/*.bzimage
+      - github/acrn-unit-test/guest/x86/*.raw
+    expire_in: 3 weeks
+  only:
+    - merge_requests
+    - schedules
+    
+    
+test_lauch_hyperthread:
+  stage: test
+  script:
+    - echo "start to test lauching hyperthread ..."
+    - pwd
+    - /opt/srs_ci.sh hyperthread
+  dependencies:
+    - build_job
+  only:
+    - merge_requests
+    - schedules
+    
+    
+deploy_build_job:
+  stage: deploy
+  script:
+    - echo "start to deploy and run tests ..."
+    - /opt/srs_ci.sh $BUILD_TYPE
+  dependencies:
+    - build_job
+  only:
+    - schedules
+
