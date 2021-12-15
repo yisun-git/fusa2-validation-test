@@ -22,10 +22,7 @@ jobs:
           path: github/acrn-unit-test/guest/x86/*.bzimage
           path: github/acrn-unit-test/guest/x86/*.raw
           retention-days: 21
-    needs: 
-      acrn_clang_tidy_job
-
-  test_lauch_hyperthread:
+   test_lauch_hyperthread:
     runs-on: self-hosted
     steps:
       - name: test
@@ -35,7 +32,7 @@ jobs:
           /opt/srs_ci.sh hyperthread
     needs:
       build_job   
-  deploy_build_job:
+   deploy_build_job:
     runs-on: self-hosted
     steps:
       - name: deploy
