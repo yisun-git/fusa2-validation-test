@@ -1,0 +1,64 @@
+name: CI
+
+on:
+	push:
+		branches: [ main ]
+	pull_request:
+		branches: [ main ]
+jobs:
+	check_coding_style:
+		runs-on: self-hosted
+		steps:
+		  - name: scan
+			run: |
+			 echo "start to check coding style ..."
+			 cd acrn-unit-test/guest/scripts
+			 ./checkfolder.sh ../../../acrn-unit-test/	  
+	acrn_clang_tidy_job:
+		runs-on: self-hosted
+		steps：
+		  - name: scan
+			run: |
+			 echo "start to check coding guideline violations ..."
+			 pwd
+			 mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+			 cp -r ../acrn-unit-test/* acrn-unit-test/
+			 cd acrn-unit-test/guest/
+			 make codescan
+	build_job:
+		runs-on: self-hosted
+		steps:
+		  - name: build
+			run: |
+			 echo "start to build ..."
+			 pwd
+			 mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+			 cp -r ../acrn-unit-test/* acrn-unit-test/
+			 cd acrn-unit-test/guest/
+			 /opt/acrn-ebtool/docker_run.sh ubuntu:v3.0 "./make_all.sh"
+		needs: 
+		     acrn_clang_tidy_job
+		   - name: Upload math result for job 1
+			 uses: actions/upload-artifact@v2
+			 with:
+			   path:github/acrn-unit-test/guest/x86/*.bzimage
+			   path:github/acrn-unit-test/guest/x86/*.raw
+			   retention-days: 21
+        
+	test_lauch_hyperthread:
+		runs-on: self-hosted
+		stage:
+		  - name: test
+			run: |
+			 echo "start to test lauching hyperthread ..."
+			 pwd
+			 /opt/srs_ci.sh hyperthread
+		needs:
+			 build_job   
+	
+		  
+			 
+			 
+
+
+

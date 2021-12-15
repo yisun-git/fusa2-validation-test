@@ -1,0 +1,52 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  push:
+      branches: [ main ]
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '50 20 * * *'
+
+jobs:
+	build_job:
+		runs-on: self-hosted
+		steps:
+		  - name: build
+			run: |
+			 echo "start to build ..."
+			 pwd
+			 mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+			 cp -r ../acrn-unit-test/* acrn-unit-test/
+			 cd acrn-unit-test/guest/
+			 /opt/acrn-ebtool/docker_run.sh ubuntu:v3.0 "./make_all.sh"
+		needs: 
+		     acrn_clang_tidy_job
+		   - name: Upload math result for job 1
+			 uses: actions/upload-artifact@v2
+			 with:
+			   path:github/acrn-unit-test/guest/x86/*.bzimage
+			   path:github/acrn-unit-test/guest/x86/*.raw
+			   retention-days: 21
+        
+	test_lauch_hyperthread:
+		runs-on: self-hosted
+		stage:
+		  - name: test
+			run: |
+			 echo "start to test lauching hyperthread ..."
+			 pwd
+			 /opt/srs_ci.sh hyperthread
+		needs:
+			 build_job   
+	deploy_build_job:
+		runs-on： self-hosted
+		stage:
+		  - name: deploy
+		    run: |
+			 echo "start to deploy and run tests ..."
+			 /opt/srs_ci.sh $BUILD_TYPE
+		  needs:
+			 build_job
