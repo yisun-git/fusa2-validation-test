@@ -33,16 +33,14 @@ jobs:
         run: |
           echo "start to build ..."
           pwd
-          mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
-          cp -r ../acrn-unit-test/* acrn-unit-test/
-          cd acrn-unit-test/guest/
-          /opt/acrn-ebtool/docker_run.sh ubuntu:v3.0 "./make_all.sh"
-#       - name: Upload math result for job 1
-#         uses: actions/upload-artifact@v2
-#         with: |
-#           path: github/acrn-unit-test/guest/x86/*.bzimage
-#           path: github/acrn-unit-test/guest/x86/*.raw
-#           retention-days: 21
+          cd github/acrn-unit-test/guest/
+          /opt/acrn-ebtool/docker_runsrs.sh ubuntu:v3.0 "./make_all.sh"
+      - name: Upload math result for job 1
+        uses: actions/upload-artifact@v2
+        with: |
+          path: github/acrn-unit-test/guest/x86/*.bzimage
+          path: github/acrn-unit-test/guest/x86/*.raw
+          retention-days: 21
     needs: 
       acrn_clang_tidy_job
 
@@ -53,7 +51,7 @@ jobs:
         run: |
           echo "start to test lauching hyperthread ..."
           pwd
-          /opt/srs_ci.sh hyperthread
+          /opt/srsci.sh hyperthread
     needs:
       build_job   
 
