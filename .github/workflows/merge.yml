@@ -21,6 +21,7 @@ jobs:
         run: |
           echo "start to check coding guideline violations ..."
           pwd
+          rm -rf github
           mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
           cp -r ../acrn-unit-test/* acrn-unit-test/
           cd acrn-unit-test/guest/
