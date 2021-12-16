@@ -12,16 +12,18 @@ jobs:
         run: |
           echo "start to build ..."
           pwd
+          rm -rf github
           mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
           cp -r ../acrn-unit-test/* acrn-unit-test/
           cd acrn-unit-test/guest/
-          /opt/acrn-ebtool/docker_run.sh ubuntu:v3.0 "./make_all.sh"
-#       - name: Upload math result for job 1
-#         uses: actions/upload-artifact@v2
-#         with: |
-#           path: github/acrn-unit-test/guest/x86/*.bzimage
-#           path: github/acrn-unit-test/guest/x86/*.raw
-#           retention-days: 21
+          /opt/acrn-ebtool/docker_runsrs.sh ubuntu:v3.0 "./make_all.sh"
+      - name: Upload math result for job 1
+        uses: actions/upload-artifact@v2
+        with: 
+          path: | 
+                github/acrn-unit-test/guest/x86/*.bzimage
+                github/acrn-unit-test/guest/x86/*.raw
+          retention-days: 21
    test_lauch_hyperthread:
     runs-on: self-hosted
     steps:
@@ -29,7 +31,7 @@ jobs:
         run: |
           echo "start to test lauching hyperthread ..."
           pwd
-          /opt/srs_ci.sh hyperthread
+          /opt/srsci.sh hyperthread
     needs:
       build_job   
    deploy_build_job:
@@ -38,7 +40,7 @@ jobs:
       - name: deploy
         run: |
           echo "start to deploy and run tests ..."
-          /opt/srs_ci.sh $BUILD_TYPE
+          /opt/srsci.sh $BUILD_TYPE
     needs:
      build_job
 
