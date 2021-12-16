@@ -12,6 +12,7 @@ jobs:
       - name: scan
         run: |
           echo "start to check coding style ..."
+          git reset --hard && git checkout main && git pull
           cd acrn-unit-test/guest/scripts
           ./checkfolder.sh ../../../acrn-unit-test/	  
   acrn_clang_tidy_job:
