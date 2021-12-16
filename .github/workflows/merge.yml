@@ -41,6 +41,7 @@ jobs:
           path: github/acrn-unit-test/guest/x86/*.bzimage
           path: github/acrn-unit-test/guest/x86/*.raw
           retention-days: 21
+          if-no-files-found：error
     needs: 
       acrn_clang_tidy_job
 
