@@ -39,7 +39,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with: |
           path: github/acrn-unit-test/guest/x86/*.bzimage
-          path: github/acrn-unit-test/guest/x86/*.raw
+                github/acrn-unit-test/guest/x86/*.raw
           retention-days: 21
           if-no-files-found：error
     needs: 
