@@ -12,6 +12,7 @@ jobs:
         run: |
           echo "start to build ..."
           pwd
+          git reset --hard && git checkout main && git pull
           rm -rf github
           mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
           cp -r ../acrn-unit-test/* acrn-unit-test/
