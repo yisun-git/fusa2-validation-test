@@ -37,11 +37,11 @@ jobs:
           /opt/acrn-ebtool/docker_runsrs.sh ubuntu:v3.0 "./make_all.sh"
       - name: Upload math result for job 1
         uses: actions/upload-artifact@v2
-        with: |
-          path: github/acrn-unit-test/guest/x86/*.bzimage
+        with: 
+          path: | 
+                github/acrn-unit-test/guest/x86/*.bzimage
                 github/acrn-unit-test/guest/x86/*.raw
           retention-days: 21
-          if-no-files-found：error
     needs: 
       acrn_clang_tidy_job
 
