@@ -6,10 +6,10 @@ on:
         description: 'BUILD_TYPE'     
         required: true
         default: '' 
-  push:
-      branches: [ main ]
-  schedule:
-    - cron:  '50 20 * * *'
+#   push:
+#       branches: [ main ]
+#   schedule:
+#     - cron:  '50 20 * * *'
 jobs:
    build_job:
     runs-on: self-hosted
