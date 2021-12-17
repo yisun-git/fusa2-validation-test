@@ -1,5 +1,11 @@
 name: CI
 on:
+  workflow_dispatch:
+    inputs:
+      BUILD_TYPE:
+        description: 'BUILD_TYPE'     
+        required: true
+        default: '' 
   push:
       branches: [ main ]
   schedule:
@@ -41,7 +47,7 @@ jobs:
       - name: deploy
         run: |
           echo "start to deploy and run tests ..."
-          /opt/srsci.sh $BUILD_TYPE
+          /opt/srsci.sh ${{ github.event.inputs.BUILD_TYPE }}
     needs:
      build_job
 
