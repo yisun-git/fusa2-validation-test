@@ -38,7 +38,7 @@ jobs:
         run: |
           echo "start to test lauching hyperthread ..."
           pwd
-          /opt/srsci.sh hyperthread
+          /opt/srs_ci.sh hyperthread
     needs:
       build_job   
    deploy_build_job:
@@ -47,7 +47,7 @@ jobs:
       - name: deploy
         run: |
           echo "start to deploy and run tests ..."
-          /opt/srsci.sh ${{ github.event.inputs.BUILD_TYPE }}
+          /opt/srs_ci.sh ${{ github.event.inputs.BUILD_TYPE }}
     needs:
      build_job
 
