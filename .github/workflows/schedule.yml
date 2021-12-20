@@ -6,8 +6,8 @@ on:
         description: 'BUILD_TYPE'     
         required: true
         default: 'hyperthread' 
-  push:
-      branches: [ main ]
+#   push:
+#       branches: [ main ]
   schedule:
     - cron:  '50 20 * * *'
 jobs:
@@ -45,9 +45,12 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: deploy
+        env:
+          BUILD_TYPE: ${{ secrets.BUILD_TYPE }}
         run: |
           echo "start to deploy and run tests ..."
-          /opt/srs_ci.sh ${{ github.event.inputs.BUILD_TYPE }}
+          /opt/srs_ci.sh  hyperthread
+     #     /opt/srs_ci.sh ${{ github.event.inputs.BUILD_TYPE }}
     needs:
      build_job
 
