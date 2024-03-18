@@ -142,7 +142,7 @@ def main(args):
     # ACRN unit test images are statically linked at 4M and prepended by 4
     # sectors (i.e. 2K). Tell a bootloader that the preferred load address is 4M - 2K.
     entry_offset = int(args.entry_offset, 16)
-    pref_addr = entry_offset - 512 * 4
+    pref_addr = entry_offset - 512 * 1
     for b in [((pref_addr >> i) & 0xff) for i in (0,8,16,24)]:
         data = str(chr(b))
         a = struct.pack('B', b)
@@ -159,16 +159,9 @@ def main(args):
     data = b'\x00'
     out_f.write(data * 4)
 
-    # remaining (except last 4 bytes): all 0
+    # remaining: all 0
     data = b'\x00'
-    out_f.write(data * (0x400 - 0x268 - 4))
-
-    # 03FC/4 (customized): size of the binary
-    binary_size = len(binary_buf)
-    for b in [((binary_size >> i) & 0xff) for i in (0,8,16,24)]:
-        data = str(chr(b))
-        a = struct.pack('B', b)
-        out_f.write(a)
+    out_f.write(data * (0x400 - 0x268))
 
     # Sector #3: The version string at 0400, max 0200 bytes
     data = version_string.encode('utf-8')
@@ -179,13 +172,20 @@ def main(args):
     # Sector $4: relocator code
     with open(args.relocator, "rb") as in_f:
         buf = in_f.read()
-        max_size = 0x200
+        max_size = 0x200 - 4
         if len(buf) > max_size:
             #print "Relocator too large: %d bytes (max %d bytes)" % (len(buf), max_size)
             sys.exit(1)
         out_f.write(buf)
         data = b'\x00'
         out_f.write(data * (max_size - len(buf)))
+
+    # 07FC/4 (customized): size of the binary
+    binary_size = len(binary_buf)
+    for b in [((binary_size >> i) & 0xff) for i in (0,8,16,24)]:
+        data = str(chr(b))
+        a = struct.pack('B', b)
+        out_f.write(a)
 
     # Sector #5 and onwards: The binary
     out_f.write(binary_buf)
