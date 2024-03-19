@@ -54,7 +54,7 @@
 
 #define ALIGNED(x) __attribute__((aligned(x)))
 
-struct xsave_st {
+typedef struct xsave_st {
 	u64 num_xsave __attribute__((aligned(8)));
 } xsave_st;
 
