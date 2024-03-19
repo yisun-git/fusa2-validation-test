@@ -711,33 +711,32 @@ void read_write_a_word_uncached_memory_ap2()
 	stop_flag2 = 1;
 }
 
-
+static int is_all_same(void *buf, size_t size, uint8_t value)
+{
+    return ((uint8_t *)buf)[0] == value && !memcmp(buf, buf + 1, size - 1);
+}
 
 void update_segment_descriptor_ap1()
 {
-		int i;
-		u64 *point = (u64 *)tr_entry;
-		for (i = 0; i < SMP_EXE_LOOPS; i++) {
-			point[0] = 0x0;
-			point[1] = 0x0;
-				if (!(((point[0] == 0x0) && (point[1] == 0x0)) ||
-				((point[0] == 0xFFFFFFFFFFFFFFFF) && (point[1] == 0xFFFFFFFFFFFFFFFF)))) {
-					success_flag1 = 0;
-					break;
-				}
+	int i;
+	for (i = 0; i < SMP_EXE_LOOPS; i++) {
+		memset(tr_entry, 0, sizeof(tr_entry));
+		if (!(is_all_same(tr_entry, sizeof(tr_entry), 0x0) ||
+		      is_all_same(tr_entry, sizeof(tr_entry), 0xF))) {
+			success_flag1 = 0;
+			break;
 		}
-		stop_flag1 = 1;
+	}
+	stop_flag1 = 1;
 }
 
 void update_segment_descriptor_ap2()
 {
 	int i;
-	u64 *point = (u64 *)tr_entry;
 	for (i = 0; i < SMP_EXE_LOOPS; i++) {
-		point[0] = 0xFFFFFFFFFFFFFFFF;
-		point[1] = 0xFFFFFFFFFFFFFFFF;
-		if (!(((point[0] == 0x0) && (point[1] == 0x0)) ||
-			((point[0] == 0xFFFFFFFFFFFFFFFF) && (point[1] == 0xFFFFFFFFFFFFFFFF)))) {
+		memset(tr_entry, 0xF, sizeof(tr_entry));
+		if (!(is_all_same(tr_entry, sizeof(tr_entry), 0x0) ||
+		      is_all_same(tr_entry, sizeof(tr_entry), 0xF))) {
 			success_flag2 = 0;
 			break;
 		}
