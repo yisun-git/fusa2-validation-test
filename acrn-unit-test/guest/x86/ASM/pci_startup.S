@@ -124,7 +124,7 @@ outl %eax, (%dx)
 mov $(PCI_CONFIG_DATA), %edx
 mov (BP_NET_STATUS_COMMAND_ADDR), %eax
 or $0x0406, %ax
-outw %eax, (%dx)
+outl %eax, (%dx)
 #endif
 
 
