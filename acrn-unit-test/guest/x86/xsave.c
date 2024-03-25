@@ -718,11 +718,11 @@ static __unused void xsave_rqmid_22866_expose_sse_support()
 
 static __unused void add_fpu(double *p, double *q)
 {
-	asm volatile("fld (%%rdi)\n\t"	// use double extended float
-		"fld (%%rsi)\n\t"		// use double extended float
+	asm volatile("fldl (%%rdi)\n\t"	// use double extended float
+		"fldl (%%rsi)\n\t"		// use double extended float
 		"fadd %%st(0), %%st(1)\n\t"	// add st(0) and st(1)
 		// automatically truncate to single-float, write to the first arg and pop the value
-		"fstp (%%rdi)\n\t"
+		"fstpl (%%rdi)\n\t"
 		:::);
 }
 
@@ -2724,7 +2724,7 @@ static __unused struct xsave_exception x87_exception_checking(void)
 	float f_val = 2.5;
 
 	asm volatile(ASM_TRY("1f")
-			"fld %0\n\t"
+			"flds %0\n\t"
 			"1:"
 			: : "m"(f_val) : "memory");
 
@@ -2750,7 +2750,7 @@ static __unused void xsave_rqmid_27758_expose_x87_support_003(void)
 	debug_print("Step-2: Execute X87 instruction. \n");
 	float f_val = 2.5;
 	asm volatile("fninit");
-	asm volatile("fld %0\n" : : "m"(f_val) : "memory");
+	asm volatile("flds %0\n" : : "m"(f_val) : "memory");
 
 	debug_print("Step-3: Set the FXSAVE area to all 0s \n");
 	ALIGNED(16) struct xsave_fxsave_struct fxsave_test;

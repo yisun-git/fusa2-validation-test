@@ -324,7 +324,7 @@ static __unused void gp_pt_b6_instruction_3(const char *msg)
 static __unused void gp_pt_b6_instruction_4(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
-				"BTC $1, %[output]\n" "1:\n"
+				"BTCW $1, %[output]\n" "1:\n"
 				: [output] "=m" (*(unaligned_address_16((u64 *)&unsigned_16))) : );
 	exception_vector_bak = exception_vector();
 }

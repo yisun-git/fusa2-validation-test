@@ -400,8 +400,8 @@ static void interrupt_rqmid_36701_expose_exception_mf_001(void)
 	/* step 7 dump CR and rax rbx register*/
 	DUMP_REGS1(regs_check[0]);
 	/* step 8 and 9 build the FPU exception generate #MF*/
-	asm volatile("fninit;fldcw %0;fld %1\n"
-				 "fdiv %2\n"
+	asm volatile("fninit;fldcw %0;flds %1\n"
+				 "fdivs %2\n"
 				 "emms\n"
 				 :: "m"(cw), "m"(op1), "m"(op2));
 	/* step 10 dump CR and rax rbx register*/
@@ -410,16 +410,16 @@ static void interrupt_rqmid_36701_expose_exception_mf_001(void)
 	/* step 11 dump all remaining registers*/
 	DUMP_REGS2(regs_check[0]);
 	/* step 12 and 13 build the FPU exception generate #MF*/
-	asm volatile("fninit;fldcw %0;fld %1\n"
-				 "fdiv %2\n"
+	asm volatile("fninit;fldcw %0;flds %1\n"
+				 "fdivs %2\n"
 				 "emms\n"
 				 :: "m"(cw), "m"(op1), "m"(op2));
 	/* step 14 dump all remaining registers*/
 	DUMP_REGS2(regs_check[1]);
 
 	/* step 15 and 16 build the FPU exception generate #MF*/
-	asm volatile("fninit;fldcw %0;fld %1\n"
-				 "fdiv %2\n"
+	asm volatile("fninit;fldcw %0;flds %1\n"
+				 "fdivs %2\n"
 				 "emms\n"
 				 :: "m"(cw), "m"(op1), "m"(op2));
 
@@ -483,8 +483,8 @@ static void interrupt_rqmid_36702_expose_exception_mf_002(void)
 	write_cr0(read_cr0() | CR0_NE_BIT);
 
 	/* step 6 and 7 build the FPU exception generate #MF*/
-	asm volatile("fninit;fldcw %0;fld %1\n"
-				 "fdiv %2\n"
+	asm volatile("fninit;fldcw %0;flds %1\n"
+				 "fdivs %2\n"
 				 "emms\n"
 				 :: "m"(cw), "m"(op1), "m"(op2));
 
@@ -1985,7 +1985,7 @@ static void interrupt_rqmid_38286_expose_exception_nm_001(void)
 	DUMP_REGS1(regs_check[0]);
 
 	/*step 8 Load Floating Point Value to trigger #NM*/
-	asm volatile("fld %0\n\t"::"m"(op1));
+	asm volatile("flds %0\n\t"::"m"(op1));
 
 	/* step 9 dump CR and rax rbx register*/
 	DUMP_REGS1(regs_check[1]);
@@ -1994,13 +1994,13 @@ static void interrupt_rqmid_38286_expose_exception_nm_001(void)
 	DUMP_REGS2(regs_check[0]);
 
 	/*step 11 Load Floating Point Value to trigger #NM*/
-	asm volatile("fld %0\n\t"::"m"(op1));
+	asm volatile("flds %0\n\t"::"m"(op1));
 
 	/* step 12 dump all remaining registers*/
 	DUMP_REGS2(regs_check[1]);
 
 	/*step 13 Load Floating Point Value to trigger #NM*/
-	asm volatile("fld %0\n\t"::"m"(op1));
+	asm volatile("flds %0\n\t"::"m"(op1));
 
 	/*step 14 get setp 13 'fld %0' instruction address */
 	/* If ASM is used to call a function, GCC will not see the
@@ -2057,7 +2057,7 @@ static void interrupt_rqmid_38287_expose_exception_nm_002(void)
 	/*step 5 set cr0.ne to 1*/
 	cr0_ne_to_1();
 	/*setp 6  trigger #NM*/
-	asm volatile("fld %0\n\t"::"m"(op1));
+	asm volatile("flds %0\n\t"::"m"(op1));
 
 	check = check_rflags();
 

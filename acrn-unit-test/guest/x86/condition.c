@@ -934,8 +934,8 @@ void condition_FPU_excp_hold(void)
 	unsigned short cw;
 
 	cw = 0x37b;/*bit2==0,report div0 exception*/
-	asm volatile("fninit;fldcw %0;fld %1\n"
-			 "fdiv %2\n"
+	asm volatile("fninit;fldcw %0;flds %1\n"
+			 "fdivs %2\n"
 			 : : "m"(cw), "m"(op1), "m"(op2));
 }
 
