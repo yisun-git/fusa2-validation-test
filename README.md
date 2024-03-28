@@ -1,82 +1,121 @@
-### Readme
+# virtualization.hypervisors.acrn.acrn-fusa-cert.validation-test
 
-### Fusa SRS Test building step.
+# Fusa SRS Test building steps
 
-#### 1.setup your local building environment firstly. 
+## 1. Compile SRS unit-test
 
-    setup docker environment, pls refer http://sit-image.sh.intel.com/FUSA/docker_20200421/ReadMe.txt
+```bash
+$ git clone https://github.com/intel-innersource/virtualization.hypervisors.acrn.acrn-fusa-cert.validation-test.git acrn-validation-test
+$ git clone https://github.com/projectacrn/acrn-unit-test.git -b acrn_2022ww35
+$ cp -r acrn-validation-test/acrn-unit-test/* acrn-unit-test/
+$ cd acrn-unit-test/guest/
+$ ./make_all.sh
 
-#### 2.get SRS code 
-
-    $git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/acrn-validation-test.git  # branch: master
-
-#### 3.get Hypervisor code
-
-    $git clone https://gitlab.devtools.intel.com/projectacrn/acrn-static-toolbox/acrn-sliced-mainline.git  # branch: master
-
-#### 4.compile hypervisor
-
-    $cd acrn-sliced-mainline/hypervisor
-    $make clean
-    $make RELEASE=0
-
-    path: acrn-sliced-mainline/hypervisor/build/acrn.32.out
-
-#### 5.compile unit-test
-
-    $docker run -v -it ubuntu:v1 /bin/bash
-    $cd acrn-validation-test
-    $git reset --hard && git checkout master && git pull
-    $mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
-    $cp -r ../acrn-unit-test/* acrn-unit-test/
-    $cd acrn-unit-test/guest/
-    $./make_all.sh
-
-    path: acrn-validation-test/github/acrn-unit-test/guest/x86/obj/
-    (There are three kinds of files: *.bzimage for non-safety, *.raw for safety and *.elf for native)
-
-### 6.BTW, you need to append "ACRN_unit_test_image" after the unit test module for the unit-test to boot.
+# Path: acrn-unit-test/guest/x86/obj/
+# (There are three kinds of files: *.bzimage for non-safety, *.raw for safety and *.elf for native)
 ```
-    40_custom_logic_partition_2_vm:
 
-    menuentry 'ACRN SRS LOGICAL 2VMs' --class ubuntu --class gnu-linux --class gnu --class os $menuentry_id_option 'gnulinux-simple-e23c76ae-b06d-4a6e-ad42-46b8eedfd7d3' {
-    recordfail
+## 2. Add grub cfg files for SRS unit test
+
+Create these 3 grub cfg files and set up:
+```bash
+# In the files <xxx> are needed to be updated according to the local setup
+$ touch 50_acrn-pre-raw
+$ touch 50_acrn-pre-bzimage
+$ touch 50_acrn-sos-bzimage
+$ sudo cp 50_acrn-* /etc/grub.d/
+$ sudo chmod +x /etc/grub.d/50_acrn-*
+```
+
+50_acrn-pre-raw
+```sh
+#!/bin/sh
+exec tail -n +3 $0
+menuentry 'ACRN SRS Pre-launched VM - raw' {
     load_video
-    gfxmode $linux_gfx_mode
     insmod gzio
     insmod part_gpt
     insmod ext2
+    search --no-floppy --fs-uuid  --set=root <partition_UUID>
 
     echo 'Loading hypervisor srs module ...'
-    multiboot --quirk-modules-after-kernel /boot/acrn.32.out
-    module /boot/xxx.raw zephyr
-    module /boot/xxx.bzimage linux
- }
+    multiboot --quirk-modules-after-kernel /boot/acrn.<config_name>.<board_name>.32.out root=UUID=<partition UUID> cpu_perf_policy=Performance
+    module /boot/<target_test>.raw RawImage
+    module /boot/ACPI_VM0.bin ACPI_VM0
+}
+```
 
-    40_custom_native_elf:
-
-    menuentry 'UNIT-TEST NATIVE ELF' --class ubuntu --class gnu-linux --class gnu --class os $menuentry_id_option 'gnulinux-simple-e23c76ae-b06d-4a6e-ad42-46b8eedfd7d3' {
-    recordfail
+50_acrn-pre-bzimage
+```sh
+#!/bin/sh
+exec tail -n +3 $0
+menuentry 'ACRN SRS Pre-launched VM - bzimage' {
     load_video
-    gfxmode $linux_gfx_mode
     insmod gzio
     insmod part_gpt
     insmod ext2
+    search --no-floppy --fs-uuid  --set=root <partition_UUID>
 
-    echo 'Loading native unit test ...'
-    multiboot --quirk-modules-after-kernel /boot/xxx.elf
- }
- ```
+    echo 'Loading hypervisor srs module ...'
+    multiboot --quirk-modules-after-kernel /boot/acrn.<config_name>.<board_name>.32.out root=UUID=<partition UUID> cpu_perf_policy=Performance
+    module /boot/<target_test>.bzimage Linux_bzImage
+    module /boot/ACPI_VM0.bin ACPI_VM0
+}
+```
 
-### QEMU environment setup step for SRS Test.
+50_acrn-sos-bzimage
+```sh
+#!/bin/sh
+exec tail -n +3 $0
+menuentry 'ACRN SRS Service VM - bzimage' {
+    load_video
+    insmod gzio
+    insmod part_gpt
+    insmod ext2
+    search --no-floppy --fs-uuid  --set=root <partition_UUID>
 
-### 1. How to configure docker in linux
-    Please refer to: http://sit-image.sh.intel.com/FUSA/docker_20200602/Readme_V2.0.md
-    (QEMU have been installed in this docker)
+    echo 'Loading hypervisor srs module ...'
+    multiboot --quirk-modules-after-kernel /boot/acrn.<config_name>.<board_name>.32.out root=UUID=<partition_UUID> cpu_perf_policy=Performance
+    module /boot/<target_test>.bzimage Linux_bzImage
+}
+```
 
+## 4. Get and compile ACRN hypervisor
 
-### 2. Run in QEMU
-    
+```bash
+$ git clone https://github.com/projectacrn/acrn-hypervisor.git
+
+# Please generate board.xml and scenario.xml files as usual.
+# Notes: VM scenario config fragments:
+# 1. Pre-launched VM - raw
+#    <os_config>
+#      <kern_type>KERNEL_RAWIMAGE</kern_type>
+#      <kern_mod>RawImage</kern_mod>
+#      <bootargs></bootargs>
+#      <kern_load_addr>0x100000</kern_load_addr>
+#      <kern_entry_addr>0x100000</kern_entry_addr>
+#    </os_config>
+# 2. Pre-launched VM - bzimage and Service VM - bzimage
+#    <os_config>
+#      <kern_type>KERNEL_BZIMAGE</kern_type>
+#      <kern_mod>Linux_bzImage</kern_mod>
+#      <bootargs></bootargs>
+#    </os_config>
+
+$ cd acrn-hypervisor
+$ make BOARD=<board.xml> SCENARIO=<scenario.xml>
+$ sudo apt install --reinstall ./build/acrn-board-*.deb
+```
+
+## 5. Run SRS unit test
+
+Reboot machine, at grub menu, choose the target boot entry of the three:
+- "ACRN SRS Pre-launched VM - raw"
+- "ACRN SRS Pre-launched VM - bzimage"
+- "ACRN SRS Service VM - bzimage"
+
+# [TO BE UPDATED] Run in QEMU
+
     Compile hypervisor (see ### 4). Add compile option QEMU=1.
     e.g. 
     $make RELEASE=0 QEMU=1
@@ -93,4 +132,3 @@
     $ ./qemu_native.sh <native_elf_file>
     e.g.
     $ ./qemu_native.sh xsave_native_64
-
