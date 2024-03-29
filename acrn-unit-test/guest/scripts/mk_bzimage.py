@@ -37,8 +37,8 @@ def main(args):
     data = b'HdrS'
     out_f.write(data)
 
-    # 0206/2: boot protocol version: 2.06
-    data = b'\x06\x02'
+    # 0206/2: boot protocol version: 2.10
+    data = b'\x0A\x02'
     out_f.write(data)
 
     # 0208/4: realmode switch
@@ -106,7 +106,7 @@ def main(args):
     out_f.write(data)
 
     # 0234/1: Whether kernel is relocatable or not (reloc)
-    data = b'\x01'
+    data = b'\x00'
     out_f.write(data)
 
     # 0235/1 (2.10+): Minimum alignment, as a power of two (reloc)
@@ -152,8 +152,11 @@ def main(args):
     out_f.write(data * 4)
 
     # 0260/4 (2.10+): Linear memory required during initialization
-    data = b'\x00'
-    out_f.write(data * 4)
+    binary_size = len(binary_buf) + 0x800
+    for b in [((binary_size >> i) & 0xff) for i in (0,8,16,24)]:
+        data = str(chr(b))
+        a = struct.pack('B', b)
+        out_f.write(a)
 
     # 0264/4 (2.11+): Offset of handover entry point
     data = b'\x00'
