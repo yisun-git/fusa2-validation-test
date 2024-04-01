@@ -5,8 +5,8 @@ ifeq ($(wildcard config.mak),)
 $(error run ./configure first. See ./configure -h)
 endif
 
-export ENTRY_OFFSET = 0x1000800
-export START_A = 0x1000800 + SIZEOF_HEADERS
+export ENTRY_OFFSET = 0x4000800
+export START_A = 0x4000800 + SIZEOF_HEADERS
 
 FILE_NAME_HSI = $(shell echo $(FILE_NAME) | grep "hsi_mem_paging_access_low")
 ifneq ($(FILE_NAME_HSI), )
