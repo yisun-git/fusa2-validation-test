@@ -1,11 +1,10 @@
-ORG_DIR := ../../../acrn-unit-test/guest/
-C_SRCS_X86 := $(shell cd $(ORG_DIR) && ls x86/*.c x86/realmode/*.c)
-C_SRCS_LIB := $(shell cd $(ORG_DIR) && ls lib/x86/*.c)
+C_SRCS_X86 := $(shell cd $(SRCDIR) && ls x86/*.c x86/realmode/*.c)
+C_SRCS_LIB := $(shell cd $(SRCDIR) && ls lib/x86/*.c)
 
 ALL_C_SRCS := $(C_SRCS_X86)
 ALL_C_SRCS += $(C_SRCS_LIB)
 
-FN_HEADER := $(shell cd $(ORG_DIR) && ls x86/64/*.c x86/32/*.c)
+FN_HEADER := $(shell cd $(SRCDIR) && ls x86/64/*.c x86/32/*.c)
 
 INCLUDE_PATH += x86
 INCLUDE_PATH += x86/realmode
