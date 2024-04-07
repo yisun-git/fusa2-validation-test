@@ -34,8 +34,6 @@ $(libcflat): CFLAGS += -ffreestanding -I $(SRCDIR)/lib -I lib
 COMMON_CFLAGS += -m$(bits)
 COMMON_CFLAGS += -O1
 
-include $(TEST_DIR)/Makefile.use_ap
-
 # stack.o relies on frame pointers.
 KEEP_FRAME_POINTER := y
 
@@ -180,7 +178,9 @@ $(TEST_DIR)/realmode/%.elf: $(TEST_DIR)/realmode/rmode_cstart.o $(TEST_DIR)/real
 
 $(TEST_DIR)/realmode/rmode_cstart.o: $(TEST_DIR)/realmode/rmode_cstart.S
 	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
-include $(TEST_DIR)/Makefile.init_startup
+
+include $(TEST_DIR)/Makefile.acrn
+
 arch_clean:
 	$(RM) $(TEST_DIR)/*.o $(TEST_DIR)/*.flat $(TEST_DIR)/*.elf $(TEST_DIR)/*.raw \
 	$(TEST_DIR)/.*.d lib/x86/.*.d \
