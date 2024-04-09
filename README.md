@@ -27,7 +27,7 @@
     $docker run -v -it ubuntu:v1 /bin/bash
     $cd acrn-validation-test
     $git reset --hard && git checkout master && git pull
-    $mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git
+    $mkdir github && cd github && git clone https://github.com/projectacrn/acrn-unit-test.git && git checkout acrn_2022ww35
     $cp -r ../acrn-unit-test/* acrn-unit-test/
     $cd acrn-unit-test/guest/
     $./make_all.sh
@@ -79,7 +79,7 @@
     
     Compile hypervisor (see ### 4). Add compile option QEMU=1.
     e.g. 
-    $make RELEASE=0 QEMU=1
+    $make BOARD=<path of board xml file> SCENARIO=<path of scenario xml file>
     Compile unit-test (see ### 5).
 
     1) Run acrn-unit-test on hypervisor
