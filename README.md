@@ -118,7 +118,7 @@ Reboot machine, at grub menu, choose the target boot entry of the three:
 
     Compile hypervisor (see ### 4). Add compile option QEMU=1.
     e.g. 
-    $make RELEASE=0 QEMU=1
+    $make BOARD=<path of board xml file> SCENARIO=<path of scenario xml file>
     Compile unit-test (see ### 5).
 
     1) Run acrn-unit-test on hypervisor

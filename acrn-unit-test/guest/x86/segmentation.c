@@ -30,6 +30,7 @@ __unused static void notify_modify_and_read_init_value(int case_id)
 	send_sipi();
 	wait_ap_ready();
 	/* Will check INIT value after AP reboot again */
+	need_modify_init_value = 0;
 	send_sipi();
 	wait_ap_ready();
 }
