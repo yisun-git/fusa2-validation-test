@@ -1,0 +1,127 @@
+# Part 1
+# List tests that need to set up AP_USE_MAIN.
+
+USE_AP_LIST = \
+	$(TEST_DIR)/application_constraints.o \
+	$(TEST_DIR)/avx.o \
+	$(TEST_DIR)/cpumode.o \
+	$(TEST_DIR)/debug_features.o \
+	$(TEST_DIR)/device_passthrough.o \
+	$(TEST_DIR)/fpu.o \
+	$(TEST_DIR)/general_purpose.o \
+	$(TEST_DIR)/hsi.o \
+	$(TEST_DIR)/hsi_gp.o \
+	$(TEST_DIR)/hsi_local_apic.o \
+	$(TEST_DIR)/hsi_multi_proc_mgmt.o \
+	$(TEST_DIR)/hsi_virtual_spec.o \
+	$(TEST_DIR)/idle_block.o \
+	$(TEST_DIR)/info_leakage.o \
+	$(TEST_DIR)/interrupt.o \
+	$(TEST_DIR)/interrupt_mc.o \
+	$(TEST_DIR)/local_apic.o \
+	$(TEST_DIR)/locked_atomic.o \
+	$(TEST_DIR)/machine_check.o \
+	$(TEST_DIR)/mem_cache.o \
+	$(TEST_DIR)/memory_order.o \
+	$(TEST_DIR)/misc_cpuid.o \
+	$(TEST_DIR)/misc_msr.o \
+	$(TEST_DIR)/mp_initialization.o \
+	$(TEST_DIR)/multiboot.o \
+	$(TEST_DIR)/paging.o \
+	$(TEST_DIR)/pci.o \
+	$(TEST_DIR)/rtc.o \
+	$(TEST_DIR)/segmentation.o \
+	$(TEST_DIR)/sgx.o \
+	$(TEST_DIR)/smx.o \
+	$(TEST_DIR)/sse.o \
+	$(TEST_DIR)/taskmanagement.o \
+	$(TEST_DIR)/tsc.o \
+	$(TEST_DIR)/xsave.o
+
+$(USE_AP_LIST): CFLAGS += -DAP_USE_MAIN
+
+# Part 2
+# List tests that need to set up AP_INIT_CHECK and BP_STARTUP_CHECK.
+
+INIT_STARTUP_LIST = \
+	$(TEST_DIR)/application_constraints.o \
+	$(TEST_DIR)/avx.o \
+	$(TEST_DIR)/branch_profile.o \
+	$(TEST_DIR)/cpumode.o \
+	$(TEST_DIR)/debug_features.o \
+	$(TEST_DIR)/device_passthrough.o \
+	$(TEST_DIR)/fpu.o \
+	$(TEST_DIR)/general_purpose.o \
+	$(TEST_DIR)/hsi_gp_cpumode.o \
+	$(TEST_DIR)/idle_block.o \
+	$(TEST_DIR)/info_leakage.o \
+	$(TEST_DIR)/init_startup_sample.o \
+	$(TEST_DIR)/interrupt.o \
+	$(TEST_DIR)/local_apic.o \
+	$(TEST_DIR)/machine_check.o \
+	$(TEST_DIR)/mem_cache.o \
+	$(TEST_DIR)/misc_cpuid.o \
+	$(TEST_DIR)/misc_msr.o \
+	$(TEST_DIR)/mp_initialization.o \
+	$(TEST_DIR)/multiboot.o \
+	$(TEST_DIR)/paging.o \
+	$(TEST_DIR)/pci.o \
+	$(TEST_DIR)/pmu_fu.o \
+	$(TEST_DIR)/power_thermal.o \
+	$(TEST_DIR)/rtc.o \
+	$(TEST_DIR)/segmentation.o \
+	$(TEST_DIR)/sgx.o \
+	$(TEST_DIR)/smx.o \
+	$(TEST_DIR)/sse.o \
+	$(TEST_DIR)/taskmanagement.o \
+	$(TEST_DIR)/tsc.o \
+	$(TEST_DIR)/v8086_protect.o \
+	$(TEST_DIR)/vmx.o \
+	$(TEST_DIR)/xsave.o
+
+$(INIT_STARTUP_LIST): CFLAGS += -I $(TEST_DIR)/ASM
+$(INIT_STARTUP_LIST): CFLAGS += -DAP_INIT_CHECK=\"$(basename $(notdir $@))_init.S\"
+$(INIT_STARTUP_LIST): CFLAGS += -DBP_STARTUP_CHECK=\"$(basename $(notdir $@))_startup.S\"
+
+$(TEST_DIR)/avx.o: $(TEST_DIR)/avx.h
+
+$(TEST_DIR)/device_passthrough.o: $(TEST_DIR)/device_passthrough.h
+
+$(TEST_DIR)/fpu.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/fpu.o: $(TEST_DIR)/fpu.h
+
+$(TEST_DIR)/general_purpose.o: CFLAGS += -DBP_STARTUP_CHECK_64
+
+$(TEST_DIR)/hsi_gp_cpumode.o: $(TEST_DIR)/hsi_gp_cpumode.h
+
+$(TEST_DIR)/init_startup_sample.o: CFLAGS += -DAP_UNCHANGED_CHECK
+
+$(TEST_DIR)/local_apic.o: CFLAGS += -DAP_UNCHANGED_CHECK
+
+$(TEST_DIR)/machine_check.o: $(TEST_DIR)/machine_check.h
+
+$(TEST_DIR)/mem_cache.o: CFLAGS += -DAP_UNCHANGED_CHECK
+
+$(TEST_DIR)/multiboot.o: CFLAGS += -DIN_MULTIBOOT_TEST
+
+$(TEST_DIR)/pci.o: CFLAGS += -DAP_UNCHANGED_CHECK
+
+$(TEST_DIR)/pmu_fu.o: $(TEST_DIR)/pmu_fu.h
+
+$(TEST_DIR)/smx.o: $(TEST_DIR)/smx.h
+
+$(TEST_DIR)/power_thermal.o: $(TEST_DIR)/power_thermal.h
+
+$(TEST_DIR)/segmentation.o: $(TEST_DIR)/../lib/x86/segmentation.h
+
+$(TEST_DIR)/taskmanagement.o: CFLAGS += -DAP_UNCHANGED_CHECK
+
+# Part 3
+# Merge the USE_AP and INIT_STARTUP tests lists, for these tests, clean up cstart.o first then build.
+
+CSTART_REBUILD_LIST = $(sort $(USE_AP_LIST) $(INIT_STARTUP_LIST))
+
+$(CSTART_REBUILD_LIST):
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $(subst .o,.c,$@)
