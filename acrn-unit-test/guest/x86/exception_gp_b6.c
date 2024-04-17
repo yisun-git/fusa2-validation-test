@@ -1381,7 +1381,7 @@ static __unused void gp_b6_instruction_42(const char *msg)
 
 static __unused void gp_b6_instruction_43(const char *msg)
 {
-	u32 cr0 = read_cr0();
+	u64 cr0 = read_cr0();
 	cr0 |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_29));
 	asm volatile (ASM_TRY("1f") "mov %0, %%cr0\n" "1:" : : "r"(cr0) : "memory");
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
@@ -1389,7 +1389,7 @@ static __unused void gp_b6_instruction_43(const char *msg)
 
 static __unused void gp_b6_instruction_44(const char *msg)
 {
-	u32 cr0 = read_cr0();
+	u64 cr0 = read_cr0();
 	cr0 |= (FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_29));
 	asm volatile (ASM_TRY("1f") "mov %0, %%cr0\n" "1:" : : "r"(cr0) : "memory");
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);

@@ -88,11 +88,12 @@ BUILD_CONDITION_FUNC(mov_dr_exit, CPU_EXEC_CTRL0, \
  */
 __unused static void hsi_rqmid_40467_virtualization_specific_features_vm_exe_con_mov_dr_001()
 {
+	u64 tmp = 0;
 
 	/* disable Debugging Extensions */
 	write_cr4(read_cr4() & ~X86_CR4_DE);
 
-	asm volatile("mov %0, %%dr4" : : "r"(0) : );
+	asm volatile ("movq %0, %%dr4" : : "r"(tmp) : );
 	report("%s", (get_exit_reason() == VM_EXIT_REASON_DEFAULT_VALUE), __func__);
 
 	/* resume environment */
