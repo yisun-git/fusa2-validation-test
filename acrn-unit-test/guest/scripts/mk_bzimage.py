@@ -6,6 +6,9 @@ import struct
 
 version_string = "acrn-unit-test"
 
+# 512 bytes of the sector
+sector_size = 0x200
+
 def main(args):
     out_f = open(args.out_file, "wb")
     binary_f = open(args.raw_file, "rb")
@@ -23,7 +26,7 @@ def main(args):
 
     # # remaining till last 2 bytes of sector #1: 0's
     data = b'\x00'
-    out_f.write(data * (0x200 - 2 - 0x1f2))
+    out_f.write(data * (sector_size - 2 - 0x1f2))
     data = b'\x55\xAA'
     out_f.write(data)
 
@@ -37,8 +40,8 @@ def main(args):
     data = b'HdrS'
     out_f.write(data)
 
-    # 0206/2: boot protocol version: 2.06
-    data = b'\x06\x02'
+    # 0206/2: boot protocol version: 2.10
+    data = b'\x0A\x02'
     out_f.write(data)
 
     # 0208/4: realmode switch
@@ -106,7 +109,7 @@ def main(args):
     out_f.write(data)
 
     # 0234/1: Whether kernel is relocatable or not (reloc)
-    data = b'\x01'
+    data = b'\x00'
     out_f.write(data)
 
     # 0235/1 (2.10+): Minimum alignment, as a power of two (reloc)
@@ -142,7 +145,7 @@ def main(args):
     # ACRN unit test images are statically linked at 4M and prepended by 4
     # sectors (i.e. 2K). Tell a bootloader that the preferred load address is 4M - 2K.
     entry_offset = int(args.entry_offset, 16)
-    pref_addr = entry_offset - 512 * 4
+    pref_addr = entry_offset - sector_size * 1
     for b in [((pref_addr >> i) & 0xff) for i in (0,8,16,24)]:
         data = str(chr(b))
         a = struct.pack('B', b)
@@ -152,40 +155,43 @@ def main(args):
     out_f.write(data * 4)
 
     # 0260/4 (2.10+): Linear memory required during initialization
-    data = b'\x00'
-    out_f.write(data * 4)
-
-    # 0264/4 (2.11+): Offset of handover entry point
-    data = b'\x00'
-    out_f.write(data * 4)
-
-    # remaining (except last 4 bytes): all 0
-    data = b'\x00'
-    out_f.write(data * (0x400 - 0x268 - 4))
-
-    # 03FC/4 (customized): size of the binary
-    binary_size = len(binary_buf)
+    binary_size = len(binary_buf) + sector_size * 4
     for b in [((binary_size >> i) & 0xff) for i in (0,8,16,24)]:
         data = str(chr(b))
         a = struct.pack('B', b)
         out_f.write(a)
 
+    # 0264/4 (2.11+): Offset of handover entry point
+    data = b'\x00'
+    out_f.write(data * 4)
+
+    # remaining: all 0
+    data = b'\x00'
+    out_f.write(data * (sector_size * 2 - 0x268))
+
     # Sector #3: The version string at 0400, max 0200 bytes
     data = version_string.encode('utf-8')
     out_f.write(data)
     data = b'\x00'
-    out_f.write(data * (0x200 - len(version_string)))
+    out_f.write(data * (sector_size - len(version_string)))
 
     # Sector $4: relocator code
     with open(args.relocator, "rb") as in_f:
         buf = in_f.read()
-        max_size = 0x200
+        max_size = sector_size - 4
         if len(buf) > max_size:
             #print "Relocator too large: %d bytes (max %d bytes)" % (len(buf), max_size)
             sys.exit(1)
         out_f.write(buf)
         data = b'\x00'
         out_f.write(data * (max_size - len(buf)))
+
+    # 07FC/4 (customized): size of the binary
+    binary_size = len(binary_buf)
+    for b in [((binary_size >> i) & 0xff) for i in (0,8,16,24)]:
+        data = str(chr(b))
+        a = struct.pack('B', b)
+        out_f.write(a)
 
     # Sector #5 and onwards: The binary
     out_f.write(binary_buf)

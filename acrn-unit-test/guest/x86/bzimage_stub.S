@@ -19,7 +19,7 @@
 #define ZEROPAGE_SETUP_SECTS  0x1f1
 #define ZEROPAGE_HEADER       0x202
 #define ZEROPAGE_CMDLINE_PTR  0x228
-#define ZEROPAGE_IMAGE_SIZE   0x3fc
+#define ZEROPAGE_IMAGE_SIZE   0x7fc
 #define ZEROPAGE_BINARY_BASE  (4 * SECTOR_SIZE)
 
 #define MBI_FLAGS             0x0
