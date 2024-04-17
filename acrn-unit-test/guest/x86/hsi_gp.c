@@ -1085,10 +1085,10 @@ static void fpu_add(float *p, float *q)
 {
 	asm volatile(
 		"fninit\n"
-		"fld %0\n"   // push to fpu register stack
-		"fld %1\n"
+		"flds %0\n"   // push to fpu register stack
+		"flds %1\n"
 		"fadd %%st(1), %%st(0)\n"
-		"fst %0\n"  // copy st(0), don't pop stack
+		"fsts %0\n"  // copy st(0), don't pop stack
 		: "+m"(*p)
 		: "m"(*q) : "memory"
 	);
@@ -1969,13 +1969,13 @@ static __unused void hsi_rqmid_35957_generic_processor_features_xsave_x87_001(vo
 	/* clear st0 register */
 	asm volatile(
 		"rex.w\n\t"
-		"fild %0\n\t"
+		"fildl %0\n\t"
 		: : "m" (st));
 
 	if (xrstors_checking(&st_xsave_area, states)) {
 		chk++;
 	}
-	asm volatile("fist %0\n" : : "m"(op) :);
+	asm volatile("fists %0\n" : : "m"(op) :);
 
 	if (op != 0) {
 		chk++;

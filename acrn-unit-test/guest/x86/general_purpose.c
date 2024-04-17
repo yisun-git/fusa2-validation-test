@@ -1515,7 +1515,7 @@ __unused static void iret_gp_097(void)
 {
 	/* "call (absolute address in memory) \n" */
 	/* u64 *data_add = (u64 *)0x000000000048e520; */
-	asm volatile ("iret \n");
+	asm volatile ("iretq \n");
 }
 
 static void  gp_rqmid_31379_control_transfer_iret_gp_097(void)

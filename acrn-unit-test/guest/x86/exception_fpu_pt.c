@@ -138,7 +138,7 @@ static __unused void fpu_pt_instruction_1(const char *msg)
 
 static __unused void fpu_pt_instruction_2(const char *msg)
 {
-	asm volatile(ASM_TRY("1f") "FISUBR %[input_1]\n" "1:"
+	asm volatile(ASM_TRY("1f") "FISUBRS %[input_1]\n" "1:"
 				:  : [input_1] "m" (unsigned_16));
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }

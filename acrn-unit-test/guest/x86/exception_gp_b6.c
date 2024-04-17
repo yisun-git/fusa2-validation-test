@@ -1564,7 +1564,7 @@ static __unused void gp_b6_instruction_62(const char *msg)
 static __unused void gp_b6_instruction_63(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
-				"AND $1, %[output]\n" "1:"
+				"ANDQ $1, %[output]\n" "1:"
 				: [output] "=m" (*(non_canon_align_mem((u64)&unsigned_8))) : );
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
@@ -1625,7 +1625,7 @@ static __unused void gp_b6_instruction_69(const char *msg)
 static __unused void gp_b6_instruction_70(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
-				"ADD $1, %[output]\n" "1:"
+				"ADDB $1, %[output]\n" "1:"
 				: [output] "=m" (unsigned_8) : );
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
@@ -1641,7 +1641,7 @@ static __unused void gp_b6_instruction_71(const char *msg)
 static __unused void gp_b6_instruction_72(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
-				"ADD $1, %[output]\n" "1:"
+				"ADDB $1, %[output]\n" "1:"
 				: [output] "=m" (unsigned_8) : );
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
@@ -1649,7 +1649,7 @@ static __unused void gp_b6_instruction_72(const char *msg)
 static __unused void gp_b6_instruction_73(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
-				"ADD $1, %[output]\n" "1:"
+				"ADDQ $1, %[output]\n" "1:"
 				: [output] "=m" (unsigned_64) : );
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
@@ -1657,7 +1657,7 @@ static __unused void gp_b6_instruction_73(const char *msg)
 static __unused void gp_b6_instruction_74(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
-				"ADD $1, %[output]\n" "1:"
+				"ADDQ $1, %[output]\n" "1:"
 				: [output] "=m" (unsigned_64) : );
 	exception_vector_bak = exception_vector();
 }
@@ -1684,7 +1684,7 @@ static __unused void gp_b6_instruction_77(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADD $1, %[output]\n" "1:"
+				"ADDQ $1, %[output]\n" "1:"
 				: [output] "=m" (*(non_canon_align_mem((u64)&unsigned_8))) : );
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
@@ -1693,7 +1693,7 @@ static __unused void gp_b6_instruction_78(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADC $1, %[output]\n" "1:"
+				"ADCQ $1, %[output]\n" "1:"
 				: [output] "=m" (*(non_canon_align_mem((u64)&unsigned_16))) : );
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
@@ -1702,7 +1702,7 @@ static __unused void gp_b6_instruction_79(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADC $1, %[output]\n" "1:"
+				"ADCL $1, %[output]\n" "1:"
 				: [output] "=m" (*(non_canon_align_mem((u64)&unsigned_32))) : );
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
@@ -1711,7 +1711,7 @@ static __unused void gp_b6_instruction_80(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADC $1, %[output]\n" "1:"
+				"ADCQ $1, %[output]\n" "1:"
 				: [output] "=m" (*(non_canon_align_mem((u64)&unsigned_16))) : );
 	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
 }
@@ -1730,7 +1730,7 @@ static __unused void gp_b6_instruction_82(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADC $1, %[output]\n" "1:"
+				"ADCQ $1, %[output]\n" "1:"
 				: [output] "=m" (*(non_canon_align_mem((u64)&unsigned_8))) : );
 	exception_vector_bak = exception_vector();
 }
@@ -1739,7 +1739,7 @@ static __unused void gp_b6_instruction_83(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADC $1, %[output]\n" "1:"
+				"ADCQ $1, %[output]\n" "1:"
 				: [output] "=m" (unsigned_64) : );
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
@@ -1766,7 +1766,7 @@ static __unused void gp_b6_instruction_86(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADC $1, %[output]\n" "1:"
+				"ADCL $1, %[output]\n" "1:"
 				: [output] "=m" (unsigned_32) : );
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }
@@ -1775,7 +1775,7 @@ static __unused void gp_b6_instruction_87(const char *msg)
 {
 	asm volatile(ASM_TRY("1f")
 				"lock\n"
-				"ADC $1, %[output]\n" "1:"
+				"ADCQ $1, %[output]\n" "1:"
 				: [output] "=m" (unsigned_64) : );
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
 }

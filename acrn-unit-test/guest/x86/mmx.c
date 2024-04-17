@@ -178,8 +178,8 @@ static void mmx_rqmid_31859_acrn_general_support_64bit_mode_emms_mf_001(void)
 
 	write_cr0(read_cr0() & ~0x8); /*clear TS*/
 	write_cr0(read_cr0() | (1 << 5));/*set cr0.ne*/
-	asm volatile("fninit;fldcw %0;fld %1\n"
-				 "fdiv %2\n"
+	asm volatile("fninit;fldcw %0;flds %1\n"
+				 "fdivs %2\n"
 				 ASM_TRY("1f")
 				 "emms\n"
 				 "1:"
