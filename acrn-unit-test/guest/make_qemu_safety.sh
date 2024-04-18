@@ -7,7 +7,8 @@ echo "make x86/"$1".bzimage"
 make x86/$1.bzimage VM=safety QEMU=1
 make_result=$?
 if [ $make_result != 0 ]; then
-	exit $make_result
+    echo "FAILED TO MAKE ${i}"
+    exit $make_result
 fi
 mv x86/$1.bzimage x86/obj/$1_qemu.bzimage
 
