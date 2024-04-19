@@ -41,11 +41,5 @@ uint64_t fwcfg_get_u64(unsigned index)
 
 unsigned fwcfg_get_nb_cpus(void)
 {
-#ifdef IN_SAFETY_VM
-	return 1;
-#elif defined IN_NATIVE
-	return 4;
-#else
-	return 3;
-#endif
+	return UT_CORE_NUMS;
 }

@@ -7,7 +7,7 @@
 
 ipi_vector = 0x20
 
-max_cpus = 64
+max_cpus = 128
 
 .data
 
@@ -192,7 +192,10 @@ ap_start32:
 	nop
 	lock incw cpu_online_count
 #ifdef AP_USE_MAIN
-	call ap_main
+	cmpb $1, is_all_cpu_init
+	je 2f
+	call ap_record_lapicid
+2:	call ap_main
 #endif
 1:	hlt
 	jmp 1b
@@ -245,6 +248,11 @@ smp_init:
 	mov $(sipi_end - sipi_entry), %ecx
 	rep/movsb
 
+	// get local apic id of bp
+	movl $0xb, %eax
+	cpuid
+	movl %edx, %ebx
+
 	movl $APIC_ICR, %ecx
 	shrl $4, %ecx
 	addl $APIC_BASE_MSR, %ecx
@@ -252,30 +260,32 @@ smp_init:
 	call fwcfg_get_nb_cpus
 	movl %eax, %edx
 	cmp $1, %edx
-	je  2f
-#ifdef IN_NATIVE
-	shll $1, %edx
-#endif
-	subl $1, %edx
+	je  3f
+	// start from local apic id 0
+	movl $0, %edx
 1:
+	cmp %ebx, %edx  // skip send sipi to self
+	je 4f
 	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), %eax
 	wrmsr
 	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT), %eax
 	wrmsr
 	movl $(APIC_DEST_PHYSICAL | APIC_DM_STARTUP), %eax
 	wrmsr
-	subl $1, %edx
-	cmp $0, %edx
-	jnz 1b
+4:  addl $1, %edx
+	cmp $max_cpus, %edx
+	jz 3f
 
-	call fwcfg_get_nb_cpus
-2:	pause
-	cmpw %ax, cpu_online_count
-	jne 2b
+	call check_cpu_online_status
+	cmp $1, %ax
+	jne 1b
+3:
 smp_init_done:
+	movb $1, is_all_cpu_init
 	ret
 
 cpu_online_count:	.word 1
+is_all_cpu_init:	.byte 0
 
 .code16
 sipi_entry:

@@ -288,7 +288,10 @@ trampoline_start64:
 	lock/xaddl %esp, smp_stacktop
 
 	/* Jump to C entry */
-	call ap_main
+	cmpb $1, is_all_cpu_init
+	je 2f
+	call ap_record_lapicid
+2:	call ap_main
 #	movq	main_entry(%rip), %rax
 #	jmp 	*%rax
 0:	hlt
@@ -452,6 +455,8 @@ smp_init:
 	jne 2b
 
 smp_init_done:
+	movb $1, is_all_cpu_init
 	ret
 
 cpu_online_count:	.word 1
+is_all_cpu_init:	.byte 0

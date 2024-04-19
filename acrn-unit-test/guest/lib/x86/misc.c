@@ -14,6 +14,8 @@
 extern short cpu_online_count;
 static struct spinlock lock;
 
+u8 lapicid_map[UT_CORE_NUMS] = {0};
+
 /**
  * @brief set paging-structure control bit
  *
@@ -138,7 +140,7 @@ void send_sipi()
 	ap_cpus = fwcfg_get_nb_cpus() - 1;
 	cpus_cnt = cpu_online_count;
 
-	dest = ap_cpus;
+	dest = lapicid_map[ap_cpus];
 	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, dest);
 	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, dest);
 	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, dest);
@@ -186,6 +188,41 @@ uint32_t get_lapic_id(void)
 				 : "a" (1)
 				 : "memory");
 	return (ebx >> 24);
+}
+
+u8 check_cpu_online_status()
+{
+	/* wait for 5 pause() */
+	u8 cnt = 5;
+	while (cnt > 0) {
+		pause();
+		if (cpu_online_count >= fwcfg_get_nb_cpus()) {
+			return 1;
+		}
+		cnt--;
+	}
+	return 0;
+}
+
+/* ap record its lapic id. should only be called from ap. */
+void ap_record_lapicid()
+{
+	spin_lock(&lock);
+	static u8 recorded = 1;
+	if (recorded < sizeof(lapicid_map)) {
+		lapicid_map[recorded++] = get_lapic_id();
+	}
+	spin_unlock(&lock);
+}
+
+int get_cpu_id()
+{
+	uint32_t lapic_id = get_lapic_id();
+	for (int i = 0; i < sizeof(lapicid_map); i++) {
+		if (lapicid_map[i] == lapic_id)
+			return i;
+	}
+	return -1;
 }
 
 volatile bool ring1_ret = false;
