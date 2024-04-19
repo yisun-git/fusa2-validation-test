@@ -9,5 +9,5 @@ make_result=$?
 if [ $make_result != 0 ]; then
     exit $make_result
 fi
-mv x86/$1.bzimage x86/obj/$1.bzimage
+mv x86/$1.bzimage x86/obj/$1_$2.bzimage
 #mv x86/$1.bzimage x86/$1_$2.bzimage
