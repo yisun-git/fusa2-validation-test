@@ -787,12 +787,12 @@ static void print_case_list(void)
 int ap_main(void)
 {
 	/*only run in vcpu1*/
-	if (get_lapic_id() != 1) {
+	if (get_cpu_id() != 1) {
 		return 0;
 	}
 
 	ap_is_running++;
-	printf("ap start run %d apic=%d\n", ap_is_running, get_lapic_id());
+	printf("ap start run %d cpu=%d\n", ap_is_running, get_cpu_id());
 	while (start_run_id == 0) {
 		test_delay(1);
 	}

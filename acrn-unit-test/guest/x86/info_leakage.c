@@ -73,7 +73,7 @@ static void infoleak_ap_unchanged_case_33870()
 void ap_main(void)
 {
 	/*test only on the ap 2,other ap return directly*/
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 

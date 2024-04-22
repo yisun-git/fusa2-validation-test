@@ -88,7 +88,7 @@ void ap_main(void)
 {
 	ap_init_value_modify fp;
 	/*test only on the ap 2,other ap return directly*/
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
@@ -256,7 +256,7 @@ static void idle_rqmid_24190_test_hide_cpuid_leaf_05H_001(void)
 /**
  * @brief Case name:IDLE_expose_PAUSE_support_001
  * Summary: ACRN hypervisor shall expose PAUSE instruction to any VM, reference Chapter 8.10.2 Vol. 3, SDM.
- *    execute PAUSE instruction to ensure ACRN Hypervisor expose PAUSE instruction to any VM
+ *    execute PAUSE instruction to ensure ACRN Hypervisor expose PAUSE instruction to any VM
  */
 static void idle_rqmid_24308_expose_PAUSE_support_001()
 {
@@ -351,7 +351,7 @@ static int lock_pause_checking(void)
 }
 /**
  * @brief Case name: idle_rqmid_expose_PAUSE_support_002
- * Summary: Execute PAUSE instruction when the LOCK prefix is used, it shall
+ * Summary: Execute PAUSE instruction when the LOCK prefix is used, it shall
  *        cause #UD exception.
  */
 static void idle_rqmid_24315_expose_pause_support_002(void)
@@ -360,7 +360,7 @@ static void idle_rqmid_24315_expose_pause_support_002(void)
 }
 /**
  * @brief Case name: IDLE expose HLT support_003
- * Summary: Execute the HLT when  the LOCK prefix is used, it shall
+ * Summary: Execute the HLT when the LOCK prefix is used, it shall
  *        cause #UD exception.
  */
 static void idle_rqmid_24320_expose_hlt_support_002(void)
@@ -370,7 +370,7 @@ static void idle_rqmid_24320_expose_hlt_support_002(void)
 }
 /**
  * @brief Case name: IDLE expose HLT support_003
- * Summary: When the current privilege level is 3, excute HLT
+ * Summary: When the current privilege level is 3, excute HLT
  *        cause #GP exception.
  */
 static void idle_rqmid_24321_expose_hlt_support_003(void)
@@ -382,7 +382,7 @@ static void idle_rqmid_24321_expose_hlt_support_003(void)
  * @brief Case name: IDLE hide MONITOR/MWAIT extensions support_001
  * Summary: The hypervisor hide MONITOR/MWAIT extensions.
  *        When CPUID.01H:ECX.MONITOR[bit 3] = 0, execute MONITOR,
- *        it shall cause #UD exception.
+ *        it shall cause #UD exception.
  */
 static void idle_rqmid_24300_test_hide_monitor_extensions_support_001(void)
 {
@@ -469,8 +469,8 @@ static void idle_rqmid_24113_hide_Moniter_Mwait_support_002(void)
 /**
  * @brief Case name: IDLE hide MONITOR/MWAIT support_003
  * Summary: The hypervisor hide MONITOR/MWAIT.
- *        When CPUID.01H:ECX.MONITOR[bit 3] = 0, execute MWAIT, 
- *        it shall cause #UD exception.
+ *        When CPUID.01H:ECX.MONITOR[bit 3] = 0, execute MWAIT, 
+ *        it shall cause #UD exception.
  */
 static void idle_rqmid_29780_hide_Moniter_Mwait_support_003(void)
 {
@@ -564,7 +564,7 @@ static void idle_rqmid_24111_ia32_misc_enable_following_init_001(void)
  * @brief Case name:IDLE physical expose PAUSE support 001
  * Summary: PAUSE instruction shall be available on the physical platform.
  *
- * execute PAUSE instruction to ensure the physical platform  expose PAUSE instruction.
+ * execute PAUSE instruction to ensure the physical platform expose PAUSE instruction.
  */
 static void idle_rqmid_39159_idle_physical_expose_PAUSE_support_001()
 {

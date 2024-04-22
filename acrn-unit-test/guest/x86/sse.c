@@ -178,7 +178,7 @@ static bool test_sse_instruction_PF_exception(enum sse_instuction_e ins_type, gp
 	memset(add2, 0x00, size);
 	/*Modify current PML4's PTE paging table, to create the page fault conditions*/
 	set_page_control_bit((void *)add2, PAGE_PTE, PAGE_P_FLAG, 0, true);
-	/*Execute the sse instrution  to generate #PF(fault-code) exception.*/
+	/*Execute the sse instrution to generate #PF(fault-code) exception.*/
 	fun = instruction_fun;
 	ret = test_for_exception(PF_VECTOR, fun, add2);
 	if (ret == true) {
@@ -484,7 +484,7 @@ static __unused void sse_rqmid_27527_ACRN_General_support_001(void)
  * SDM and table 13-1 in chapter 13.1.3 Vol.3, SDM.
  * Check that the processor supports the CPUID instruction.
  * Bit 21 of the EFLAGS register can be used to check
- * processor’s support the CPUID instruction.
+ * processors support the CPUID instruction.
  * Check that the processor supports the SSE and/or SSE2 extensions
  * (true if CPUID.01H:EDX.SSE[bit 25] = 1 and/or PUID.01H:EDX.SSE2[bit 26] = 1).
  */
@@ -1116,7 +1116,7 @@ static void sse_ap_unchanged_case_27437()
 	asm volatile("fninit");
 
 	/*test only on the ap  2,other ap return directly*/
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
@@ -1185,7 +1185,7 @@ void ap_main(void)
 {
 	ap_init_value_modify fp;
 	/*test only on the ap 2,other ap return directly*/
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 

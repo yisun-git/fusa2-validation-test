@@ -649,7 +649,7 @@ static void interrupt_rqmid_36693_p3_p4_ap_001(void)
 {
 	u64 t_ap;
 	int i = 1;
-	if (get_lapic_id() != 1) {
+	if (get_cpu_id() != 1) {
 		return;
 	}
 
@@ -1232,7 +1232,7 @@ void handled_nmi_exception(struct ex_regs *regs)
 
 static void interrupt_rqmid_38112_nmi_ap_002(void)
 {
-	if (get_lapic_id() != 1) {
+	if (get_cpu_id() != 1) {
 		return;
 	}
 	interrupt_38112_sync = 0;
@@ -3050,7 +3050,7 @@ __unused static void test_ap_interrupt_64(void)
 			current_case_id = 0;
 			break;
 		case 23981:
-			if (get_lapic_id() == (fwcfg_get_nb_cpus() - 1)) {
+			if (get_cpu_id() == (fwcfg_get_nb_cpus() - 1)) {
 			/*In Cstart64.S load_tss modify idt's content,here we need not change it*/
 				wait_ap = 1;
 				current_case_id = 0;

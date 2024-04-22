@@ -59,7 +59,7 @@ void ap_main(void)
 {
 	ap_init_value_modify fp;
 	/*test only on the ap 2,other ap return directly*/
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
@@ -164,7 +164,7 @@ static __unused void test_tr_init(void)
 	init_do_less_privilege();
 
 	tss_ap1 = &tss;
-	tss_ap1 += get_lapic_id();
+	tss_ap1 += get_cpu_id();
 
 	tss_ap1->ss0 = (GDT_NEWTSS_INDEX << 3);
 

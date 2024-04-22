@@ -1113,7 +1113,7 @@ void save_unchanged_reg(void)
 	id = apic_id();
 	apic_id_bitmap |= SHIFT_LEFT(1UL, id);
 
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
@@ -1149,7 +1149,7 @@ void ap_main(void)
 {
 	ap_init_value_modify fp;
 	/*test only on the ap 2,other ap return directly*/
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 

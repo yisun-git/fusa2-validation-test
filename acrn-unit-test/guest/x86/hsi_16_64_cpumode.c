@@ -103,8 +103,9 @@ int ap_main(void)
 {
 #ifdef IN_NATIVE
 #ifdef __x86_64__
-	debug_print("ap_cpu_mode %d starts running \n", get_lapic_id());
-	if (get_lapic_id() != 2) {
+	debug_print("ap_cpu_mode %d starts running \n", get_cpu_id());
+	/* test only on the ap 1, other ap return directly */
+	if (get_cpu_id() != 1) {
 		return 0;
 	}
 	ap_check_cpu_mode();

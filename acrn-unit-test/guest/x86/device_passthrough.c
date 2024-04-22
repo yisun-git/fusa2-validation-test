@@ -136,7 +136,7 @@ void ap_main(void)
 {
 	ap_init_value_modify fp;
 	/*test only on the ap 2,other ap return directly*/
-	if (get_lapic_id() != (fwcfg_get_nb_cpus() - 1)) {
+	if (get_cpu_id() != (fwcfg_get_nb_cpus() - 1)) {
 		return;
 	}
 
@@ -175,7 +175,7 @@ static bool pci_check_bar_reserve(union pci_bdf bdf, uint32_t bar_index)
 	value = pci_pdev_read_cfg(bdf, PCIR_BAR(bar_index), PCI_BAR_BYTE);
 	/*2.Check BAR value [bit 0]*/
 	if ((value & shift_mask(0, 0)) == 0) {
-		/*3.For BAR[bit 0] == 0b,Write BAR with a new memory value*/
+		/*3.For BAR[bit 0] == 0b,Write BAR with a new memory value*/
 
 		/*Add 1M offset to original base address*/
 		value1 = value + 0x00100000U;
@@ -234,7 +234,7 @@ static bool pci_check_bar_read_write(union pci_bdf bdf, uint32_t bar_index)
 	value = pci_pdev_read_cfg(bdf, PCIR_BAR(bar_index), PCI_BAR_BYTE);
 	/*2.Check BAR value [bit 0]*/
 	if ((value & shift_mask(0, 0)) == 0) {
-		/*3.For BAR[bit 0] == 0b,Write BAR with a new memory value*/
+		/*3.For BAR[bit 0] == 0b,Write BAR with a new memory value*/
 
 		/*Add 1M offset to original base address*/
 		value1 = value + 0x00100000U;
@@ -457,7 +457,7 @@ static void device_passthrough_rqmid_29338_PCIe_device_USB_controller_message_co
 	}
 	/*2.Read the message control register.*/
 	target_data = value >> 16;
-	/*3.Compare the value, the message control register [bit 8:7]  should be 1.*/
+	/*3.Compare the value, the message control register [bit 8:7] should be 1.*/
 	report("%s", ((target_data >> 7) & 0x3u) == 0x1u, __FUNCTION__);
 }
 
@@ -1651,7 +1651,7 @@ static void device_passthrough_rqmid_38003_PCIe_Subsystem_vendor_ID_read_only_00
  * @brief case name:PCIe Subsystem ID read-only_001
  *
  * Summary:ACRN hypervisor shall guarantee that the guest PCI configuration subsystem ID register
- * of the Ethernet controller or the USB controller is read-only.
+ * of the Ethernet controller or the USB controller is read-only.
  */
 static void device_passthrough_rqmid_29280_PCIe_Subsystem_ID_read_only_001(void)
 {
@@ -1671,7 +1671,7 @@ static void device_passthrough_rqmid_29280_PCIe_Subsystem_ID_read_only_001(void)
  * @brief case name:PCIe Subsystem ID read-only_002
  *
  * Summary:ACRN hypervisor shall guarantee that the guest PCI configuration subsystem ID register
- * of the Ethernet controller or the USB controller is read-only.
+ * of the Ethernet controller or the USB controller is read-only.
  */
 static void device_passthrough_rqmid_38004_PCIe_Subsystem_ID_read_only_002(void)
 {
