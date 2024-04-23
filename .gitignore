@@ -1,0 +1,11 @@
+*.o
+*.d
+
+*.a
+*.raw
+*.elf
+*.bzimage
+
+/acrn-unit-test/guest/config.mak
+/acrn-unit-test/guest/build-head
+/acrn-unit-test/guest/lib/asm
