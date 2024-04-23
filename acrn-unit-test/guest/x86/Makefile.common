@@ -71,6 +71,12 @@ endif
 	@rm $@.tmp
 	@chmod a-x $@
 
+# There are some per test macros will change bzimage_stub, so force rebuild it all the time.
+.PHONY: x86/bzimage_stub.o
+x86/bzimage_stub.o: x86/bzimage_stub.S
+	@rm -rf x86/bzimage_stub.o
+	$(CC) $(CFLAGS) -c -nostdlib -o $@ $<
+
 x86/bzimage_stub.raw: x86/bzimage_stub.o
 	@$(OBJCOPY) -O binary $^ $@
 

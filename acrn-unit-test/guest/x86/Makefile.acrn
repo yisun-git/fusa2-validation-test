@@ -1,3 +1,6 @@
+
+APBP_FLAGS :=
+
 # Part 1
 # List tests that need to set up AP_USE_MAIN.
 
@@ -38,7 +41,7 @@ USE_AP_LIST = \
 	$(TEST_DIR)/tsc.o \
 	$(TEST_DIR)/xsave.o
 
-$(USE_AP_LIST): CFLAGS += -DAP_USE_MAIN
+$(USE_AP_LIST): APBP_FLAGS += -DAP_USE_MAIN
 
 # Part 2
 # List tests that need to set up AP_INIT_CHECK and BP_STARTUP_CHECK.
@@ -79,32 +82,32 @@ INIT_STARTUP_LIST = \
 	$(TEST_DIR)/vmx.o \
 	$(TEST_DIR)/xsave.o
 
-$(INIT_STARTUP_LIST): CFLAGS += -I $(TEST_DIR)/ASM
-$(INIT_STARTUP_LIST): CFLAGS += -DAP_INIT_CHECK=\"$(basename $(notdir $@))_init.S\"
-$(INIT_STARTUP_LIST): CFLAGS += -DBP_STARTUP_CHECK=\"$(basename $(notdir $@))_startup.S\"
+$(INIT_STARTUP_LIST): APBP_FLAGS += -I $(TEST_DIR)/ASM
+$(INIT_STARTUP_LIST): APBP_FLAGS += -DAP_INIT_CHECK=\"$(basename $(notdir $@))_init.S\"
+$(INIT_STARTUP_LIST): APBP_FLAGS += -DBP_STARTUP_CHECK=\"$(basename $(notdir $@))_startup.S\"
 
 $(TEST_DIR)/avx.o: $(TEST_DIR)/avx.h
 
 $(TEST_DIR)/device_passthrough.o: $(TEST_DIR)/device_passthrough.h
 
-$(TEST_DIR)/fpu.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/fpu.o: APBP_FLAGS += -DAP_UNCHANGED_CHECK
 $(TEST_DIR)/fpu.o: $(TEST_DIR)/fpu.h
 
-$(TEST_DIR)/general_purpose.o: CFLAGS += -DBP_STARTUP_CHECK_64
+$(TEST_DIR)/general_purpose.o: APBP_FLAGS += -DBP_STARTUP_CHECK_64
 
 $(TEST_DIR)/hsi_gp_cpumode.o: $(TEST_DIR)/hsi_gp_cpumode.h
 
-$(TEST_DIR)/init_startup_sample.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/init_startup_sample.o: APBP_FLAGS += -DAP_UNCHANGED_CHECK
 
-$(TEST_DIR)/local_apic.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/local_apic.o: APBP_FLAGS += -DAP_UNCHANGED_CHECK
 
 $(TEST_DIR)/machine_check.o: $(TEST_DIR)/machine_check.h
 
-$(TEST_DIR)/mem_cache.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/mem_cache.o: APBP_FLAGS += -DAP_UNCHANGED_CHECK
 
-$(TEST_DIR)/multiboot.o: CFLAGS += -DIN_MULTIBOOT_TEST
+$(TEST_DIR)/multiboot.o: APBP_FLAGS += -DIN_MULTIBOOT_TEST
 
-$(TEST_DIR)/pci.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/pci.o: APBP_FLAGS += -DAP_UNCHANGED_CHECK
 
 $(TEST_DIR)/pmu_fu.o: $(TEST_DIR)/pmu_fu.h
 
@@ -114,14 +117,22 @@ $(TEST_DIR)/power_thermal.o: $(TEST_DIR)/power_thermal.h
 
 $(TEST_DIR)/segmentation.o: $(TEST_DIR)/../lib/x86/segmentation.h
 
-$(TEST_DIR)/taskmanagement.o: CFLAGS += -DAP_UNCHANGED_CHECK
+$(TEST_DIR)/taskmanagement.o: APBP_FLAGS += -DAP_UNCHANGED_CHECK
 
 # Part 3
 # Merge the USE_AP and INIT_STARTUP tests lists, for these tests, clean up cstart.o first then build.
 
 CSTART_REBUILD_LIST = $(sort $(USE_AP_LIST) $(INIT_STARTUP_LIST))
 
-$(CSTART_REBUILD_LIST):
+# Tests in CSTART_REBUILD_LIST will use AP/BP macros to manipulate cstart.o,
+# cstart.o is different in each test in the list, and for tests out of the list.
+# So this forces next test to rebuild cstart.o by its own configuration.
+.PHONY: $(cstart.o)
+$(cstart.o):
 	@rm -rf $(cstart.o)
 	$(CC) $(CFLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
-	$(CC) $(CFLAGS) -c -nostdlib -o $@ $(subst .o,.c,$@)
+
+$(CSTART_REBUILD_LIST): $(cstart.o)
+	@rm -rf $(cstart.o)
+	$(CC) $(CFLAGS) $(APBP_FLAGS) -c -nostdlib -o $(cstart.o) $(cstart.o:.o=.S)
+	$(CC) $(CFLAGS) $(APBP_FLAGS) -c -nostdlib -o $@ $(subst .o,.c,$@)
