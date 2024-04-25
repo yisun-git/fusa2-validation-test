@@ -114,11 +114,12 @@ Reboot machine, at grub menu, choose the target boot entry of the three:
 - "ACRN SRS Pre-launched VM - bzimage"
 - "ACRN SRS Service VM - bzimage"
 
-# [TO BE UPDATED] Run in QEMU
+# Run in QEMU
 
     Compile hypervisor (see ### 4). Add compile option QEMU=1.
-    e.g. 
+    e.g.
     $make BOARD=<path of board xml file> SCENARIO=<path of scenario xml file>
+    The sample xmls are on the path of doc/qemu_sample_xml
     Compile unit-test (see ### 5).
 
     1) Run acrn-unit-test on hypervisor
