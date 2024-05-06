@@ -16,9 +16,11 @@
 #define SECTOR_SIZE        (MEM_1K / 2)
 
 #define ZEROPAGE_MAGIC_SIG    0x53726448    /* "HdrS" in uint32_t */
+#define ZEROPAGE_E820_ENTRIES 0x1e8
 #define ZEROPAGE_SETUP_SECTS  0x1f1
 #define ZEROPAGE_HEADER       0x202
 #define ZEROPAGE_CMDLINE_PTR  0x228
+#define ZEROPAGE_E820_TABLE   0x2d0
 #define ZEROPAGE_IMAGE_SIZE   0x7fc
 #define ZEROPAGE_BINARY_BASE  (4 * SECTOR_SIZE)
 
@@ -205,8 +207,27 @@ trampoline_start:
 	mov	%eax, MBI_FLAGS(%esi)
 
 	mov	$0, %eax
-	mov	%eax, MBI_MEM_LOWER(%esi)
 	mov	%eax, MBI_MODS_COUNT(%esi)
+
+
+	/*
+	 * Fill the mem_lower field from E820. This code finds first e820 entry of type RAM, and save the addr+len
+	 * to multiboot mem_lower field (amount of lower memory starting from 0x0, in kilobytes). So in rare case the
+         * first entry is not RAM starting from 0x0, these lines can still handle it. These lines do not
+	 * do all possible error checks except for the case above, but if the machine isn't broken and ACRN doesn't do
+	 * something weird, we can assume this is enough and we are safe.
+	 */
+e820_loop:
+	mov	$16, %ecx
+	mov	ZEROPAGE_E820_TABLE(%edx, %ecx), %eax
+	cmp	$1, %eax
+	jne	e820_loop
+	mov	$0, %ecx
+	mov	ZEROPAGE_E820_TABLE(%edx, %ecx), %eax
+	mov	$8, %ecx
+	add	ZEROPAGE_E820_TABLE(%edx, %ecx), %eax
+	shr	$10, %eax
+	mov	%eax, MBI_MEM_LOWER(%esi)
 
 	/* TODO: parse the end of memory from e820 */
 	/* TODO: restore to 1Gb when hv ve820 patch is merged! */

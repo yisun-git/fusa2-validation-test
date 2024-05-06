@@ -7,6 +7,7 @@
 .globl tss_descr
 .globl gdt64_desc
 .globl cpu_online_count
+.globl smp_stacktop
 /*Adding for GP at X64 environment*/
 .globl gdt64
 
@@ -356,6 +357,9 @@ start64:
 	call enable_apic
 	call load_tss
 	call mask_pic_interrupts
+	mov mb_boot_info(%rip), %rbx
+	mov %rbx, %rdi
+	call setup_smp_stacktop
 	call smp_init
 	mov mb_boot_info(%rip), %rbx
 	mov %rbx, %rdi

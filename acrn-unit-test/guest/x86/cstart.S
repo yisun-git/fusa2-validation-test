@@ -4,6 +4,7 @@
 .globl pt_root
 
 .globl cpu_online_count
+.globl smp_stacktop
 
 ipi_vector = 0x20
 
@@ -210,6 +211,7 @@ start32:
 	call enable_apic
 	call load_tss
 	call mask_pic_interrupts
+	call setup_smp_stacktop
 	call smp_init
 	push $__environ
 	push $__argv

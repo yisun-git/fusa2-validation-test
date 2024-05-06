@@ -11,6 +11,7 @@
 
 extern char bss_start;
 extern char edata;
+extern unsigned int smp_stacktop;
 
 struct mbi_bootinfo {
 	u32 flags;
@@ -50,12 +51,18 @@ void bss_init(void)
 
 struct mbi_bootinfo *g_bootinfo;
 
+void setup_smp_stacktop(struct mbi_bootinfo *bootinfo)
+{
+	g_bootinfo = bootinfo;
+
+	smp_stacktop = bootinfo->mem_lower * 1024;
+}
+
 void setup_multiboot(struct mbi_bootinfo *bootinfo)
 {
 	struct mbi_module *mods;
 
 	g_bootinfo = bootinfo;
-
 	/* TODO: use e820 */
 	u64 end_of_memory = bootinfo->mem_upper * 1024ull;
 #ifdef IN_SAFETY_VM
