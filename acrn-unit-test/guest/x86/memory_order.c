@@ -1963,21 +1963,21 @@ void memory_order_ap(int local_id)
 
 void ap_main(void)
 {
-	int local_id = get_lapic_id();
-	int max_local_id = CFG_TEST_MEMORY_ORDERING_CPU_NR;
+	int cpu_id = get_cpu_id();
+	int max_cpu_id = CFG_TEST_MEMORY_ORDERING_CPU_NR;
 #ifdef IN_NATIVE
-	local_id /= 2;
-	max_local_id = CFG_TEST_MEMORY_ORDERING_CPU_NR_NATIVE;
+	cpu_id /= 2;
+	max_cpu_id = CFG_TEST_MEMORY_ORDERING_CPU_NR_NATIVE;
 #endif
-	if (local_id >= max_local_id) {
-		debug_print("<HALT *AP* > un-used processor id %d\n", local_id);
+	if (cpu_id >= max_cpu_id) {
+		debug_print("<HALT *AP* > un-used processor id %d\n", cpu_id);
 		return;
 	} else {
-		debug_print("<Enter *AP* > processor id %d\n", local_id);
+		debug_print("<Enter *AP* > processor id %d\n", cpu_id);
 	}
 
 	while (1) {
-		memory_order_ap(local_id);
+		memory_order_ap(cpu_id);
 	}
 }
 

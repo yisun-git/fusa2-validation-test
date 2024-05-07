@@ -195,7 +195,7 @@ done
 ./make32_real_mode_native.sh exception_gp_pt_ra_b6
 ./make32_v8086_native.sh v8086_part1
 
-mv x86/obj/memory_order.bzimage x86/obj/memory_order_multi_case.bzimage
+mv x86/obj/memory_order_64.bzimage x86/obj/memory_order_multi_case_64.bzimage
 mv x86/obj/memory_order_native_64.elf x86/obj/memory_order_multi_case.elf
 
 # compile those cases defined in the  macro PHASE_N.
@@ -209,7 +209,7 @@ if [ $make_result -ne 0 ]; then
         echo "FAILED TO MAKE $BUILD_FEATURE"
         exit $RESULT
 fi
-mv x86/obj/memory_order.bzimage x86/obj/memory_order_single_case.bzimage
+mv x86/obj/memory_order_64.bzimage x86/obj/memory_order_single_case_64.bzimage
 
 ./make64_native.sh $BUILD_FEATURE 64;
 make_result=$?
