@@ -332,15 +332,6 @@ static inline void atomic_quadword_write_ff(void)
 	asm volatile ("movq $0xFFFFFFFFFFFFFFFF, %0\n" : "=m"(quadword) : : "memory");
 }
 
-static u32 get_cur_lapic_id(void)
-{
-	u32 lapic_id;
-
-	lapic_id = (u32) rdmsr(MSR_IA32_EXT_XAPICID);
-
-	return lapic_id;
-}
-
 void asm_bts(u32 volatile *addr, int bit, int is_lock)
 {
 	if (is_lock) {
@@ -361,7 +352,7 @@ static inline void asm_atomic_xchg(atomic_t *v, int volatile *op2)
 }
 
 
-int bp_test(int lapic_id, int is_lock)
+int bp_test(int cpu_id, int is_lock)
 {
 	start_sem1 = 1;
 	start_sem2 = 1;
@@ -372,7 +363,7 @@ int bp_test(int lapic_id, int is_lock)
 	ptr = 0;
 	stop = 0;
 
-	debug_print("bp start lapic_id =%d %s\n", lapic_id, is_lock ? "lock test" : "no lock test");
+	debug_print("bp start cpu_id =%d %s\n", cpu_id, is_lock ? "lock test" : "no lock test");
 
 	while (1) {
 		if ((stop_flag1 == 1) && (stop_flag2 == 1)) {
@@ -411,10 +402,10 @@ int bp_test(int lapic_id, int is_lock)
 	return pass_time;
 }
 
-void ap1_test(int lapic_id, int is_lock)
+void ap1_test(int cpu_id, int is_lock)
 {
 	time1 = 0;
-	debug_print("ap1 start lapic_id =%d %s\n", lapic_id, is_lock ? "lock test" : "no lock test");
+	debug_print("ap1 start cpu_id =%d %s\n", cpu_id, is_lock ? "lock test" : "no lock test");
 
 	while (1) {
 		if (start_sem1 != 1) {
@@ -440,10 +431,10 @@ void ap1_test(int lapic_id, int is_lock)
 	debug_print("ap1 stop\n");
 }
 
-void ap2_test(int lapic_id, int is_lock)
+void ap2_test(int cpu_id, int is_lock)
 {
 	time2 = 1;
-	debug_print("ap2 start lapic_id =%d %s\n", lapic_id, is_lock ? "lock test" : "no lock test");
+	debug_print("ap2 start cpu_id =%d %s\n", cpu_id, is_lock ? "lock test" : "no lock test");
 
 	while (1) {
 		if (start_sem2 != 1) {
@@ -469,29 +460,29 @@ void ap2_test(int lapic_id, int is_lock)
 	debug_print("ap2 stop\n");
 }
 
-void atomic_memory_type_ap1_test(int lapic_id)
+void atomic_memory_type_ap1_test(int cpu_id)
 {
 	int i;
-	debug_print("ap1 start lapic_id =%d\n", lapic_id);
+	debug_print("ap1 start cpu_id =%d\n", cpu_id);
 	for (i = 0; i < MEM_LOOPS; i++) {
 		atomic_inc(&mem_ptr);
 	}
 	mem_finished_flag1 = 1;
 }
 
-void atomic_memory_type_ap2_test(int lapic_id)
+void atomic_memory_type_ap2_test(int cpu_id)
 {
 	int i;
-	debug_print("ap1 start lapic_id =%d\n", lapic_id);
+	debug_print("ap1 start cpu_id =%d\n", cpu_id);
 	for (i = 0; i < MEM_LOOPS; i++) {
 		atomic_inc(&mem_ptr);
 	}
 	mem_finished_flag2 = 1;
 }
 
-int atomic_memory_type_bp_test(int lapic_id)
+int atomic_memory_type_bp_test(int cpu_id)
 {
-	debug_print("bp start lapic_id =%d\n", lapic_id);
+	debug_print("bp start cpu_id =%d\n", cpu_id);
 
 	while (1) {
 		if (mem_finished_flag1 && mem_finished_flag2) {
@@ -503,29 +494,29 @@ int atomic_memory_type_bp_test(int lapic_id)
 	return mem_ptr.counter;
 }
 
-void xchg_instruction_ap1_test(int lapic_id)
+void xchg_instruction_ap1_test(int cpu_id)
 {
 	int i;
-	debug_print("ap1 start lapic_id =%d\n", lapic_id);
+	debug_print("ap1 start cpu_id =%d\n", cpu_id);
 	for (i = 0; i < TEST_TIME; i++) {
 		asm_atomic_xchg(&xchg_val1, &(xchg_val0.counter));
 	}
 	stop_flag1 = 1;
 }
 
-void xchg_instruction_ap2_test(int lapic_id)
+void xchg_instruction_ap2_test(int cpu_id)
 {
 	int i;
-	debug_print ("ap2 start lapic_id =%d\n", lapic_id);
+	debug_print ("ap2 start cpu_id =%d\n", cpu_id);
 	for (i = 0; i < TEST_TIME; i++) {
 		asm_atomic_xchg(&xchg_val2, &(xchg_val0.counter));
 	}
 	stop_flag2 = 1;
 }
 
-int xchg_instruction_bp_test(int lapic_id)
+int xchg_instruction_bp_test(int cpu_id)
 {
-	debug_print("bp start lapic_id =%d\n", lapic_id);
+	debug_print("bp start cpu_id =%d\n", cpu_id);
 	stop_flag1 = 0;
 	stop_flag2 = 0;
 
@@ -929,26 +920,16 @@ int synchronization_on_bp_test(int case_id)
 
 __attribute__((unused)) static void locked_atomic_rqmid_32739_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_lapic_id();
-
-#ifdef IN_NATIVE
-	u32 ap1_id = 2;
-	u32 ap2_id = 4;
-#else
-	u32 ap1_id = 1;
-	u32 ap2_id = 2;
-#endif
-
-	if (lapic_id == ap1_id) {
-		ap1_test(lapic_id, 1);
+	if (cpu_id == 1) {
+		ap1_test(cpu_id, 1);
 	}
-	else if (lapic_id == ap2_id) {
-		ap2_test(lapic_id, 1);
+	else if (cpu_id == 2) {
+		ap2_test(cpu_id, 1);
 	}
 	else {
-		debug_error("other ap no test cpu_id=%d\n", lapic_id);
+		debug_error("other ap no test cpu_id=%d\n", cpu_id);
 	}
 }
 /**
@@ -959,220 +940,182 @@ __attribute__((unused)) static void locked_atomic_rqmid_32739_ap()
  */
 __attribute__((unused)) static void locked_atomic_rqmid_32739_expose_lock_prefix_02()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	start_case_id = CASE_ID_1;
 	debug_print("start_case_id=%d\n", start_case_id);
 
-	lapic_id = get_lapic_id();
-
-	ret = bp_test(lapic_id, 1);
+	ret = bp_test(cpu_id, 1);
 	report("%s pass=%d", (ret == TEST_TIME), __FUNCTION__, ret);
 }
 
 __attribute__((unused)) static void locked_atomic_rqmid_32742_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_lapic_id();
-
-	if (lapic_id == 1) {
-		ap1_test(lapic_id, 0);
+	if (cpu_id == 1) {
+		ap1_test(cpu_id, 0);
 	}
-	else if (lapic_id == 2) {
-		ap2_test(lapic_id, 0);
+	else if (cpu_id == 2) {
+		ap2_test(cpu_id, 0);
 	}
 }
 
 __attribute__((unused)) static void locked_atomic_rqmid_mem_type_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		atomic_memory_type_ap1_test(lapic_id);
+	if (cpu_id == 1) {
+		atomic_memory_type_ap1_test(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		atomic_memory_type_ap2_test(lapic_id);
+	else if (cpu_id == 2) {
+		atomic_memory_type_ap2_test(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void locked_atomic_xchg_instruction_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		xchg_instruction_ap1_test(lapic_id);
+	if (cpu_id == 1) {
+		xchg_instruction_ap1_test(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		xchg_instruction_ap2_test(lapic_id);
+	else if (cpu_id == 2) {
+		xchg_instruction_ap2_test(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void read_write_a_quadword_aligned_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_a_quadword_aligned_on_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_a_quadword_aligned_on_ap1(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		read_write_a_quadword_aligned_on_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_a_quadword_aligned_on_ap2(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void read_write_a_word_unaligned_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_a_word_unaligned_on_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_a_word_unaligned_on_ap1(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		read_write_a_word_unaligned_on_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_a_word_unaligned_on_ap2(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void read_write_a_dword_unaligned_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_a_dword_unaligned_on_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_a_dword_unaligned_on_ap1(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		read_write_a_dword_unaligned_on_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_a_dword_unaligned_on_ap2(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void read_write_a_quadword_unaligned_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_a_quadword_unaligned_on_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_a_quadword_unaligned_on_ap1(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		read_write_a_quadword_unaligned_on_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_a_quadword_unaligned_on_ap2(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void read_write_a_word_uncached_memory_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_a_word_uncached_memory_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_a_word_uncached_memory_ap1(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		read_write_a_word_uncached_memory_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_a_word_uncached_memory_ap2(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void update_segment_descriptor_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		update_segment_descriptor_ap1(lapic_id);
+	if (cpu_id == 1) {
+		update_segment_descriptor_ap1(cpu_id);
 	}
-	else if (lapic_id == 4) {
-		update_segment_descriptor_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		update_segment_descriptor_ap2(cpu_id);
 	}
 }
 
 __attribute__((unused)) static void update_pte_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-#ifdef IN_NATIVE
-	u32 ap1_id = 2;
-	u32 ap2_id = 4;
-#else
-	u32 ap1_id = 1;
-	u32 ap2_id = 2;
-#endif
-
-	if (lapic_id == ap1_id) {
-		update_pte_ap1(lapic_id);
+	if (cpu_id == 1) {
+		update_pte_ap1();
 	}
-	else if (lapic_id == ap2_id) {
-		update_pte_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		update_pte_ap2();
 	}
 }
 
 __attribute__((unused)) static void update_pde_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		update_pde_ap1(lapic_id);
+	if (cpu_id == 1) {
+		update_pde_ap1();
 	}
-	else if (lapic_id == 4) {
-		update_pde_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		update_pde_ap2();
 	}
 }
 
 
 __attribute__((unused)) static void read_write_a_byte_aligned_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_a_byte_aligned_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_a_byte_aligned_ap1();
 	}
-	else if (lapic_id == 4) {
-		read_write_a_byte_aligned_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_a_byte_aligned_ap2();
 	}
 }
 
 __attribute__((unused)) static void read_write_a_word_aligned_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_a_word_aligned_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_a_word_aligned_ap1();
 	}
-	else if (lapic_id == 4) {
-		read_write_a_word_aligned_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_a_word_aligned_ap2();
 	}
 }
 
 __attribute__((unused)) static void read_write_double_word_aligned_ap()
 {
-	u32 lapic_id;
+	u32 cpu_id = get_cpu_id();
 
-	lapic_id = get_cur_lapic_id();
-
-	if (lapic_id == 2) {
-		read_write_double_word_aligned_ap1(lapic_id);
+	if (cpu_id == 1) {
+		read_write_double_word_aligned_ap1();
 	}
-	else if (lapic_id == 4) {
-		read_write_double_word_aligned_ap2(lapic_id);
+	else if (cpu_id == 2) {
+		read_write_double_word_aligned_ap2();
 	}
 }
 
@@ -1184,15 +1127,13 @@ __attribute__((unused)) static void read_write_double_word_aligned_ap()
  */
 __attribute__((unused)) static void locked_atomic_rqmid_32742_expose_unlock_prefix_03()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	start_case_id = CASE_ID_2;
 	debug_print("start_case_id=%d\n", start_case_id);
 
-	lapic_id = get_cur_lapic_id();
-
-	ret = bp_test(lapic_id, 0);
+	ret = bp_test(cpu_id, 0);
 	report("%s pass=%d", (ret < TEST_TIME), __FUNCTION__, ret);
 }
 
@@ -1204,16 +1145,15 @@ __attribute__((unused)) static void locked_atomic_rqmid_32742_expose_unlock_pref
  */
 __attribute__((unused)) static void locked_atomic_rqmid_28280_memory_type_uc_01()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	set_mem_cache_type_all(MEM_TYPE_UC);
 	atomic_set(&mem_ptr, 0);
 	start_case_id = CASE_ID_3;
 	debug_print("start_case_id=%d\n", start_case_id);
-	lapic_id = get_cur_lapic_id();
 
-	ret = atomic_memory_type_bp_test(lapic_id);
+	ret = atomic_memory_type_bp_test(cpu_id);
 	report("%s pass=%d", (ret == END_NUMBER), __FUNCTION__, ret);
 }
 
@@ -1225,7 +1165,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28280_memory_type_uc_01(
  */
 __attribute__((unused)) static void locked_atomic_rqmid_28281_memory_type_wc_02()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	set_mem_cache_type_all(MEM_TYPE_WC);
@@ -1233,9 +1173,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28281_memory_type_wc_02(
 	start_case_id = CASE_ID_4;
 	debug_print("start_case_id=%d\n", start_case_id);
 
-	lapic_id = get_cur_lapic_id();
-
-	ret = atomic_memory_type_bp_test(lapic_id);
+	ret = atomic_memory_type_bp_test(cpu_id);
 	report("%s pass=%d", (ret == END_NUMBER), __FUNCTION__, ret);
 }
 
@@ -1246,7 +1184,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28281_memory_type_wc_02(
  */
 __attribute__((unused)) static void locked_atomic_rqmid_28283_memory_type_wt_03()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	set_mem_cache_type_all(MEM_TYPE_WT);
@@ -1254,9 +1192,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28283_memory_type_wt_03(
 	start_case_id = CASE_ID_5;
 	debug_print("start_case_id=%d\n", start_case_id);
 
-	lapic_id = get_cur_lapic_id();
-
-	ret = atomic_memory_type_bp_test(lapic_id);
+	ret = atomic_memory_type_bp_test(cpu_id);
 	report("%s pass=%d", (ret == END_NUMBER), __FUNCTION__, ret);
 }
 
@@ -1267,7 +1203,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28283_memory_type_wt_03(
  */
 __attribute__((unused)) static void locked_atomic_rqmid_28284_memory_type_wp_04()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	set_mem_cache_type_all(MEM_TYPE_WP);
@@ -1275,8 +1211,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28284_memory_type_wp_04(
 	start_case_id = CASE_ID_6;
 	debug_print("start_case_id=%d\n", start_case_id);
 
-	lapic_id = get_cur_lapic_id();
-	ret = atomic_memory_type_bp_test(lapic_id);
+	ret = atomic_memory_type_bp_test(cpu_id);
 	report("%s pass=%d", (ret == END_NUMBER), __FUNCTION__, ret);
 }
 
@@ -1287,7 +1222,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28284_memory_type_wp_04(
  */
 __attribute__((unused)) static void locked_atomic_rqmid_28285_memory_type_wb_05()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	atomic_set(&mem_ptr, 0);
@@ -1296,9 +1231,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28285_memory_type_wb_05(
 
 	set_mem_cache_type_all(MEM_TYPE_WB);
 
-	lapic_id = get_cur_lapic_id();
-
-	ret = atomic_memory_type_bp_test(lapic_id);
+	ret = atomic_memory_type_bp_test(cpu_id);
 	report("%s pass=%d", (ret == END_NUMBER), __FUNCTION__, ret);
 }
 
@@ -1309,7 +1242,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_28285_memory_type_wb_05(
  */
 __attribute__((unused)) static void locked_atomic_rqmid_37869_XCHG_instruction_01()
 {
-	u32 lapic_id;
+	u32 cpu_id = 0;
 	int ret;
 
 	start_case_id = CASE_ID_8;
@@ -1318,9 +1251,7 @@ __attribute__((unused)) static void locked_atomic_rqmid_37869_XCHG_instruction_0
 	atomic_set(&xchg_val2, 0xF0);
 	atomic_set(&xchg_val0, 0xA3);
 
-	lapic_id = get_cur_lapic_id();
-
-	ret = xchg_instruction_bp_test(lapic_id);
+	ret = xchg_instruction_bp_test(cpu_id);
 	report("%s pass=%d", (ret == 1), __FUNCTION__, ret);
 }
 
@@ -1583,8 +1514,8 @@ __attribute__((unused)) static void locked_atomic_rqmid_28264_read_write_a_quadw
 
 void ap_main(void)
 {
-	/* safety only 1 lapic_id, no ap run*/
-	printf("ap %d main test start\n", get_cur_lapic_id());
+	/* safety only 1 cpu, no ap run*/
+	printf("ap %d main test start\n", get_cpu_id());
 
 #if defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE)
 	while (start_case_id != CASE_ID_1) {
