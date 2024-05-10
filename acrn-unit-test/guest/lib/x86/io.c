@@ -8,7 +8,15 @@
 #endif
 
 static struct spinlock lock;
+#ifdef IN_NATIVE
+/*
+For RPL NUC the serial io base address is 0x2f8, need to update it if
+changing platform.
+*/
+static int serial_iobase = 0x2f8;
+#else
 static int serial_iobase = 0x3f8;
+#endif
 static int serial_inited = 0;
 
 static void serial_outb(char ch)
