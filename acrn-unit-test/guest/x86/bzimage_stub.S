@@ -95,7 +95,31 @@ start:
 	mov %eax, STARTUP_32BIT_CR3_ADDR_IN_NON_SAFETY
 #endif
 #endif
-	mov	$0xa0000, %esp
+
+	/*
+	 * Fill the mem_lower field from E820. This code finds first e820 entry of type RAM, and save the addr+len
+	 * to multiboot mem_lower field (amount of lower memory starting from 0x0, in kilobytes). So in rare case the
+         * first entry is not RAM starting from 0x0, these lines can still handle it. These lines do not
+	 * do all possible error checks except for the case above, but if the machine isn't broken and ACRN doesn't do
+	 * something weird, we can assume this is enough and we are safe.
+	 */
+	mov	$0, %ecx
+e820_loop:
+	add	$16, %ecx
+	mov	ZEROPAGE_E820_TABLE(%esi, %ecx), %eax
+	add	$4, %ecx
+	cmp	$1, %eax
+	jne	e820_loop
+	sub	$20, %ecx
+	mov	ZEROPAGE_E820_TABLE(%esi, %ecx), %eax
+	add	$8, %ecx
+	add	ZEROPAGE_E820_TABLE(%esi, %ecx), %eax
+	// save first RAM region end as temp stack top
+	mov	%eax, %esp
+	// set mem_lower according to first RAM region end
+	shr	$10, %eax
+	mov	$MBI_ADDRESS, %ecx
+	mov	%eax, MBI_MEM_LOWER(%ecx)
 
 /* get BP EIP starup value */
 #if defined(IN_NON_SAFETY_VM) && !defined(REAL_MODE) && !defined(V8086_CODE)
@@ -208,26 +232,6 @@ trampoline_start:
 
 	mov	$0, %eax
 	mov	%eax, MBI_MODS_COUNT(%esi)
-
-
-	/*
-	 * Fill the mem_lower field from E820. This code finds first e820 entry of type RAM, and save the addr+len
-	 * to multiboot mem_lower field (amount of lower memory starting from 0x0, in kilobytes). So in rare case the
-         * first entry is not RAM starting from 0x0, these lines can still handle it. These lines do not
-	 * do all possible error checks except for the case above, but if the machine isn't broken and ACRN doesn't do
-	 * something weird, we can assume this is enough and we are safe.
-	 */
-e820_loop:
-	mov	$16, %ecx
-	mov	ZEROPAGE_E820_TABLE(%edx, %ecx), %eax
-	cmp	$1, %eax
-	jne	e820_loop
-	mov	$0, %ecx
-	mov	ZEROPAGE_E820_TABLE(%edx, %ecx), %eax
-	mov	$8, %ecx
-	add	ZEROPAGE_E820_TABLE(%edx, %ecx), %eax
-	shr	$10, %eax
-	mov	%eax, MBI_MEM_LOWER(%esi)
 
 	/* TODO: parse the end of memory from e820 */
 	/* TODO: restore to 1Gb when hv ve820 patch is merged! */
