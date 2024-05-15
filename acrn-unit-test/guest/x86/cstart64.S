@@ -277,6 +277,10 @@ ap_start64:
 #endif
 	call enable_apic
 	call load_tss
+	cmpb $1, is_all_cpu_init
+	je 2f
+	call ap_record_lapicid
+2:
 #ifdef AP_UNCHANGED_CHECK
 	call save_unchanged_reg
 #endif
@@ -284,10 +288,7 @@ ap_start64:
 	nop
 	lock incw cpu_online_count
 #ifdef AP_USE_MAIN
-	cmpb $1, is_all_cpu_init
-	je 2f
-	call ap_record_lapicid
-2:	call ap_main
+	call ap_main
 #endif
 1:	hlt
 	jmp 1b
