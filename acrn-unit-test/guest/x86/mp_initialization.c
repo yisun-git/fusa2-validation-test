@@ -11,8 +11,8 @@
 #include "isr.h"
 #include "mp_initialization.h"
 
-#define MP_APIC_ID_BSP	0
-#define MP_APIC_ID_AP	1
+#define MP_BSP	0
+#define MP_AP	1
 #define ONE_SECOND		2100000000ULL
 
 #ifdef __x86_64__
@@ -80,10 +80,11 @@ void reset_ap(int apic_id)
  */
 static void MP_initialization_rqmid_26995_vCPU_is_AP_in_normal_status_ignore_SIPI(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	ap_is_running = 0;
 
 	/* send SIPI to AP*/
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 
 	/*if ap restart, wait for ap start complete*/
 	test_delay(5);
@@ -132,15 +133,16 @@ static void MP_initialization_rqmid_27160_ap(void)
  */
 static void MP_initialization_rqmid_28469_ap_wait_for_sipi_ignore_init_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 28469;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send INIT to AP again */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 
 	/*wait ap start done*/
 	test_delay(5);
@@ -158,13 +160,14 @@ static void MP_initialization_rqmid_28469_ap_wait_for_sipi_ignore_init_001(void)
  */
 static void MP_initialization_rqmid_33849_ap_in_normal_handle_INIT_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 33849;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 
 	/*wait ap start done*/
 	test_delay(5);
@@ -175,13 +178,14 @@ static void MP_initialization_rqmid_33849_ap_in_normal_handle_INIT_001(void)
 
 static void MP_initialization_rqmid_26996_ap(void)
 {
+	int apic_id = get_lapicid_map(MP_BSP);
 	start_run_id = 0;
 	bsp_is_running = 0;
 	debug_print("%d %d\n", wait_ap, wait_bp);
 
 	printf("ap send SIPI to bsp\n");
 	/* send SIPI to BSP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 	debug_print("%d %d\n", wait_ap, wait_bp);
 
 	test_delay(5);
@@ -198,12 +202,13 @@ static void MP_initialization_rqmid_26996_ap(void)
  */
 static void MP_initialization_rqmid_26996_bsp_in_normal_ignore_SIPI_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 26996;
 	wait_ap = 0;
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 
@@ -215,16 +220,17 @@ static void MP_initialization_rqmid_26996_bsp_in_normal_ignore_SIPI_001(void)
 
 static void MP_initialization_rqmid_33850_ap(void)
 {
+	int apic_id = get_lapicid_map(MP_BSP);
 	start_run_id = 0;
 	/*wait for BP to execute to case id 33850*/
 	bsp_is_running = 0;
 
 	printf("ap send INIT to bsp\n");
 	/* send INIT to BSP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_BSP);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, apic_id);
 	/* send SIPI to BSP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	test_delay(5);
@@ -235,35 +241,37 @@ static void MP_initialization_rqmid_33850_ap(void)
 
 static void MP_initialization_rqmid_38919_ap(void)
 {
+	int apic_id = get_lapicid_map(MP_BSP);
 	start_run_id = 0;
 	/*wait for BP to execute to case id 38919*/
 	bsp_is_running = 0;
 
 	/* send INIT to BSP */
 	printf("ap send SIPI to bsp\n");
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_BSP);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, apic_id);
 	test_delay(10);
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | 0xE0, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | 0xE0, apic_id);
 	test_delay(5);
 	wait_ap = 1;
 }
 
 static void MP_initialization_rqmid_38925_ap(void)
 {
+	int apic_id = get_lapicid_map(MP_BSP);
 	start_run_id = 0;
 	/*wait for BP to execute to case id 38919*/
 	bsp_is_running = 0;
 
 	/* send INIT to BSP */
 	printf("ap send SIPI to bsp\n");
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 	printf("Wait for 15 second and observe bp's print info,if bp has not print info,then we think"
 	" that bp ignore SIPI and bp is in halt state\n");
 	printf("\n\n");
 	test_delay(35);
 	printf("send a interrupt to bp to let bp exit halt state\n");
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | 0xE0, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | 0xE0, apic_id);
 	wait_ap = 1;
 }
 
@@ -332,12 +340,13 @@ static void MP_initialization_ap_common_func(void)
  */
 static void MP_initialization_rqmid_33850_bsp_in_normal_ignore_INIT_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 33850;
 	wait_ap = 0;
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*wait ap send INIT done*/
@@ -363,6 +372,7 @@ static void ipi_isr_for_exit_halt_state(isr_regs_t *regs)
  */
 static void MP_initialization_rqmid_38919_bsp_in_HALT_ignore_INIT_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 38919;
 	wait_ap = 0;
 
@@ -370,7 +380,7 @@ static void MP_initialization_rqmid_38919_bsp_in_HALT_ignore_INIT_001(void)
 	irq_enable();
 	debug_print("%d %d\n", wait_ap, wait_bp);
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 	asm volatile ("hlt");
 	bp_sync();
 
@@ -395,15 +405,16 @@ static void MP_initialization_ap_isr(isr_regs_t *regs)
  */
 static void MP_initialization_rqmid_39037_ap_transits_from_HALT_state_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 39037;
 	wait_ap = 0;
 
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 	handle_irq(EXTEND_INTERRUPT_E0, MP_initialization_ap_isr);
 	irq_enable();
 	test_delay(5);
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | EXTEND_INTERRUPT_E0, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_FIXED | EXTEND_INTERRUPT_E0, apic_id);
 	bp_sync();
 	report("\t\t%s", true, __FUNCTION__);
 }
@@ -419,25 +430,26 @@ static void MP_initialization_rqmid_39037_ap_transits_from_HALT_state_001(void)
 static void MP_initialization_rqmid_39038_ap_halt_init_wait_sipi_001(void)
 {
 	int count = 0;
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 39038;
 	wait_ap = 0;
 	ap_is_running = 0;
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 	bp_sync();
 
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, apic_id);
 	/* send INIT to AP for 3  times */
 	for (count = 0; count < 3; count++) {
-		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
-		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_AP);
+		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
+		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, apic_id);
 		test_delay(2);
 		printf("BP is sending INIT IPI to ap(count:%d)\n", count);
 	}
 
 	printf("BP sends a SIPI IPI to ap to let ap enter normal execution state\n");
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 	bp_sync_timeout(5);//if timeout 5 expire, wait_ap var still is 0, BP exit waitting.
 	/**/
 	report("\t\t%s", wait_ap == 1, __FUNCTION__);
@@ -452,14 +464,15 @@ static void MP_initialization_rqmid_39038_ap_halt_init_wait_sipi_001(void)
  */
 static void MP_initialization_rqmid_39039_ap_halt_sipi_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 39039;
 	wait_ap = 0;
 
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 	bp_sync();
 	test_delay(1);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 	test_delay(5);
 
 	report("\t\t%s", ap_in_halt == 1, __FUNCTION__);
@@ -476,11 +489,12 @@ static void MP_initialization_rqmid_39039_ap_halt_sipi_001(void)
  */
 static void MP_initialization_rqmid_39053_ap_normal_halt_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 39053;
 	wait_ap = 0;
 
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 	bp_sync();
 	test_delay(5);
 	report("\t\t%s", ap_in_halt == 1, __FUNCTION__);
@@ -498,13 +512,14 @@ static void MP_initialization_rqmid_39053_ap_normal_halt_001(void)
  */
 static void MP_initialization_rqmid_38925_bsp_in_HALT_ignore_SIPI_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 38925;
 	wait_ap = 0;
 
 	handle_irq(0xE0, ipi_isr_for_exit_halt_state); //register a isr for bp exiting halt state to continue to test.
 	irq_enable();
 	/*restart ap*/
-	reset_ap(MP_APIC_ID_AP);
+	reset_ap(apic_id);
 	asm volatile ("hlt");
 
 	printf("bp is running...\n");
@@ -520,16 +535,17 @@ static void MP_initialization_rqmid_38925_bsp_in_HALT_ignore_SIPI_001(void)
  */
 static void MP_initialization_rqmid_26998_execute_init_code_only_first_sipi_001(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 26998;
 	wait_ap = 0;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 	test_delay(5);
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 	report("\t\t %s", ap_is_running == 1, __FUNCTION__);
 }
 
@@ -543,14 +559,15 @@ static void MP_initialization_rqmid_26998_execute_init_code_only_first_sipi_001(
  */
 static void MP_initialization_rqmid_26997_execute_AP_code_when_SIPI_is_eceived(void)
 {
+	int apic_id = get_lapicid_map(MP_AP);
 	start_run_id = 26997;
 	wait_ap = 0;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 	bp_sync();
 	report("\t\t %s", ap_is_running == 1, __FUNCTION__);
 }
@@ -567,15 +584,16 @@ static void MP_initialization_rqmid_39396_set_CS_selector_to_a_specific_value_00
 {
 	u16 cs_selector = 0xFFFF;
 	u16 ip;
+	int apic_id = get_lapicid_map(MP_AP);
 
 	start_run_id = 39396;
 	wait_ap = 0;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, apic_id);
 	bp_sync();
 	cs_selector = *(u16 *)MEM_ADDR_SAVE_CS_VALUE;
 	//printf("cs_selector:%x\n", cs_selector);
@@ -607,16 +625,17 @@ static void MP_initialization_rqmid_39396_set_CS_selector_to_a_specific_value_00
 static void MP_initialization_rqmid_39405_execute_AP_code_at_first_sipi_vector(void)
 {
 	volatile u16 cs_selector = 0xFFFF;
+	int apic_id = get_lapicid_map(MP_AP);
 
 	start_run_id = 39405;
 	wait_ap = 0;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, 1);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x1, MP_APIC_ID_AP);
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x1, apic_id);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, apic_id);
 
 	bp_sync();
 	cs_selector = *(volatile u16 *)MEM_ADDR_SAVE_CS_VALUE;
@@ -637,16 +656,17 @@ static void MP_initialization_rqmid_39473_execute_AP_code_at_first_sipi_vector(v
 {
 	volatile u16 cs_selector = 0xFFFF;
 	u16 cs_base;
+	int apic_id = get_lapicid_map(MP_AP);
 
 	start_run_id = 39473;
 	wait_ap = 0;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, 1);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x1, MP_APIC_ID_AP);
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x1, apic_id);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, apic_id);
 
 	bp_sync();
 	cs_selector = *(volatile u16 *)MEM_ADDR_SAVE_CS_VALUE;
@@ -667,15 +687,16 @@ static void MP_initialization_rqmid_39474_set_CS_base_to_a_specific_value_001(vo
 {
 	u16 cs_selector = 0xFFFF;
 	u16 cs_base;
+	int apic_id = get_lapicid_map(MP_AP);
 
 	start_run_id = 39396;
 	wait_ap = 0;
 	ap_is_running = 0;
 
 	/* send INIT to AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, MP_APIC_ID_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, apic_id);
 	/* send SIPI to AP */
-	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, MP_APIC_ID_AP);
+	apic_icr_write(APIC_INT_ASSERT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP | 0x2, apic_id);
 	bp_sync();
 	cs_selector = *(u16 *)MEM_ADDR_SAVE_CS_VALUE;
 	cs_base = cs_selector << 4;
@@ -693,7 +714,7 @@ static void MP_initialization_rqmid_39474_set_CS_base_to_a_specific_value_001(vo
  */
 static void MP_initialization_rqmid_38911_ignore_INIT_for_safety_VM_001(void)
 {
-	apic_icr_write(APIC_DEST_SELF | APIC_DEST_PHYSICAL | APIC_DM_INIT, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_SELF | APIC_DEST_PHYSICAL | APIC_DM_INIT, get_lapicid_map(MP_BSP));
 	report("\t\t %s", true, __FUNCTION__);
 }
 
@@ -706,7 +727,7 @@ static void MP_initialization_rqmid_38911_ignore_INIT_for_safety_VM_001(void)
  */
 static void MP_initialization_rqmid_38912_ignore_SIPI_for_safety_VM_001(void)
 {
-	apic_icr_write(APIC_DEST_SELF | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, MP_APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_SELF | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, get_lapicid_map(MP_BSP));
 	report("\t\t %s", true, __FUNCTION__);
 }
 #endif

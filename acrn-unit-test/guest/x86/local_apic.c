@@ -528,7 +528,7 @@ void local_apic_rqmid_27685_different_x2apic_id_001(void)
 
 	cpus = fwcfg_get_nb_cpus();
 	for (unsigned i = 1; i < cpus; i++) {
-		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | APIC_INT_ASSERT | X2APIC_ID_IPI_VEC, i);
+		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | APIC_INT_ASSERT | X2APIC_ID_IPI_VEC, get_lapicid_map(i));
 		sleep(1000);
 	}
 	sleep(500);
@@ -683,7 +683,7 @@ void local_apic_rqmid_27659_expose_lapic_error_handling_001(void)
 		ipi_count = 0;
 		handle_irq(i, lapic_self_ipi_isr);
 		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | i,
-					   0);
+					   get_lapicid_map(0));
 		sleep(100);
 		apic_write(APIC_ESR, 0);
 		apic_esr = apic_read(APIC_ESR);
@@ -800,7 +800,7 @@ void local_apic_rqmid_27932_expose_interrupt_priority_feature_001(void)
  */
 void local_apic_rqmid_27930_the_value_of_ppr_001(void)
 {
-	const unsigned int destination = LAPIC_INTR_TARGET_SELF;
+	const unsigned int destination = get_lapicid_map(LAPIC_INTR_TARGET_SELF);
 	const unsigned int vec = LAPIC_TEST_VEC_HIGH;
 	const unsigned int mode = APIC_DEST_PHYSICAL | APIC_DM_FIXED;
 	unsigned int val;
@@ -849,7 +849,7 @@ void local_apic_rqmid_27927_expose_interrupt_acceptance_for_fixed_interrupts_inf
 
 	handle_irq(vec, lapic_self_ipi_isr);
 	ipi_count = 0;
-	apic_icr_write(mode | vec, 0);
+	apic_icr_write(mode | vec, get_lapicid_map(0));
 	sleep(1000);
 	report("%s", ipi_count == 1, __FUNCTION__);
 	ipi_count = 0;
@@ -873,7 +873,7 @@ void local_apic_rqmid_27927_expose_interrupt_acceptance_for_fixed_interrupts_inf
 void local_apic_rqmid_27599_expose_eoi_001(void)
 {
 	bool result = false;
-	const unsigned int destination = LAPIC_INTR_TARGET_SELF;
+	const unsigned int destination = get_lapicid_map(LAPIC_INTR_TARGET_SELF);
 	const unsigned int vec = LAPIC_TEST_VEC;
 	const unsigned int mode = APIC_DEST_PHYSICAL | APIC_DM_FIXED;
 
@@ -1233,7 +1233,7 @@ void local_apic_rqmid_27805_illegal_vector_in_icr_001(void)
 	u32 esr;
 
 	irq_enable();
-	apic_icr_write(mode | vec, 0);/*APIC_DM_FIXED: [bit 10:8] is 0*/
+	apic_icr_write(mode | vec, get_lapicid_map(0));/*APIC_DM_FIXED: [bit 10:8] is 0*/
 	sleep(100);
 
 	apic_write(APIC_ESR, 0U);
@@ -1547,7 +1547,7 @@ void local_apic_rqmid_27712_interrupt_delivery_with_illegal_vector_001(void)
 	bool result = true;
 
 	eoi();
-	apic_icr_write(mode | vector, 0); /*try to trigger a less than 10H interrupt */
+	apic_icr_write(mode | vector, get_lapicid_map(0)); /*try to trigger a less than 10H interrupt */
 
 	for (int i = 0; i < APIC_ISR_NR; i++) {
 		if (apic_read(APIC_ISR + LAPIC_ISR_INDEX(i)) != 0U) {
@@ -1574,7 +1574,7 @@ void local_apic_rqmid_27712_interrupt_delivery_with_illegal_vector_001(void)
  */
 void local_apic_rqmid_27495_x2apic_ipi_with_unsupported_delivery_mode_001(void)
 {
-	const unsigned int destination = LAPIC_INTR_TARGET_SELF;
+	const unsigned int destination = get_lapicid_map(LAPIC_INTR_TARGET_SELF);
 	const unsigned int vec = LAPIC_TEST_VEC;
 	const unsigned int mode = SET_APIC_DELIVERY_MODE(APIC_DEST_PHYSICAL, 0x7);
 
@@ -1603,7 +1603,7 @@ void local_apic_rqmid_27495_x2apic_ipi_with_unsupported_delivery_mode_001(void)
  */
 void local_apic_rqmid_38607_x2apic_ipi_with_unsupported_delivery_mode_002(void)
 {
-	const unsigned int destination = LAPIC_INTR_TARGET_SELF;
+	const unsigned int destination = get_lapicid_map(LAPIC_INTR_TARGET_SELF);
 	const unsigned int vec = LAPIC_TEST_VEC;
 	const unsigned int mode = SET_APIC_DELIVERY_MODE(APIC_DEST_PHYSICAL, 0x3);
 
@@ -1632,7 +1632,7 @@ void local_apic_rqmid_38607_x2apic_ipi_with_unsupported_delivery_mode_002(void)
  */
 void local_apic_rqmid_38608_x2apic_ipi_with_unsupported_delivery_mode_003(void)
 {
-	const unsigned int destination = LAPIC_INTR_TARGET_SELF;
+	const unsigned int destination = get_lapicid_map(LAPIC_INTR_TARGET_SELF);
 	const unsigned int vec = LAPIC_TEST_VEC;
 	const unsigned int mode = SET_APIC_DELIVERY_MODE(APIC_DEST_PHYSICAL, 0x2);
 
@@ -1660,7 +1660,7 @@ void local_apic_rqmid_38608_x2apic_ipi_with_unsupported_delivery_mode_003(void)
  */
 void local_apic_rqmid_38609_x2apic_ipi_with_unsupported_delivery_mode_004(void)
 {
-	const unsigned int destination = LAPIC_INTR_TARGET_SELF;
+	const unsigned int destination = get_lapicid_map(LAPIC_INTR_TARGET_SELF);
 	const unsigned int vec = LAPIC_TEST_VEC;
 	const unsigned int mode = SET_APIC_DELIVERY_MODE(APIC_DEST_PHYSICAL, 0x1);
 
@@ -3452,7 +3452,7 @@ void local_apic_rqmid_27642_expose_ipi_support_001(void)
 	ipi_count = 0;
 	handle_irq(LAPIC_TEST_VEC, lapic_ipi_support_isr);
 
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | LAPIC_TEST_VEC, 0);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | LAPIC_TEST_VEC, get_lapicid_map(0));
 	sleep(100);
 
 	/*find the vector of corresponding ISR*/
@@ -3489,7 +3489,7 @@ void lapic_ipi_delivery_handler(isr_regs_t *regs)
 void local_apic_rqmid_27620_x2apic_ipi_delivery_in_physical_destination_mode(void)
 {
 	handle_irq(LAPIC_TEST_VEC, lapic_ipi_delivery_handler);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | LAPIC_TEST_VEC, 1);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | LAPIC_TEST_VEC, get_lapicid_map(1));
 
 	sleep(1000);
 	report("%s", IPI_RESULT, __FUNCTION__);
@@ -3518,7 +3518,7 @@ void local_apic_rqmid_27619_x2apic_ipi_delivery_in_logical_destination_mode(void
 	u32 isr_n;
 
 	handle_irq(LAPIC_TEST_VEC, lapic_ipi_support_isr);
-	apic_icr_write(APIC_DEST_LOGICAL | APIC_DM_FIXED | LAPIC_TEST_VEC, 0);
+	apic_icr_write(APIC_DEST_LOGICAL | APIC_DM_FIXED | LAPIC_TEST_VEC, get_lapicid_map(0));
 
 	sleep(100);
 	isr_n = apic_read(APIC_ISR + LAPIC_ISR_INDEX(LAPIC_TEST_VEC / 32));
@@ -3544,7 +3544,7 @@ void local_apic_rqmid_39301_x2apic_ipi_delivery_in_self_all_including_all_exclud
 	u32 isr_n;
 
 	handle_irq(LAPIC_TEST_VEC, lapic_ipi_support_isr);
-	apic_icr_write(APIC_DEST_SELF | APIC_DM_FIXED | LAPIC_TEST_VEC, 0);
+	apic_icr_write(APIC_DEST_SELF | APIC_DM_FIXED | LAPIC_TEST_VEC, get_lapicid_map(0));
 
 	sleep(100);
 	isr_n = apic_read(APIC_ISR + LAPIC_ISR_INDEX(LAPIC_TEST_VEC / 32));
@@ -3570,7 +3570,7 @@ void local_apic_rqmid_39306_x2apic_ipi_delivery_in_self_all_including_all_exclud
 	u32 isr_n;
 
 	handle_irq(LAPIC_TEST_VEC, lapic_ipi_support_isr);
-	apic_icr_write(APIC_DEST_ALLINC | APIC_DM_FIXED | LAPIC_TEST_VEC, 0);
+	apic_icr_write(APIC_DEST_ALLINC | APIC_DM_FIXED | LAPIC_TEST_VEC, get_lapicid_map(0));
 
 	sleep(100);
 	isr_n = apic_read(APIC_ISR + LAPIC_ISR_INDEX(LAPIC_TEST_VEC / 32));
@@ -3596,7 +3596,7 @@ void local_apic_rqmid_39308_x2apic_ipi_delivery_in_self_all_including_all_exclud
 	u32 isr_n;
 
 	handle_irq(LAPIC_TEST_VEC, lapic_ipi_support_isr);
-	apic_icr_write(APIC_DEST_ALLBUT | APIC_DM_FIXED | LAPIC_TEST_VEC, 0);
+	apic_icr_write(APIC_DEST_ALLBUT | APIC_DM_FIXED | LAPIC_TEST_VEC, get_lapicid_map(0));
 
 	sleep(100);
 	isr_n = apic_read(APIC_ISR + LAPIC_ISR_INDEX(LAPIC_TEST_VEC / 32));
@@ -3623,7 +3623,7 @@ void local_apic_rqmid_27716_ignore_icr_write_of_level_bit(void)
 	u32 val1;
 
 	val0 = apic_read(APIC_ICR);
-	apic_icr_write((val0 ^ (1U << 14)), 0);
+	apic_icr_write((val0 ^ (1U << 14)), get_lapicid_map(0));
 	val1 = apic_read(APIC_ICR);
 	report("%s", val0 == val1, __FUNCTION__);
 }
@@ -3650,7 +3650,7 @@ void local_apic_rqmid_27714_ignore_icr_write_of_trigger_mode_bit(void)
 
 	val = apic_read(APIC_ICR);
 	val |= (1U << 15);
-	apic_icr_write(val, 0);
+	apic_icr_write(val, get_lapicid_map(0));
 
 	report("%s", !(apic_read(APIC_ICR) & (1U << 15)), __FUNCTION__);
 }
@@ -4595,7 +4595,7 @@ void local_apic_rqmid_39081_different_physical_x2apic_id(void)
 #define PHYSICAL_TEST_VECTOR 0xE0
 	handle_irq(PHYSICAL_TEST_VECTOR, physical_x2apic_id_hander);
 	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_FIXED | APIC_INT_ASSERT |
-				   PHYSICAL_TEST_VECTOR | APIC_DEST_ALLBUT, 0);
+				   PHYSICAL_TEST_VECTOR | APIC_DEST_ALLBUT, get_lapicid_map(0));
 	sleep(1000);
 
 	for (u32 i = 0; i < cpu_nr; i++) {

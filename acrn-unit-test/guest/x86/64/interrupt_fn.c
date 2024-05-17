@@ -665,7 +665,7 @@ static void interrupt_rqmid_36693_p3_p4_ap_001(void)
 			asm volatile ("nop\n\t" :::"memory");
 		}
 		/* setp 10 AP send NMI to BP*/
-		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI | APIC_INT_ASSERT, 0);	/*0x1A00 tsc*/
+		apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI | APIC_INT_ASSERT, get_lapicid_map(0));	/*0x1A00 tsc*/
 		interrupt_wait_bp = 0;
 	}
 }
@@ -1110,6 +1110,7 @@ static void interrupt_rqmid_38070_nmi_pf(void)
 	unsigned char *linear_addr;
 	struct descriptor_table_ptr old_gdt_desc;
 	struct descriptor_table_ptr new_gdt_desc;
+	int apic_id = get_lapicid_map(MP_BSP);
 
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
@@ -1146,7 +1147,7 @@ static void interrupt_rqmid_38070_nmi_pf(void)
 
 	/* setp 9 trigger #NMI exception*/
 	cli();
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, 0);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, apic_id);
 
 	/* step 10 confirm #PF exception has been generated*/
 	report("%s %lx", ((irqcounter_query(PF_VECTOR) == 1)), __FUNCTION__, save_error_code);
@@ -1169,6 +1170,7 @@ static void interrupt_rqmid_38070_nmi_pf(void)
  */
 static void interrupt_rqmid_38110_nmi_001(void)
 {
+	int apic_id = get_lapicid_map(MP_BSP);
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
 
@@ -1182,7 +1184,7 @@ static void interrupt_rqmid_38110_nmi_001(void)
 
 	/* setp 4 trigger #NMI exception*/
 	cli();
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, apic_id);
 
 	/* step 5 confirm #NMI exception has been generated*/
 	report("%s %lx", ((irqcounter_query(NMI_VECTOR) == 1)), __FUNCTION__, save_error_code);
@@ -1232,13 +1234,14 @@ void handled_nmi_exception(struct ex_regs *regs)
 
 static void interrupt_rqmid_38112_nmi_ap_002(void)
 {
+	int apic_id = get_lapicid_map(MP_BSP);
 	if (get_cpu_id() != 1) {
 		return;
 	}
 	interrupt_38112_sync = 0;
 
 	/*step 4 send nmi ipi to bp */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, apic_id);
 
 	/*wait bp in nmi handler*/
 	while (interrupt_38112_sync == 0) {
@@ -1246,7 +1249,7 @@ static void interrupt_rqmid_38112_nmi_ap_002(void)
 	}
 
 	/*step 6 send nmi ipi to bp again*/
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, apic_id);
 }
 
 /**
@@ -1609,6 +1612,7 @@ static void interrupt_rqmid_38174_expose_exception_de_002(void)
 static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 {
 	int check = 0;
+	int apic_id = get_lapicid_map(MP_BSP);
 
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
@@ -1632,7 +1636,7 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	/* step 8 generate #NMI*/
 	asm volatile ("wrmsr"
 		::"a"(APIC_DEST_PHYSICAL | APIC_DM_NMI),
-		"d"(APIC_ID_BSP),
+		"d"(apic_id),
 		"c"(APIC_BASE_MSR + APIC_ICR/16));
 	/* step 9 dump CR and rax rbx register*/
 	DUMP_REGS1(regs_check[1]);
@@ -1642,7 +1646,7 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	/* step 11 generate #NMI*/
 	asm volatile ("wrmsr"
 		::"a"(APIC_DEST_PHYSICAL | APIC_DM_NMI),
-		"d"(APIC_ID_BSP),
+		"d"(apic_id),
 		"c"(APIC_BASE_MSR + APIC_ICR/16));
 	/* step 12 dump all remaining registers*/
 	DUMP_REGS2(regs_check[1]);
@@ -1650,7 +1654,7 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 	/*step 13 clear RFLAGS.IF bit, generate #NMI */
 	asm volatile ("wrmsr"
 		::"a"(APIC_DEST_PHYSICAL | APIC_DM_NMI),
-		"d"(APIC_ID_BSP),
+		"d"(apic_id),
 		"c"(APIC_BASE_MSR + APIC_ICR/16));
 
 	/*step 14 get step 13 'wrmsr' instruction address
@@ -1691,6 +1695,7 @@ static void interrupt_rqmid_38175_expose_exception_nmi_001(void)
 static void interrupt_rqmid_38176_expose_exception_nmi_002(void)
 {
 	int check = 0;
+	int apic_id = get_lapicid_map(MP_BSP);
 
 	/* step 1 init g_irqcounter */
 	irqcounter_initialize();
@@ -1702,7 +1707,7 @@ static void interrupt_rqmid_38176_expose_exception_nmi_002(void)
 
 	/* step 4 clear RFLAGS.IF bit, generate #NMI */
 	cli();
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, apic_id);
 
 	check = check_rflags();
 
@@ -2835,6 +2840,7 @@ static void interrupt_rqmid_38460_expose_instruction_breakpoints_004(void)
 static void interrupt_rqmid_39087_set_eflags_rf_001(void)
 {
 	bool check = false;
+	int apic_id = get_lapicid_map(MP_BSP);
 	ulong save_rflags0;
 
 	/* step 1 init g_irqcounter */
@@ -2846,7 +2852,7 @@ static void interrupt_rqmid_39087_set_eflags_rf_001(void)
 	/* step 3 init by setup_idt(prepare the interrupt-gate descriptor of #NMI)*/
 
 	/* step 4 generate #NMI */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, APIC_ID_BSP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_NMI, apic_id);
 
 	save_rflags0 = read_rflags();
 

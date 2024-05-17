@@ -14,6 +14,7 @@
 extern short cpu_online_count;
 static struct spinlock lock;
 
+#define INVALID_ID		255
 u8 lapicid_map[UT_CORE_NUMS] = {0};
 
 /**
@@ -180,7 +181,7 @@ void get_case_id(int ac, char **av, char *case_id)
 	}
 }
 
-/*get cpu id*/
+/*get lapic id*/
 uint32_t get_lapic_id(void)
 {
 	uint32_t ebx;
@@ -223,6 +224,14 @@ int get_cpu_id()
 			return i;
 	}
 	return -1;
+}
+
+u8 get_lapicid_map(u8 cpu)
+{
+	if (cpu < sizeof(lapicid_map)) {
+		return lapicid_map[cpu];
+	}
+	return INVALID_ID;
 }
 
 volatile bool ring1_ret = false;

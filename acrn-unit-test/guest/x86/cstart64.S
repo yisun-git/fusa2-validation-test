@@ -391,6 +391,7 @@ smp_init:
 	movl $0xb, %eax
 	cpuid
 	movl %edx, %ebx
+	movl %ebx, lapicid_map
 
 	movl $APIC_ICR, %ecx
 	shrl $4, %ecx

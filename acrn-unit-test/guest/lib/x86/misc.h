@@ -49,6 +49,7 @@ extern void set_page_control_bit(void *gva,
 extern void send_sipi();
 extern uint32_t get_lapic_id(void);
 extern int get_cpu_id();
+extern u8 get_lapicid_map(u8);
 extern int do_at_ring1(void (*fn)(const char *), const char *arg);
 extern int do_at_ring2(void (*fn)(const char *), const char *arg);
 extern int do_at_ring3(void (*fn)(const char *), const char *arg);

@@ -25,7 +25,7 @@
 
 #define INIT_IDTR_ADDR		0x7000
 
-#define APIC_ID_BSP		0
+#define MP_BSP		0
 
 #define INTERRUPT_MOVSB_MAX_SIZE			0x100000
 
