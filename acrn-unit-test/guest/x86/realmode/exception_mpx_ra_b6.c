@@ -8,7 +8,7 @@
 #include "alloc.h"
 #include "alloc.c"
 #include "misc.h"
-#include "misc.c"
+#include "fwcfg.h"
 #include "vmalloc.h"
 #include "alloc_page.h"
 #include "asm/io.h"
