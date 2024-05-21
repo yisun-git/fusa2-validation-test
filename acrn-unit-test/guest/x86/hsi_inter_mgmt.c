@@ -26,7 +26,7 @@
 #include "segmentation.h"
 #include "delay.h"
 
-#define CR4_RESERVED_BIT_23				(1 << 23)
+#define CR4_RESERVED_BIT_15				(1 << 15)
 
 #define IDT_TABLE_SIZE (sizeof(idt_entry_t) * 256)
 #define TEST_EXTEND_INTERRUPT 0x31
@@ -400,7 +400,7 @@ static void hsi_rqmid_40088_interrupt_management_features_idt_001(void)
 	/* Trigger soft interrupt */
 	int_ins(TEST_EXTEND_INTERRUPT);
 
-	cr4_value = read_cr4() | CR4_RESERVED_BIT_23;
+	cr4_value = read_cr4() | CR4_RESERVED_BIT_15;
 	/* skip gp exception instruction */
 	g_instruction_len = 3;
 	/* generate #GP */
@@ -424,7 +424,8 @@ static void hsi_rqmid_40088_interrupt_management_features_idt_001(void)
 		(save_idt.base == new_idt.base)) {
 		chk++;
 	}
-	debug_print(" lidt ret1:%d sidt ret2:%d handled_interrupt:%d\n", ret1, ret2, soft_interrupt_cout);
+	debug_print(" lidt ret1:%d sidt ret2:%d handled_interrupt:%d handled_gp:%d\n", ret1, ret2,
+		soft_interrupt_cout, exception_cout);
 	report("%s", (chk == 4), __FUNCTION__);
 
 	/* resume environment */

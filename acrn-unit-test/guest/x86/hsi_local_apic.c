@@ -24,7 +24,7 @@
 #include "xsave.h"
 #include "debug_print.h"
 
-#define INIT_TARGET_AP_ID                   2
+#define INIT_TARGET_AP_ID                   1
 #define LAPIC_CPUID_APIC_CAP_X2APCI             (0x1U << 21)
 #define MSR_IA32_APIC_BASE                      0x0000001BU
 #define BIT_EN_x2APIC                               (0x1U << 10)
@@ -32,7 +32,7 @@
 #define BIT_XAPIC_X2APIC (BIT_EN_x2APIC | BIT_EN_xAPIC)
 #define LAPIC_CPUID_CAPABILITY             1
 
-static volatile u8 ap_nums = 3;
+static volatile u8 ap_nums;
 
 /* start_run_id is used to identify which test case is running. */
 static volatile int start_run_id = 0;
@@ -76,13 +76,14 @@ static __unused void bp_sync(void)
  */
 static void hsi_rqmid_35951_local_apic_features_inter_processor_interrupt_001(void)
 {
+	int apic_id = get_lapicid_map(INIT_TARGET_AP_ID);
 	start_run_id = 35951;
 
 	bp_sync();
 	test_delay(5);
 	/*issue sipi to awake AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, INIT_TARGET_AP_ID);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, INIT_TARGET_AP_ID);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, apic_id);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 
 	/* wait for 1s fot ap to finish startup*/
 	test_delay(5);
@@ -92,7 +93,7 @@ static void hsi_rqmid_35951_local_apic_features_inter_processor_interrupt_001(vo
 
 static void hsi_rqmid_35951_ap(void)
 {
-	if (get_lapic_id() == INIT_TARGET_AP_ID) {
+	if (get_cpu_id() == INIT_TARGET_AP_ID) {
 		target_ap_startup++;
 		if (target_ap_startup == 1) {
 			atomic_set(&wait_ap, ap_nums);
@@ -184,7 +185,7 @@ static void print_case_list(void)
 int ap_main(void)
 {
 #ifdef IN_NATIVE
-	debug_print("ap %d starts running \n", get_lapic_id());
+	debug_print("ap %d starts running \n", get_cpu_id());
 	while (start_run_id == 0) {
 		test_delay(5);
 	}
@@ -212,6 +213,7 @@ int main(void)
 
 	print_case_list();
 	atomic_set(&ap_run_nums, 0);
+	ap_nums = fwcfg_get_nb_cpus();
 
 #ifdef IN_NATIVE
 	int i;

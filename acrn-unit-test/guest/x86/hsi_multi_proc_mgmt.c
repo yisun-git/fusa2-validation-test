@@ -123,7 +123,7 @@ static volatile int start_run_id = 0;
 static atomic_t wait_bp;
 static atomic_t wait_ap;
 
-static volatile u8 ap_nums = 3;
+static volatile u8 ap_nums;
 static volatile int target_ap_startup = 0;
 static atomic_t ap_run_nums;
 
@@ -375,7 +375,7 @@ static void lock_atomic_test_bp(u8 instr)
 /* Description: 2 APs will test concurrently */
 static __unused void lock_atomic_test_ap(u8 instr)
 {
-	u8 index = get_lapic_id() / 2 - 1;
+	u8 index = get_cpu_id() - 1;
 	u32 volatile *addr;
 	u32 volatile *rval;
 	void (*fn)(u32 volatile *, u32 volatile *) = NULL;
@@ -407,7 +407,7 @@ static __unused void lock_atomic_test_ap(u8 instr)
 
 static void mwait_test_ap(u8 instr)
 {
-	u8 index = get_lapic_id() / 2 - 1;
+	u8 index = get_cpu_id() - 1;
 	void (*fn)(void) = NULL;
 
 	if (index == 0) {
@@ -1055,10 +1055,10 @@ __unused static void hsi_rqmid_40151_multi_proc_mgmt_features_memory_ordering_mf
 	report("%s %ld", (result == 0), __FUNCTION__, result);
 }
 
-void order_ap(int local_id)
+void order_ap(int cpu_id)
 {
 	while (order_sync != ORDER_TEST_MAX) {
-		ordering_ap_test_entry[local_id]();
+		ordering_ap_test_entry[cpu_id]();
 	}
 }
 
@@ -1148,7 +1148,7 @@ int ap_main(void)
 {
 #ifdef IN_NATIVE
 	/***********************************/
-	debug_print("ap %d starts running \n", get_lapic_id());
+	debug_print("ap %d starts running \n", get_cpu_id());
 	while (start_run_id == 0) {
 		test_delay(5);
 	}
@@ -1160,7 +1160,7 @@ int ap_main(void)
 	while (start_run_id != 35972) {
 		test_delay(5);
 	}
-	if (get_lapic_id() == 4 || get_lapic_id() == 2) {
+	if (get_cpu_id() == 1 || get_cpu_id() == 2) {
 		debug_print("ap start to run case %d\n", start_run_id);
 		lock_atomic_test_ap(INSTRUCTION_ADD);
 	}
@@ -1169,7 +1169,7 @@ int ap_main(void)
 	while (start_run_id != 35973) {
 		test_delay(5);
 	}
-	if (get_lapic_id() == 4 || get_lapic_id() == 2) {
+	if (get_cpu_id() == 1 || get_cpu_id() == 2) {
 		debug_print("ap start to run case %d addr：%d\n", start_run_id, *test_addr1);
 		lock_atomic_test_ap(INSTRUCTION_XCHG);
 	}
@@ -1178,7 +1178,7 @@ int ap_main(void)
 	while (start_run_id != 39720) {
 		test_delay(10);
 	}
-	if (get_lapic_id() == 4 || get_lapic_id() == 2) {
+	if (get_cpu_id() == 1 || get_cpu_id() == 2) {
 		debug_print("ap start to run case %d\n", start_run_id);
 		lock_atomic_test_ap(INSTRUCTION_MOV);
 	}
@@ -1187,23 +1187,22 @@ int ap_main(void)
 	while (start_run_id != 35977) {
 		test_delay(5);
 	}
-	if (get_lapic_id() == 2) {
+	if (get_cpu_id() == 1) {
 		debug_print("ap start to run case %d\n", start_run_id);
 		mwait_test_ap(INSTRUCTION_MWAIT);
 	}
 
-	int local_id = get_lapic_id();
-	int max_local_id = CFG_TEST_ORDERING_CPU_NR_NATIVE - 1;
+	int cpu_id = get_cpu_id();
+	int max_cpu_id = CFG_TEST_ORDERING_CPU_NR_NATIVE - 1;
 
-	local_id /= 2;
-	if (local_id >= max_local_id) {
-		debug_print("<HALT *AP* > un-used processor id %d\n", local_id);
+	if (cpu_id >= max_cpu_id) {
+		debug_print("<HALT *AP* > un-used processor id %d\n", cpu_id);
 		return 0;
 	} else {
-		debug_print("<Enter *AP* > processor id %d\n", local_id);
+		debug_print("<Enter *AP* > processor id %d\n", cpu_id);
 	}
 	while (1) {
-		order_ap(local_id);
+		order_ap(cpu_id);
 	}
 
 #endif
@@ -1217,6 +1216,7 @@ int main(void)
 
 	print_case_list();
 	atomic_set(&ap_run_nums, 0);
+	ap_nums = fwcfg_get_nb_cpus();
 
 #ifdef IN_NATIVE
 	int i;

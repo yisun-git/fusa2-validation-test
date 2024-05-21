@@ -33,9 +33,9 @@
 #define LVT_TIMER_PERIODIC          (1 << 17)
 #define LVT_TIMER_TSCDEADLINE       (2 << 17)
 
-#define TARGET_AP                   2
+#define TARGET_AP                   1
 
-static volatile u8 ap_nums = 3;
+static volatile u8 ap_nums;
 
 /* start_run_id is used to identify which test case is running. */
 static volatile int start_run_id = 0;
@@ -206,13 +206,14 @@ static void hsi_rqmid_35949_generic_processor_features_eflags_interrupt_flag_001
  */
 static void hsi_rqmid_35951_generic_processor_features_inter_processor_interrupt_001(void)
 {
+	int apic_id = get_lapicid_map(TARGET_AP);
 	start_run_id = 35951;
 
 	bp_sync();
 	test_delay(5);
 	/*issue sipi to awake AP */
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, TARGET_AP);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, TARGET_AP);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, apic_id);
+	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, apic_id);
 
 	/* wait for 1s fot ap to finish startup*/
 	test_delay(1000);
@@ -222,7 +223,7 @@ static void hsi_rqmid_35951_generic_processor_features_inter_processor_interrupt
 
 static void hsi_rqmid_35951_ap(void)
 {
-	if (get_lapic_id() == TARGET_AP) {
+	if (get_cpu_id() == TARGET_AP) {
 		target_ap_startup++;
 		if (target_ap_startup == 1) {
 			atomic_set(&wait_ap, ap_nums);
@@ -441,7 +442,7 @@ static void print_case_list(void)
 int ap_main(void)
 {
 #ifdef IN_NATIVE
-	debug_print("ap %d starts running \n", get_lapic_id());
+	debug_print("ap %d starts running \n", get_cpu_id());
 	while (start_run_id == 0) {
 		test_delay(5);
 	}
@@ -469,6 +470,7 @@ int main(void)
 
 	print_case_list();
 	atomic_set(&ap_run_nums, 0);
+	ap_nums = fwcfg_get_nb_cpus();
 
 #ifdef IN_NATIVE
 	hsi_rqmid_35951_generic_processor_features_inter_processor_interrupt_001();

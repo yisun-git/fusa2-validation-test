@@ -33,7 +33,7 @@
 #define USE_DEBUG
 #ifdef USE_DEBUG
 #define debug_print(fmt, args...) \
-	printf("[%s:%s] line=%d core=%d"fmt"", __FILE__, __func__, __LINE__, get_lapic_id(),  ##args)
+	printf("[%s:%s] line=%d core=%d "fmt"", __FILE__, __func__, __LINE__, get_cpu_id(),  ##args)
 #else
 #define debug_print(fmt, args...)
 #endif
@@ -991,10 +991,10 @@ static __unused void test_ap(int index)
 	u16 old_tss = str();
 
 	/* create TSS descriptor */
-	ap_tss.ist1 = (u64)intr_alt_stack[index / 2] + 4096;
+	ap_tss.ist1 = (u64)intr_alt_stack[index] + 4096;
 	ap_tss.iomap_base = (u16)desc_size;
 	/* use gdt index 11 12 13 for ap1 ap2 ap3 */
-	u16 ap_tss_sel = MAIN_TSS_SEL + ((index / 2) * 8);
+	u16 ap_tss_sel = MAIN_TSS_SEL + (index * 8);
 	set_gdt64_entry(ap_tss_sel, (u64)&ap_tss, desc_size - 1, 0x89, 0x0f);
 	ltr(ap_tss_sel);
 	asm volatile(ASM_TRY("1f")
@@ -2398,7 +2398,10 @@ int ap_main(void)
 #ifdef IN_NATIVE
 #ifdef __x86_64__
 	/***********************************/
-	debug_print("ap %d starts running \n", get_lapic_id());
+	if (get_cpu_id() != 1 && get_cpu_id() != 2 && get_cpu_id() != 3) {
+		return 0;
+	}
+	debug_print("ap %d starts running \n", get_cpu_id());
 	while (start_run_id == 0) {
 		test_delay(5);
 	}
@@ -2407,16 +2410,16 @@ int ap_main(void)
 	while (start_run_id != 42227) {
 		test_delay(5);
 	}
-	if (get_lapic_id() == 4 || get_lapic_id() == 2 || get_lapic_id() == 6) {
-		test_ap(get_lapic_id());
+	if (get_cpu_id() == 1 || get_cpu_id() == 2 || get_cpu_id() == 3) {
+		test_ap(get_cpu_id());
 	}
 
 	/* ap test vmx_on again */
 	while (start_run_id != 10001) {
 		test_delay(5);
 	}
-	if (get_lapic_id() == 4 || get_lapic_id() == 2 || get_lapic_id() == 6) {
-		test_ap(get_lapic_id());
+	if (get_cpu_id() == 1 || get_cpu_id() == 2 || get_cpu_id() == 3) {
+		test_ap(get_cpu_id());
 	}
 
 #endif

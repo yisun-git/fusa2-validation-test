@@ -283,9 +283,9 @@ smp_init:
 	call check_cpu_online_status
 	cmp $1, %ax
 	jne 1b
+	movb $1, is_all_cpu_init
 3:
 smp_init_done:
-	movb $1, is_all_cpu_init
 	ret
 
 cpu_online_count:	.word 1
