@@ -26,13 +26,6 @@ static inline unsigned int irqcounter_query(unsigned int vector)
 	return g_irqcounter[vector];
 }
 
-struct ex_record {
-	unsigned long rip;
-	unsigned long handler;
-};
-
-extern struct ex_record exception_table_start, exception_table_end;
-
 /* The length of instruction to skip when the exception handler returns
  * (equal to the length of instruction in which the exception occurred)
  */

@@ -94,11 +94,6 @@ static inline void int_ins(u16 vector)
 		:);
 }
 
-struct ex_record {
-	unsigned long rip;
-	unsigned long handler;
-};
-extern struct ex_record exception_table_start, exception_table_end;
 void handle_gp_exception(struct ex_regs *regs)
 {
 	/* mark gp exception handle is executed */

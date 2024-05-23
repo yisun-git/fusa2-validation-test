@@ -3,14 +3,13 @@
 #include "condition.c"
 #include "libcflat.h"
 #include "desc.h"
-#include "desc.c"
 #include "alloc.h"
-#include "alloc.c"
 #include "misc.h"
 #include "fwcfg.h"
 #include "vmalloc.h"
 #include "alloc_page.h"
 #include "asm/io.h"
+#include "xsave.h"
 
 // define the data type
 __unused __attribute__ ((aligned(64))) static union_unsigned_128 unsigned_128;

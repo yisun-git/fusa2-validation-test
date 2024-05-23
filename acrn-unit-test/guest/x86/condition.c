@@ -7,7 +7,7 @@
 #include "asm/spinlock.h"
 #include "condition.h"
 #include "instruction_common.h"
-#include "instruction_common.c"
+#include "register_op.h"
 #include "interrupt.h"
 #include "segmentation.h"
 #include "mpx.h"

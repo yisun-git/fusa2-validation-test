@@ -77,6 +77,11 @@ typedef struct  __attribute__((packed))
 }
 tss64_t;
 
+struct ex_record {
+	unsigned long rip;
+	unsigned long handler;
+};
+extern struct ex_record exception_table_start, exception_table_end;
 /* Because the first page is used for AP startup,
  * save the exception vector rflags error code to the second page
  */
@@ -266,4 +271,6 @@ void __set_exception_jmpbuf(jmp_buf *addr);
 
 int register_runtime_exception(unsigned long rip, unsigned long handler);
 void unregister_runtime_exception(int i);
+void set_idt_entry_ex(int vec, void *addr, u16 selector, int dpl, int ist);
+void set_idt_entry_ist(int vec, void *addr, int dpl, int ist);
 #endif
