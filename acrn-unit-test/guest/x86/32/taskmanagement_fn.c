@@ -2661,7 +2661,7 @@ static void taskm_id_24027_tr_init(void)
 
 	lgdt(&gdt_ptr);
 
-	smp_init();
+	set_ipi_idt_entry();
 
 	on_cpu(1, (void *)test_tr_init, NULL);
 }

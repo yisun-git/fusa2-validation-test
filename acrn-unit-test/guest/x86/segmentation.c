@@ -405,7 +405,7 @@ static void verify_bp_dump_info(void)
 }
 #endif
 
-#if defined(AP_INIT_CHECK)
+#if defined(AP_INIT_CHECK) && defined(IN_NON_SAFETY_VM)
 static void verify_ap_dump_info(void)
 {
 	uint32_t *dump = (u32 *)0x7000;
@@ -845,18 +845,18 @@ int main(void)
 
 #else
 
-#if defined(BP_STARTUP_CHECK)
+	#if defined(BP_STARTUP_CHECK)
 	verify_bp_dump_info();
-#endif
+	#endif
 
 	check_cpuid();
 
 	print_case_list();
 	test_segmentation();
 
-#endif
-#if defined(AP_INIT_CHECK) && !defined(IN_NATIVE)
+	#if defined(AP_INIT_CHECK) && defined(IN_NON_SAFETY_VM)
 	verify_ap_dump_info();
+	#endif
 #endif
 
 	report_summary();

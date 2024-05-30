@@ -138,3 +138,9 @@ void smp_init(void)
 
 	atomic_inc(&active_cpus);
 }
+
+void set_ipi_idt_entry()
+{
+	void ipi_entry(void);
+	set_idt_entry(IPI_VECTOR, ipi_entry, 0);
+}
