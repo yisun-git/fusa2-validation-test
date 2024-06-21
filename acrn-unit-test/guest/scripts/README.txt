@@ -80,3 +80,12 @@ as follows:
 On test machine:
 $./get_native_pci_config.sh
 $scp pci_native_config.h admin@xxx.xxx.xxx.xxx:/home/acrn-unit-test/guest/x86/
+
+###Machine check
+1. Please run machine_check_dump.sh on test machine, a C header file
+machine_check_info.h will be generated, please copy machine_check_info.h to
+acrn-unit-test/guest/x86/， as follows:
+
+On test machine：
+$sudo machine_check_dump.sh
+$scp machine_check_info.h admin@xxx.xxx.xxx.xxx:/home/acrn-unit-test/guest/x86/
