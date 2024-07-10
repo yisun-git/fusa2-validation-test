@@ -1,0 +1,17 @@
+diff --git a/misc/config_tools/schema/checks/rdt_support.xsd b/misc/config_tools/schema/checks/rdt_support.xsd
+index d3b95e259..342fd77a1 100644
+--- a/misc/config_tools/schema/checks/rdt_support.xsd
++++ b/misc/config_tools/schema/checks/rdt_support.xsd
+@@ -27,12 +27,6 @@
+     </xs:annotation>
+   </xs:assert>
+ 
+-  <xs:assert test="every $vm in //vm satisfies $vm//load_order != 'SERVICE_VM' or count($vm//lapic_passthrough[text() = 'y']) = 0 or count(//nested_virtualization_support[text() = 'y']) > 0">
+-    <xs:annotation acrn:severity="error" acrn:report-on="$vm//lapic_passthrough">
+-      <xs:documentation>The Service VM may not use LAPIC passthrough unless hypervisor Nested Virtualization is enabled.</xs:documentation>
+-    </xs:annotation>
+-  </xs:assert>
+-
+   <xs:assert test="empty(vm[load_order ='PRE_LAUNCHED_VM' and vm_type='RTVM']) or
+ 		   every $cap in caches/cache[@level=3]/capability[@id='Software SRAM'] satisfies
+ 		   (compare($cap/end, '0x80000000') &lt; 0 or compare($cap/start, '0xf8000000') &gt;= 0)">
