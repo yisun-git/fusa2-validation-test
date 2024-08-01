@@ -38,6 +38,7 @@
 #define MCG_CTL_P		(1ULL << 8)   /* MCG_CTL register available */
 #define MCG_EXT_P		(1ULL << 9)   /* Extended registers available */
 #define MCG_CMCI_P		(1ULL << 10)  /* CMCI supported */
+#define MCG_TES_P               (1ULL << 11)  /* Software error recovery support present */
 #define MCG_EXT_CNT_MASK	0xFF0000ULL     /* Number of Extended registers */
 #define MCG_EXT_CNT_SHIFT	16ULL
 #define MCG_EXT_CNT(c)		(((c) & MCG_EXT_CNT_MASK) >> MCG_EXT_CNT_SHIFT)
@@ -77,7 +78,6 @@
 #define IA32_FEATURE_CONTROL_LMCE_ON	(1ULL << 20)
 #define CR4_MCE		(1ULL << 6) //(1UL<<6) 64, high 32 reserved
 
-#define MAX_VALID_ERROR_REPORTING_BANK_NUM	(10U)
 #define MAX_ERROR_REPORTING_BANK_NUM		(29U)
 #define MAX_MCI_CTL2_BANK_NUM			(32U)
 #define MAX_VALID_MCI_CTL2_BANK_NUM     (4U)
