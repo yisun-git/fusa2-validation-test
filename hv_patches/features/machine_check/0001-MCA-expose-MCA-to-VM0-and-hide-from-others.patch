@@ -1,0 +1,196 @@
+From 5b8253d6daf35a56f779942341b6cdd22a35063e Mon Sep 17 00:00:00 2001
+From: Fei Li <fei1.li@intel.com>
+Date: Mon, 17 Jun 2024 15:36:43 +0800
+Subject: [PATCH] MCA: expose MCA to VM0 and hide from others
+
+Signed-off-by: Fei Li <fei1.li@intel.com>
+---
+ hypervisor/arch/x86/guest/vcpuid.c         |  4 ++
+ hypervisor/arch/x86/guest/virtual_cr.c     |  3 +-
+ hypervisor/arch/x86/guest/vm.c             | 10 +++++
+ hypervisor/arch/x86/guest/vmsr.c           | 45 ++++++++++++++--------
+ hypervisor/include/arch/x86/asm/guest/vm.h |  3 ++
+ hypervisor/include/public/acrn_common.h    |  2 +
+ 6 files changed, 49 insertions(+), 18 deletions(-)
+
+diff --git a/hypervisor/arch/x86/guest/vcpuid.c b/hypervisor/arch/x86/guest/vcpuid.c
+index d5a34bcbf..f28b14fe9 100644
+--- a/hypervisor/arch/x86/guest/vcpuid.c
++++ b/hypervisor/arch/x86/guest/vcpuid.c
+@@ -799,6 +799,10 @@ static void guest_cpuid_01h(struct acrn_vcpu *vcpu, uint32_t *eax, uint32_t *ebx
+ 		/* mask Debug Store feature */
+ 		*edx &= ~CPUID_EDX_DTES;
+ 	}
++
++	if (!is_mca_pt_configured(vcpu->vm)) {
++		*edx &= ~(CPUID_EDX_MCE | CPUID_EDX_MCA);
++	}
+ }
+ 
+ static void guest_cpuid_0bh(struct acrn_vcpu *vcpu, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
+diff --git a/hypervisor/arch/x86/guest/virtual_cr.c b/hypervisor/arch/x86/guest/virtual_cr.c
+index 1904211f5..22eafb1e8 100644
+--- a/hypervisor/arch/x86/guest/virtual_cr.c
++++ b/hypervisor/arch/x86/guest/virtual_cr.c
+@@ -342,7 +342,8 @@ static bool is_cr4_write_valid(struct acrn_vcpu *vcpu, uint64_t cr4)
+ {
+ 	bool ret = true;
+ 
+-	if (!is_valid_cr4(cr4) || (is_long_mode(vcpu) && ((cr4 & CR4_PAE) == 0UL))) {
++	if (!is_valid_cr4(cr4) || (is_long_mode(vcpu) && ((cr4 & CR4_PAE) == 0UL)) ||
++		(!is_mca_pt_configured(vcpu->vm) && ((cr4 & CR4_MCE) != 0UL))) {
+ 		ret = false;
+ 	}
+ 
+diff --git a/hypervisor/arch/x86/guest/vm.c b/hypervisor/arch/x86/guest/vm.c
+index 1ab7eb312..8675948b0 100644
+--- a/hypervisor/arch/x86/guest/vm.c
++++ b/hypervisor/arch/x86/guest/vm.c
+@@ -146,6 +146,13 @@ bool is_lapic_pt_configured(const struct acrn_vm *vm)
+ 	return ((vm_config->guest_flags & GUEST_FLAG_LAPIC_PASSTHROUGH) != 0U);
+ }
+ 
++bool is_mca_pt_configured(const struct acrn_vm *vm)
++{
++	struct acrn_vm_config *vm_config = get_vm_config(vm->vm_id);
++
++	return ((vm_config->guest_flags & GUEST_FLAG_MCA_PASSTHROUGH) != 0U);
++}
++
+ /**
+  * @pre vm != NULL && vm_config != NULL && vm->vmid < CONFIG_MAX_VM_NUM
+  */
+@@ -1109,6 +1116,9 @@ int32_t prepare_vm(uint16_t vm_id, struct acrn_vm_config *vm_config)
+ 		pr_err("Invalid VM name: %s", vm_config->name);
+ 		err = -1;
+ 	} else {
++		if (vm_id == 0U)
++			vm_config->guest_flags |= GUEST_FLAG_MCA_PASSTHROUGH;
++
+ 		/* Service VM and pre-launched VMs launch on all pCPUs defined in vm_config->cpu_affinity */
+ 		err = create_vm(vm_id, vm_config->cpu_affinity, vm_config, &vm);
+ 	}
+diff --git a/hypervisor/arch/x86/guest/vmsr.c b/hypervisor/arch/x86/guest/vmsr.c
+index 65ba1059f..0b0e17faa 100644
+--- a/hypervisor/arch/x86/guest/vmsr.c
++++ b/hypervisor/arch/x86/guest/vmsr.c
+@@ -55,8 +55,6 @@ static uint32_t emulated_guest_msrs[NUM_EMULATED_MSRS] = {
+ 	MSR_IA32_PERF_CTL,
+ 	MSR_IA32_FEATURE_CONTROL,
+ 
+-	MSR_IA32_MCG_CAP,
+-	MSR_IA32_MCG_STATUS,
+ 	MSR_IA32_MISC_ENABLE,
+ 
+ 	/* Don't support SGX Launch Control yet, read only */
+@@ -250,14 +248,6 @@ static const uint32_t unsupported_msrs[] = {
+ 	/* Silicon Debug Feature: CPUID.01H.ECX[11] (X86_FEATURE_SDBG) */
+ 	MSR_IA32_DEBUG_INTERFACE,
+ 
+-	/* Machine Check Exception: CPUID.01H.EDX[5] (X86_FEATURE_MCE) */
+-	MSR_IA32_MCG_CAP,
+-	MSR_IA32_MCG_STATUS,
+-	MSR_IA32_MCG_CTL,
+-	MSR_IA32_MCG_EXT_CTL,
+-	/* MSR 0x280 ... 0x29F, not in this array */
+-	/* MSR 0x400 ... 0x473, not in this array */
+-
+ 	/* PRMRR related MSRs are configured by native BIOS / bootloader */
+ 	MSR_PRMRR_PHYS_BASE,
+ 	MSR_PRMRR_PHYS_MASK,
+@@ -524,6 +514,22 @@ void init_msr_emulation(struct acrn_vcpu *vcpu)
+ 		enable_msr_interception(msr_bitmap, emulated_guest_msrs[i], INTERCEPT_READ_WRITE);
+ 	}
+ 
++	enable_msr_interception(msr_bitmap, MSR_IA32_P5_MC_ADDR, INTERCEPT_READ_WRITE);
++	enable_msr_interception(msr_bitmap, MSR_IA32_P5_MC_TYPE, INTERCEPT_READ_WRITE);
++	if (!is_mca_pt_configured(vcpu->vm)) {
++		enable_msr_interception(msr_bitmap, MSR_IA32_MCG_CAP, INTERCEPT_READ_WRITE);
++		enable_msr_interception(msr_bitmap, MSR_IA32_MCG_STATUS, INTERCEPT_READ_WRITE);
++		enable_msr_interception(msr_bitmap, MSR_IA32_MCG_CTL, INTERCEPT_READ_WRITE);
++
++		for (i = MSR_IA32_MC0_CTL2; i < MSR_IA32_MC31_CTL2; i++) {
++			enable_msr_interception(msr_bitmap, i, INTERCEPT_READ_WRITE);
++		}
++
++		for (i = MSR_IA32_MC0_CTL; i < MSR_IA32_MC28_MISC; i++) {
++			enable_msr_interception(msr_bitmap, i, INTERCEPT_READ_WRITE);
++		}
++	}
++
+ 	for (i = 0U; i < ARRAY_SIZE(mtrr_msrs); i++) {
+ 		enable_msr_interception(msr_bitmap, mtrr_msrs[i], INTERCEPT_READ_WRITE);
+ 	}
+@@ -758,15 +764,19 @@ int32_t rdmsr_vmexit_handler(struct acrn_vcpu *vcpu)
+ 		v = vlapic_get_apicbase(vcpu_vlapic(vcpu));
+ 		break;
+ 	}
+-	case MSR_IA32_FEATURE_CONTROL:
++
++	case MSR_IA32_P5_MC_ADDR:
++	case MSR_IA32_P5_MC_TYPE:
++	case MSR_IA32_MCG_CAP:
++	case MSR_IA32_MCG_STATUS:
+ 	{
+-		v = vcpu_get_guest_msr(vcpu, MSR_IA32_FEATURE_CONTROL);
++		v = 0UL;
+ 		break;
+ 	}
+-	case MSR_IA32_MCG_CAP:
+-	case MSR_IA32_MCG_STATUS:
++
++	case MSR_IA32_FEATURE_CONTROL:
+ 	{
+-		v = 0U;
++		v = vcpu_get_guest_msr(vcpu, MSR_IA32_FEATURE_CONTROL);
+ 		break;
+ 	}
+ 	case MSR_IA32_MISC_ENABLE:
+@@ -1228,14 +1238,15 @@ int32_t wrmsr_vmexit_handler(struct acrn_vcpu *vcpu)
+ 		err = vlapic_set_apicbase(vcpu_vlapic(vcpu), v);
+ 		break;
+ 	}
++
+ 	case MSR_IA32_MCG_STATUS:
+ 	{
+-		if (v != 0U) {
++		if (v != 0UL) {
+ 			err = -EACCES;
+ 		}
+ 		break;
+ 	}
+-	case MSR_IA32_MCG_CAP:
++
+ 	case MSR_IA32_FEATURE_CONTROL:
+ 	case MSR_IA32_SGXLEPUBKEYHASH0:
+ 	case MSR_IA32_SGXLEPUBKEYHASH1:
+diff --git a/hypervisor/include/arch/x86/asm/guest/vm.h b/hypervisor/include/arch/x86/asm/guest/vm.h
+index 0503ed8b4..05dd01302 100644
+--- a/hypervisor/include/arch/x86/asm/guest/vm.h
++++ b/hypervisor/include/arch/x86/asm/guest/vm.h
+@@ -263,6 +263,9 @@ int32_t prepare_os_image(struct acrn_vm *vm);
+ void vrtc_init(struct acrn_vm *vm);
+ 
+ bool is_lapic_pt_configured(const struct acrn_vm *vm);
++
++bool is_mca_pt_configured(const struct acrn_vm *vm);
++
+ bool is_pmu_pt_configured(const struct acrn_vm *vm);
+ bool is_rt_vm(const struct acrn_vm *vm);
+ bool is_stateful_vm(const struct acrn_vm *vm);
+diff --git a/hypervisor/include/public/acrn_common.h b/hypervisor/include/public/acrn_common.h
+index 3990e2fc8..b00bec193 100644
+--- a/hypervisor/include/public/acrn_common.h
++++ b/hypervisor/include/public/acrn_common.h
+@@ -66,6 +66,8 @@
+ #define GUEST_FLAG_VHWP				(1UL << 12U)    /* Whether the VM supports vHWP */
+ #define GUEST_FLAG_VTM				(1UL << 13U)    /* Whether the VM supports virtual thermal monitor */
+ 
++#define GUEST_FLAG_MCA_PASSTHROUGH		(1UL << 14)
++
+ /* TODO: We may need to get this addr from guest ACPI instead of hardcode here */
+ #define VIRTUAL_SLEEP_CTL_ADDR		0x400U /* Pre-launched VM uses ACPI reduced HW mode and sleep control register */
+ #define VIRTUAL_PM1A_CNT_ADDR		0x404U
+-- 
+2.34.1
+

@@ -6,4 +6,7 @@
 2. enable_local_apic.patch
 	Fix acrn build error when enabling local apic.
 ## Features patches
+Machine check
+0001-MCA-expose-MCA-to-VM0-and-hide-from-others.patch
+	JIRA issue ID: ACRN-10753 (Hide/expose some MSRs to meet machine check req)
 
