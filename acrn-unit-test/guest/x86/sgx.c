@@ -191,6 +191,17 @@ static void sgx_rqmid_27400_guest_cpuid_leaf_12h()
 }
 
 /**
+ * @brief case name: Guest CPUID SGX_KEYS
+ *
+ * Summary: Execute CPUID.7H to get EDX[bit 1]
+ */
+static void sgx_ACRN_T13683_Guest_CPUID_SGX_KEYS_001()
+{
+	report("\t\t sgx_ACRN_T13683_Guest_CPUID_SGX_KEYS_001",
+		((cpuid(7).d) & CPUID_01_SGX_KEYS) == 0);
+}
+
+/**
  * @brief case name: Guestee that MSR UNCORE PRMRR PHYS MASK_001
  *
  * Summary: Read from guest MSR register msr_uncore_prmrr_phys_mask shall generate #GP
@@ -1210,6 +1221,7 @@ static void print_case_list()
 	printf("\t\t Case ID:%d case name:%s\n\r", 38061u, "Execute ENCLU_eax_05h_006");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38062u, "Execute ENCLU_eax_06h_007");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38063u, "Execute ENCLU_eax_07h_008");
+	printf("\t\t Case ID:%s case name:%s\n\r", "T13683", "Guest_CPUID_SGX_KEYS_001");
 #endif
 }
 
@@ -1287,6 +1299,8 @@ static void test_sgx()
 	do_at_ring3(sgx_rqmid_38061_enclu_eax_05h_006, "");
 	do_at_ring3(sgx_rqmid_38062_enclu_eax_06h_007, "");
 	do_at_ring3(sgx_rqmid_38063_enclu_eax_07h_008, "");
+
+	sgx_ACRN_T13683_Guest_CPUID_SGX_KEYS_001();
 #endif
 }
 

@@ -19,6 +19,7 @@
 #define SGX_ENABLE_BIT				(1ul << 18)
 #define SGX_LAUCH_BIT				(1ul << 17)
 #define CPUID_07_SGX				(1 << 30)
+#define CPUID_01_SGX_KEYS                       (1 << 1)
 #define VALUE_TO_WRITE_MSR			0x12
 #define IA32_FEATURE_CONTROL_STARTUP_ADDR	(0x6000)
 #define IA32_FEATURE_CONTROL_INIT1_ADDR		(0x8000)
