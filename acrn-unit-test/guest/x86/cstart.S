@@ -121,10 +121,8 @@ pt_root:
 mb_magic = 0x1BADB002
 mb_flags = 0x2
 
-#if (defined(IN_NON_SAFETY_VM) || defined(IN_NATIVE))
 	# multiboot header
 	.long mb_magic, mb_flags, 0 - (mb_magic + mb_flags)
-#endif
 mb_cmdline = 16
 
 MSR_GS_BASE = 0xc0000101

@@ -114,11 +114,8 @@ pt_root:	.quad ptl4
 
 mb_magic = 0x1BADB002
 mb_flags = 0x2
-/*only  safte vm image does not have multiboot header*/
-#ifndef IN_SAFETY_VM
 	# multiboot header
 	.long mb_magic, mb_flags, 0 - (mb_magic + mb_flags)
-#endif
 mb_cmdline = 16
 
 MSR_GS_BASE = 0xc0000101
