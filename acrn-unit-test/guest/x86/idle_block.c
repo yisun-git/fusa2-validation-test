@@ -512,7 +512,7 @@ static void idle_rqmid_24185_ia32_misc_enable_following_start_up_001(void)
 	report("%s", (*ptr & ENABLE_MONITOR_FSM_BIT) == 0U,
 		   __FUNCTION__);
 }
-#ifdef IN_NON_SAFETY_VM
+
 /**
  * @brief Case name: IDLE_IA32_MONITOR_FILTER_SIZE_initial_state_following_INIT_001
  * Summary: AACRN hypervisor shall set initial guest IA32_MONITOR_FILTER_SIZE  to 0 following INIT.
@@ -557,7 +557,6 @@ static void idle_rqmid_24111_ia32_misc_enable_following_init_001(void)
 
 	report("%s", is_pass, __FUNCTION__);
 }
-#endif
 #endif
 #ifdef IN_NATIVE
 /**
@@ -655,12 +654,10 @@ static void print_case_list(void)
 		   "idle_rqmid_24186_IA32_monitor_filter_size_following_start_up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 24185,
 		   "idle_rqmid_24185_ia32_misc_enable_following_start_up_001");
-#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 24188,
 		   "idle_rqmid_24188_IA32_monitor_filter_size_following_init_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 24111,
 		   "idle_rqmid_24111_ia32_misc_enable_following_init_001");
-#endif
 #else
 	printf("\t\t Case ID:%d case name:%s\n\r", 39159,
 		   "idle_rqmid_39159_idle_physical_expose_PAUSE_support_001");
@@ -692,10 +689,8 @@ static void test_idbl(void)
 	idle_rqmid_29781_hide_monitor_Mwati_support_004();
 	idle_rqmid_24186_IA32_monitor_filter_size_following_start_up_001();
 	idle_rqmid_24185_ia32_misc_enable_following_start_up_001();
-#ifdef IN_NON_SAFETY_VM
 	idle_rqmid_24188_IA32_monitor_filter_size_following_init_001();
 	idle_rqmid_24111_ia32_misc_enable_following_init_001();
-#endif
 #else
 	idle_rqmid_39159_idle_physical_expose_PAUSE_support_001();
 	idle_rqmid_39160_idle_physical_expose_PAUSE_support_002();

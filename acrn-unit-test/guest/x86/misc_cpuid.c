@@ -1145,7 +1145,6 @@ static void misc_cpuid_rqmid_38370_ia32_misc_enable_following_start_up_001(void)
 		   __FUNCTION__);
 }
 
-#ifdef IN_NON_SAFETY_VM
 /**
  * @brief case name: Set the initial guest IA32_MISC_ENABLE [bit 23] to 1H following INIT_001
  * Summary: Check the initial value of IA32_MISC_ENABLE[bit 23] at AP entry, the result shall be 1H.
@@ -1166,7 +1165,7 @@ static void misc_cpuid_rqmid_38369_ia32_misc_enable_following_init_001(void)
 
 	report("%s", is_pass, __FUNCTION__);
 }
-#endif
+
 /**
  * @brief case name:Guarantee that the vCPU receives #UD when a vCPU attempts to execute SHA1MSG1/SHA1MSG2/
  * SHA1NEXTE/SHA1RNDS4/SHA256MSG1/SHA256MSG2/SHA256RNDS2_001
@@ -1765,10 +1764,9 @@ static void print_case_list(void)
 	"Guarantee that the vCPU receives #UD when a vCPU attempts to execute RDPID_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38306u,
 	"No operation when a vCPU attempts to execute PREFETCHWT1_001");
-#ifdef IN_NON_SAFETY_VM
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 38369u,
 	"Set the initial guest IA32_MISC_ENABLE [bit 23] to 1H following INIT_001");
-#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 38370u,
 	"Set the initial guest IA32_MISC_ENABLE [bit 23] to 1H following start-up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38372u,
@@ -1860,9 +1858,8 @@ int main(void)
 	misc_cpuid_rqmid_38295_write_msr_ia32_misc_enable();
 	misc_cpuid_rqmid_38299_execute_rdpid();
 	misc_cpuid_rqmid_38306_execute_prefetchwt1();
-#ifdef IN_NON_SAFETY_VM
+
 	misc_cpuid_rqmid_38369_ia32_misc_enable_following_init_001();
-#endif
 	misc_cpuid_rqmid_38370_ia32_misc_enable_following_start_up_001();
 	misc_cpuid_rqmid_38372_execute_sha_related_instruction();
 	misc_cpuid_rqmid_38415_cpuid_eax01_ecx0_001();

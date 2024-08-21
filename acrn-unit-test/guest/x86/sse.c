@@ -152,7 +152,7 @@ static bool is_sse_x_support(enum sse_instuction_e ins_type)
 	return is;
 }
 
-static bool test_sse_instruction_PF_exception(enum sse_instuction_e ins_type, gp_trigger_func instruction_fun, int size)
+static __unused bool test_sse_instruction_PF_exception(enum sse_instuction_e ins_type, gp_trigger_func instruction_fun, int size)
 {
 	bool is_pass = false;
 	int cnt = 0;
@@ -332,8 +332,6 @@ static __unused void sse_rqmid_23208_SSE_XMM0_XMM15_initial_state_following_star
 	report("%s", 1, __FUNCTION__);
 }
 
-#ifdef IN_NON_SAFETY_VM
-
 /*
  * @brief case name: SSE MXCSR initial state following INIT_002
  *
@@ -410,8 +408,6 @@ static void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
 	ap_start_count = 0;
 }
 
-#endif
-
 /*
  * @brief case name: SSE CR4.OSFXSR initial state following INIT_001
  *
@@ -433,6 +429,8 @@ static __unused void sse_rqmid_23189_SSE_CR4_OSFXSR_initial_state_following_INIT
 
 	report("%s \n", is_pass, __FUNCTION__);
 }
+
+#ifdef IN_NON_SAFETY_VM
 
 /*
  * @brief case name: SSE instructions support_001
@@ -847,6 +845,7 @@ static __unused void sse_rqmid_30637_SSE3_instructions_support_64bit_Mode_MOVDDU
 	is_pass = test_sse_instruction_PF_exception(SSE3_INS, sse3_64bit_mode_MOVDDUP_pf, sizeof(uint64_t));
 	report("%s \n", is_pass, __FUNCTION__);
 }
+#endif
 
 #else
 /*
@@ -969,7 +968,6 @@ static __unused void sse_rqmid_30916_SSE2_instructions_support_Protected_Mode_PS
 	report("%s \n", is_pass, __FUNCTION__);
 }
 
-
 #endif
 
 static void sse_get_64bit_xsave_value_for_startup(void)
@@ -1011,10 +1009,6 @@ static __unused void print_case_list(void)
 	"SSE2 instructions support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27527u,
 	"ACRN General support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 23188u,
-	"SSE CR4.OSFXSR initial state following startup_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 23189u,
-	"SSE CR4.OSFXSR initial state following INIT_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27813u,
 	"SSE2 instructions support_004");
 	printf("\t\t Case ID:%d case name:%s\n\r", 30071u,
@@ -1043,11 +1037,18 @@ static __unused void print_case_list(void)
 	"SSE3 instructions support_64 bit Mode PALIGNR #PF_009");
 	printf("\t\t Case ID:%d case name:%s\n\r", 30637u,
 	"SSE3 instructions support_64 bit Mode MOVDDUP #PF_008");
-	printf("\t\t Case ID:%d case name:%s\n\r", 23197u,
+#endif
+	printf("\t\t Case ID:%d case name:%s\n\r", 23189u,
+	"SSE CR4.OSFXSR initial state following INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 42027u,
 	"SSE MXCSR initial state following INIT_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 23197u,
+	"SSE MXCSR unchanged state following INIT_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 27437u,
 	"SSE XMM0-XMM15 initial state following INIT");
-#endif
+
+	printf("\t\t Case ID:%d case name:%s\n\r", 23188u,
+	"SSE CR4.OSFXSR initial state following startup_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23207u,
 	"SSE MXCSR initial state following start up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23208u,
@@ -1225,7 +1226,6 @@ int main(void)
 	sse_rqmid_27797_SSE_instructions_support_001();
 	sse_rqmid_27800_SSE2_instructions_support_001();
 	sse_rqmid_27527_ACRN_General_support_001();
-	sse_rqmid_23189_SSE_CR4_OSFXSR_initial_state_following_INIT_001();
 	sse_rqmid_27813_SSE2_instructions_support_004();
 	sse_rqmid_30071_SSE2_instructions_support_64_bit_Mode_CVTPS2DQ_PF_001();
 	sse_rqmid_27804_SSE3_instructions_support_001();
@@ -1240,10 +1240,12 @@ int main(void)
 	sse_rqmid_31001_SSE_instructions_support_64bit_Mode_PMULHUW_PF_011();
 	sse_rqmid_30813_SSE3_instructions_support_64bit_Mode_PALIGNR_PF_009();
 	sse_rqmid_30637_SSE3_instructions_support_64bit_Mode_MOVDDUP_PF_008();
+#endif
+	sse_rqmid_23189_SSE_CR4_OSFXSR_initial_state_following_INIT_001();
 	sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002();
 	sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001();
 	sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001();
-#endif
+
 	sse_rqmid_23207_SSE_MXCSR_initial_state_following_startup_001();
 	sse_rqmid_23208_SSE_XMM0_XMM15_initial_state_following_startup_001();
 	sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_startup_001();

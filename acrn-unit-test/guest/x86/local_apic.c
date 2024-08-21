@@ -435,19 +435,14 @@ static __unused void msi_trigger_interrupt(void)
 	msi_int_simulate();
 	delay_loop_ms(5000);
 }
-#ifdef IN_NON_SAFETY_VM
+
 void save_unchanged_reg()
 {
 	ulong cr8 = 0;
 	asm("mov %%cr8, %%rax;mov %%rax, %0":"=m"(cr8));
 	*(ulong *) CR8_INIT_ADDR = cr8;
 }
-#else
-void save_unchanged_reg()
-{
-	asm volatile ("pause");
-}
-#endif
+
 #ifndef IN_NATIVE
 /**
  *
@@ -1905,7 +1900,7 @@ void local_apic_rqmid_27926_cr8_is_mirror_of_tpr(void)
 		   && ((tmp_tpr & 0xf) == 0U) && ((tmp_tpr >> 4) == 0x5),	\
 		   __FUNCTION__);
 }
-#ifdef IN_NON_SAFETY_VM
+
 /**
  * @brief case name APIC Base field state following INIT
  *
@@ -2469,7 +2464,6 @@ void local_apic_rqmid_38713_IA32_APIC_BASE_state_of_following_init(void)
 	report("%s", *init_addr == 0xfee00c00U, __FUNCTION__);
 }
 
-#endif
 /**
  * @brief case name APIC Base field state following start-up
  *
@@ -5608,7 +5602,6 @@ static void print_case_list()
 	printf("\t Case ID:%d case name:%s\n\r", 27926,
 		   "local_apic_rqmid_27926_cr8_is_mirror_of_tpr");
 	/*strategy---------474:Local APIC init & start-up------------*/
-#ifdef IN_NON_SAFETY_VM
 	printf("\t Case ID:%d case name:%s\n\r", 27681,
 		   "local_apic_rqmid_27681_apic_base_field_state_of_ap_following_init_001");
 	printf("\t Case ID:%d case name:%s\n\r", 38686,
@@ -5653,7 +5646,7 @@ static void print_case_list()
 		   "local_apic_rqmid_38711_IA32_TSC_DEADLINE_state_of_following_init");
 	printf("\t Case ID:%d case name:%s\n\r", 38713,
 		   "local_apic_rqmid_38713_IA32_APIC_BASE_state_of_following_init");
-#endif
+
 	printf("\t Case ID:%d case name:%s\n\r", 27922,
 		   "local_apic_rqmid_27922_apic_base_field_state_of_bp_following_start_up_001");
 	printf("\t Case ID:%d case name:%s\n\r", 38737,
@@ -5932,7 +5925,27 @@ int main(int ac, char **av)
 	local_apic_rqmid_39320_x2apic_lvt_with_ExtINT_delivery_mode_004();
 	local_apic_rqmid_27926_cr8_is_mirror_of_tpr();
 	/*strategy---------474:Local APIC init & start-up------------*/
-#ifdef IN_NON_SAFETY_VM
+	local_apic_rqmid_27922_apic_base_field_state_of_bp_following_start_up_001();
+	local_apic_rqmid_38737_LVT_CMCI_state_of_following_start_up();
+	local_apic_rqmid_38738_LVT_LINT0_state_of_following_start_up();
+	local_apic_rqmid_38739_LVT_LINT1_state_of_following_start_up();
+	local_apic_rqmid_38740_LVT_ERROR_Register_state_of_following_start_up();
+	local_apic_rqmid_38741_LVT_Thermal_Monitor_Register_state_of_following_start_up();
+	local_apic_rqmid_38743_LVT_Performance_Conuter_Register_state_of_following_start_up();
+	local_apic_rqmid_39455_LVT_Timer_Register_state_of_following_start_up();
+	local_apic_rqmid_38745_ESR_state_of_following_start_up();
+	local_apic_rqmid_38746_SVR_state_of_following_start_up();
+	local_apic_rqmid_38747_ICR_state_of_following_start_up();
+	local_apic_rqmid_38748_TPR_state_of_following_start_up();
+	local_apic_rqmid_38749_PPR_state_of_following_start_up();
+	local_apic_rqmid_38750_IRR_state_of_following_start_up();
+	local_apic_rqmid_38753_ISR_state_of_following_start_up();
+	local_apic_rqmid_38754_TMR_state_of_following_start_up();
+	local_apic_rqmid_38755_CR8_state_of_following_start_up();
+	local_apic_rqmid_38756_TICR_state_of_following_start_up();
+	local_apic_rqmid_38757_TCCR_state_of_following_start_up();
+	local_apic_rqmid_38758_DCR_state_of_following_start_up();
+	local_apic_rqmid_38759_IA32_TSC_DEADLINE_state_of_following_start_up();
 	local_apic_rqmid_27681_apic_base_field_state_of_ap_following_init_001();
 	local_apic_rqmid_38686_LVT_CMCI_state_of_following_init();
 	local_apic_rqmid_38687_LVT_LINT0_state_of_following_init();
@@ -5955,28 +5968,6 @@ int main(int ac, char **av)
 	local_apic_rqmid_38710_DCR_state_of_following_init();
 	local_apic_rqmid_38711_IA32_TSC_DEADLINE_state_of_following_init();
 	local_apic_rqmid_38713_IA32_APIC_BASE_state_of_following_init();
-#endif
-	local_apic_rqmid_27922_apic_base_field_state_of_bp_following_start_up_001();
-	local_apic_rqmid_38737_LVT_CMCI_state_of_following_start_up();
-	local_apic_rqmid_38738_LVT_LINT0_state_of_following_start_up();
-	local_apic_rqmid_38739_LVT_LINT1_state_of_following_start_up();
-	local_apic_rqmid_38740_LVT_ERROR_Register_state_of_following_start_up();
-	local_apic_rqmid_38741_LVT_Thermal_Monitor_Register_state_of_following_start_up();
-	local_apic_rqmid_38743_LVT_Performance_Conuter_Register_state_of_following_start_up();
-	local_apic_rqmid_39455_LVT_Timer_Register_state_of_following_start_up();
-	local_apic_rqmid_38745_ESR_state_of_following_start_up();
-	local_apic_rqmid_38746_SVR_state_of_following_start_up();
-	local_apic_rqmid_38747_ICR_state_of_following_start_up();
-	local_apic_rqmid_38748_TPR_state_of_following_start_up();
-	local_apic_rqmid_38749_PPR_state_of_following_start_up();
-	local_apic_rqmid_38750_IRR_state_of_following_start_up();
-	local_apic_rqmid_38753_ISR_state_of_following_start_up();
-	local_apic_rqmid_38754_TMR_state_of_following_start_up();
-	local_apic_rqmid_38755_CR8_state_of_following_start_up();
-	local_apic_rqmid_38756_TICR_state_of_following_start_up();
-	local_apic_rqmid_38757_TCCR_state_of_following_start_up();
-	local_apic_rqmid_38758_DCR_state_of_following_start_up();
-	local_apic_rqmid_38759_IA32_TSC_DEADLINE_state_of_following_start_up();
 	/*strategy---------481:Local APIC Timer support------------*/
 	local_apic_rqmid_27651_expose_tsc_deadline_timer_mode_support_001(true);
 	local_apic_rqmid_38781_expose_tsc_deadline_timer_mode_support_002();

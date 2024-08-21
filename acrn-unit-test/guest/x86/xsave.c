@@ -3309,16 +3309,10 @@ struct xsave_case native_cases[NUM_NATIVE_CASES] = {
 	{40367u, "XSAVE physical PKRU support_001"},
 };
 
-#define NUM_NON_SAFETY_VM_CASES		5U
-struct xsave_case non_safety_vm_cases[NUM_NON_SAFETY_VM_CASES] = {
-	{23154u, "XSAVE_CR4_initial_state_following_INIT_001"},
-	{36768u, "XSAVE_XCR0_initial_state_following_INIT_002"},
-	{24108u, "XSAVE_XINUSE[bit 2:0]_initial_state_following_INIT_002"},
-	{23151u, "XSAVE_XCR0_initial_state_following_INIT_001"},
-	{23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001"},
-};
+#define NUM_NON_SAFETY_VM_CASES		0U
+struct xsave_case non_safety_vm_cases[NUM_NON_SAFETY_VM_CASES] = {};
 
-#define NUM_COMMON_CASES		55U
+#define NUM_COMMON_CASES		60U
 struct xsave_case common_cases[NUM_COMMON_CASES] = {
 	{23633u, "XSAVE hide AVX-512 support_001"},
 	{22826u, "XSAVE general support_010"},
@@ -3333,6 +3327,12 @@ struct xsave_case common_cases[NUM_COMMON_CASES] = {
 	{23153u, "XSAVE_CR4_initial_state_following_start-up_001"},
 	{22853u, "XSAVE_XCR0_initial_state_following_start-up_001"},
 	{23634u, "XSAVE XINUSE[bit 2:0] initial state following start-up_001"},
+
+	{23154u, "XSAVE_CR4_initial_state_following_INIT_001"},
+	{36768u, "XSAVE_XCR0_initial_state_following_INIT_002"},
+	{24108u, "XSAVE_XINUSE[bit 2:0]_initial_state_following_INIT_002"},
+	{23151u, "XSAVE_XCR0_initial_state_following_INIT_001"},
+	{23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001"},
 
 	{36703u, "XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_X87"},
 	{23636u, "XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_SSE"},
@@ -3432,7 +3432,7 @@ int main(void)
 	xsave_rqmid_28392_physical_init_and_modified_optimizations_AC_001();
 	xsave_rqmid_40367_physical_pkru_support_001();
 #else
-#ifdef IN_NON_SAFETY_VM
+
 	/* following INIT cases */
 	xsave_rqmid_23154_xsave_cr4_initial_state_following_init_001();
 
@@ -3447,7 +3447,7 @@ int main(void)
 	xsave_rqmid_23151_xcr0_initial_state_following_init_001();
 	/* This case verifies XINUSE[2:0] is unchanged following INIT (when XINUSE[1] has been set to 1 on the AP). */
 	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_001();
-#endif
+
 	/*
 	 * NOTE:
 	 * Following three test cases has to be executed before XRSTOR instruction has been executed.

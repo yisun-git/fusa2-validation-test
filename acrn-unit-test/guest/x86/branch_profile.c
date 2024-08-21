@@ -394,7 +394,6 @@ static void branch_rqmid_28215_IA32_misc_enable_following_startup_001()
  * Summary: ACRN hypervisor should set  guest IA32_MISC_ENABLE[12:11]  to 0x3H.
  *
  */
-#ifdef IN_NON_SAFETY_VM
 static void branch_rqmid_28339_IA32_misc_enable_following_init_001()
 {
 	/*@cstart64.S, AP will save IA32_MISC_ENABLE lower 32bit value to 0x7000*/
@@ -402,7 +401,7 @@ static void branch_rqmid_28339_IA32_misc_enable_following_init_001()
 	report("%s", ((ia32_misc_enable >> 11) & 0x3) == 0x3, __FUNCTION__);
 
 }
-#endif
+
 static void print_case_list(void)
 {
 	printf("\t\t branch profile feature case list:\n\r");
@@ -413,9 +412,9 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 28251u, "branch profile IA32 debugctl 001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28282u, "branch profile IA32 debugctl 002");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28338u, "branch profile CPUID01H EDX21 001");
-#ifdef IN_NON_SAFETY_VM
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 28339u, "branch profile IA32 misc enable following init 001");
-#endif
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 28215u, "branch profile IA32 misc enable following startup_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28216u, "CPUID_01H_ECX_bit4_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28217u, "MSR_LASTBRANCH_X_TO_IP_001");
@@ -465,9 +464,8 @@ int main(void)
 	branch_rqmid_28338_CPUID01H_EDX21_001();
 	branch_rqmid_28216_CPUID_01H_ECX_bit4_001();
 	branch_rqmid_28215_IA32_misc_enable_following_startup_001();
-#ifdef IN_NON_SAFETY_VM
 	branch_rqmid_28339_IA32_misc_enable_following_init_001();
-#endif
+
 	return report_summary();
 }
 

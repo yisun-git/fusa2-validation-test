@@ -290,7 +290,6 @@ static void  avx_rqmid_23169_AVX_initial_YMM_register_following_startup_001()
 	report("%s", ret, __FUNCTION__);
 }
 
-#ifdef IN_NON_SAFETY_VM
 /*
  * @brief case name:  23170:AVX initial YMM register following INIT_001.
  *
@@ -347,8 +346,6 @@ static void  avx_rqmid_37029_AVX_initial_YMM_register_following_INIT_002()
 	wait_ap_ready();
 	ap_start_count = 0;
 }
-
-#endif
 
 /*
  * @brief case name:  27412:AVX2 exposure_001.
@@ -896,10 +893,9 @@ static void print_case_list(void)
 #else
 #ifdef __x86_64__
 	printf("\t Case ID:%d case name:%s\n\r", 23169, "AVX initial YMM register following startup 001");
-#ifdef IN_NON_SAFETY_VM
 	printf("\t Case ID:%d case name:%s\n\r", 23170, "AVX initial YMM register following INIT 001");
 	printf("\t Case ID:%d case name:%s\n\r", 37029, "AVX initial YMM register following INIT 002");
-#endif
+
 	printf("\t Case ID:%d case name:%s\n\r", 27279, "AVX-512 hiding DETECTION FOUNDATION INSTRUCTIONS_001");
 	printf("\t Case ID:%d case name:%s\n\r", 27309, "AVX-512 hiding additional 512bit instruction ext 001");
 	printf("\t Case ID:%d case name:%s\n\r", 27310,
@@ -943,10 +939,9 @@ int main(void)
 #else
 #ifdef __x86_64__
 	avx_rqmid_23169_AVX_initial_YMM_register_following_startup_001();
-#ifdef IN_NON_SAFETY_VM
 	avx_rqmid_23170_AVX_initial_YMM_register_following_INIT_001();
 	avx_rqmid_37029_AVX_initial_YMM_register_following_INIT_002();
-#endif
+
 	avx_rqmid_27279_avx512_hiding_DETECTION_OF_AVX512_FOUNDATION_INSTRUCTIONS();
 	avx_rqmid_27309_avx512_hiding_additional_512bit_instruction_ext_001();
 	avx_rqmid_27310_avx512_hiding_additional_512bit_instruction_ext_002();

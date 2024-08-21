@@ -1286,9 +1286,7 @@ static void print_case_list(void)
 	printf("\t\t VMX feature case list:\n\r");
 #ifdef __x86_64__
 /******************************sample case part************************************/
-#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 28988u, "CR4.VMXE[13] initial INIT_001");
-#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 26828u, "cpuid.01h:ECX[5]_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 26856u, "IA32_VMX_CR0_FIXED0_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 29008u, "VMCALL_001");
@@ -1354,9 +1352,7 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 40132u, "Write_IA32_FEATURE_CONTROL[bit 2:1]_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28990u, "CR4.VMXE[13] initial start-up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 38554u, "IA32_FEATURE_CONTROL[bit 2:1] following start-up_001");
-#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 38557u, "IA32_FEATURE_CONTROL[bit 2:1] following INIT_001");
-#endif
 //398:Hide VMX operation end
 #endif
 }
@@ -1369,9 +1365,7 @@ int main(void)
 #ifdef __x86_64__
 
 /******************************sample case part************************************/
-#ifdef IN_NON_SAFETY_VM
 	vmx_rqmid_28988_CR4_VMXE_initial_INIT_001();
-#endif
 	vmx_rqmid_26828_cpuid_01h_ECX_bit5_001();
 	vmx_rqmid_26856_IA32_VMX_CR0_FIXED0_001();
 	vmx_rqmid_29008_VMCALL_001();
@@ -1437,9 +1431,7 @@ int main(void)
 	vmx_rqmid_40132_Write_IA32_FEATURE_CONTROL_bit_2_1_001();
 	vmx_rqmid_28990_CR4_VMXE_bit13_initial_start_up_001();
 	vmx_rqmid_38554_IA32_FEATURE_CONTROL_bit2_1_following_start_up_001();
-#ifdef IN_NON_SAFETY_VM
 	vmx_rqmid_38557_IA32_FEATURE_CONTROL_bit2_1_following_INIT_001();
-#endif
 //398:Hide VMX operation end
 #endif
 

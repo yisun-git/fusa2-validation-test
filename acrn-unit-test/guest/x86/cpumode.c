@@ -436,7 +436,6 @@ void cpumode_rqmid_27815_CPU_Mode_of_Operation_INITIAL_GUEST_IA32_EFER_LME_FOLLO
 	return;
 }
 
-#ifdef IN_NON_SAFETY_VM
 /**
  * @brief Case name: CPU Mode of Operation INITIAL GUEST MODE FOLLOWING INIT_001.
  *
@@ -528,7 +527,6 @@ void cpumode_rqmid_46085_CPU_Mode_of_Operation_INITIAL_EFLAGS_VM_INIT_001(void)
 	//printf("eflags=0x%x\n", eflags);
 	report("\t\t %s", (eflags & X86_EFLAGS_VM) == 0, __FUNCTION__);
 }
-#endif
 
 static void print_case_list(void)
 {
@@ -544,6 +542,8 @@ static void print_case_list(void)
 		"Preserve the value of any XMM register when a vCPU attempts to switch to compatibility mode_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 37717u,
 		"Preserve the value of any general register when attempts to switch to compatibility mode_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27816u, " Initial guest IA32_EFER.LME [bit 8] following INIT_001.");
+	printf("\t\t Case ID:%d case name:%s\n\r", 27818u, " Initial guest IA32_EFER.LME [bit 8] following INIT_001.");
 #else
 	printf("\t\t Case ID:%d case name:%s\n\r", 37684u, "the IA32_EFER.LMA is 0H when a vCPU write CR0_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 37687u, "Ignore when a vCPU attempts to write IA32_EFER_001");
@@ -565,15 +565,8 @@ static void print_case_list(void)
 	printf("\t\t Case ID:%d case name:%s\n\r", 27817u, "INITIAL GUEST IA32 EFER LMA FOLLOWING STARTUP_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 28143u, "Initial guest CR0.PE following start-up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 46084u, "Initial guest EFLAGS.VM [bit 17] following startup_001");
-
-#ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27814u, "INITIAL GUEST MODE FOLLOWING INIT_001");
-#ifdef __x86_64__
-	printf("\t\t Case ID:%d case name:%s\n\r", 27816u, " Initial guest IA32_EFER.LME [bit 8] following INIT_001.");
-	printf("\t\t Case ID:%d case name:%s\n\r", 27818u, " Initial guest IA32_EFER.LME [bit 8] following INIT_001.");
-#endif
 	printf("\t\t Case ID:%d case name:%s\n\r", 46085u, "INITIAL GUEST EFLAGS.VM [bit 17] FOLLOWING INIT_001");
-#endif
 }
 
 #ifdef __x86_64__
@@ -1100,6 +1093,8 @@ int main(int ac, char **av)
 #ifdef __x86_64__
 	cpumode_rqmid_37685_receives_GP_when_clear_CR0_PG_001();
 	cpumode_rqmid_37688_Ignore_this_access_when_write_IA32_EFER_LMA_002();
+	cpumode_rqmid_27816_INITIAL_GUEST_IA32_EFER_LME_FOLLOWING_INIT_001();
+	cpumode_rqmid_27818_INITIAL_GUEST_IA32_EFER_LMA_FOLLOWING_INIT_001();
 #else
 	cpumode_rqmid_37684_IA32_EFER_LMA_is_0H_when_clear_CR0_PG_001();
 	cpumode_rqmid_37687_Ignore_this_access_when_write_IA32_EFER_LMA_001();
@@ -1112,14 +1107,8 @@ int main(int ac, char **av)
 	cpumode_rqmid_27817_CPU_Mode_of_Operation_INITIAL_GUEST_IA32_EFER_LMA_FOLLOWING_STARTUP_001();
 	cpumode_rqmid_28143_CPU_Mode_of_Operation_INITIAL_GUEST_CR0_PE_STARTUP_001();
 	cpumode_rqmid_46084_CPU_Mode_of_Operation_INITIAL_EFLAGS_VM_STARTUP_001();
-#ifdef IN_NON_SAFETY_VM
 	cpumode_rqmid_27814_CPU_Mode_of_Operation_INITIAL_GUEST_MODE_FOLLOWING_INIT_001();
-#ifdef __x86_64__
-	cpumode_rqmid_27816_INITIAL_GUEST_IA32_EFER_LME_FOLLOWING_INIT_001();
-	cpumode_rqmid_27818_INITIAL_GUEST_IA32_EFER_LMA_FOLLOWING_INIT_001();
-#endif
 	cpumode_rqmid_46085_CPU_Mode_of_Operation_INITIAL_EFLAGS_VM_INIT_001();
-#endif
 
 	return report_summary();
 }

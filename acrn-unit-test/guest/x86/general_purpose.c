@@ -1828,7 +1828,6 @@ static void  gp_rqmid_39055_Write_to_port_with_no_peripheral(void)
 	report("%s", value == 0xFFFF, __FUNCTION__);
 }
 
-#ifdef IN_NON_SAFETY_VM
 /**
  * @brief case name: EAX registers init value_001
  * Summary: Get eax register at AP init, the register's value shall be 0H and same with SDM definition.
@@ -1975,8 +1974,6 @@ static void gp_rqmid_46083_r8_r15_following_init(void)
 	report("%s", is_pass, __FUNCTION__);
 
 }
-
-#endif
 
 /**
  * @brief case name: EAX register start-up value_001
@@ -2287,7 +2284,7 @@ static void print_case_list(void)
 		"Read 4 byte from I/O port with no peripheral_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39055u,
 		"Write to I/O port with no peripheral_001");
-#ifdef IN_NON_SAFETY_VM
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 25070u,
 	"EAX registers init value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25080u,
@@ -2298,7 +2295,7 @@ static void print_case_list(void)
 		"EBX, ECX, ESI, EDI, EBP, ESP register init value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 46083u,
 		"Set initial guest R8~R15 to 0H for virtual AP_001");
-#endif
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 25067u,
 	"EAX register start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25083u,
@@ -2390,18 +2387,17 @@ int main(void)
 	gp_rqmid_39008_read_two_byte_from_IO_port_with_no_peripheral_001();
 	gp_rqmid_39009_read_four_byte_from_IO_port_with_no_peripheral_001();
 	gp_rqmid_39055_Write_to_port_with_no_peripheral();
-#ifdef IN_NON_SAFETY_VM
-	gp_rqmid_25070_eax_register_Following_init();
-	gp_rqmid_25080_edx_register_Following_init();
-	gp_rqmid_25061_eflags_register_Following_init();
-	gp_rqmid_25468_ebx_ecx_and_other_register_Following_init();
-	gp_rqmid_46083_r8_r15_following_init();
-#endif
+
 	gp_rqmid_25067_eax_register_start_up();
 	gp_rqmid_25083_edx_register_start_up();
 	gp_rqmid_25308_ebx_ecx_and_other_register_start_up();
 	gp_rqmid_25063_eflags_register_start_up();
 	gp_rqmid_46098_r8_r15_register_start_up();
+	gp_rqmid_25070_eax_register_Following_init();
+	gp_rqmid_25080_edx_register_Following_init();
+	gp_rqmid_25061_eflags_register_Following_init();
+	gp_rqmid_25468_ebx_ecx_and_other_register_Following_init();
+	gp_rqmid_46083_r8_r15_following_init();
 	/*---64 bit end----*/
 #else /* #ifndef __x86_64__ */
 	/*--------------------------32 bit--------------------------*/

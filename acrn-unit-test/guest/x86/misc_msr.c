@@ -1101,7 +1101,6 @@ static void misc_msr_rqmid_38642_wt_IA32_MISC_ENABLE_clear_IA32_EFER_NXE_001(voi
 	}
 }
 
-#ifdef IN_NON_SAFETY_VM
 /**
  * @brief case name: Set initial guest IA32_MISC_ENABLE [bit 22] to 0H following INIT_001
  * Summary: Check the initial value of IA32_MISC_ENABLE[bit 22] at AP entry, the result shall be 0H.
@@ -1232,7 +1231,6 @@ static void misc_msr_rqmid_38718_IA32_PLATFORM_ID_unchanged_following_INIT_001(v
 	/*compare init value with unchanged */
 	report("%s ", ia32_platform_id1 == ia32_platform_id2, __FUNCTION__);
 }
-#endif
 
 /**
  * @brief case name: Set initial guest IA32_MISC_ENABLE [bit 22]  to 0H following start-up_001
@@ -1615,7 +1613,7 @@ static void print_case_list(void)
 	"Set related CPUID when a vCPU attempts to write IA32_MISC_ENABLE [bit 34]_001");
 	printf("\t Case ID:%d case name:%s\n\r", 38642,
 	"Clear IA32_EFER.NXE when a vCPU attempts to write IA32_MISC_ENABLE [bit 34]_001");
-#ifdef IN_NON_SAFETY_VM
+
 	printf("\t Case ID:%d case name:%s\n\r", 38678,
 	"Set initial guest IA32_MISC_ENABLE [bit 22] to 0H following INIT_001");
 	printf("\t Case ID:%d case name:%s\n\r", 38680,
@@ -1632,7 +1630,7 @@ static void print_case_list(void)
 	"Set initial guest IA32_BIOS_SIGN_ID to b400000000H following INIT_001");
 	printf("\t Case ID:%d case name:%s\n\r", 38718,
 	"Keep guest IA32_PLATFORM_ID unchanged following INIT_001.");
-#endif
+
 	printf("\t Case ID:%d case name:%s\n\r", 38679,
 	"Set initial guest IA32_MISC_ENABLE [bit 22]  to 0H following start-up_001");
 	printf("\t Case ID:%d case name:%s\n\r", 38681,
@@ -1704,7 +1702,7 @@ int main(void)
 	misc_msr_rqmid_38636_wt_IA32_MISC_ENABLE_CPUID_clear_80000001H_EDX_bit20_001();
 	misc_msr_rqmid_38640_wt_IA32_MISC_ENABLE_CPUID_set_80000001H_EDX_bit20_001();
 	misc_msr_rqmid_38642_wt_IA32_MISC_ENABLE_clear_IA32_EFER_NXE_001();
-#ifdef IN_NON_SAFETY_VM
+
 	misc_msr_rqmid_38678_ia32_misc_enable_bit22_following_init_001();
 	misc_msr_rqmid_38680_ia32_misc_enable_bit7_following_init_001();
 	misc_msr_rqmid_38682_ia32_misc_enable_bit34_following_init_001();
@@ -1713,7 +1711,7 @@ int main(void)
 	misc_msr_rqmid_38702_IA32_FEATURE_CONTROL_following_init_001();
 	misc_msr_rqmid_38716_IA32_BIOS_SIGN_ID_following_init_001();
 	misc_msr_rqmid_38718_IA32_PLATFORM_ID_unchanged_following_INIT_001();
-#endif
+
 	misc_msr_rqmid_38679_ia32_misc_enable_bit22_following_start_up_001();
 	misc_msr_rqmid_38681_ia32_misc_enable_bit7_following_start_up_001();
 	misc_msr_rqmid_38683_ia32_misc_enable_bit34_following_start_up_001();
