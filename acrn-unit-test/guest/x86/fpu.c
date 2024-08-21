@@ -588,94 +588,6 @@ static void fpu_rqmid_32365_st0_through_st7_states_following_startup_001()
 }
 
 /*
- * @brief case name: x86 FPU opcode register start-up value_001
- *
- *Summary:
-	ACRN hypervisor shall set initial guest x87 FPU opcode register to 0H for virtual BP.
- */
-
-static void fpu_rqmid_46097_fpu_data_opcode_register_following_startup_001()
-{
-	bool is_pass = true;
-	volatile struct fxsave_struct *fpu_save;
-
-	fpu_save = (struct fxsave_struct *)STARTUP_FPU_XSAVE_ADDR;
-	if (fpu_save->fop != 0) {
-		is_pass = false;
-		printf("fop=%x\n", fpu_save->fop);
-	}
-	report("%s", is_pass, __FUNCTION__);
-}
-
-#endif
-#ifdef IN_NON_SAFETY_VM
-/*
- * @brief case name: fpu shall expose deprecated fpu cs ds 001
- *
- *Summary:
- *  FSAVE/FNSAVE, FSTENV/FNSTENV
- *	If CR0.PE = 1, each instruction saves FCS and FDS into memory. If
- *	CPUID.(EAX=07H,ECX=0H):EBX[bit 13] = 1, the processor deprecates FCS and FDS;
- *	it saves each as 0000H.
- *
- *	Under protect mode, excute FSAVE dump registers FDS and FCS value shall be 0000H
- */
-#ifdef __i386__
-static void fpu_rqmid_32375_shall_expose_deprecated_cs_ds_001()
-{
-	u32 cr0;
-	static u8 fsave[94] = {0};
-
-	cr0 = read_cr0();
-	write_cr0(cr0 & ~0xc);/*clear TS EM*/
-
-	asm volatile("fsave %0 \n\t"
-				 : "=m"(fsave) : : "memory");
-
-	/*fcs locate byte[12,13];fds locate byte[20,21]*/
-	if ((cpuid(0x7).b & (1 << 13))
-		&& (fsave[12] == 0) && (fsave[13] == 0)
-		&& (fsave[20] == 0) && (fsave[21] == 0)) {
-		report("%s", 1, __FUNCTION__);
-	} else {
-		report("%s", 0, __FUNCTION__);
-	}
-
-}
-/*
- * @brief case name: FPU execution environment_Protected Mode_FADD_#PF_001
- *
- *
- *Summary:
- *  ACRN hypervisor shall expose FPU execution environment to any guest,
- *	in compliance with Chapter 8.1 and 8.3, Vol. 1, SDM and Chapter 2.5, Vol.3, SDM.
- *
- * Under 64 bit Mode ,
- * Rebulid the paging structure, to create the page fault(pgfault: occur),? executing FADD shall generate #PF .
- */
-static void fpu_rqmid_31656_execution_environment_protected_mode_FADD_pf_001()
-{
-	ulong cr0;
-	u32 *op1;
-
-	cr0 = read_cr0();
-	write_cr0(cr0 & ~0xc);/*clear TS EM*/
-
-	op1 = malloc(sizeof(u32));
-	set_page_control_bit((void *)op1, PAGE_PTE, PAGE_P_FLAG, 0, true);
-
-	asm volatile(
-		ASM_TRY("1f")
-		"fadd %0\n\t"
-		"1:"
-		: : "m"(*op1) :);
-	report("%s", exception_vector() == PF_VECTOR, __FUNCTION__);
-
-	write_cr0(cr0);
-}
-#endif
-#ifdef __x86_64__
-/*
  * @brief case name: x87 FPU Data Operand and Inst. Pointers states following INIT_001
  *
  *Summary:
@@ -997,7 +909,94 @@ static void fpu_rqmid_46062_fpu_data_opcode_register_following_init_001()
 	report("%s", is_pass, __FUNCTION__);
 }
 
+/*
+ * @brief case name: x86 FPU opcode register start-up value_001
+ *
+ *Summary:
+	ACRN hypervisor shall set initial guest x87 FPU opcode register to 0H for virtual BP.
+ */
 
+static void fpu_rqmid_46097_fpu_data_opcode_register_following_startup_001()
+{
+	bool is_pass = true;
+	volatile struct fxsave_struct *fpu_save;
+
+	fpu_save = (struct fxsave_struct *)STARTUP_FPU_XSAVE_ADDR;
+	if (fpu_save->fop != 0) {
+		is_pass = false;
+		printf("fop=%x\n", fpu_save->fop);
+	}
+	report("%s", is_pass, __FUNCTION__);
+}
+
+#endif
+#ifdef IN_NON_SAFETY_VM
+/*
+ * @brief case name: fpu shall expose deprecated fpu cs ds 001
+ *
+ *Summary:
+ *  FSAVE/FNSAVE, FSTENV/FNSTENV
+ *	If CR0.PE = 1, each instruction saves FCS and FDS into memory. If
+ *	CPUID.(EAX=07H,ECX=0H):EBX[bit 13] = 1, the processor deprecates FCS and FDS;
+ *	it saves each as 0000H.
+ *
+ *	Under protect mode, excute FSAVE dump registers FDS and FCS value shall be 0000H
+ */
+#ifdef __i386__
+static void fpu_rqmid_32375_shall_expose_deprecated_cs_ds_001()
+{
+	u32 cr0;
+	static u8 fsave[94] = {0};
+
+	cr0 = read_cr0();
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
+
+	asm volatile("fsave %0 \n\t"
+				 : "=m"(fsave) : : "memory");
+
+	/*fcs locate byte[12,13];fds locate byte[20,21]*/
+	if ((cpuid(0x7).b & (1 << 13))
+		&& (fsave[12] == 0) && (fsave[13] == 0)
+		&& (fsave[20] == 0) && (fsave[21] == 0)) {
+		report("%s", 1, __FUNCTION__);
+	} else {
+		report("%s", 0, __FUNCTION__);
+	}
+
+}
+/*
+ * @brief case name: FPU execution environment_Protected Mode_FADD_#PF_001
+ *
+ *
+ *Summary:
+ *  ACRN hypervisor shall expose FPU execution environment to any guest,
+ *	in compliance with Chapter 8.1 and 8.3, Vol. 1, SDM and Chapter 2.5, Vol.3, SDM.
+ *
+ * Under 64 bit Mode ,
+ * Rebulid the paging structure, to create the page fault(pgfault: occur),? executing FADD shall generate #PF .
+ */
+static void fpu_rqmid_31656_execution_environment_protected_mode_FADD_pf_001()
+{
+	ulong cr0;
+	u32 *op1;
+
+	cr0 = read_cr0();
+	write_cr0(cr0 & ~0xc);/*clear TS EM*/
+
+	op1 = malloc(sizeof(u32));
+	set_page_control_bit((void *)op1, PAGE_PTE, PAGE_P_FLAG, 0, true);
+
+	asm volatile(
+		ASM_TRY("1f")
+		"fadd %0\n\t"
+		"1:"
+		: : "m"(*op1) :);
+	report("%s", exception_vector() == PF_VECTOR, __FUNCTION__);
+
+	write_cr0(cr0);
+}
+#endif
+#ifdef __x86_64__
 /*
  * @brief case name: fpu execution environment FDISI 001
  *
@@ -1369,14 +1368,6 @@ static void print_case_list(void)
 		   "x87 FPU Status Word states following start-up_001");
 	printf("\t Case ID:%d case name:%s\n\r", 32365,
 		   "ST0 through ST7 states following start-up_001");
-
-#endif
-#ifdef IN_NON_SAFETY_VM
-#ifdef __i386__
-	printf("\t Case ID:%d case name:%s\n\r", 32375, "shall expose deprecated cs ds 001");
-	printf("\t Case ID:%d case name:%s\n\r", 31656, "execution environment protected mode FADD pf 001()");
-#endif
-#ifdef __x86_64__
 	printf("\t Case ID:%d case name:%s\n\r", 32361,
 		   "x87 FPU data operand and Inst pointer states following INIT 001");
 	printf("\t Case ID:%d case name:%s\n\r", 37198,
@@ -1399,6 +1390,13 @@ static void print_case_list(void)
 		   "x87 FPU Data Operand and CS Seg. Selectors states following INIT_001");
 	printf("\t Case ID:%d case name:%s\n\r", 46062,
 		   "Set initial guest x87 FPU opcode register to 0H for virtual AP_001");
+#endif
+#ifdef IN_NON_SAFETY_VM
+#ifdef __i386__
+	printf("\t Case ID:%d case name:%s\n\r", 32375, "shall expose deprecated cs ds 001");
+	printf("\t Case ID:%d case name:%s\n\r", 31656, "execution environment protected mode FADD pf 001()");
+#endif
+#ifdef __x86_64__
 	printf("\t Case ID:%d case name:%s\n\r", 32385,
 		   "Ignore Changes of CR0.NE_001");
 	printf("\t Case ID:%d case name:%s\n\r", 32377,
@@ -1444,13 +1442,7 @@ int main(void)
 	fpu_rqmid_40028_FPU_hide_Exception_only_FDP_update_001();
 	fpu_rqmid_32365_st0_through_st7_states_following_startup_001();
 	fpu_rqmid_46097_fpu_data_opcode_register_following_startup_001();
-#endif
-#ifdef IN_NON_SAFETY_VM
-#ifdef __i386__
-	fpu_rqmid_32375_shall_expose_deprecated_cs_ds_001();
-	fpu_rqmid_31656_execution_environment_protected_mode_FADD_pf_001();
-#endif
-#ifdef __x86_64__
+
 	fpu_rqmid_37198_st0_through_st7_states_following_INIT_002();
 	fpu_rqmid_32361_x87_FPU_data_operand_and_Inst_pointer_states_following_INIT_001();
 	fpu_rqmid_32366_st0_through_st7_states_following_INIT_001();
@@ -1463,7 +1455,13 @@ int main(void)
 	fpu_rqmid_32364_Control_Word_states_following_INIT_001();
 	fpu_rqmid_39119_fpu_data_operand_and_cs_seg_state_following_init_001();
 	fpu_rqmid_46062_fpu_data_opcode_register_following_init_001();
-
+#endif
+#ifdef IN_NON_SAFETY_VM
+#ifdef __i386__
+	fpu_rqmid_32375_shall_expose_deprecated_cs_ds_001();
+	fpu_rqmid_31656_execution_environment_protected_mode_FADD_pf_001();
+#endif
+#ifdef __x86_64__
 	fpu_rqmid_32377_execution_environment_FDISI_001();
 	fpu_rqmid_32378_FPU_capability_enumeration_001();
 	fpu_rqmid_31189_execution_environment_64_bit_Mode_FICOMP_PF_001();

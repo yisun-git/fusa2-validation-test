@@ -73,6 +73,10 @@
         <pcpu_id>1</pcpu_id>
         <real_time_vcpu>n</real_time_vcpu>
       </pcpu>
+      <pcpu>
+        <pcpu_id>4</pcpu_id>
+        <real_time_vcpu>n</real_time_vcpu>
+      </pcpu>
     </cpu_affinity>
     <lapic_passthrough>y</lapic_passthrough>
     <os_config>
@@ -106,7 +110,7 @@
       </pcpu>
     </cpu_affinity>
     <os_config>
-      <kern_type>KERNEL_RAWIMAGE</kern_type>
+      <kern_type>KERNEL_BZIMAGE</kern_type>
       <kern_mod>placeholder</kern_mod>
     </os_config>
     <load_order>PRE_LAUNCHED_VM</load_order>
