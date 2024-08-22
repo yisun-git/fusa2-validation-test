@@ -293,14 +293,6 @@ void setup_idt(void)
 /*
  *return 0-31:valid exception; 255:no exception.
  */
-unsigned exception_vector(void)
-{
-	unsigned char vector;
-
-	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
-	return vector;
-}
-
 unsigned exception_error_code(void)
 {
 	unsigned short error_code;

@@ -246,7 +246,13 @@ void setup_tss32(void);
 extern tss64_t tss;
 #endif
 
-unsigned exception_vector(void);
+static inline unsigned exception_vector(void)
+{
+	unsigned char vector;
+
+	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
+	return vector;
+}
 unsigned exception_error_code(void);
 bool exception_rflags_rf(void);
 void set_idt_entry(int vec, void *addr, int dpl);
