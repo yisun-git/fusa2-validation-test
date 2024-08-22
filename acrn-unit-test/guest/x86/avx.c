@@ -250,7 +250,17 @@ static void  avx_rqmid_36253_AVX_physical_support_001()
 	report("%s", count == 3, __FUNCTION__);
 }
 
-
+/*
+ * @brief case name:  AVX-VNNI physical support
+ *
+ * Summary: AVX-VNNI shall be available on the physical platform.
+ *
+ *
+ */
+static void  avx_acrn_t13687_avx_vnni_physical_support()
+{
+	report("%s", cpuid_avx_vnni_to_1(), __FUNCTION__);
+}
 
 #else
 
@@ -890,6 +900,7 @@ static void print_case_list(void)
 	printf("\t Case ID:%d case name:%s\n\r", 36251, "AVX physical F16C support_001.");
 	printf("\t Case ID:%d case name:%s\n\r", 36252, "AVX physical FMA support_001.");
 	printf("\t Case ID:%d case name:%s\n\r", 36253, "AVX physical support_001.");
+	printf("\t Case ID:%s case name:%s\n\r", "ACRN-T13687", "AVX-VNNI physical support.");
 #else
 #ifdef __x86_64__
 	printf("\t Case ID:%d case name:%s\n\r", 23169, "AVX initial YMM register following startup 001");
@@ -922,7 +933,6 @@ static void print_case_list(void)
 }
 
 
-
 int main(void)
 {
 	setup_vm();
@@ -936,6 +946,7 @@ int main(void)
 	avx_rqmid_36251_AVX_physical_F16C_support_001();
 	avx_rqmid_36252_AVX_physical_FMA_support_001();
 	avx_rqmid_36253_AVX_physical_support_001();
+	avx_acrn_t13687_avx_vnni_physical_support();
 #else
 #ifdef __x86_64__
 	avx_rqmid_23169_AVX_initial_YMM_register_following_startup_001();

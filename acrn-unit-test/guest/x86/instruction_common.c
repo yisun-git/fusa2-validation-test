@@ -1596,6 +1596,35 @@ bool cpuid_fma_to_1(void)
 
 /**
  *@Sub-Conditions:
+ *      CPUID.AVX-VNNI: 1
+ *@test purpose:
+ *      Confirm processor support AVX-VNNI Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=01H):EAX[bit 4]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=01H):EAX[bit 4] should be 1
+ */
+bool cpuid_avx_vnni_to_1(void)
+{
+	unsigned long check_bit = 0;
+	bool result = false;
+
+	printf("***** Check CPUID.(EAX=07H,ECX=01H):EAX[bit 4] *****\n");
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_1).a;
+	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_04);
+
+	if (check_bit == FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_04)) {
+		result = true;
+	} else {
+		result = false;
+	}
+
+	return result;
+}
+
+/**
+ *@Sub-Conditions:
  *      CPUID.CMPXCHG16B: 1
  *@test purpose:
  *      Confirm processor support CMPXCHG16B
