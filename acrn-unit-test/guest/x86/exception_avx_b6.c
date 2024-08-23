@@ -219,6 +219,96 @@ static __unused u64 *trigger_pgfault(void)
 	return (u64 *)add1;
 }
 
+// for SS_VECTOR
+#define NON_CANO_PREFIX_MASK (0xFFFFUL << 48) /*bits [63:48] */
+#define EXCEPTION_IST 1
+#define OFFSET_IST 5
+#define AVL_SET 0x1
+ulong old_rsp;
+static jmp_buf jmpbuf;
+static u8 test_vector = NO_EXCEPTION;
+static char exception_stack[0x1000] __attribute__((aligned(0x10)));
+static char rspx_stack[0x1000] __attribute__((aligned(0x10)));
+
+/* construct TSS, set rsp0, rsp1, rsp2, used to load the stack when a privilege
+ * level change occurs. set ist1 which will be used to load the stack when
+ * interrupt occurs
+ */
+tss64_t *set_ist(ulong non_cano_rsp)
+{
+	u64 ex_rsp = (u64)(exception_stack + sizeof(exception_stack));
+	u64 rspx = ((non_cano_rsp > 0) ? non_cano_rsp : (u64)(rspx_stack + sizeof(rspx_stack)));
+	tss64_t *tss64 = &tss +  OFFSET_IST;
+	tss64->ist1 = ex_rsp;
+	tss64->ist2 = 0;
+	tss64->ist3 = 0;
+	tss64->ist4 = 0;
+	tss64->ist5 = 0;
+	tss64->ist6 = 0;
+	tss64->ist7 = 0;
+	tss64->rsp0 = rspx;
+	tss64->rsp1 = rspx;
+	tss64->rsp2 = rspx;
+	tss64->res1 = 0;
+	tss64->res2 = 0;
+	tss64->res3 = 0;
+	tss64->res4 = 0;
+	tss64->iomap_base = (u16)sizeof(tss64_t);
+	return tss64;
+}
+
+/* setup an entry in GDT for TSS, and load TSS register */
+void setup_tss64(int dpl, ulong non_cano_rsp)
+{
+	tss64_t *tss64 = set_ist(non_cano_rsp);
+	int tss_ist_sel = TSS_MAIN + (sizeof(struct segment_desc64)) * OFFSET_IST; //tss64
+	struct descriptor_table_ptr old_gdt_desc;
+	sgdt(&old_gdt_desc);
+	set_gdt64_entry(tss_ist_sel, (u64)tss64, sizeof(tss64_t) - 1,
+		SEGMENT_PRESENT_SET | DESCRIPTOR_TYPE_SYS | (dpl << 5) | SEGMENT_TYPE_CODE_EXE_ONLY_ACCESSED,
+		GRANULARITY_SET | L_64_BIT_CODE_SEGMENT | AVL_SET);
+	lgdt(&old_gdt_desc);
+	ltr(tss_ist_sel);
+}
+
+void longjmp_func(void)
+{
+	asm("movb %0, %%gs:"xstr(EXCEPTION_ADDR)"" : : "r"(test_vector));
+	longjmp(jmpbuf, 0xbeef);
+}
+
+void ring0_non_cano_esp_handler(void);
+asm (
+"ring0_non_cano_esp_handler:\n"
+	"movq old_rsp, %rax\n"
+	"pop %rcx\n" //pop error code
+	"mov %rsp, %rcx\n"
+	"mov %rax, 24(%rcx)\n" //change rsp
+	"movq $longjmp_func, (%rcx)\n" //change rip
+	"iretq\n"
+    );
+
+u8 ring0_run_with_non_cano_rsp(void (*func)(void))
+{
+	int ret = 0;
+	u64 non_cano_rsp = 0;
+	test_vector = SS_VECTOR;
+	setup_tss64(0, 0);
+	set_idt_entry_ist(test_vector, ring0_non_cano_esp_handler, 0, EXCEPTION_IST);
+	ret = setjmp(jmpbuf);
+	if (ret == 0) {
+		asm("movb $" xstr(NO_EXCEPTION) ", %%gs:"xstr(EXCEPTION_ADDR)"\n" : );
+		asm volatile("mov %%rsp, %0\n" : "=r"(old_rsp) : );
+		non_cano_rsp = old_rsp ^ NON_CANO_PREFIX_MASK; // construct a non-canonical address
+		asm volatile("movq %0, %%rsp\n" : : "r"(non_cano_rsp) : "memory");
+		func();
+		asm volatile("movq old_rsp, %rsp\n");
+	}
+	u8 vector = exception_vector();
+	setup_idt(); //restore idt
+	return vector;
+}
+
 // execution
 static __unused void avx_b6_instruction_0(const char *msg)
 {
@@ -1176,6 +1266,85 @@ static __unused void avx_b6_instruction_112(const char *msg)
 	asm volatile("LEA %[input_2], %%eax\n"   ASM_TRY("1f") "VGATHERDPD %%xmm2, (%%eax,%%xmm0,1), %%xmm1\n" "1:"
 				:  : [input_2] "m" (unsigned_32));
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
+}
+
+/*
+ * if XCR0[2:1] != 11b, VPDPBUSD
+ */
+static __unused void avx_vnni_instruction_0(const char *msg)
+{
+	//asm volatile(ASM_TRY("1f") "VPDPBUSD %%ymm3, %%ymm2, %%ymm1\n" "1:" : :);
+	asm volatile(ASM_TRY("1f") ".byte 0xc4, 0xe2, 0x6d, 0x50, 0xcb\n" "1:" : : :);
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+/*
+ * CR4.OSXSAVE[bit 18] = 0, VPDPBUSDS
+ */
+static __unused void avx_vnni_instruction_1(const char *msg)
+{
+	//asm volatile(ASM_TRY("1f") "VPDPBUSDS %%ymm3, %%ymm2, %%ymm1\n" "1:" : :);
+	asm volatile(ASM_TRY("1f") ".byte 0xc4, 0xe2, 0x6d, 0x51, 0xcb\n" "1:" : : :);
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+
+/*
+ * preceded by LOCK prefix F0H, VPDPWSSD
+ */
+static __unused void avx_vnni_instruction_2(const char *msg)
+{
+	//asm volatile(ASM_TRY("1f") "lock\n" "VPDPWSSD %%ymm3, %%ymm2, %%ymm1\n" "1:" : :);
+	asm volatile(ASM_TRY("1f") "lock\n" ".byte 0xc4, 0xe2, 0x6d, 0x52, 0xcb\n" "1:" : : :);
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+/*
+ * CR0.TS[bit 3]=1, VPDPWSSDS
+ */
+static __unused void avx_vnni_instruction_3(const char *msg)
+{
+	//asm volatile(ASM_TRY("1f") "VPDPWSSDS %%ymm3, %%ymm2, %%ymm1\n" "1:" : :);
+	asm volatile(ASM_TRY("1f") ".byte 0xc4, 0xe2, 0x6d, 0x53, 0xcb\n" "1:" : : :);
+	report("%s", (exception_vector() == NM_VECTOR), __FUNCTION__);
+}
+
+/*
+ * If a memory address referencing the SS segment is in a non-canonical form
+ * VPDPBUSD
+ */
+static __unused void avx_vnni_VPDPBUSD(void)
+{
+	asm volatile("MOV %%rsp,%%rax\n"
+			"OR $0x40a0f40,%%rax\n"
+			ASM_TRY("1f") ".byte 0xc4, 0xe2, 0x6d, 0x50, 0x08\n" "1:\n" : : :);
+}
+
+static __unused void avx_vnni_instruction_4(const char *msg)
+{
+	u8 vector = ring0_run_with_non_cano_rsp(avx_vnni_VPDPBUSD);
+	report("%s", (vector == SS_VECTOR), __FUNCTION__);
+}
+
+/*
+ * if the memory address is in a non-canonical form. VPDPBUSDS
+ */
+static __unused void avx_vnni_instruction_5(const char *msg)
+{
+	asm volatile("MOVABS $0x8000000080000000,%%rax\n"
+			"OR $0x40a0f40,%%rax\n"
+			ASM_TRY("1f") ".byte 0xc4, 0xe2, 0x6d, 0x51, 0x08\n" "1:\n" : : :);
+	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
+}
+
+/*
+ * VPDPWSSD
+ */
+static __unused void avx_vnni_instruction_6(const char *msg)
+{
+	asm volatile("LEA %[input_2], %%rax\n" ASM_TRY("1f") ".byte 0xc4, 0xe2, 0x6d, 0x52, 0x08\n" "1:"
+				:  : [input_2] "m" (*(trigger_pgfault())));
+	report("%s", (exception_vector() == PF_VECTOR), __FUNCTION__);
 }
 
 static __unused void avx_b6_0(void)
@@ -3606,6 +3775,179 @@ static __unused void avx_b6_112(void)
 	asm volatile("fninit");
 }
 
+/*
+ * @brief case name: AVX-VNNI Instruction Support VPDPBUSD_#UD
+ *
+ *
+ * Summary:
+ * if XCR0[2:1] != 11b, executing VPDPBUSD will generate #UD
+ */
+static __unused void avx_vnni_0(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr4 = read_cr4();
+	condition_CR4_OSXSAVE_1();
+	condition_cs_cpl_0();
+	condition_CR4_OSXMMEXCPT_0();
+	condition_st_comp_not_enabled();
+	execption_inc_len = 3;
+	do_at_ring0(avx_vnni_instruction_0, "");
+	execption_inc_len = 0;
+	condition_st_comp_enabled();
+	write_cr0(cr0);
+	write_cr4(cr4);
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: AVX-VNNI Instruction Support VPDPBUSDS_#UD
+ *
+ *
+ * Summary:
+ * if CR4.OSXSAVE[bit 18] = 0, executing VPDPBUSDS will generate #UD
+ */
+static __unused void avx_vnni_1(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr4 = read_cr4();
+	condition_CR4_OSXSAVE_1();
+	condition_st_comp_enabled();
+	condition_cs_cpl_0();
+	condition_CR4_OSXMMEXCPT_0();
+	condition_CR4_OSXSAVE_0();
+	execption_inc_len = 3;
+	do_at_ring0(avx_vnni_instruction_1, "");
+	execption_inc_len = 0;
+	condition_CR4_OSXSAVE_1();
+	write_cr0(cr0);
+	write_cr4(cr4);
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: AVX-VNNI Instruction Support VPDPWSSD_#UD
+ *
+ *
+ * Summary:
+ * If preceded by a LOCK prefix (F0H), executing VPDPWSSD will generate #UD
+ */
+static __unused void avx_vnni_2(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr4 = read_cr4();
+	condition_CR4_OSXSAVE_1();
+	condition_st_comp_enabled();
+	condition_cs_cpl_0();
+	condition_CR4_OSXMMEXCPT_0();
+	execption_inc_len = 3;
+	do_at_ring0(avx_vnni_instruction_2, "");
+	execption_inc_len = 0;
+	write_cr0(cr0);
+	write_cr4(cr4);
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: AVX-VNNI Instruction Support VPDPWSSDS_#NM
+ *
+ *
+ * Summary:
+ * when task switch, CR0.TS[bit 3]=1, executing VPDPWSSDS will generate #NM
+ */
+static __unused void avx_vnni_3(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr4 = read_cr4();
+	condition_CPUID_AVX_1();
+	condition_CR4_OSXSAVE_1();
+	condition_st_comp_enabled();
+	condition_cs_cpl_0();
+	condition_CR0_TS_1();
+	condition_CR0_EM_0();
+	execption_inc_len = 3;
+	do_at_ring0(avx_vnni_instruction_3, "");
+	execption_inc_len = 0;
+	write_cr0(cr0);
+	write_cr4(cr4);
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: AVX-VNNI Instruction Support VPDPBUSD#SS
+ *
+ *
+ * Summary:
+ * If a memory address referencing the SS segment is in a non-canonical form,
+ * executing VPDPBUSD will generate #SS
+ */
+static __unused void avx_vnni_4(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	u32 cr8 = read_cr8();
+	condition_LOCK_not_used();
+	condition_pgfault_not_occur();
+	condition_Ad_Cann_non_mem();
+	execption_inc_len = 3;
+	do_at_ring0(avx_vnni_instruction_4, "");
+	execption_inc_len = 0;
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	write_cr8(cr8);
+}
+
+/*
+ * @brief case name: AVX-VNNI Instruction Support VPDPBUSDS#GP
+ *
+ *
+ * Summary:
+ * if the memory address is in a non-canonical form,
+ * executing VPDPBUSDS will generate #GP
+ */
+static __unused void avx_vnni_5(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr4 = read_cr4();
+	condition_CR4_OSXMMEXCPT_1();
+	condition_CPUID_FMA_1();
+	condition_CR4_OSXSAVE_1();
+	condition_st_comp_enabled();
+	condition_cs_cpl_0();
+	execption_inc_len = 3;
+	do_at_ring0(avx_vnni_instruction_5, "");
+	execption_inc_len = 0;
+	write_cr0(cr0);
+	write_cr4(cr4);
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: AVX-VNNI Instruction Support VPDPWSSD#PF
+ *
+ *
+ * Summary:
+ * executing VPDPWSSD to access unmapped memory will generate #PF
+ */
+static __unused void avx_vnni_6(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr4 = read_cr4();
+	condition_CR4_OSXMMEXCPT_1();
+	condition_CPUID_FMA_1();
+	condition_CR4_OSXSAVE_1();
+	condition_st_comp_enabled();
+	condition_cs_cpl_0();
+	execption_inc_len = 3;
+	do_at_ring0(avx_vnni_instruction_6, "");
+	execption_inc_len = 0;
+	write_cr0(cr0);
+	write_cr4(cr4);
+	asm volatile("fninit");
+}
 
 int main(void)
 {
@@ -3726,6 +4068,13 @@ int main(void)
 	avx_b6_110();
 	avx_b6_111();
 	avx_b6_112();
+	avx_vnni_0();
+	avx_vnni_1();
+	avx_vnni_2();
+	avx_vnni_3();
+	avx_vnni_4();
+	avx_vnni_5();
+	avx_vnni_6();
 
 	return report_summary();
 }
