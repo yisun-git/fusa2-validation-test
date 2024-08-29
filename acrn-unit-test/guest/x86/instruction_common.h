@@ -219,6 +219,18 @@ bool cpuid_avx2_to_1(void);
 
 /**
  *@Sub-Conditions:
+ *      CPUID.AVX-VNNI: 1
+ *@test purpose:
+ *      Confirm processor support AVX-VNNI Feature
+ *@Design Steps:
+ *      Check CPUID.(EAX=07H,ECX=01H):EAX[bit 4]
+ *@Expected Result:
+ *      CPUID.(EAX=07H,ECX=01H):EAX[bit 4] should be 1
+ */
+bool cpuid_avx_vnni_to_1(void);
+
+/**
+ *@Sub-Conditions:
  *      CPUID.AVX2: 0
  *@test purpose:
  *      Confirm processor not support AVX2 Feature
