@@ -338,7 +338,7 @@ static __unused void sse_rqmid_23208_SSE_XMM0_XMM15_initial_state_following_star
  * Summary: ACRN hypervisor shall set initial guest MXCSR to 0x1F80 folllowing INIT.
  */
 
-static void sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002(void)
+static __unused void sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002(void)
 {
 	volatile fxsave_non64bit_t *sse_save;
 
@@ -352,7 +352,7 @@ static void sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002(void)
  * Summary: ACRN hypervisor shall keep unchange guest MXCSR folllowing INIT.
  */
 
-static void sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001(void)
+static __unused void sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001(void)
 {
 	volatile u32 mxcsr1;
 	volatile u32 mxcsr2;
@@ -384,7 +384,7 @@ static void sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001(void)
  * Summary: ACRN hypervisor shall keep unchange guest XMM0 through XMM15 folllowing INIT.
  */
 
-static void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
+static __unused void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001(void)
 {
 	/*HV flush fpu, need init fpu if we use fpu*/
 	asm volatile("fninit");
