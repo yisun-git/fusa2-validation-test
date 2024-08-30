@@ -4,6 +4,9 @@
 
 ## 1. Compile SRS unit-test
 
+ GCC version: >=11.4.0  
+ Required package: gcc-multilib
+
 ```bash
 $ git clone https://github.com/intel-innersource/virtualization.hypervisors.acrn.acrn-fusa-cert.validation-test.git acrn-validation-test
 $ git clone https://github.com/projectacrn/acrn-unit-test.git -b acrn_2022ww35

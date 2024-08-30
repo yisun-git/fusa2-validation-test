@@ -6,7 +6,7 @@ endif
 
 bits = 64
 ldarch = elf_x86_64
-COMMON_CFLAGS += -mno-red-zone -mno-sse -mno-sse2
+COMMON_CFLAGS += -mno-red-zone -mno-sse -mno-sse2 -Wa,-mintel64
 
 cflatobjs += lib/x86/setjmp64.o
 cflatobjs += lib/x86/intel-iommu.o
