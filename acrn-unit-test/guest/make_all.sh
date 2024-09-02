@@ -8,13 +8,13 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 	misc_msr interrupt_mc misc_cpuid tsx multiboot_low cpumode exception_avx_b6 exception_avx_pt_b6 exception_avx_pt_ra_b6 \
         exception_fpu_b6 exception_fpu_pt_b6 exception_fpu_pt_ra_b6 exception_fpu_ra_b6 exception_gp_b6 exception_gp_pt_b6 \
         exception_gp_pt_ra_b6 exception_mmx_b6 exception_mmx_pt_ra_b6 exception_mpx_b6 exception_mpx_pt_b6 exception_mpx_pt_ra_b6 \
-        exception_mpx_ra_b6 exception_sse_b6 exception_sse_pt_ra_b6 interrupt_df_pf"
+        exception_mpx_ra_b6 exception_sse_b6 exception_sse_pt_ra_b6 interrupt_df_pf hypercall user_interrupts"
 
 BUILD_32BIT_FEATURE="mem_cache segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
 	interrupt_triple_fault v8086_protect exception_avx_pt exception_avx_pt_b6 exception_avx_pt_ra_b6 exception_fpu_pt \
         exception_fpu_pt_b6 exception_fpu_pt_ra_b6 exception_gp_pt exception_gp_pt_b6 exception_gp_pt_ra exception_gp_pt_ra_b6 \
         exception_mmx_pt exception_mmx_pt_ra_b6 exception_mpx_pt exception_mpx_pt_b6 exception_mpx_pt_ra_b6 exception_sse_pt exception_sse_pt_ra_b6 \
-        "
+        hypercall"
 BUILD_REAL_MODE_FEATURE="rmode_v8086 rmode_seg"
 BUILD_V8086_FEATURE="v8086_part1 v8086_part2 v8086_part3 v8086_seg"
 

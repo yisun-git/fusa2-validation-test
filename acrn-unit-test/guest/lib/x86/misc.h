@@ -57,6 +57,7 @@ extern void setup_ring_env();
 extern u64 enable_xsave();
 extern void *msr_reg_dump(u32 *size);
 extern bool xsave_reg_dump(void *ptr);
+extern int xsave_getbv(u32 index, u64 *result);
 
 #ifdef __x86_64__
 u64 *creat_non_canon_add(u64 addr);

@@ -51,6 +51,27 @@ int wrmsr_checking(u32 MSR_ADDR, u64 value)
 	return exception_vector();
 }
 
+bool test_rdmsr_exception(uint32_t msr, uint32_t vector, uint32_t error_code)
+{
+	uint64_t value;
+	int result = rdmsr_checking(msr, &value);
+	if ((result == vector) && (exception_error_code() == error_code)) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+bool test_wrmsr_exception(uint32_t msr, uint64_t value, uint32_t vector, uint32_t error_code)
+{
+	int result = wrmsr_checking(msr, value);
+	if ((result == vector) && (exception_error_code() == error_code)) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 int write_cr4_osxsave(u32 bitvalue)
 {
 	u32 cr4;
