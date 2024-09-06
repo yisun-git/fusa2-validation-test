@@ -1,0 +1,77 @@
+Prepare the development computer
+
+  The development computer system: Ubuntu Desktop 22.04 LTS
+
+1.	Install the necessary ACRN build tools
+
+sudo apt update
+sudo apt upgrade -y 
+mkdir -p ~/acrn-work
+sudo apt install -y gcc git make vim libssl-dev libpciaccess-dev uuid-dev \
+     libsystemd-dev libevent-dev libxml2-dev libxml2-utils libusb-1.0-0-dev \
+     python3 python3-pip libblkid-dev e2fslibs-dev \
+     pkg-config libnuma-dev libcjson-dev liblz4-tool flex bison \
+     xsltproc clang-format bc libpixman-1-dev libsdl2-dev libegl-dev \
+     libgles-dev libdrm-dev gnu-efi libelf-dev liburing-dev \
+     build-essential git-buildpackage devscripts dpkg-dev equivs lintian \
+     apt-utils pristine-tar dh-python acpica-tools python3-tqdm \
+     python3-elementpath python3-lxml python3-xmlschema python3-defusedxml
+
+2.	Get the ACRN hypervisor source code
+
+cd ~/acrn-work
+git clone https://github.com/projectacrn/acrn-hypervisor.git
+cd acrn-hypervisor
+git checkout release_3.3
+
+3.	Build the Board Inspector Debian package
+
+cd ~/acrn-work/acrn-hypervisor
+debian/debian_build.sh clean && debian/debian_build.sh board_inspector
+
+In a few seconds, the build generates a board_inspector Debian package in the parent (~/acrn-work) directory.
+
+
+Prepare the Target and Generate a Board Configuration File
+
+  The target system: Ubuntu Desktop 22.04 LTS  
+  Hareware environment: connect mouse,keyboard,monitor and power supply cable,Ethernet cable or wifi.
+  BIOS settings:
+	Enable VMX (Virtual Machine Extensions, which provide hardware assist for CPU virtualization).
+	Enable VT-d (Intel Virtualization Technology for Directed I/O, which provides additional support for managing I/O virtualization).
+	Disable Secure Boot.
+
+1.	Install Board inspector Debian package 
+
+Use the scp command to copy the board inspector Debian package from your development computer to the /tmp directory on the target system.
+
+scp ~/acrn-work/python3-acrn-board-inspector*.deb ubuntu@10.239.13.24:/tmp
+sudo apt install -y /tmp/python3-acrn-board-inspector*.deb
+sudo apt update
+sudo apt upgrade -y
+mkdir -p ~/acrn-work
+
+2.	Generate the board configuration file
+
+cd ~/acrn-work
+sudo acrn-board-inspector my_board
+ 
+The Board Inspector can take a few minutes to scan your target system and create the my_board.xml file.
+
+Use the scp command to copy my_board.xml from the target system to your development computer
+scp ~/acrn-work/my_board.xml  acrn@10.239.13.22:~/acrn-work/
+
+
+Build ACRN Hypervisor on the development computer
+
+1.	Get scenario xml from repo virtualization.hypervisors.acrn.acrn-fusa-cert.validation-test/doc at fusa26262
+ myrpl.hypervisor.xml
+
+2.	Build Acrn Hypervisor
+cd ~/acrn-work/acrn-hypervisor
+make BOARD=~/acrn-work/my_board.xml SCENARIO=~/acrn-work/myrpl.hypervisor.xml
+           
+In a few minutes, the build generates a ACRN debian package in ~/acrn-work/acrn-hypervisor/build.
+
+sudo apt install --reinstall ./build/acrn-board-*.deb
+
