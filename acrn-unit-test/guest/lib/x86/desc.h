@@ -250,7 +250,7 @@ static inline unsigned exception_vector(void)
 {
 	unsigned char vector;
 
-	asm("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
+	asm volatile ("movb %%gs:"xstr(EXCEPTION_VECTOR_ADDR)", %0" : "=q"(vector));
 	return vector;
 }
 unsigned exception_error_code(void);

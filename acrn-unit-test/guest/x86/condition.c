@@ -1148,19 +1148,19 @@ void condition_CPUID_MMX_0(void)
 
 #define CHECK_CPUID_0(func, index, reg, bit, msg) \
 	if (0 != (cpuid_indexed((func), (index)).reg & (1 << (bit)))) { \
-		report("%s: Ignore this case, because the processor supports " msg, \
+		report("%s: Ignore this case, because the processor supports " msg "\n", \
 			1, __func__); \
 		return; \
 	} \
-	printf("%s: the processor does not supports " msg, __func__)
+	printf("%s: the processor does not supports " msg "\n", __func__)
 
 #define CHECK_CPUID_1(func, index, reg, bit, msg) \
 	if (0 == (cpuid_indexed((func), (index)).reg & (1 << (bit)))) { \
-		report("%s: The processor does not support " msg, \
+		report("%s: The processor does not support " msg "\n", \
 			0, __func__); \
 		return; \
 	} \
-	printf("%s: CPUID = 0x%x", __func__, cpuid_indexed((func), (index)).reg)
+	printf("%s: CPUID = 0x%x\n", __func__, cpuid_indexed((func), (index)).reg)
 
 //Modified manually: reconstruct this condition totally.
 //Check CPUID.(EAX=01H,ECX=0):ECX[bit 28]
