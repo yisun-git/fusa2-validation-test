@@ -21,7 +21,7 @@
         </IVSHMEM_REGION>
       </IVSHMEM>
       <RDT>
-        <RDT_ENABLED>n</RDT_ENABLED>
+        <RDT_ENABLED>y</RDT_ENABLED>
         <CDP_ENABLED>n</CDP_ENABLED>
         <VCAT_ENABLED>n</VCAT_ENABLED>
       </RDT>
@@ -73,22 +73,21 @@
         <pcpu_id>1</pcpu_id>
         <real_time_vcpu>n</real_time_vcpu>
       </pcpu>
+      <pcpu>
+        <pcpu_id>4</pcpu_id>
+        <real_time_vcpu>n</real_time_vcpu>
+      </pcpu>
     </cpu_affinity>
     <lapic_passthrough>y</lapic_passthrough>
     <os_config>
-      <kern_type>KERNEL_RAWIMAGE</kern_type>
-      <kern_mod>zephyr</kern_mod>
-      <kern_load_addr>0x100000</kern_load_addr>
-      <kern_entry_addr>0x100000</kern_entry_addr>
+      <kern_type>KERNEL_BZIMAGE</kern_type>
+      <kern_mod>Safety_bzImage</kern_mod>
       <bootargs>rw rootwait root=/dev/nvme0n1p2 console=tty0 console=ttyS4 consoleblank=0 no_timer_check quiet loglevel=3 i915.nuclear_pageflip=1 swiotlb=131072</bootargs>
     </os_config>
     <mmio_resources>
       <TPM2>n</TPM2>
       <p2sb>n</p2sb>
     </mmio_resources>
-    <pci_devs>
-      <pci_dev>00:1f.6 Ethernet controller: Intel Corporation Ethernet Connection (16) I219-V (rev 12)</pci_dev>
-    </pci_devs>
     <load_order>PRE_LAUNCHED_VM</load_order>
     <name>VM0</name>
     <own_pcpu>n</own_pcpu>
@@ -108,7 +107,7 @@
       </pcpu>
     </cpu_affinity>
     <os_config>
-      <kern_type>KERNEL_RAWIMAGE</kern_type>
+      <kern_type>KERNEL_BZIMAGE</kern_type>
       <kern_mod>placeholder</kern_mod>
     </os_config>
     <load_order>PRE_LAUNCHED_VM</load_order>
