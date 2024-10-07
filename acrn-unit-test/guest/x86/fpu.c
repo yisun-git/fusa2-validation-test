@@ -929,6 +929,86 @@ static void fpu_rqmid_46097_fpu_data_opcode_register_following_startup_001()
 	report("%s", is_pass, __FUNCTION__);
 }
 
+/*
+ * @brief case name: x87 FPU states following FINIT
+ *
+ *Summary:
+ *	register				init
+ *	ST0 through ST7     			FINIT/FNINIT: Unchanged
+ *	x87 FPU Control Word			FINIT/FNINIT: 037FH
+ *	x87 FPU Status Word			FINIT/FNINIT: 0000H
+ *	x87 FPU Tag Word			FINIT/FNINIT: FFFFH
+ *	x87 FPU Data Operand
+	and CS Seg. Selectors			FINIT/FNINIT: 0000H
+ */
+static void fpu_acrn_t13762_fpu_states_following_finit()
+{
+	ulong cr4;
+	volatile fxsave_t *fpu_xsave;
+	volatile long double st1[8];
+	volatile long double st2[8];
+
+	fpu_xsave = (volatile fxsave_t *)INIT_UNCHANGED_FPU_SAVE_ADDR;
+
+	cr4 = read_cr4();
+	/* set OSFXSR */
+	write_cr4(cr4 | (1<<9));
+
+	//asm volatile ("finit\n");
+	asm volatile("fxsave %0" : "=m"(*fpu_xsave));
+	for (int i = 0; i < 8; i++) {
+		st1[i] = st_unchange[i];
+	}
+
+	asm volatile ("finit\n");
+	asm volatile("fxsave %0" : "=m"(*fpu_xsave));
+	for (int i = 0; i < 8; i++) {
+		st2[i] = st_unchange[i];
+	}
+
+	write_cr4(cr4);
+
+	/*compare st1 with st2  ,the result should be equal*/
+	for (int i = 0; i < 8; i++) {
+		if (st1[i] != st2[i]) {
+			printf("line:%d st1 != st2\n", __LINE__);
+			report("%s ", 0, __FUNCTION__);
+			return;
+		}
+	}
+
+	/* control word */
+	if (fpu_xsave->fcw != 0x37F) {
+		printf("line:%d fcw=%x\n", __LINE__, fpu_xsave->fcw);
+		report("%s ", 0, __FUNCTION__);
+		return;
+	}
+
+	/* status word */
+	if (fpu_xsave->fsw != 0) {
+		printf("line:%d fsw=0x%x\n", __LINE__, fpu_xsave->fsw);
+		report("%s ", 0, __FUNCTION__);
+		return;
+	}
+
+	/* Operand and CS */
+	if (!((fpu_xsave->fdp == 0x0) && ((fpu_xsave->fcs & 0xFFFF) == 0))) {
+		printf("line:%d fdp=%x fcs=%x\n", __LINE__, fpu_xsave->fdp,
+			fpu_xsave->fcs);
+		report("%s ", 0, __FUNCTION__);
+		return;
+	}
+
+	/* tag word */
+	if (fpu_xsave->ftw != 0xFFFF) {
+		printf("line:%d ftw=0x%x\n", __LINE__, fpu_xsave->ftw);
+		report("%s ", 0, __FUNCTION__);
+		return;
+	}
+
+	report("%s", 1, __FUNCTION__);
+
+}
 #endif
 #ifdef IN_NON_SAFETY_VM
 /*
@@ -1390,6 +1470,8 @@ static void print_case_list(void)
 		   "x87 FPU Data Operand and CS Seg. Selectors states following INIT_001");
 	printf("\t Case ID:%d case name:%s\n\r", 46062,
 		   "Set initial guest x87 FPU opcode register to 0H for virtual AP_001");
+	printf("\t Case ID:%s case name:%s\n\r", "ACRN-T13762",
+		   "x87 FPU states following FINIT");
 #endif
 #ifdef IN_NON_SAFETY_VM
 #ifdef __i386__
@@ -1455,6 +1537,7 @@ int main(void)
 	fpu_rqmid_32364_Control_Word_states_following_INIT_001();
 	fpu_rqmid_39119_fpu_data_operand_and_cs_seg_state_following_init_001();
 	fpu_rqmid_46062_fpu_data_opcode_register_following_init_001();
+	fpu_acrn_t13762_fpu_states_following_finit();
 #endif
 #ifdef IN_NON_SAFETY_VM
 #ifdef __i386__
