@@ -3298,6 +3298,74 @@ static __unused void xsave_rqmid_40367_physical_pkru_support_001(void)
 	report("%s", (pkru_support == 0), __FUNCTION__);
 }
 
+/**
+ * @brief Case Name: XSAVE_hide_AMX_support
+ *
+ * ACRN-10569: ACRN hypervisor shall hide XSAVE-managed AMX states from any VM.
+ * In compliance with Chapter 13.2 and 13.3, Vol. 1, SDM.
+ *
+ * Summary: Execute CPUID.(EAX=0DH,ECX=0H), the value of EAX[18:17] shall be 0H,
+ * which means AMX state component is hidden.
+ */
+static __unused void xsave_acrn_t13746_hide_amx_support()
+{
+	xsave_clean_up_env();
+	uint32_t eax = cpuid_indexed(CPUID_XSAVE_FUC, 0).a;
+
+	uint32_t amx_tilecfg_support = eax & STATE_AMX_TILECFG;
+	debug_print("Check if CPUID.(EAX=DH, ECX=0H):EAX[17] is 0: amx_tilecfg_support = 0x%x \n", amx_tilecfg_support);
+
+	uint32_t amx_tiledata_support = eax & STATE_AMX_TILEDATA;
+	debug_print("Check if CPUID.(EAX=DH, ECX=0H):EAX[18] is 0: amx_tiledata_support = 0x%x \n", amx_tiledata_support);
+
+	bool cond_1 = (amx_tilecfg_support == 0);
+	bool cond_2 = (amx_tiledata_support == 0);
+
+	report("%s", (cond_1 && cond_2), __FUNCTION__);
+}
+
+/**
+ * @brief Case Name: XSAVE_hide_XFD_support_001
+ *
+ * ACRN-10571: ACRN hypervisor shall hide XFD from any VM. In compliance with Chapter 13.2, 13.14, Vol. 1, SDM.
+ *
+ * Summary: Execute CPUID.(EAX=0DH,ECX=1H), the value of EAX[4] shall be 0H, which means XFD is hidden.
+ */
+static __unused void xsave_acrn_t13747_hide_xfd_support_001()
+{
+	struct cpuid r = cpuid_indexed(CPUID_XSAVE_FUC, 1);
+
+	report("%s", ((r.a & (1 << 4)) == 0), __FUNCTION__);
+}
+
+/**
+ * @brief Case Name: XSAVE_hide_XFD_support_002
+ *
+ * ACRN-10571: ACRN hypervisor shall hide XFD from any VM. In compliance with Chapter 13.2, 13.14, Vol. 1, SDM.
+ *
+ * Summary: Read XFD related MSR IA32_XFD, IA32_XFD_ERR shall generate #GP(0),
+ * write them with 1H shall generate #GP(0).
+ */
+static __unused void xsave_acrn_t13748_hide_xfd_support_002()
+{
+	u8 chk = 0;
+
+	if (test_rdmsr_exception(IA32_XFD, GP_VECTOR, 0)) {
+		chk++;
+	}
+	if (test_wrmsr_exception(IA32_XFD, 1, GP_VECTOR, 0)) {
+		chk++;
+	}
+	if (test_rdmsr_exception(IA32_XFD_ERR, GP_VECTOR, 0)) {
+		chk++;
+	}
+	if (test_wrmsr_exception(IA32_XFD_ERR, 1, GP_VECTOR, 0)) {
+		chk++;
+	}
+
+	report("%s", (chk == 4), __FUNCTION__);
+}
+
 #define NUM_NATIVE_CASES		7U
 struct xsave_case native_cases[NUM_NATIVE_CASES] = {
 	{28468u, "XSAVE physical compaction extensions_001"},
@@ -3326,13 +3394,13 @@ struct xsave_case common_cases[NUM_COMMON_CASES] = {
 
 	{23153u, "XSAVE_CR4_initial_state_following_start-up_001"},
 	{22853u, "XSAVE_XCR0_initial_state_following_start-up_001"},
-	{23634u, "XSAVE XINUSE[bit 2:0] initial state following start-up_001"},
+//	{23634u, "XSAVE XINUSE[bit 2:0] initial state following start-up_001"},
 
 	{23154u, "XSAVE_CR4_initial_state_following_INIT_001"},
 	{36768u, "XSAVE_XCR0_initial_state_following_INIT_002"},
-	{24108u, "XSAVE_XINUSE[bit 2:0]_initial_state_following_INIT_002"},
+//	{24108u, "XSAVE_XINUSE[bit 2:0]_initial_state_following_INIT_002"},
 	{23151u, "XSAVE_XCR0_initial_state_following_INIT_001"},
-	{23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001"},
+//	{23635u, "XSAVE XINUSE[bit 2:0] initial state following INIT_001"},
 
 	{36703u, "XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_X87"},
 	{23636u, "XSAVE XSAVEOPT (RFBM[i] = 1, XINUSE[i] = 1) before XRSTOR following initializing event_SSE"},
@@ -3384,6 +3452,10 @@ struct xsave_case common_cases[NUM_COMMON_CASES] = {
 	{22799u, "XSAVE_compaction_extensions_001"},
 	{37042u, "XSAVE_compaction_extensions_002"},
 	{28397u, "XSAVE_Compacted_Form_of_XRSTOR_001"},
+
+	{13746u, "XSAVE_hide_AMX_support"},
+	{13747u, "XSAVE_hide_XFD_support_001"},
+	{13748u, "XSAVE_hide_XFD_support_002"},
 };
 
 static void print_case_list(void)
@@ -3421,7 +3493,8 @@ int main(void)
 	/* following start-up cases */
 	xsave_rqmid_23153_xsave_cr4_initial_state_following_startup_001();
 	xsave_rqmid_22853_xsave_xcr0_initial_state_following_startup_001();
-	xsave_rqmid_23634_xinuse_bit2to0_initial_state_following_startup_001();
+	/* Comment this case as the requirement is rejected. */
+	// xsave_rqmid_23634_xinuse_bit2to0_initial_state_following_startup_001();
 
 #ifdef IN_NATIVE
 	xsave_rqmid_28468_physical_compaction_extensions_AC_001();
@@ -3439,14 +3512,16 @@ int main(void)
 	/* This case verifies the XCR0 following the first INIT received by the AP. */
 	xsave_rqmid_36768_xcr0_initial_state_following_init_002();
 	/* This case verifies the XINUSE[bit 2:0] following the first INIT received by the AP. */
-	xsave_rqmid_24108_xinuse_bit2to0_initial_state_following_init_002();
+	/* Comment this case as the requirement is rejected. */
+	// xsave_rqmid_24108_xinuse_bit2to0_initial_state_following_init_002();
 
 	/* Using 2nd INIT to verify case 23151 and 23635 as the environment is very similar. */
 	send_sipi();
 	/* This case verifies XCR0 is unchanged following INIT (when it has been set to 7H on the AP). */
 	xsave_rqmid_23151_xcr0_initial_state_following_init_001();
 	/* This case verifies XINUSE[2:0] is unchanged following INIT (when XINUSE[1] has been set to 1 on the AP). */
-	xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_001();
+	/* Comment this case as the requirement is rejected. */
+	// xsave_rqmid_23635_XINUSE_bit2to0_initial_state_following_INIT_001();
 
 	/*
 	 * NOTE:
@@ -3520,6 +3595,10 @@ int main(void)
 	xsave_rqmid_22830_check_xsave_area_offset();
 	xsave_rqmid_22825_supervisor_state_components_001();
 	xsave_rqmid_22793_general_support_003_set_xcr0();
+
+	xsave_acrn_t13746_hide_amx_support();
+	xsave_acrn_t13747_hide_xfd_support_001();
+	xsave_acrn_t13748_hide_xfd_support_002();
 #endif
 
 	return report_summary();

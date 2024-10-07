@@ -100,6 +100,8 @@ typedef void (*gp_trigger_func)(void *data);
 #define STATE_PT_BIT			8
 #define STATE_PKRU_BIT			9
 #define STATE_HDC_BIT			13
+#define STATE_AMX_TILECFG_BIT		17
+#define STATE_AMX_TILEDATA_BIT		18
 #define STATE_X87			(1 << STATE_X87_BIT)
 #define STATE_SSE			(1 << STATE_SSE_BIT)
 #define STATE_AVX			(1 << STATE_AVX_BIT)
@@ -109,6 +111,8 @@ typedef void (*gp_trigger_func)(void *data);
 #define STATE_P				(1 << STATE_PT_BIT)
 #define STATE_PKRU			(1 << STATE_PKRU_BIT)
 #define STATE_HDC			(1 << STATE_HDC_BIT)
+#define STATE_AMX_TILECFG	(1 << STATE_AMX_TILECFG_BIT)
+#define STATE_AMX_TILEDATA	(1 << STATE_AMX_TILEDATA_BIT)
 #define KBL_NUC_SUPPORTED_XCR0		0x1F
 #define XCR0_BIT10_BIT63		0xFFFFFFFFFFFFFC00
 
