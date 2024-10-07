@@ -183,6 +183,97 @@ static __unused u64 *trigger_pgfault(void)
 	return (u64 *)add1;
 }
 
+static u8 test_vector = NO_EXCEPTION;
+static jmp_buf jmpbuf;
+ulong old_rsp;
+#define NON_CANO_PREFIX_MASK (0xFFFFUL << 48) /*bits [63:48] */
+#define EXCEPTION_IST 1
+#define OFFSET_IST 5
+#define AVL_SET 0x1
+static char exception_stack[0x1000] __attribute__((aligned(0x10)));
+static char rspx_stack[0x1000] __attribute__((aligned(0x10)));
+
+/* construct TSS, set rsp0, rsp1, rsp2, used to load the stack when a privilege
+ * level change occurs. set ist1 which will be used to load the stack when
+ * interrupt occurs
+ */
+tss64_t *set_ist(ulong non_cano_rsp)
+{
+	u64 ex_rsp = (u64)(exception_stack + sizeof(exception_stack));
+	u64 rspx = ((non_cano_rsp > 0) ? non_cano_rsp : (u64)(rspx_stack + sizeof(rspx_stack)));
+	tss64_t *tss64 = &tss +  OFFSET_IST;
+	tss64->ist1 = ex_rsp;
+	tss64->ist2 = 0;
+	tss64->ist3 = 0;
+	tss64->ist4 = 0;
+	tss64->ist5 = 0;
+	tss64->ist6 = 0;
+	tss64->ist7 = 0;
+	tss64->rsp0 = rspx;
+	tss64->rsp1 = rspx;
+	tss64->rsp2 = rspx;
+	tss64->res1 = 0;
+	tss64->res2 = 0;
+	tss64->res3 = 0;
+	tss64->res4 = 0;
+	tss64->iomap_base = (u16)sizeof(tss64_t);
+	return tss64;
+}
+
+/* setup an entry in GDT for TSS, and load TSS register */
+void setup_tss64(int dpl, ulong non_cano_rsp)
+{
+	tss64_t *tss64 = set_ist(non_cano_rsp);
+	int tss_ist_sel = TSS_MAIN + (sizeof(struct segment_desc64)) * OFFSET_IST; //tss64
+	struct descriptor_table_ptr old_gdt_desc;
+	sgdt(&old_gdt_desc);
+	set_gdt64_entry(tss_ist_sel, (u64)tss64, sizeof(tss64_t) - 1,
+		SEGMENT_PRESENT_SET | DESCRIPTOR_TYPE_SYS | (dpl << 5) | SEGMENT_TYPE_CODE_EXE_ONLY_ACCESSED,
+		GRANULARITY_SET | L_64_BIT_CODE_SEGMENT | AVL_SET);
+	lgdt(&old_gdt_desc);
+	ltr(tss_ist_sel);
+}
+
+void longjmp_func(void)
+{
+	asm("movb %0, %%gs:"xstr(EXCEPTION_ADDR)"" : : "r"(test_vector));
+	longjmp(jmpbuf, 0xbeef);
+}
+
+void ring0_non_cano_esp_handler(void);
+asm (
+"ring0_non_cano_esp_handler:\n"
+	"movq old_rsp, %rax\n"
+	"pop %rcx\n" //pop error code
+	"mov %rsp, %rcx\n"
+	"mov %rax, 24(%rcx)\n" //change rsp
+	"movq $longjmp_func, (%rcx)\n" //change rip
+	"iretq\n"
+);
+
+u8 ring0_run_with_non_cano_rsp(void (*func)(void))
+{
+	int ret = 0;
+	u64 non_cano_rsp = 0;
+	//u16 old_lr = str();
+	test_vector = SS_VECTOR;
+	setup_tss64(0, 0);
+	set_idt_entry_ist(test_vector, ring0_non_cano_esp_handler, 0, EXCEPTION_IST);
+	ret = setjmp(jmpbuf);
+	if (ret == 0) {
+		asm("movb $" xstr(NO_EXCEPTION) ", %%gs:"xstr(EXCEPTION_ADDR)"\n" : );
+		asm volatile("mov %%rsp, %0\n" : "=r"(old_rsp) : );
+		non_cano_rsp = old_rsp ^ NON_CANO_PREFIX_MASK; // construct a non-canonical address
+		asm volatile("movq %0, %%rsp\n" : : "r"(non_cano_rsp) : "memory");
+		func();
+		asm volatile("movq old_rsp, %rsp\n");
+	}
+	u8 vector = exception_vector();
+	setup_idt(); //restore idt
+	//ltr(old_lr); //restore lr
+	return vector;
+}
+
 static __unused void sse_b6_instruction_0(const char *msg)
 {
 	asm volatile(ASM_TRY("1f") "CVTTPS2DQ %[input_1], %%xmm1\n" "1:"
@@ -2387,6 +2478,79 @@ static __unused void sse_b6_instruction_260(const char *msg)
 				:  : [input_2] "m" (unsigned_32));
 	unsigned_64 = 0;
 	report("%s", (exception_vector() == NO_EXCEPTION), __FUNCTION__);
+}
+
+static void sse_b6_instruction_261(const char *msg)
+{
+	//unsigned __attribute__((vector_size(16))) value;
+	asm volatile(ASM_TRY("1f")
+		"pclmulqdq $0x0, %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_262(const char *msg)
+{
+	asm volatile(ASM_TRY("1f")
+		"aesdec %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_263(const char *msg)
+{
+	asm volatile(ASM_TRY("1f")
+		"lock\n\t"
+		"aesdeclast %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_264(const char *msg)
+{
+	asm volatile(ASM_TRY("1f")
+		"aesenclast %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	report("%s", (exception_vector() == NM_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_265(const char *msg)
+{
+	asm volatile(ASM_TRY("1f") "AESENC %[input_1], %%xmm1\n" "1:"
+				:  : [input_1] "m" (*(trigger_pgfault())));
+	report("%s", (exception_vector() == PF_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_266(const char *msg)
+{
+	asm volatile(ASM_TRY("1f") "aeskeygenassist $10, %[input_1], %%xmm1\n" "1:"
+				:  : [input_1] "m" (*(non_canon_align_128())));
+	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_aesimc(void)
+{
+	asm volatile(ASM_TRY("1f") "AESIMC %[input_1], %%xmm1\n" "1:"
+				:  : [input_1] "m" (unsigned_128));
+}
+static __unused void sse_b6_instruction_267(const char *msg)
+{
+	u8 vector = ring0_run_with_non_cano_rsp(sse_aesimc);
+
+	report("%s", (vector == SS_VECTOR), __FUNCTION__);
 }
 
 static __unused void sse_b6_0(void)
@@ -10073,6 +10237,251 @@ static __unused void sse_b6_260(void)
 }
 
 
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_PCLMULQDQ_#UD_001
+ *
+ *
+ * Summary:
+ * If CR0.EM[bit 2] = 1, executing PCLMULQDQ will generate #UD
+ */
+static __unused void sse_b6_261(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_PCLMULQDQ();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_1();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_261, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_AESDEC_#UD_001
+ *
+ *
+ * Summary:
+ * If CR4.OSFXSR[bit 9] = 0, executing AESDEC will generate #UD
+ */
+static __unused void sse_b6_262(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_AESNI();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_0();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_262, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_AESDECLAST_#UD_001
+ *
+ *
+ * Summary:
+ * If preceded by a LOCK prefix (F0H), executing AESDECLAST will generate #UD
+ */
+static __unused void sse_b6_263(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_AESNI();
+	condition_LOCK_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_263, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_AESENCLAST_#NM_001
+ *
+ *
+ * Summary:
+ * If set CR0.TS[bit 3]=1, executing AESENCLAST will generate #NM
+ */
+static __unused void sse_b6_264(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_AESNI();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_1();
+	do_at_ring0(sse_b6_instruction_264, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_AESENC_#PF_001
+ *
+ *
+ * Summary:
+ * For a page fault, executing AESENC will generate #PF
+ */
+static __unused void sse_b6_265(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_AESNI();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_265, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_AESKEYGENASSIST_#GP_001
+ *
+ *
+ * Summary:
+ * If the memory address is in a non-canonical form, executing AESKEYGENASSIST will generate #GP
+ */
+static __unused void sse_b6_266(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_AESNI();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_266, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_AESIMC_#SS_001
+ *
+ *
+ * Summary:
+ * If the memory address is in a non-canonical form, executing AESIMC will generate #SS
+ */
+static __unused void sse_b6_267(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_AESNI();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_267, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
 int main(void)
 {
 	setup_vm();
@@ -10341,6 +10750,12 @@ int main(void)
 	sse_b6_258();
 	sse_b6_259();
 	sse_b6_260();
-
+	sse_b6_261();
+	sse_b6_262();
+	sse_b6_263();
+	sse_b6_264();
+	sse_b6_265();
+	sse_b6_266();
+	sse_b6_267();
 	return report_summary();
 }

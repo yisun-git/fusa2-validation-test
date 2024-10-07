@@ -927,6 +927,28 @@ void condition_CPUID_SSSE3_1(void)
 	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_09);
 }
 
+void condition_CPUID_PCLMULQDQ(void)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01, EXTENDED_STATE_SUBLEAF_0).c;
+	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_01);
+
+	if (check_bit != FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_01))
+		printf("PCLMULQDQ is not supported\n");
+}
+
+void condition_CPUID_AESNI(void)
+{
+	unsigned long check_bit = 0;
+
+	check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_01, EXTENDED_STATE_SUBLEAF_0).c;
+	check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_25);
+
+	if (check_bit != FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_25))
+		printf("AENI is not supported\n");
+}
+
 void condition_FPU_excp_hold(void)
 {
 	float op1 = 1.2;

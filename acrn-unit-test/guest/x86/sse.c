@@ -14,6 +14,7 @@
 #include "xsave.h"
 #include "sse.h"
 #include "delay.h"
+#include "register_op.h"
 
 #define SSE_DEBUG
 #ifdef SSE_DEBUG
@@ -25,6 +26,12 @@
 #define BIT_SHIFT(n)	(1 << (n))
 #define CR4_OSFXSR_BIT_MASK	BIT_SHIFT(9)
 
+typedef unsigned __attribute__((vector_size(16))) sse128;
+
+typedef union {
+	sse128 sse;
+	u64 u[2];
+} sse_un;
 enum sse_instuction_e {
 	SSE_INS = 0,
 	SSE2_INS,
@@ -281,8 +288,352 @@ static __unused void sse_rqmid_36242_physical_sse4_2_support_001(void)
 	report("%s \n", is_pass, __FUNCTION__);
 }
 
+/*
+ * @brief case name:The physical platform supports SHA extensions_001
+ *
+ * Summary: The physical platform supports SHA extensions
+ *
+ */
+static void sse_rqmid_38311_Physical_SHA_extention_support_001()
+{
+	u32 result;
+	result = cpuid_indexed(0x07, 0).b;
+
+	report("%s", ((result >> 29) & 0x1) == 0x1, __FUNCTION__);
+}
+
+/*
+ * @brief case name:The physical platform supports PCLMULQDQ instruction
+ *
+ * Summary: The physical platform support SHA PCLMULQDQ instruction
+ *
+ */
+static void sse_ACRN_T13311_Physical_PCLMULQDQ_support_001()
+{
+	u32 result;
+	result = cpuid_indexed(0x1, 0).c;
+
+	report("%s", ((result >> 1) & 0x1) == 0x1, __FUNCTION__);
+}
+
+/*
+ * @brief case name:The physical platform supports AES-NI instruction extensions
+ *
+ * Summary: The physical platform support AES-NI instruction extensions
+ *
+ */
+static void sse_ACRN_T13307_Physical_AES_NI_support_001()
+{
+	u32 result;
+	result = cpuid_indexed(0x1, 0).c;
+	report("%s", ((result >> 25) & 0x1) == 0x1, __FUNCTION__);
+}
 #endif
 
+static unsigned aesenc_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"aesenc %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	return exception_vector();
+}
+
+static unsigned aesenclast_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"aesenclast %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	return exception_vector();
+}
+
+static unsigned aesdec_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"aesdec %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	return exception_vector();
+}
+
+static unsigned aesdeclast_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"aesdeclast %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	return exception_vector();
+}
+
+static unsigned aesimc_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"aesimc %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	return exception_vector();
+}
+
+static unsigned aeskeygen_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"aeskeygenassist $10, %%xmm2,%%xmm1\n\t"
+		"1:"
+		:
+		:
+		:);
+	return exception_vector();
+}
+
+static	void set_sse_env()
+{
+	write_cr4(read_cr4() | X86_CR4_OSXSAVE);/*enable osxsave */
+	write_cr4(read_cr4() | X86_CR4_OSFXSR);
+	xsetbv_checking(0, STATE_X87 | STATE_SSE | STATE_AVX);
+	write_cr0(read_cr0() & ~X86_CR0_TS);/*clear ts*/
+	write_cr0(read_cr0() | X86_CR0_AM);/*set AM */
+}
+/*
+ * @brief case name:Expose AESNI instruction extensions feature to any VM_001
+ *
+ * Summary: Expose AESNI instruction extensions feature to any VM.
+ *
+ */
+static __unused void sse_rqmid_38415_Expose_AESNI_instruction_extensions_feature_to_any_VM_001()
+{
+	u32 result = 0;
+	u32 count = 0;
+
+	set_sse_env();
+	result = cpuid_indexed(0x01, 0).d;
+	if (((result >> 25) & 0x1) || ((result >> 26) & 0x1)) {
+		count++;
+	}
+
+	result = cpuid_indexed(0x01, 0).c;
+	if (((result >> 25) & 0x1)) {
+		count++;
+	}
+	if (count != 2) {
+		report("%s", false, __FUNCTION__);
+		return;
+	}
+
+	if ((aesenc_checking() == NO_EXCEPTION) && (aesenclast_checking() == NO_EXCEPTION) &&
+		(aesdec_checking() == NO_EXCEPTION) && (aesdeclast_checking() == NO_EXCEPTION) &&
+		(aesimc_checking() == NO_EXCEPTION) && (aeskeygen_checking() == NO_EXCEPTION)) {
+		report("%s", true, __FUNCTION__);
+	} else {
+		report("%s", false, __FUNCTION__);
+	}
+}
+
+static unsigned sha1msg1_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"sha1msg1 %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	printf("vector: %u \n", exception_vector());
+	return exception_vector();
+}
+
+static unsigned sha1msg2_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"sha1msg2 %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	printf("vector: %u \n", exception_vector());
+	return exception_vector();
+}
+
+static unsigned sha1nexte_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"sha1nexte %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	printf("vector: %u \n", exception_vector());
+	return exception_vector();
+}
+
+static unsigned sha1rnds4_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"sha1rnds4 $1, %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:
+		);
+	printf("vector: %u \n", exception_vector());
+	return exception_vector();
+}
+
+static unsigned sha256msg1_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"sha256msg1 %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	printf("vector: %u \n", exception_vector());
+	return exception_vector();
+}
+
+static unsigned sha256msg2_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"sha256msg2 %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	printf("vector: %u \n", exception_vector());
+	return exception_vector();
+}
+
+static unsigned sha256rnds2_checking(void)
+{
+	asm volatile(ASM_TRY("1f")
+		"sha256rnds2 %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	printf("vector: %u \n", exception_vector());
+	return exception_vector();
+}
+
+/*
+ * @brief case name:Expose PCLMULQDQ instruction to any VM_001
+ *
+ * Summary: Expose PCLMULQDQ instruction to any VM.
+ *
+ */
+static __unused void sse_rqmid_38416_Expose_pclmulqdq_instruction_001(void)
+{
+	ALIGNED(64) sse_un mul1;
+	ALIGNED(64) sse_un mul2;
+	ALIGNED(64) sse_un mul3;
+	u32 result;
+
+	result = cpuid_indexed(0x01, 0).c;
+	if((result >> 1 & 0x1) != 0x1) {
+		report("%s", 0, "pclmulqdq is not support!");
+		return;
+	}
+
+	set_sse_env();
+	mul1.u[0] = 2;
+	mul2.u[0] = 25;
+	asm volatile(
+			"vmovaps %1,%%xmm1\n\t"
+			"vmovaps %2,%%xmm2\n\t"
+			"pclmulqdq $0,%%xmm2, %%xmm1\n\t"
+			"vmovaps %%xmm1,%0\n\t"
+			: "=m"(mul3.sse)
+			: "m"(mul1.sse), "m"(mul2.sse)
+			: "memory");
+	report("%s", mul3.u[0] == 50, __FUNCTION__);
+}
+/**
+ * @brief case name:Execute SHA1MSG1/SHA1MSG2/SHA1NEXTE/SHA1RNDS4/SHA256MSG1/SHA256MSG2/
+ * 		    SHA256RNDS2_001 with no exception.
+ *
+ * Summary:ACRN hypervisor shall expose SHA extensions feature to any VM.
+ */
+static __unused void sse_ACRN_T13304_Execute_sha_related_instruction(void)
+{
+	u32 result;
+	result = cpuid_indexed(0x07, 0).b;
+
+	if ((result & (1UL << 29)) != 0x0)
+	{
+		report("%s", 0, __FUNCTION__);
+		return;
+	}
+
+	/* Set up normal env*/
+	/*Clear Emulation flag*/
+	write_cr0(read_cr0() & ~(X86_CR0_EM));
+	/*Enable FXSAVE and FXRSTOR feature set*/
+	write_cr4(read_cr4() | X86_CR4_OSFXSR);
+	/*Clear CR0.TS flag*/
+	write_cr0(read_cr0() & ~(X86_CR0_TS));
+
+	report("%s", (sha1msg2_checking() == NO_EXCEPTION) && (sha1msg1_checking() == NO_EXCEPTION)
+		&& (sha1nexte_checking() == NO_EXCEPTION) && (sha256msg1_checking() == NO_EXCEPTION)
+		&& (sha256msg2_checking() == NO_EXCEPTION) && (sha256rnds2_checking() == NO_EXCEPTION)
+		&& (sha1rnds4_checking() == NO_EXCEPTION), __FUNCTION__);
+}
+
+/**
+ * @brief case name:sse_ACRN_T7876_Read_MSR_FEATURE_CONFIG_001
+ *
+ * Summary:When a vCPU attempts to read guest MSR_FEATURE_CONFIG, ACRN hypervisor shall guarantee that the vCPU gets 1H.
+ */
+static __unused void sse_ACRN_T7876_Read_MSR_FEATURE_CONFIG_001(void)
+{
+	u64 msr_feature_config;
+	bool is_pass = false;
+
+	msr_feature_config = rdmsr(MSR_IA32_FEATURE_CONFIG);
+	is_pass = (1 == msr_feature_config);
+
+	report("%s \n", is_pass, __FUNCTION__);
+}
+
+/**
+ * @brief case name:sse_ACRN_T7875_SSE_Write_MSR_FEATURE_CONFIG_001
+ *
+ * Summary:When a vCPU attempts to write guest MSR_FEATURE_CONFIG, ACRN hypervisor shall guarantee that the vCPU will receive #GP(0).
+ */
+static __unused void sse_ACRN_T7875_SSE_Write_MSR_FEATURE_CONFIG_001(void)
+{
+
+	if (wrmsr_checking(MSR_IA32_FEATURE_CONFIG, 0) != GP_VECTOR) {
+		report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
+		return;
+	}
+	if (wrmsr_checking(MSR_IA32_FEATURE_CONFIG, 1) != GP_VECTOR) {
+		report("%s: line[%d]", 0, __FUNCTION__, __LINE__);
+		return;
+	}
+
+	report("%s \n", 1, __FUNCTION__);
+}
+/**
+ * @brief case name: Set initial guest MSR_FEATURE_CONFIG to 1H following start-up_001
+ * Summary: ACRN hypervisor shall set initial guest MSR_FEATURE_CONFIG to 1H following start-up.
+ */
+static __unused void sse_rqmid_38696_MSR_FEATURE_CONFIG_following_start_up_001(void)
+{
+	volatile u32 *ptr = (volatile u32 *)STARTUP_MSR_FEATURE_CONFIG_LOW_ADDR;
+	u64 ia32_feature_config;
+
+	ia32_feature_config = *ptr + ((u64)(*(ptr + 1)) << 32);
+	report("%s", ia32_feature_config == 1, __FUNCTION__);
+}
 /*
  * @brief case name: SSE CR4.OSFXSR initial state following startup_001
  *
@@ -406,6 +757,20 @@ static __unused void sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001
 	send_sipi();
 	wait_ap_ready();
 	ap_start_count = 0;
+}
+
+/**
+ * @brief case name: Set initial guest MSR_FEATURE_CONFIG to 1H following INIT_001
+ * Summary: ACRN hypervisor shall set initial guest MSR_FEATURE_CONFIG to 1H following INIT.
+ */
+static __unused void sse_rqmid_38695_MSR_FEATURE_CONFIG_following_INIT_001(void)
+{
+	volatile u32 *ptr = (volatile u32 *)INIT_MSR_FEATURE_CONFIG_LOW_ADDR;
+	u64 ia32_feature_config;
+
+	printf("feature_config: %u \n", *ptr);
+	ia32_feature_config = *ptr + ((u64)(*(ptr + 1)) << 32);
+	report("%s", ia32_feature_config == 1, __FUNCTION__);
 }
 
 /*
@@ -1000,7 +1365,12 @@ static __unused void print_case_list(void)
 	"Physical SSE4_1 support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 36242u,
 	"Physical SSE4_2 support_001");
-
+	printf("\t\t Case ID:%d case name:%s\n\r", 38311u,
+	"Physical_SHA_extention_support_001");
+	printf("\t\t Case ID:%s case name:%s\n\r", "T13311",
+	"Physical_PCLMULQDQ_support_001");
+	printf("\t\t Case ID:%s case name:%s\n\r", "T13307",
+	"Physical_AES_NI_support_001");
 #else
 #ifdef IN_NON_SAFETY_VM
 	printf("\t\t Case ID:%d case name:%s\n\r", 27797u,
@@ -1053,6 +1423,18 @@ static __unused void print_case_list(void)
 	"SSE MXCSR initial state following start up_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 23208u,
 	"SSE XMM0-XMM15 initial state following start up_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38696u,
+	"MSR_FEATURE_CONFIG_following_start_up_001");
+	printf("\t\t Case ID:%s case name:%s\n\r", "T7876",
+	"Read_MSR_FEATURE_CONFIG_001");
+	printf("\t\t Case ID:%s case name:%s\n\r", "T7875",
+	"SSE_Write_MSR_FEATURE_CONFIG_001");
+	printf("\t\t Case ID:%s case name:%s\n\r", "T13304",
+	"Execute_sha_related_instruction");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38416u,
+	"Expose_pclmulqdq_instruction_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 38415u,
+	"Expose_AESNI_instruction_extensions_feature_to_any_VM_001");
 
 #endif
 #else
@@ -1212,6 +1594,7 @@ int main(void)
 	setup_vm();
 	sse_get_64bit_xsave_value_for_startup();
 	print_case_list();
+
 #ifdef __x86_64__
 #ifdef IN_NATIVE
 	sse_rqmid_27859_physical_sse_support_001();
@@ -1221,7 +1604,13 @@ int main(void)
 	sse_rqmid_36244_physical_ssse3_support_001();
 	sse_rqmid_36243_physical_sse4_support_001();
 	sse_rqmid_36242_physical_sse4_2_support_001();
+
+	sse_rqmid_38311_Physical_SHA_extention_support_001();
+	sse_ACRN_T13311_Physical_PCLMULQDQ_support_001();
+	sse_ACRN_T13307_Physical_AES_NI_support_001();
+
 #else
+
 #ifdef IN_NON_SAFETY_VM
 	sse_rqmid_27797_SSE_instructions_support_001();
 	sse_rqmid_27800_SSE2_instructions_support_001();
@@ -1245,10 +1634,16 @@ int main(void)
 	sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002();
 	sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001();
 	sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001();
-
+	sse_rqmid_38695_MSR_FEATURE_CONFIG_following_INIT_001();
 	sse_rqmid_23207_SSE_MXCSR_initial_state_following_startup_001();
 	sse_rqmid_23208_SSE_XMM0_XMM15_initial_state_following_startup_001();
 	sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_startup_001();
+	sse_rqmid_38696_MSR_FEATURE_CONFIG_following_start_up_001();
+	sse_ACRN_T7876_Read_MSR_FEATURE_CONFIG_001();
+	sse_ACRN_T7875_SSE_Write_MSR_FEATURE_CONFIG_001();
+	sse_ACRN_T13304_Execute_sha_related_instruction();
+	sse_rqmid_38416_Expose_pclmulqdq_instruction_001();
+	sse_rqmid_38415_Expose_AESNI_instruction_extensions_feature_to_any_VM_001();
 
 #endif
 #else
@@ -1260,5 +1655,6 @@ int main(void)
 	sse_rqmid_30916_SSE2_instructions_support_Protected_Mode_PSUBQ_PF_013();
 #endif
 #endif
+
 	return report_summary();
 }
