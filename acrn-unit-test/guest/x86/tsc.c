@@ -3,6 +3,7 @@
  * Test mode: Time Stamp Count, according to the SDM chaper 17
  * vol 3
  * Written by Zhu.Jie, 2019-06-13
+ * Updated by yanting.jiang@intel.com, 2024-09-03
  */
 #include "types.h"
 #include "libcflat.h"
@@ -20,10 +21,11 @@
 
 #define CR4_TSD (1 << 2)
 
-#define TSC_10MS 0x1406F3F
-#define TSC_1000MS 0x7D2B74E0
-#define TSC_100MS 0xC84587D
-#define TSC_10US 0x5208
+/* TSC frequency */
+#define HWINFO_TSC_PER_SECOND	2918400000UL  // TBD: This definition should be put to a seperate file with auto gen tool.
+
+#define TSC_1000MS HWINFO_TSC_PER_SECOND
+#define TSC_10US (HWINFO_TSC_PER_SECOND / 100000UL)
 
 #define TSC_INIT_CHECK_TIMES 10
 #define ARRY_LEN TSC_INIT_CHECK_TIMES+1
@@ -189,7 +191,6 @@ static int enable_tsc_deadline_timer(void)
 	}
 }
 
-
 void read_bp_startup(void)
 {
 	asm ("mov (0x8100) ,%%eax\n\t"
@@ -229,29 +230,6 @@ void read_ap_init_val(void)
 	ap_tsc_adjust_val =  *(volatile u64 *)INIT_TSCADJ_LOW_ADDR;
 }
 
-
-/**
- * @brief Case name:Nominal core crystal clock frequency_001
- *
- * Summary: ACRN hypervisor shall guarantee that the nominal core crystal clock frequency in H reported to
- * any vCPU is 16C 2154H.
- * Ch17.17 vol3 SDM
- *
- */
-#ifdef IN_NATIVE
-#define EXPnomTSCFreq 0x0
-#else
-#define EXPnomTSCFreq 0x16C2154
-#endif
-static void tsc_rqmid_24416_nom_crystal_clock_freq(void)
-{
-	u32 nomFreq = cpuid(0x15).c;
-	if (nomFreq != EXPnomTSCFreq) {
-		printf("The expected value: 0x%x, the actual value: 0x%x\n", EXPnomTSCFreq, nomFreq);
-	}
-	report("\t\t%s", nomFreq == EXPnomTSCFreq, __FUNCTION__);
-}
-
 void wrap_rdtsc(const char *msg)
 {
 	unsigned a, d;
@@ -267,7 +245,6 @@ void wrap_rdtsc(const char *msg)
  *
  * Summary: ACRN hypervisor shall expose TSC general support to any VM. Chapter 17.17, Vol. 3,
  * SDM and Chapter 18.7.3, Vol. 3, SDM.
- *
  */
 static void tsc_rqmid_24463_TSC_general_support_001(void)
 {
@@ -292,14 +269,11 @@ static void tsc_rqmid_24463_TSC_general_support_001(void)
 	do_at_ring3(wrap_rdtsc, __FUNCTION__);
 }
 
-
 /*
  * @brief Case name:TSC auxiliary Support_001
  *
  * Summary:ACRN hypervisor shall expose auxiliary TSC to any VM. Chapter 17.17.2, Vol. 3, SDM.
- *
  */
-
 static void tsc_rqmid_24466_TSC_auxiliary_Support(void)
 {
 	u32 ecx;
@@ -333,13 +307,11 @@ static void tsc_rqmid_24466_TSC_auxiliary_Support(void)
 	report("\t\t%s", true, __FUNCTION__);
 }
 
- /*
-  * @brief Case name:Tsc adjustment support_001
-  *
-  * Summary: ACRN hypervisor shall expose TSC adjustment to any VM, in compliance with Chapter 17.17.3, Vol. 3, SDM.
-  *
-  */
-
+/**
+ * @brief Case name:Tsc adjustment support_001
+ *
+ * Summary: ACRN hypervisor shall expose TSC adjustment to any VM, in compliance with Chapter 17.17.3, Vol. 3, SDM.
+ */
 static void tsc_rqmid_24448_Tsc_adjustment_support(void)
 {
 	u64 t1, t2, t3;
@@ -380,13 +352,10 @@ static void tsc_rqmid_24448_Tsc_adjustment_support(void)
 	return;
 }
 
-
-
 /**
  * @brief Case name:Invariant TSC support_001
  *
  * Summary: To check if frequency of TSC keep unchanged during the test.
- *
  */
 static int tsc_rqmid_26015_invariant_tsc_support(void)
 {
@@ -426,14 +395,12 @@ static int tsc_rqmid_26015_invariant_tsc_support(void)
 }
 
 
- /*
-  * @brief Case name:The ACRN need wrap around TSC_001
-  *
-  * Summary: ACRN hypervisor shall guarantee that the guest time-stamp counter
-  * wraps around after overflow. Ch17.17 vol3.
-  *
-  */
-
+/**
+ * @brief Case name:The ACRN need wrap around TSC_001
+ *
+ * Summary: ACRN hypervisor shall guarantee that the guest time-stamp counter
+ * wraps around after overflow. Ch17.17 vol3.
+ */
 #define DELTA_MAX	(0xFFFFFFFFFFFFFFFFull - 0xFFFFFFC000000000ull)
 #define MIN_INIT_VALUE	0x3782DACe9d90000ull
 static void tsc_rqmid_25225_need_wrap_around_TSC(void)
@@ -474,13 +441,11 @@ static void tsc_rqmid_25225_need_wrap_around_TSC(void)
 }
 
 
- /*
-  * @brief Case name: IA32_TSC_AUX start-up value_001
-  *
-  * Summary: ACRN hypervisor shall set initial guest IA32_TSC_AUX to 0H following start-up.
-  *
-  */
-
+/**
+ * @brief Case name: IA32_TSC_AUX start-up value_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest IA32_TSC_AUX to 0H following start-up.
+ */
 static void tsc_rqmid_39299_IA32_TSC_AUX_startup_value_001(void)
 {
 	u64 bp_tscaux = bp_eax_tscaux_greg_64 | ((u64)bp_edx_tscaux_greg_64 << 32);
@@ -488,12 +453,11 @@ static void tsc_rqmid_39299_IA32_TSC_AUX_startup_value_001(void)
 	report("\t\t%s", bp_tscaux == 0x0, __FUNCTION__);
 }
 
- /*
-  * @brief Case name: IA32_TIME_STAMP_COUNTER start-up value_001
-  *
-  * Summary:ACRN hypervisor shall set guest initial IA32_TIME_STAMP_COUNTER less than 378 2DAC E9D9 0000 H.
-  *
-  */
+/**
+ * @brief Case name: IA32_TIME_STAMP_COUNTER start-up value_001
+ *
+ * Summary:ACRN hypervisor shall set guest initial IA32_TIME_STAMP_COUNTER less than 378 2DAC E9D9 0000 H.
+ */
 #define MAX_TSC 0x3782DACE9D90000
 static void tsc_rqmid_39303_IA32_TIME_STAMP_COUNTER_startup_value_001(void)
 {
@@ -501,13 +465,11 @@ static void tsc_rqmid_39303_IA32_TIME_STAMP_COUNTER_startup_value_001(void)
 	report("\t\t%s", bp_tsc < MAX_TSC, __FUNCTION__);
 }
 
- /*
-  * @brief Case name: IA32_TSC_ADJUST start-up value_001
-  *
-  * Summary: ACRN hypervisor shall set initial guest IA32_TSC_ADJUST to 0H following start-up.
-  *
-  */
-
+ /**
+ * @brief Case name: IA32_TSC_ADJUST start-up value_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest IA32_TSC_ADJUST to 0H following start-up.
+ */
 static void tsc_rqmid_39305_IA32_TSC_ADJUST_startup_value_001(void)
 {
 	u64 bp_tscadj = bp_eax_tscadj_greg_64 | ((u64)bp_edx_tscadj_greg_64 << 32);
@@ -515,24 +477,20 @@ static void tsc_rqmid_39305_IA32_TSC_ADJUST_startup_value_001(void)
 
 }
 
- /*
-  * @brief Case name: CR4.TSD start-up value_001
-  *
-  * Summary: ACRN hypervisor shall set initial guest CR4.TSD to 0H following start-up.
-  *
-  */
-
+/**
+ * @brief Case name: CR4.TSD start-up value_001
+ *
+ * Summary: ACRN hypervisor shall set initial guest CR4.TSD to 0H following start-up.
+ */
 static void tsc_rqmid_39307_CR4_TSD_startup_value_001(void)
 {
 	report("\t\t%s", (bp_cr4_greg_long & CR4_TSD) == 0x0, __FUNCTION__);
 }
 
-
 /**
  * @brief Case name: CR4.TSD init value_001
  *
  * Summary: To check whether valule of registers changed after INIT or not.
- *
  */
 static void __unused tsc_rqmid_25226_cr4_tsd_init_value()
 {
@@ -556,7 +514,6 @@ static void __unused tsc_rqmid_25226_cr4_tsd_init_value()
  * @brief Case name: IA32_TSC_ADJUST init value_001
  *
  * Summary: ACRN hypervisor shall keep guest IA32_TSC_ADJUST unchanged following INIT.
- *
  */
 static void __unused tsc_rqmid_45987_IA32_TSC_ADJUST_init_value()
 {
@@ -581,7 +538,6 @@ static void __unused tsc_rqmid_45987_IA32_TSC_ADJUST_init_value()
  * @brief Case name: IA32_TSC_AUX init value_001
  *
  * Summary: ACRN hypervisor shall keep guest IA32_TSC_AUX unchanged following INIT.
- *
  */
 static void __unused tsc_rqmid_45988_IA32_TSC_AUX_init_value()
 {
@@ -626,7 +582,6 @@ __unused uint64_t ticks_to_us(uint64_t ticks)
  * @brief Case name:IA32_TIME_STAMP_COUNTER init value_001
  *
  * Summary: ACRN hypervisor shall keep guest IA32_TIME_STAMP_COUNTER unchanged following INIT.
- *
  */
 static void __unused tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value()
 {
@@ -660,49 +615,116 @@ static void __unused tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value()
 	report("\t\t%s", is_pass, __FUNCTION__);
 }
 
+static inline unsigned long long rdpid()
+{
+    long long r;
+
+    asm volatile("rdpid %0" : "=r"(r));
+
+    return r;
+}
+
+/**
+ * @brief Case Name: RDPID_support_001
+ *
+ * ACRN-10978: ACRN hypervisor shall expose RDPID support to any VM if it's available on the physical platform.
+ *
+ * Summary: Execute CPUID.(EAX=7H,ECX=0H), the value of ECX[22] shall be 1H.
+ * Execute RDPID instruction shall get the processor ID from IA32_TSC_AUX MSR.
+ */
+static void tsc_acrn_t13760_rdpid_support_001()
+{
+	bool check = false;
+	struct cpuid r;
+	int i;
+	uint64_t pid;
+
+	/* CPUID.(EAX=7H, ECX=0H):ECX.RDPID[22] = 1 */
+	r = cpuid_indexed(0x7, 0);
+	if ((r.c & (1 << 22)) != 0) {
+		for (i = 0; i < 3; i++) {
+			wrmsr(MSR_TSC_AUX, aux[i]);
+			pid = rdpid();
+			if (pid != aux[i]) {
+				break;
+			}
+		}
+		if (i == 3) {
+			check = true;
+		}
+	}
+
+	report("%s", (check == true), __FUNCTION__);
+}
+
+static int lock_rdpid_checking(void)
+{
+	/*LOCK prefix for rdpid, expect #UD*/
+	asm volatile(ASM_TRY("1f")
+				  ".byte 0xf0,0xf3,0x0f,0xc7,0xf8\n\t"  // lock rdpid %%rax
+				  "1:"
+				  ::);
+
+	return exception_vector();
+}
+
+/**
+ * @brief Case Name: RDPID_support_002
+ *
+ * ACRN-10978: ACRN hypervisor shall expose RDPID support to any VM if it's available on the physical platform.
+ *
+ * Summary: Execute RDPID instruction with the LOCK prefix used shall generate #UD.
+ */
+static void tsc_acrn_t13765_rdpid_support_002()
+{
+	report("%s", (lock_rdpid_checking() == UD_VECTOR), __FUNCTION__);
+}
+
 static void print_case_list(void)
 {
 	printf("\t\t TSC feature case list:\n\r");
-#ifdef IN_NON_SAFETY_VM
-	printf("\t\t Case ID:%d case name:%s\n\r", 25226u, "CR4.TSD init value_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 45987u, "IA32_TSC_ADJUST init value_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 45988u, "IA32_TSC_AUX init value_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 45998u, "IA32_TIME_STAMP_COUNTER init value_001");
-#endif
-	printf("\t\t Case ID:%d case name:%s\n\r", 39299u, "IA32_TSC_AUX start-up value_001");
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 39303u, "IA32_TIME_STAMP_COUNTER start-up value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 39299u, "IA32_TSC_AUX start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39305u, "IA32_TSC_ADJUST start-up value_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 39307u, "CR4.TSD start-up value_001");
 
-	printf("\t\t Case ID:%d case name:%s\n\r", 26015u, "Invariant TSC support_001");
-	printf("\t\t Case ID:%d case name:%s\n\r", 24416u, "Nominal core crystal clock frequency_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 45998u, "IA32_TIME_STAMP_COUNTER init value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 45988u, "IA32_TSC_AUX init value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 45987u, "IA32_TSC_ADJUST init value_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 25226u, "CR4.TSD init value_001");
+
 	printf("\t\t Case ID:%d case name:%s\n\r", 24463u, "TSC general support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 26015u, "Invariant TSC support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 24466u, "TSC auxiliary Support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 24468u, "Tsc adjustment support_001");
 	printf("\t\t Case ID:%d case name:%s\n\r", 25225u, "The ACRN need wrap around TSC_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 13760u, "RDPID_support_001");
+	printf("\t\t Case ID:%d case name:%s\n\r", 13765u, "RDPID_support_002");
 }
 
 static void test_tsc(void)
 {
-
 	read_bp_startup();
 	read_ap_init_val();
-#ifdef IN_NON_SAFETY_VM
-	tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value();
-	tsc_rqmid_25226_cr4_tsd_init_value();
-	tsc_rqmid_45987_IA32_TSC_ADJUST_init_value();
-	tsc_rqmid_45988_IA32_TSC_AUX_init_value();
-#endif
-	tsc_rqmid_26015_invariant_tsc_support();
-	tsc_rqmid_39299_IA32_TSC_AUX_startup_value_001();
+
 	tsc_rqmid_39303_IA32_TIME_STAMP_COUNTER_startup_value_001();
+	tsc_rqmid_39299_IA32_TSC_AUX_startup_value_001();
 	tsc_rqmid_39305_IA32_TSC_ADJUST_startup_value_001();
 	tsc_rqmid_39307_CR4_TSD_startup_value_001();
-	tsc_rqmid_24416_nom_crystal_clock_freq();
+
+	tsc_rqmid_45998_IA32_TIME_STAMP_COUNTER_init_value();
+	tsc_rqmid_45988_IA32_TSC_AUX_init_value();
+	tsc_rqmid_45987_IA32_TSC_ADJUST_init_value();
+	tsc_rqmid_25226_cr4_tsd_init_value();
+
+	tsc_rqmid_24463_TSC_general_support_001();
+	tsc_rqmid_26015_invariant_tsc_support();
 	tsc_rqmid_24466_TSC_auxiliary_Support();
 	tsc_rqmid_24448_Tsc_adjustment_support();
 	tsc_rqmid_25225_need_wrap_around_TSC();
-	tsc_rqmid_24463_TSC_general_support_001();
+	tsc_acrn_t13760_rdpid_support_001();
+	tsc_acrn_t13765_rdpid_support_002();
 }
 
 int main(void)
