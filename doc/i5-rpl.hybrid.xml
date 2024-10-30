@@ -21,7 +21,7 @@
         </IVSHMEM_REGION>
       </IVSHMEM>
       <RDT>
-        <RDT_ENABLED>n</RDT_ENABLED>
+        <RDT_ENABLED>y</RDT_ENABLED>
         <CDP_ENABLED>n</CDP_ENABLED>
         <VCAT_ENABLED>n</VCAT_ENABLED>
       </RDT>
@@ -89,7 +89,7 @@
       <p2sb>n</p2sb>
     </mmio_resources>
     <pci_devs>
-      <pci_dev>02:00.0 Ethernet controller: Intel Corporation Ethernet Controller I225-V</pci_dev>
+      <pci_dev>56:00.0 Ethernet controller: Intel Corporation Ethernet Controller I226-V (rev 06)</pci_dev>
     </pci_devs>
     <load_order>PRE_LAUNCHED_VM</load_order>
     <name>VM0</name>

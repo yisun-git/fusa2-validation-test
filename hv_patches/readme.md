@@ -9,6 +9,8 @@
 	JIRA issue ID: ACRN-10719 (ACRN log show "Unhandled exception: 0 (Divide Error)" and generates coredump due to ENABLED RDT)
 4. increase_mmap_entries.patch
 	JIRA issue ID: ACRN-11130 (Acrn log show"Unhandled exception: 14 (Page Fault)" on mbl due to too few mmap defined by acrn)
+5. increase_vuart_tx_buf_size.patch
+	To resolve the issue of incomplete printing of feature case results when there are many cases.
 ## Features patches
 Machine check
 0001-MCA-expose-MCA-to-VM0-and-hide-from-others.patch
