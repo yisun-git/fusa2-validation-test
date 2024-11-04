@@ -949,6 +949,14 @@ void condition_CPUID_AESNI(void)
 		printf("AENI is not supported\n");
 }
 
+void condition_CPUID_SHA(void)
+{
+        unsigned long check_bit = 0;
+        check_bit = cpuid_indexed(CPUID_BASIC_INFORMATION_07, EXTENDED_STATE_SUBLEAF_0).b;
+        check_bit &= FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_29);
+        if (check_bit != FEATURE_INFORMATION_BIT(FEATURE_INFORMATION_29))
+                printf("SHA is not supported\n");
+}
 void condition_FPU_excp_hold(void)
 {
 	float op1 = 1.2;

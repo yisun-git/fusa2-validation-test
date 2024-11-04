@@ -2553,6 +2553,79 @@ static __unused void sse_b6_instruction_267(const char *msg)
 	report("%s", (vector == SS_VECTOR), __FUNCTION__);
 }
 
+static void sse_b6_instruction_268(const char *msg)
+{
+	//unsigned __attribute__((vector_size(16))) value;
+	asm volatile(ASM_TRY("1f")
+		"sha1msg2 %%xmm1, %%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_269(const char *msg)
+{
+	asm volatile(ASM_TRY("1f")
+		"SHA1MSG2 %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_270(const char *msg)
+{
+	asm volatile(ASM_TRY("1f")
+		"lock\n\t"
+		"SHA1NEXTE %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	report("%s", (exception_vector() == UD_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_271(const char *msg)
+{
+	asm volatile(ASM_TRY("1f")
+		"SHA256MSG1 %%xmm1 ,%%xmm2\n\t"
+		"1:"
+		:
+		:
+		:);
+	report("%s", (exception_vector() == NM_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_272(const char *msg)
+{
+	asm volatile(ASM_TRY("1f") "SHA1RNDS4 $10, %[input_1], %%xmm1\n" "1:"
+				:  : [input_1] "m" (*(trigger_pgfault())));
+	report("%s", (exception_vector() == PF_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_b6_instruction_273(const char *msg)
+{
+	asm volatile(ASM_TRY("1f") "SHA256RNDS2 %[input_1], %%xmm1 \n" "1:"
+				:  : [input_1] "m" (*(non_canon_align_128())));
+	report("%s", (exception_vector() == GP_VECTOR), __FUNCTION__);
+}
+
+static __unused void sse_SHA256MSG2(void)
+{
+	asm volatile(ASM_TRY("1f") "SHA256MSG2 %[input_1], %%xmm1\n" "1:"
+				:  : [input_1] "m" (unsigned_128));
+}
+static __unused void sse_b6_instruction_274(const char *msg)
+{
+	u8 vector = ring0_run_with_non_cano_rsp(sse_SHA256MSG2);
+
+	report("%s", (vector == SS_VECTOR), __FUNCTION__);
+}
+
 static __unused void sse_b6_0(void)
 {
 	u32 cr0 = read_cr0();
@@ -10482,6 +10555,252 @@ static __unused void sse_b6_267(void)
 	asm volatile("fninit");
 }
 
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_SHA1MSG1_#UD_001
+ *
+ *
+ * Summary:
+ * If CR0.EM[bit 2] = 1, executing SHA1MSG1 will generate #UD
+ */
+static __unused void sse_b6_268(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_SHA();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_1();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_268, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_SHA1MSG2_#UD_001
+ *
+ *
+ * Summary:
+ * If CR4.OSFXSR[bit 9] = 0, executing SHA1MSG2 will generate #UD
+ */
+static __unused void sse_b6_269(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_SHA();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_0();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_269, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_SHA1NEXTE_#UD_001
+ *
+ *
+ * Summary:
+ * If preceded by a LOCK prefix (F0H), executing SHA1NEXTE will generate #UD
+ */
+static __unused void sse_b6_270(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_SHA();
+	condition_LOCK_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_270, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_SHA256MSG1_#NM_001
+ *
+ *
+ * Summary:
+ * If set CR0.TS[bit 3]=1, executing SHA256MSG1 will generate #NM
+ */
+static __unused void sse_b6_271(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_SHA();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_1();
+	do_at_ring0(sse_b6_instruction_271, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_SHA1RNDS4_#PF_001
+ *
+ *
+ * Summary:
+ * For a page fault, executing SHA1RNDS4 will generate #PF
+ */
+static __unused void sse_b6_272(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_SHA();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_272, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_SHA256RNDS2_#GP_001
+ *
+ *
+ * Summary:
+ * If the memory address is in a non-canonical form, executing SHA256RNDS2 will generate #GP
+ */
+static __unused void sse_b6_273(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_SHA();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_273, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+/*
+ * @brief case name: SSE instructions support_64 bit Mode_SHA256MSG2_#SS_001
+ *
+ *
+ * Summary:
+ * If the memory address is in a non-canonical form, executing SHA256MSG2 will generate #SS
+ */
+static __unused void sse_b6_274(void)
+{
+	u32 cr0 = read_cr0();
+	u32 cr2 = read_cr2();
+	u32 cr3 = read_cr3();
+	u32 cr4 = read_cr4();
+	#ifdef __x86_64__
+	u32 cr8 = read_cr8();
+	#endif
+	condition_CPUID_SHA();
+	condition_LOCK_not_used();
+	condition_VEX_not_used();
+	condition_CR0_EM_0();
+	condition_CR4_OSFXSR_1();
+	condition_pgfault_not_occur();
+	condition_cs_cpl_0();
+	condition_CR0_TS_0();
+	do_at_ring0(sse_b6_instruction_274, "");
+	write_cr0(cr0);
+	write_cr2(cr2);
+	write_cr3(cr3);
+	write_cr4(cr4);
+	#ifdef __x86_64__
+	write_cr8(cr8);
+	#endif
+	asm volatile("fninit");
+}
+
+
 int main(void)
 {
 	setup_vm();
@@ -10757,5 +11076,12 @@ int main(void)
 	sse_b6_265();
 	sse_b6_266();
 	sse_b6_267();
+	sse_b6_268();
+	sse_b6_269();
+	sse_b6_270();
+	sse_b6_271();
+	sse_b6_272();
+	sse_b6_273();
+	sse_b6_274();
 	return report_summary();
 }

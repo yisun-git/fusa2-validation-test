@@ -1634,11 +1634,13 @@ int main(void)
 	sse_rqmid_42027_SSE_MXCSR_initial_state_following_INIT_002();
 	sse_rqmid_23197_SSE_MXCSR_unchanged_following_INIT_001();
 	sse_rqmid_27437_SSE_XMM0_XMM15_unchanged_following_INIT_001();
-	sse_rqmid_38695_MSR_FEATURE_CONFIG_following_INIT_001();
+	/* Reject this req use to duplicate */
+	//sse_rqmid_38695_MSR_FEATURE_CONFIG_following_INIT_001();
 	sse_rqmid_23207_SSE_MXCSR_initial_state_following_startup_001();
 	sse_rqmid_23208_SSE_XMM0_XMM15_initial_state_following_startup_001();
 	sse_rqmid_23188_SSE_CR4_OSFXSR_initial_state_following_startup_001();
-	sse_rqmid_38696_MSR_FEATURE_CONFIG_following_start_up_001();
+	/* Reject this req use to duplicate */
+	//sse_rqmid_38696_MSR_FEATURE_CONFIG_following_start_up_001();
 	sse_ACRN_T7876_Read_MSR_FEATURE_CONFIG_001();
 	sse_ACRN_T7875_SSE_Write_MSR_FEATURE_CONFIG_001();
 	sse_ACRN_T13304_Execute_sha_related_instruction();
