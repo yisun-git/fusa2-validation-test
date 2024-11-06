@@ -1,3 +1,14 @@
+From e4625eacc9433f9feec7596d98775ac392f9fb93 Mon Sep 17 00:00:00 2001
+From: Build <acrnbuild@example.com>
+Date: Mon, 4 Nov 2024 16:14:45 +0800
+Subject: [PATCH] Offline patch: increase_vuart_tx_buf_size.patch
+
+To resolve the issue of incomplete printing of feature case results when there
+are many cases.
+---
+ misc/config_tools/schema/config.xsd | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
 diff --git a/misc/config_tools/schema/config.xsd b/misc/config_tools/schema/config.xsd
 index d427d4743..065f90a78 100644
 --- a/misc/config_tools/schema/config.xsd
@@ -11,4 +22,6 @@ index d427d4743..065f90a78 100644
        <xs:annotation acrn:title="vuart tx buffer size" acrn:views="advanced"
                       acrn:errormsg="'required': 'must config the max tx buffer size of vuart in byte'">
          <xs:documentation>Specify the maximum tx buffer size of vuart.</xs:documentation>
+-- 
+2.34.1
 

@@ -1,0 +1,27 @@
+From fc7b3fcc0f2e5a464159c5b14cb2a0b49ecc17ad Mon Sep 17 00:00:00 2001
+From: Build <acrnbuild@example.com>
+Date: Mon, 4 Nov 2024 16:12:03 +0800
+Subject: [PATCH] Offline patch: increase_mmap_entries.patch
+
+JIRA issue ID: ACRN-11130 (Acrn log show"Unhandled exception: 14 (Page Fault)"
+on mbl due to too few mmap defined by acrn)
+---
+ hypervisor/boot/include/boot.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/hypervisor/boot/include/boot.h b/hypervisor/boot/include/boot.h
+index da9d2fcfc..05b66222f 100644
+--- a/hypervisor/boot/include/boot.h
++++ b/hypervisor/boot/include/boot.h
+@@ -12,7 +12,7 @@
+ #include <vm_configurations.h>
+ 
+ /* TODO: MAX_MMAP_ENTRIES shall be config by config tool, and same as E820_MAX_ENTRIES */
+-#define MAX_MMAP_ENTRIES		32U
++#define MAX_MMAP_ENTRIES		64U
+ 
+ #define MAX_BOOTARGS_SIZE		2048U
+ #define MAX_LOADER_NAME_SIZE		32U
+-- 
+2.34.1
+

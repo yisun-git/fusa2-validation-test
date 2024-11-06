@@ -1,0 +1,36 @@
+From 076ee2e444e99d40bc53164d44b262488238abfe Mon Sep 17 00:00:00 2001
+From: Build <acrnbuild@example.com>
+Date: Mon, 4 Nov 2024 16:01:36 +0800
+Subject: [PATCH] Offline patch: enable_rdt.patch
+
+JIRA issue ID: ACRN-10719 (ACRN log show "Unhandled exception: 0 (Divide Error)"
+and generates coredump due to ENABLED RDT)
+---
+ hypervisor/arch/x86/guest/vmsr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/hypervisor/arch/x86/guest/vmsr.c b/hypervisor/arch/x86/guest/vmsr.c
+index 65ba1059f..3057da4fa 100644
+--- a/hypervisor/arch/x86/guest/vmsr.c
++++ b/hypervisor/arch/x86/guest/vmsr.c
+@@ -385,7 +385,7 @@ static void prepare_auto_msr_area(struct acrn_vcpu *vcpu)
+ 		vcpu->arch.msr_area.count++;
+ 	}
+ 
+-	if (is_platform_rdt_capable()) {
++	if (is_platform_rdt_capable() && is_vcat_configured(vcpu->vm)) {
+ 		struct acrn_vm_config *cfg = get_vm_config(vcpu->vm->vm_id);
+ 		uint16_t vcpu_clos;
+ 
+@@ -396,7 +396,7 @@ static void prepare_auto_msr_area(struct acrn_vcpu *vcpu)
+ 		/* RDT: only load/restore MSR_IA32_PQR_ASSOC when hv and guest have different settings
+ 		 * vCAT: always load/restore MSR_IA32_PQR_ASSOC
+ 		 */
+-		if (is_vcat_configured(vcpu->vm) || (vcpu_clos != hv_clos)) {
++		if (vcpu_clos != hv_clos) {
+ 			vcpu->arch.msr_area.guest[vcpu->arch.msr_area.count].msr_index = MSR_IA32_PQR_ASSOC;
+ 			vcpu->arch.msr_area.guest[vcpu->arch.msr_area.count].value = clos2pqr_msr(vcpu_clos);
+ 			vcpu->arch.msr_area.host[vcpu->arch.msr_area.count].msr_index = MSR_IA32_PQR_ASSOC;
+-- 
+2.34.1
+

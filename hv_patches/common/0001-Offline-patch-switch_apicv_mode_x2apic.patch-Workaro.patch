@@ -1,0 +1,28 @@
+From d0e6ae254644c0132aa29e1c57ab5cfcf5ded21f Mon Sep 17 00:00:00 2001
+From: Build <acrnbuild@example.com>
+Date: Mon, 4 Nov 2024 16:23:21 +0800
+Subject: [PATCH] Offline patch: switch_apicv_mode_x2apic.patch (Workaround)
+
+JIRA issue ID: ACRN-10399 (Guest #GP when read x2APIC MSRs after vCPU receiving
+SIPI)
+---
+ hypervisor/arch/x86/guest/vmcs.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/hypervisor/arch/x86/guest/vmcs.c b/hypervisor/arch/x86/guest/vmcs.c
+index 689e4a846..248a3009d 100644
+--- a/hypervisor/arch/x86/guest/vmcs.c
++++ b/hypervisor/arch/x86/guest/vmcs.c
+@@ -581,6 +581,9 @@ void init_vmcs(struct acrn_vcpu *vcpu)
+ 	init_guest_state(vcpu);
+ 	init_entry_ctrl(vcpu);
+ 	init_exit_ctrl(vcpu);
++
++        if (is_x2apic_enabled(&vcpu->arch.vlapic))
++            switch_apicv_mode_x2apic(vcpu);
+ }
+ 
+ /**
+-- 
+2.34.1
+

@@ -1,3 +1,13 @@
+From c121b3bb94bfc6e9a7894946ac3be887a378bb7b Mon Sep 17 00:00:00 2001
+From: Build <acrnbuild@example.com>
+Date: Mon, 4 Nov 2024 16:04:08 +0800
+Subject: [PATCH] Offline patch: enable_local_apic.patch
+
+Fix acrn build error when enabling local apic.
+---
+ misc/config_tools/schema/checks/rdt_support.xsd | 6 ------
+ 1 file changed, 6 deletions(-)
+
 diff --git a/misc/config_tools/schema/checks/rdt_support.xsd b/misc/config_tools/schema/checks/rdt_support.xsd
 index d3b95e259..342fd77a1 100644
 --- a/misc/config_tools/schema/checks/rdt_support.xsd
@@ -15,3 +25,6 @@ index d3b95e259..342fd77a1 100644
    <xs:assert test="empty(vm[load_order ='PRE_LAUNCHED_VM' and vm_type='RTVM']) or
  		   every $cap in caches/cache[@level=3]/capability[@id='Software SRAM'] satisfies
  		   (compare($cap/end, '0x80000000') &lt; 0 or compare($cap/start, '0xf8000000') &gt;= 0)">
+-- 
+2.34.1
+
