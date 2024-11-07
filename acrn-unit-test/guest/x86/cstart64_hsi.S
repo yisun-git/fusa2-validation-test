@@ -432,35 +432,14 @@ smp_init:
 	movl %edx, %ebx
 	movl %ebx, lapicid_map
 
-	movl $APIC_ICR, %ecx
-	shrl $4, %ecx
-	addl $APIC_BASE_MSR, %ecx
-
 	call fwcfg_get_nb_cpus
-	movl %eax, %edx
-	cmp $1, %edx
-	je  3f
-	// start from local apic id 0
-	movl $0, %edx
-1:
-	cmp %ebx, %edx  // skip send sipi to self
-	je 4f
-	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT), %eax
-	wrmsr
-	movl $(APIC_DEST_PHYSICAL | APIC_DM_INIT), %eax
-	wrmsr
-	movl $(APIC_DEST_PHYSICAL | APIC_DM_STARTUP | IPI_VECTOR), %eax
-	wrmsr
-4:	addl $1, %edx
-	cmp $max_cpus, %edx
-	jz 3f
+	cmp $1, %eax
+	je  smp_init_done
 
-	call check_cpu_online_status
-	cmp $1, %ax
-	jne 1b
-	movb $1, is_all_cpu_init
-3:
+	call bringup_ap
+
 smp_init_done:
+	movb $1, is_all_cpu_init
 	ret
 
 cpu_online_count:	.word 1

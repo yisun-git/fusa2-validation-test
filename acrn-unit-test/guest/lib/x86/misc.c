@@ -125,6 +125,19 @@ void set_page_control_bit(void *gva, page_level level, page_control_bit bit, u32
 
 }
 
+void bringup_ap()
+{
+	int cpu_count = fwcfg_get_nb_cpus();
+
+	// INIT IPI
+	apic_icr_write(APIC_DEST_ALLBUT | APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, 0);
+	// Startup IPI
+	apic_icr_write(APIC_DEST_ALLBUT | APIC_DEST_PHYSICAL | APIC_DM_STARTUP, 0);
+
+	while (cpu_online_count < cpu_count) {
+		cpu_relax();
+	}
+}
 /**
  * ------------------------------------------------------------
  *
@@ -143,7 +156,6 @@ void send_sipi()
 
 	dest = lapicid_map[ap_cpus];
 	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT | APIC_INT_ASSERT, dest);
-	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_INIT, dest);
 	apic_icr_write(APIC_DEST_PHYSICAL | APIC_DM_STARTUP, dest);
 	/*waiting ap initilize completely*/
 	while ((cpus_cnt + 1) > cpu_online_count) {
