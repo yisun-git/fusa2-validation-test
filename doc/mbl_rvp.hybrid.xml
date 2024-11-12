@@ -17,6 +17,10 @@
               <VM_NAME>POST_STD_VM1</VM_NAME>
               <VBDF>00:03.0</VBDF>
             </IVSHMEM_VM>
+            <IVSHMEM_VM>
+              <VM_NAME>VM0</VM_NAME>
+              <VBDF>00:03.0</VBDF>
+            </IVSHMEM_VM>
           </IVSHMEM_VMS>
         </IVSHMEM_REGION>
       </IVSHMEM>
