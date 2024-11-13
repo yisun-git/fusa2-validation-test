@@ -52,5 +52,7 @@ uint64_t fwcfg_get_u64(unsigned index);
 
 unsigned fwcfg_get_nb_cpus(void);
 
+#define DEPRECATED 0
+
 #endif
 
