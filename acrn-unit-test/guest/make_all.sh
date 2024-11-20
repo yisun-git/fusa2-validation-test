@@ -6,9 +6,10 @@ BUILD_64BIT_FEATURE="smx sgx smm hyperthread rtc mem_cache segmentation multiboo
 	taskmanagement interrupt pt pci power_thermal avx mpx \
 	safety_analysis_high_direct safety_analysis_high_dma safety_analysis_low_direct safety_analysis_low_dma debug_features \
 	misc_msr interrupt_mc misc_cpuid tsx multiboot_low cpumode exception_avx_b6 exception_avx_pt_b6 exception_avx_pt_ra_b6 \
-        exception_fpu_b6 exception_fpu_pt_b6 exception_fpu_pt_ra_b6 exception_fpu_ra_b6 exception_gp_b6 exception_gp_pt_b6 \
-        exception_gp_pt_ra_b6 exception_mmx_b6 exception_mmx_pt_ra_b6 exception_mpx_b6 exception_mpx_pt_b6 exception_mpx_pt_ra_b6 \
-        exception_mpx_ra_b6 exception_sse_b6 exception_sse_pt_ra_b6 interrupt_df_pf hypercall user_interrupts"
+	exception_fpu_b6 exception_fpu_pt_b6 exception_fpu_pt_ra_b6 exception_fpu_ra_b6 exception_gp_b6 exception_gp_pt_b6 \
+	exception_gp_pt_ra_b6 exception_mmx_b6 exception_mmx_pt_ra_b6 exception_mpx_b6 exception_mpx_pt_b6 exception_mpx_pt_ra_b6 \
+	exception_mpx_ra_b6 exception_sse_b6 exception_sse_pt_ra_b6 interrupt_df_pf hypercall user_interrupts lbr tme keylocker \
+	instruction_emulation"
 
 BUILD_32BIT_FEATURE="mem_cache segmentation paging general_purpose mmx cpumode fpu sse taskmanagement interrupt pt avx mpx \
 	interrupt_triple_fault v8086_protect exception_avx_pt exception_avx_pt_b6 exception_avx_pt_ra_b6 exception_fpu_pt \
