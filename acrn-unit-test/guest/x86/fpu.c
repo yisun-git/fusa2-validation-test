@@ -14,6 +14,7 @@
 #include "smp.h"
 #include "xsave.h"
 #include "delay.h"
+#include "platform_config.h"
 
 #define get_bit(x, n)  (((x) >> (n)) & 1)
 #define CR0_NE_BIT		(1<<5)
@@ -379,9 +380,11 @@ static void fpu_rqmid_35017_physical_deprecated_FPU_CS_DS_AC_001()
 
 static void fpu_rqmid_35018_physical_FDP_EXCPTN_only_disabled_AC_001()
 {
-	u32 result;
+	u32 result, plat_result;
 	result = cpuid_indexed(0x07, 0).b;
-	report("%s", get_bit(result, 6) == 0, __FUNCTION__);
+	plat_result = get_plat_cpuid(0x07, 0x0).b;
+
+	report("%s", get_bit(result, 6) == get_bit(plat_result, 6), __FUNCTION__);
 }
 
 /*
@@ -1035,7 +1038,7 @@ static void fpu_rqmid_32375_shall_expose_deprecated_cs_ds_001()
 				 : "=m"(fsave) : : "memory");
 
 	/*fcs locate byte[12,13];fds locate byte[20,21]*/
-	if ((cpuid(0x7).b & (1 << 13))
+	if ((get_plat_cpuid(0x7, 0x0).b & (1 << 13))
 		&& (fsave[12] == 0) && (fsave[13] == 0)
 		&& (fsave[20] == 0) && (fsave[21] == 0)) {
 		report("%s", 1, __FUNCTION__);
