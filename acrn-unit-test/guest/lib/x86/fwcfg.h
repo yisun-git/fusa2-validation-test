@@ -35,7 +35,8 @@
 
 #define FW_CFG_SAFETY_VM_CORE_NUMS      2
 #define FW_CFG_NATIVE_CORE_NUMS         20
-#define FW_CFG_OTHERS_CORE_NUMS         17
+//#define FW_CFG_OTHERS_CORE_NUMS         17
+#define FW_CFG_OTHERS_CORE_NUMS         4
 
 #ifdef IN_SAFETY_VM
 #define UT_CORE_NUMS	FW_CFG_SAFETY_VM_CORE_NUMS
