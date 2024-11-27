@@ -14,6 +14,8 @@
 #define PCI_CONFIG_ENABLE		0x80000000U
 #define	PCIR_BAR(x) (PCI_BASE_ADDRESS_0 + (x) * 4)
 
+void pci_set_mmcfg_addr(uint32_t addr);
+
 /**
  * @brief calculate the PCI_CFG_PORT value.
  *
