@@ -1,6 +1,6 @@
 SECTIONS
 {
-    . = 4M + SIZEOF_HEADERS;
+    . = 1M;
     stext = .;
     .text : { *(.init) *(.text) *(.text.*) }
     . = ALIGN(4K);

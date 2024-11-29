@@ -427,7 +427,7 @@
 #define PCI_SSVID_DEVICE_ID     6	/* PCI Bridge subsystem device ID */
 
 /* PCI Express capability registers */
-
+#define PCI_EXP_CAP_LIST	0x100
 #define PCI_EXP_FLAGS		2	/* Capabilities register */
 #define PCI_EXP_FLAGS_VERS	0x000f	/* Capability version */
 #define PCI_EXP_FLAGS_TYPE	0x00f0	/* Device/Port type */

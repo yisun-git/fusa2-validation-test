@@ -23,7 +23,7 @@ SECTIONS
         ld_trampoline_end = .;
 
     }
-    . = 0x1000800 + SIZEOF_HEADERS;
+    . = 1M;
     stext = .;
     .text : { KEEP(*(.init)) *(.text) *(.text.*) }
     . = ALIGN(4K);

@@ -1,4 +1,17 @@
 #include "pci_util.h"
+#include "asm/io.h"
+
+static uint32_t mmcfg_addr = 0;
+
+void pci_set_mmcfg_addr(uint32_t addr)
+{
+	mmcfg_addr = addr;
+}
+
+static uint32_t mmcfg_off_to_address(union pci_bdf bdf, uint32_t offset)
+{
+        return mmcfg_addr + (((uint32_t)bdf.value << 12U) | offset);
+}
 
 /*
  * @brief calculate the PCI_CFG_PORT value.
@@ -24,24 +37,7 @@ uint32_t pci_pdev_calc_address(union pci_bdf bdf, uint32_t offset)
 	return addr;
 }
 
-/*
- * @brief pci config register read.
- *
- * read the special data/nbyte to specail pci config register.
- * Application Constraints: none.
- *
- * @param union pci_bdf bdf:device BDF information
- * @param uint32_t offset:config register address
- * @param uint32_t bytes:number of byte
- *
- * @pre param_1 != NULL
- *
- * @return the value of register.
- *
- * @retval (-1) input parameter is invalid.
- *
- */
-uint32_t pci_pdev_read_cfg(union pci_bdf bdf, uint32_t offset, uint32_t bytes)
+uint32_t pci_pdev_read_cfg_pio(union pci_bdf bdf, uint32_t offset, uint32_t bytes)
 {
 	uint32_t addr = 0U;
 	uint32_t val = 0U;
@@ -67,10 +63,35 @@ uint32_t pci_pdev_read_cfg(union pci_bdf bdf, uint32_t offset, uint32_t bytes)
 	return val;
 }
 
-/**
- * @brief pci config register write.
+uint32_t pci_pdev_read_cfg_mmio(union pci_bdf bdf, uint32_t offset, uint32_t bytes)
+{
+	uint32_t addr = 0U;
+	uint32_t val = 0U;
+	mem_size hva;
+
+	addr = mmcfg_off_to_address(bdf, offset);
+	hva = (mem_size)phys_to_virt(addr);
+
+	/* Read result from DATA register */
+	switch (bytes) {
+	case 1U:
+		val = (uint32_t)mem_read8(hva);
+		break;
+	case 2U:
+		val = (uint32_t)mem_read16(hva);
+		break;
+	default:
+		val = mem_read32(hva);
+		break;
+	}
+
+	return val;
+}
+
+/*
+ * @brief pci config register read.
  *
- * write the special data/nbyte to specail pci config register.
+ * read the special data/nbyte to specail pci config register.
  * Application Constraints: none.
  *
  * @param union pci_bdf bdf:device BDF information
@@ -79,12 +100,20 @@ uint32_t pci_pdev_read_cfg(union pci_bdf bdf, uint32_t offset, uint32_t bytes)
  *
  * @pre param_1 != NULL
  *
- * @return OK.
+ * @return the value of register.
  *
  * @retval (-1) input parameter is invalid.
  *
  */
-int pci_pdev_write_cfg(union pci_bdf bdf, uint32_t offset, uint32_t bytes, uint32_t val)
+uint32_t pci_pdev_read_cfg(union pci_bdf bdf, uint32_t offset, uint32_t bytes)
+{
+	if (mmcfg_addr)
+		return pci_pdev_read_cfg_mmio(bdf, offset, bytes);
+	else
+		return pci_pdev_read_cfg_pio(bdf, offset, bytes);
+}
+
+int pci_pdev_write_cfg_pio(union pci_bdf bdf, uint32_t offset, uint32_t bytes, uint32_t val)
 {
 	uint32_t addr = 0U;
 
@@ -107,6 +136,57 @@ int pci_pdev_write_cfg(union pci_bdf bdf, uint32_t offset, uint32_t bytes, uint3
 	}
 
 	return OK;
+}
+
+int pci_pdev_write_cfg_mmio(union pci_bdf bdf, uint32_t offset, uint32_t bytes, uint32_t val)
+{
+	uint32_t addr = 0U;
+	mem_size hva;
+
+	addr = mmcfg_off_to_address(bdf, offset);
+	hva = (mem_size)phys_to_virt(addr);
+
+printf("%s: hva 0x%lx\n", __func__, hva);
+
+	/* Write value to DATA register */
+	switch (bytes) {
+	case 1U:
+		mem_write8((uint8_t)val, hva);
+		break;
+	case 2U:
+		mem_write16((uint16_t)val, hva);
+		break;
+	default:
+		mem_write32(val, hva);
+		break;
+	}
+
+	return OK;
+}
+
+/**
+ * @brief pci config register write.
+ *
+ * write the special data/nbyte to specail pci config register.
+ * Application Constraints: none.
+ *
+ * @param union pci_bdf bdf:device BDF information
+ * @param uint32_t offset:config register address
+ * @param uint32_t bytes:number of byte
+ *
+ * @pre param_1 != NULL
+ *
+ * @return OK.
+ *
+ * @retval (-1) input parameter is invalid.
+ *
+ */
+int pci_pdev_write_cfg(union pci_bdf bdf, uint32_t offset, uint32_t bytes, uint32_t val)
+{
+	if (mmcfg_addr)
+		return pci_pdev_write_cfg_mmio(bdf, offset, bytes, val);
+	else
+		return pci_pdev_write_cfg_pio(bdf, offset, bytes, val);
 }
 
 /**
