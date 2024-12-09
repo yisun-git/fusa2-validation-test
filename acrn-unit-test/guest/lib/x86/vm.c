@@ -147,7 +147,8 @@ void *setup_mmu(phys_addr_t end_of_memory)
 
 #ifdef __x86_64__
     if (end_of_memory < (1ul << 32))
-        end_of_memory = (1ul << 32);  /* map mmio 1:1 */
+	/* map mmio to 0xF0000000, the upper memory is left for PCIe hole test */
+        end_of_memory = 0xF0000000;
 
     setup_mmu_range(cr3, 0, end_of_memory);
 #else
