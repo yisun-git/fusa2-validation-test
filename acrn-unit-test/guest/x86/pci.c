@@ -1560,11 +1560,11 @@ void pci_rqmid_26817_PCIe_config_space_and_host_Interrupt_Line_Register_001(void
  * @brief case name: PCIe_config_space_and_host_Device_Identification_Registers_004
  *
  * Summary: When a vCPU attempts to read a guest PCI configuration
- * device identification register of any assigned PCIe device, ACRN hypervisor shall guarantee that the vCPU
- * gets the value in the physical PCI configuration device identification register of the PCIe device.
+ * type register of any assigned PCIe device, ACRN hypervisor shall guarantee that the vCPU
+ * gets the value 0x0 or 0x80 (multi-function device).
  */
 static
-void pci_rqmid_26245_PCIe_config_space_and_host_Device_Identification_Type_Registers_004(void)
+void pci_rqmid_26245_PCIe_config_space_and_host_Type_Register_001(void)
 {
 	union pci_bdf bdf = {0};
 	uint32_t reg_val = 0U;
@@ -2873,9 +2873,9 @@ void pci_rqmid_28884_PCIe_config_space_and_host_MSI_message_address_destination_
 /*
  * @brief case name:PCIe config space and host_MSI message-data trigger mode read_001
  *
- * Summary:When a vCPU attempts to read a guest message data register [bit 15:14] of
+ * Summary:When a vCPU attempts to read a guest message data register [bit 15] of
  * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
- * guarantee that the vCPU gets 1H.
+ * guarantee that the vCPU gets 0H.
  */
 static
 void pci_rqmid_28908_PCIe_config_space_and_host_MSI_message_data_trigger_mode_read_001(void)
@@ -2920,7 +2920,7 @@ void pci_rqmid_28911_PCIe_config_space_and_host_MSI_message_data_delivery_mode_r
  *
  * Summary:When a vCPU attempts to write a guest message data register [bit 10:8]
  * of the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor
- * shall guarantee that the write to the bits is ignored.
+ * shall guarantee that the write to the bits can take effect.
  */
 static
 void pci_rqmid_28892_PCIe_config_space_and_host_MSI_message_data_delivery_mode_write_001(void)
@@ -2979,7 +2979,7 @@ void pci_rqmid_28917_PCIe_config_space_and_host_MSI_message_address_redirection_
 /*
  * @brief case name:PCIe config space and host_MSI message-address redirection hint write_001
  *
- * Summary:When a vCPU attempts to write a guest message address register [bit 3:0] of
+ * Summary:When a vCPU attempts to write a guest message address register [bit 1:0] of
  * the PCI MSI capability structure of an assigned PCIe device, ACRN hypervisor shall
  * guarantee that the write to the bits is ignored.
  */
@@ -3538,7 +3538,7 @@ int main(void)
 	pci_rqmid_38095_PCIe_config_space_and_host_PCI_configuration_header_register_USB_001();
 
 	/* PCIe_ACRN shall expose PCI configuration register */
-	pci_rqmid_26245_PCIe_config_space_and_host_Device_Identification_Type_Registers_004();
+	pci_rqmid_26245_PCIe_config_space_and_host_Type_Register_001();
 	pci_rqmid_26793_PCIe_config_space_and_host_Status_Register_001();
 	pci_rqmid_26794_PCIe_config_space_and_host_Command_Register_001();
 	pci_rqmid_26817_PCIe_config_space_and_host_Interrupt_Line_Register_001();
