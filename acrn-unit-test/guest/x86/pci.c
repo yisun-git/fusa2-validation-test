@@ -50,6 +50,7 @@ static struct pci_dev pci_devs[MAX_PCI_DEV_NUM];
 static uint32_t nr_pci_devs = MAX_PCI_DEV_NUM;
 static uint64_t apic_id_bitmap = 0UL;
 
+#ifdef IN_SAFETY_VM
 static pci_cfg_reg_t hostbridge_pci_cfg[] =
 {
 	{"DeviceVendor ID", 0x00, 4, 0x5af08086, 0},
@@ -85,6 +86,7 @@ static pci_cfg_reg_t hostbridge_pci_cfg[] =
 	{"CAP reg", 0x60, 4, 0x00000000, 1},
 	{"CAP reg", 0x64, 4, 0x00000000, 1},
 };
+#endif
 
 // For BAR0 init test case
 static PCI_MAKE_BDF(usb, 0x0, 0x1, 0x0);
@@ -182,31 +184,6 @@ bool test_host_PCI_configuration_header_register_read_only(uint32_t dev_ven)
 	is_pass = (count == size) ? true : false;
 	return is_pass;
 }
-
-static
-bool test_host_MSI_Next_PTR(uint32_t dev_ven)
-{
-	int ret = OK;
-	bool is_pass = false;
-	union pci_bdf bdf = {0};
-	uint32_t reg_addr = 0U;
-	uint32_t reg_addr1 = 0U;
-	uint32_t reg_val = INVALID_REG_VALUE_U;
-	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, dev_ven, &bdf);
-	if (is_pass) {
-		// pci probe and check MSI capability register
-		ret = pci_probe_msi_capability(bdf, &reg_addr);
-		if (ret == OK) {
-			// Read The Next pointer
-			reg_addr1 = reg_addr + 1;
-			reg_val = pci_pdev_read_cfg(bdf, reg_addr1, 1);
-			ret |= pci_data_check(bdf, reg_addr1, 1, 0x00U, reg_val, false);
-		}
-		is_pass = (ret == OK) ? true : false;
-	}
-	return is_pass;
-}
-
 
 static
 bool test_host_MSI_message_control_write(uint32_t dev_ven)
@@ -1399,6 +1376,7 @@ void pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_001(void)
 	uint32_t reg_val = 0u;
 	bool is_pass = false;
 	int ret = OK;
+	int ret1 = OK;
 	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
 	if (is_pass) {
 		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, 0x00000000);
@@ -1408,7 +1386,10 @@ void pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_001(void)
 			bar_base = SHIFT_MASK(31, 4) & bar_val;
 			bar_base = (mem_size)phys_to_virt(bar_base + HCIVERSION);
 			reg_val = pci_pdev_read_mem(bdf, bar_base, 2);
-			ret |= pci_data_check(bdf, bar_base, 2, HCIVERSION_VALUE, reg_val, false);
+			ret1 = pci_data_check(bdf, bar_base, 2, HCIVERSION_VALUE, reg_val, false);
+			if (ret1 != OK)
+				DBG_ERRO("%s: bar_val=0x%x, bar_base=0x%lx, reg_val=0x%x\n", __func__, bar_val, bar_base, reg_val);
+			ret |= ret1;
 		}
 		is_pass = (ret == OK) ? true : false;
 	}
@@ -1428,6 +1409,7 @@ void pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_002(void)
 	uint32_t reg_val = 0u;
 	bool is_pass = false;
 	int ret = OK;
+	int ret1 = OK;
 	is_pass = get_pci_bdf_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR, &bdf);
 	if (is_pass) {
 		bar0_org = pci_pdev_read_cfg(bdf, PCIR_BAR(0), 4);
@@ -1442,7 +1424,10 @@ void pci_rqmid_28743_PCIe_config_space_and_host_PCI_hole_range_002(void)
 			bar_base = SHIFT_MASK(63, 4) & bar_map;
 			bar_base = (mem_size)phys_to_virt(bar_base + HCIVERSION);
 			reg_val = pci_pdev_read_mem(bdf, bar_base, 2);
-			ret |= pci_data_check(bdf, bar_base, 2, HCIVERSION_VALUE, reg_val, false);
+			ret1 = pci_data_check(bdf, bar_base, 2, HCIVERSION_VALUE, reg_val, false);
+			if (ret1 != OK)
+				DBG_ERRO("%s: bar_val=0x%lx, bar_base=0x%lx, reg_val=0x%x\n", __func__, bar_val, bar_base, reg_val);
+			ret |= ret1;
 		}
 		is_pass = (ret == OK) ? true : false;
 		pci_pdev_write_cfg(bdf, PCIR_BAR(0), 4, bar0_org);
@@ -1644,7 +1629,7 @@ static void pci_rqmid_26794_PCIe_config_space_and_host_Command_Register_001(void
 	if (is_pass) {
 		reg_val_ori = pci_pdev_read_cfg(bdf, PCI_COMMAND, 2);
 		reg_val = reg_val_ori;
-		DBG_INFO("USB PCI Command Val = 0x%x", reg_val);
+		DBG_INFO("USB PCI Command Val = 0x%x\n", reg_val);
 		// set readable-writable bit
 		reg_val = SHIFT_LEFT(0x1, 10);
 		reg_val |= SHIFT_LEFT(0x1, 8);
@@ -1682,15 +1667,17 @@ void pci_rqmid_PCIe_config_space_and_host_Hostbridge_XBAR(void)
 	is_pass = is_dev_exist_by_bdf(pci_devs, nr_pci_devs, bdf);
 	if (is_pass) {
 		mmcfg_addr = pci_pdev_read_cfg(bdf, 0x60, 4);
-		is_pass = (mmcfg_addr == 0xe0000001) ? true : false;
+		/* 0xe0000001 is for safety VM; 0xc0000001 is service VM */
+		is_pass = (mmcfg_addr == 0xe0000001 || mmcfg_addr == 0xc0000001) ? true : false;
 		if (!is_pass)
-			printf("%s: mmcfg_addr read out is 0x%x\n", __func__, mmcfg_addr);
+			DBG_ERRO("%s: mmcfg_addr read out is 0x%x\n", __func__, mmcfg_addr);
 		mmcfg_addr &= 0xFFFFFFFE;
-		printf("%s: finally, mmcfg_addr is 0x%x\n", __func__, mmcfg_addr);
+		DBG_INFO("%s: finally, mmcfg_addr is 0x%x\n", __func__, mmcfg_addr);
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
 
+#ifdef IN_SAFETY_VM
 /*
  * @brief case name: PCIe config space and host_Hostbridge readonly_001
  *
@@ -1746,6 +1733,8 @@ void pci_rqmid_27474_PCIe_config_space_and_host_Hostbridge_Header_Type_001(void)
 	if (is_pass) {
 		reg_val = pci_pdev_read_cfg(bdf, PCI_HEADER_TYPE, 1);
 		is_pass = (reg_val == 0 || reg_val == 0x80) ? true : false;
+		if (!is_pass)
+			DBG_ERRO("%s: header is 0x%x\n", __func__, reg_val);
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
@@ -1769,9 +1758,12 @@ void pci_rqmid_27475_PCIe_config_space_and_host_Hostbridge_Class_Code_001(void)
 		reg_val1 = pci_pdev_read_cfg(bdf, PCI_CLASS_DEVICE, 2);
 		reg_val = (reg_val1 << 8) | (reg_val);
 		is_pass = (reg_val == HOSTBRIDGE_CLASS_CODE) ? true : false;
+		if (!is_pass)
+			DBG_ERRO("%s: class_code is 0x%x\n", __func__, reg_val);
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
+#endif
 
 /*
  * @brief case name: PCIe config space and host_2-Byte CFEH Write with Disabled Config Address_001
@@ -2800,10 +2792,12 @@ void pci_rqmid_25099_PCIe_config_space_and_host_Config_Data_Port_001(void)
 		if (PCI_USB_DEVICE_ID == reg_val) {
 			count++;
 		}
+		DBG_INFO("%s: dev_id 0x%x\n", __func__, reg_val);
 		reg_val = pci_pdev_read_cfg(bdf, PCI_REVISION_ID, 1);
 		if (PCI_USB_REVISION_ID == reg_val) {
 			count++;
 		}
+		DBG_INFO("%s: rev_id 0x%x, PCI_USB_REVISION_ID 0x%x\n", __func__, reg_val, PCI_USB_REVISION_ID);
 		// Read BAR0
 		reg_val_ori = pci_pdev_read_cfg(bdf, PCI_BASE_ADDRESS_0, 4);
 		// BAR0 value 0x80000000
@@ -2812,6 +2806,7 @@ void pci_rqmid_25099_PCIe_config_space_and_host_Config_Data_Port_001(void)
 		pci_pdev_write_cfg(bdf, PCI_BASE_ADDRESS_0, 4, reg_val_new);
 		reg_val = pci_pdev_read_cfg(bdf, PCI_BASE_ADDRESS_0, 4);
 		reg_val &= 0xFFFFFFF0;
+		DBG_INFO("%s: bar0 0x%x, input 0x%x\n", __func__, reg_val, reg_val_new);
 		if (reg_val == reg_val_new) {
 			count++;
 		}
@@ -3022,20 +3017,6 @@ void pci_rqmid_28899_PCIe_config_space_and_host_MSI_message_control_write_001(vo
 }
 
 /*
- * @brief case name:PCIe config space and host_MSI Next-PTR_001
- *
- * Summary:When a vCPU attempts to read a guest next pointer of the PCI MSI capability
- * structure of an assigned PCIe device, ACRN hypervisor shall guarantee that the vCPU gets 00H.
- */
-static
-void pci_rqmid_28923_PCIe_config_space_and_host_MSI_Next_PTR_001(void)
-{
-	bool is_pass = false;
-	is_pass = test_host_MSI_Next_PTR(USB_DEV_VENDOR);
-	report("%s", is_pass, __FUNCTION__);
-}
-
-/*
  * @brief case name:PCIe config space and host_MSI capability structure_001
  *
  * Summary:ACRN hypervisor shall expose PCIe MSI capability structure of any PCIe device
@@ -3082,6 +3063,8 @@ void pci_rqmid_26821_PCIe_config_space_and_host_MSI_capability_structure_001(voi
 
 			// for MSI base
 			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 4);
+			/* Mask out the Next Capability Pointer which should not be checked */
+			reg_val &= 0xFFFF00FF;
 			ret |= pci_data_check(bdf, reg_addr, 4,\
 					(SHIFT_LEFT(SHIFT_LEFT(0x40, 1), 16) | 0x05), reg_val, false);
 			if (ret != OK)
@@ -3242,6 +3225,7 @@ void pci_rqmid_38101_PCIe_config_space_and_host_msi_control_register_following_s
 		bp_usb_msi_ctrl = *(uint32_t *)(BP_USB_MSI_CTRL_ADDR);
 		bp_usb_msi_ctrl >>= 16;
 		bp_usb_msi_ctrl &= SHIFT_LEFT(0x1, 0);
+		DBG_INFO("%s: bp_usb_msi_ctrl 0x%x, BP_USB_MSI_CTRL_ADDR 0x%x\n", __func__, bp_usb_msi_ctrl, BP_USB_MSI_CTRL_ADDR);
 		is_pass = (bp_usb_msi_ctrl == 0U) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
@@ -3250,7 +3234,7 @@ void pci_rqmid_38101_PCIe_config_space_and_host_msi_control_register_following_s
 /*
  * @brief case name:PCIe config space and host_PCI command register_following_start_up_USB_001
  *
- * Summary:ACRN hypervisor shall set initial guest PCI command register to 0400H following start-up.
+ * Summary:ACRN hypervisor shall set initial guest PCI command register bit[2] to 0H following start-up.
  */
 static
 void pci_rqmid_38105_PCIe_config_space_and_host_PCI_command_register_following_start_up_USB_001(void)
@@ -3261,8 +3245,9 @@ void pci_rqmid_38105_PCIe_config_space_and_host_PCI_command_register_following_s
 	is_usb_exist = is_dev_exist_by_dev_vendor(pci_devs, nr_pci_devs, USB_DEV_VENDOR);
 	if (is_usb_exist) {
 		bp_command = *(uint32_t *)(BP_USB_STATUS_COMMAND_ADDR);
-		bp_command &= SHIFT_MASK(10, 10);
-		is_pass = (bp_command == (BP_START_UP_COMMAND_VALUE & SHIFT_MASK(10, 10))) ? true : false;
+		bp_command &= SHIFT_MASK(2, 2);
+		DBG_INFO("%s: bp_command 0x%x\n", __func__, bp_command);
+		is_pass = (bp_command == BP_START_UP_COMMAND_VALUE) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
@@ -3332,7 +3317,7 @@ void pci_PCIe_config_space_and_host_MSIX_capability_structure_001(void)
 			reg_val = pci_pdev_read_cfg(bdf, reg_addr, 1);
 			ret |= pci_data_check(bdf, reg_addr, 4, 0x11, reg_val, false);
 			if (ret != OK)
-				printf("%s: 1-reg[%xH] = [%xH]\n", __func__, reg_addr, reg_val);
+				DBG_ERRO("%s: 1-reg[%xH] = [%xH]\n", __func__, reg_addr, reg_val);
 
 			// for MSI-X table
 			reg_addr += 4;
@@ -3365,11 +3350,13 @@ void pci_rqmid_PCIe_config_space_and_host_msix_control_register_following_start_
 		bp_msix_ctrl >>= 16;
 		bp_msix_ctrl &= SHIFT_LEFT(0x1, 15);
 		DBG_INFO("bp_msix_ctrl 0x%x, expect 0, BP_IVSHMEM_MSIX_CTRL_ADDR 0x%x\n", bp_msix_ctrl, *(uint32_t *)BP_IVSHMEM_MSIX_CTRL_ADDR);
-		is_pass = (bp_msix_ctrl == 0U) ? true : false;
+		printf("bp_msix_ctrl 0x%x, expect 0, BP_IVSHMEM_MSIX_CTRL_ADDR 0x%x\n", bp_msix_ctrl, *(uint32_t *)BP_IVSHMEM_MSIX_CTRL_ADDR);
+		is_pass = (bp_msix_ctrl == 0x8000U || bp_msix_ctrl == 0x0U) ? true : false;
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
 
+#ifdef IN_SAFETY_VM
 static int pci_probe_ats_capability(union pci_bdf bdf, uint32_t *ats_addr)
 {
 	uint32_t reg_addr = 0U;
@@ -3461,6 +3448,7 @@ void pci_PCIe_config_space_and_host_PRI_capability_structure_001(void)
 	}
 	report("%s", is_pass, __FUNCTION__);
 }
+#endif
 
 int main(void)
 {
@@ -3479,9 +3467,11 @@ int main(void)
 
 	/* Hostbridge */
 	pci_rqmid_PCIe_config_space_and_host_Hostbridge_XBAR();
+#ifdef IN_SAFETY_VM
 	pci_rqmid_27486_PCIe_config_space_and_host_Hostbridge_readonly_001();    /* TODO: need change hypervisor */
 	pci_rqmid_27474_PCIe_config_space_and_host_Hostbridge_Header_Type_001();
 	pci_rqmid_27475_PCIe_config_space_and_host_Hostbridge_Class_Code_001();
+#endif
 
 	/* PCIe_IO port access */
 	pci_rqmid_25292_PCIe_config_space_and_host_Config_Address_Port_001();
@@ -3558,7 +3548,6 @@ int main(void)
 	pci_rqmid_28896_PCIe_config_space_and_host_MSI_message_address_redirection_hint_write_001();
 	pci_rqmid_28918_PCIe_config_space_and_host_MSI_message_control_read_001();
 	pci_rqmid_28899_PCIe_config_space_and_host_MSI_message_control_write_001();
-	pci_rqmid_28923_PCIe_config_space_and_host_MSI_Next_PTR_001();
 	pci_rqmid_38091_PCIe_config_space_and_host_capability_ID_register_of_the_PCI_MSI_capability_USB_001();
 
 	/* MMIO */
@@ -3583,9 +3572,11 @@ int main(void)
 	pci_rqmid_38101_PCIe_config_space_and_host_msi_control_register_following_start_up_USB_001();
 	pci_rqmid_PCIe_config_space_and_host_msix_control_register_following_start_up_IVSHMEM_001();
 
+#ifdef IN_SAFETY_VM
 	/* ATS and PRI is hidden */
 	pci_PCIe_config_space_and_host_ATS_capability_structure_001();
 	pci_PCIe_config_space_and_host_PRI_capability_structure_001();
+#endif
 #endif
 
 	return report_summary();

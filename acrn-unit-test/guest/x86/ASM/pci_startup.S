@@ -4,10 +4,15 @@
 #include "../../lib/pci_regs.h"
 #define PCI_CONFIG_ADDR		0xCF8U
 #define PCI_CONFIG_DATA		0xCFCU
-// USB BDF=00:1.0
-#define USB_BDF_ENABLE		0x80000800U
-// IVSHMEM BDF=00:10.0
-#define IVSHMEM_BDF_ENABLE	0x80008000U
+#ifdef IN_SAFETY_VM
+// USB BDF=00:2.0
+#define USB_BDF_ENABLE		0x80001000U
+#else
+// USB BDF=00:d.0
+#define USB_BDF_ENABLE		0x80006800U
+#endif
+// IVSHMEM BDF=00:3.0
+#define IVSHMEM_BDF_ENABLE	0x80001800U
 
 // test PCI port address
 mov $(PCI_CONFIG_ADDR), %edx
