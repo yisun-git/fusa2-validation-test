@@ -1660,7 +1660,7 @@ static void pci_rqmid_26794_PCIe_config_space_and_host_Command_Register_001(void
 }
 
 static
-void pci_rqmid_PCIe_config_space_and_host_Hostbridge_XBAR(void)
+void pci_PCIe_config_space_and_host_Hostbridge_XBAR(void)
 {
 	union pci_bdf bdf = {0};
 	bool is_pass = false;
@@ -3339,7 +3339,7 @@ void pci_PCIe_config_space_and_host_MSIX_capability_structure_001(void)
 }
 
 static
-void pci_rqmid_PCIe_config_space_and_host_msix_control_register_following_start_up_IVSHMEM_001(void)
+void pci_PCIe_config_space_and_host_msix_control_register_following_start_up_IVSHMEM_001(void)
 {
 	bool is_pass = false;
 	uint32_t bp_msix_ctrl = 0U;
@@ -3370,7 +3370,7 @@ static int pci_probe_ats_capability(union pci_bdf bdf, uint32_t *ats_addr)
 	 * pcie extended config space [100h,FFFh).So,ATS register must be in [100h,FFFh),
 	 * if there is ATS register
 	 */
-	repeat = PCIE_CONFIG_SPACE_SIZE / 4;
+	repeat = PCIE_CONFIG_SPACE_SIZE_LOCAL / 4;
 	for (i = 0; i < repeat; i++) {
 		// Find ATS register group
 		if (PCI_EXT_CAP_ID_ATS == (reg_val & SHIFT_MASK(15, 0))) {
@@ -3416,7 +3416,7 @@ static int pci_probe_pri_capability(union pci_bdf bdf, uint32_t *pri_addr)
 	 * pcie extended config space [100h,FFFh).So,PRI register must be in [100h,FFFh),
 	 * if there is ATS register
 	 */
-	repeat = PCIE_CONFIG_SPACE_SIZE / 4;
+	repeat = PCIE_CONFIG_SPACE_SIZE_LOCAL / 4;
 	for (i = 0; i < repeat; i++) {
 		// Find PRI register group
 		if (PCI_EXT_CAP_ID_PRI == (reg_val & SHIFT_MASK(15, 0))) {
@@ -3466,7 +3466,7 @@ int main(void)
 	printf("\nFind PCI devs nr_pci_devs = %d \n", nr_pci_devs);
 
 	/* Hostbridge */
-	pci_rqmid_PCIe_config_space_and_host_Hostbridge_XBAR();
+	pci_PCIe_config_space_and_host_Hostbridge_XBAR();
 #ifdef IN_SAFETY_VM
 	pci_rqmid_27486_PCIe_config_space_and_host_Hostbridge_readonly_001();    /* TODO: need change hypervisor */
 	pci_rqmid_27474_PCIe_config_space_and_host_Hostbridge_Header_Type_001();
@@ -3570,7 +3570,7 @@ int main(void)
 	/* Startup */
 	pci_rqmid_38105_PCIe_config_space_and_host_PCI_command_register_following_start_up_USB_001();
 	pci_rqmid_38101_PCIe_config_space_and_host_msi_control_register_following_start_up_USB_001();
-	pci_rqmid_PCIe_config_space_and_host_msix_control_register_following_start_up_IVSHMEM_001();
+	pci_PCIe_config_space_and_host_msix_control_register_following_start_up_IVSHMEM_001();
 
 #ifdef IN_SAFETY_VM
 	/* ATS and PRI is hidden */
